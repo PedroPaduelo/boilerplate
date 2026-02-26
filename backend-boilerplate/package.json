@@ -1,0 +1,64 @@
+{
+  "name": "backend-boilerplate",
+  "version": "1.0.0",
+  "description": "Backend boilerplate with Fastify, Prisma, Redis, BullMQ and Socket.IO",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsup",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "service:up": "docker-compose up -d postgres redis",
+    "service:down": "docker-compose down",
+    "dev:up": "npm run service:up && npm run dev",
+    "db:migrate": "npx prisma migrate dev",
+    "db:push": "npx prisma db push",
+    "db:seed": "npx prisma db seed",
+    "db:studio": "npx prisma studio"
+  },
+  "keywords": [
+    "fastify",
+    "prisma",
+    "redis",
+    "bullmq",
+    "socket.io",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@bull-board/api": "^6.14.2",
+    "@bull-board/fastify": "^6.14.2",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/jwt": "^9.0.1",
+    "@fastify/multipart": "^9.3.0",
+    "@fastify/redis": "^7.1.0",
+    "@fastify/static": "^8.3.0",
+    "@fastify/swagger": "^9.2.0",
+    "@fastify/swagger-ui": "^5.1.0",
+    "@prisma/client": "^6.0.1",
+    "@types/jsonwebtoken": "^9.0.10",
+    "axios": "^1.13.2",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.64.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.1.0",
+    "fastify-plugin": "^5.0.1",
+    "fastify-type-provider-zod": "^4.0.2",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.3",
+    "socket.io": "^4.8.1",
+    "zod": "^3.23.8",
+    "zod-error": "^1.5.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.9.0",
+    "prisma": "^6.0.1",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

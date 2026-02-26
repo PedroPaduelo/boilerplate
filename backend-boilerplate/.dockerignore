@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Test
+coverage/
+*.test.ts
+*.spec.ts
+
+# Temp
+temp/
+*.tmp
+
+# Uploads (will be mounted as volume)
+uploads/
