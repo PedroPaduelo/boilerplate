@@ -1,13 +1,13 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ override: true });
 
 import z from 'zod';
 
 const envSchema = z.object({
   // Application
   NODE_ENV: z.string().default('development'),
-  PORT: z.coerce.number().default(3333),
-  BASE_URL: z.string().url().default('http://localhost:3333'),
+  PORT: z.coerce.number().default(4000),
+  BASE_URL: z.string().url().default('http://localhost:4000'),
 
   // JWT
   JWT_SECRET: z.string(),

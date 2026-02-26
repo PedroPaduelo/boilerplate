@@ -5,9 +5,11 @@ type RedisClient = Redis | FastifyRedis;
 
 class RedisInstance {
   private client: RedisClient | null = null;
+  private _isDegraded = false;
 
   setClient(client: RedisClient): void {
     this.client = client;
+    this._isDegraded = false;
     console.log('✅ Redis client set globally');
   }
 
@@ -20,6 +22,14 @@ class RedisInstance {
 
   isInitialized(): boolean {
     return this.client !== null;
+  }
+
+  isDegraded(): boolean {
+    return this._isDegraded;
+  }
+
+  setDegraded(value: boolean): void {
+    this._isDegraded = value;
   }
 }
 

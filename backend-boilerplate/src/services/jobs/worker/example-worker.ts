@@ -24,30 +24,51 @@ async function processExampleJob(job: Job) {
   return { success: true };
 }
 
-export const exampleWorker = new Worker(
-  'example-queue',
-  processExampleJob,
-  {
-    concurrency: 5, // Process 5 jobs simultaneously
-    connection: connectionRedisConfigWorker,
+let worker: Worker | null = null;
+
+export async function startWorker(): Promise<Worker | null> {
+  if (worker) return worker;
+
+  try {
+    worker = new Worker('example-queue', processExampleJob, {
+      concurrency: 5,
+      connection: connectionRedisConfigWorker,
+    });
+
+    worker.on('completed', (job) => {
+      console.log(`✅ Job ${job.id} completed successfully`);
+    });
+
+    worker.on('failed', (job, err) => {
+      console.error(`❌ Job ${job?.id} failed with error: ${err.message}`);
+    });
+
+    worker.on('ready', () => {
+      console.log('🚀 Example worker is ready and connected to Redis');
+    });
+
+    worker.on('error', (err) => {
+      console.error('Worker error:', err);
+    });
+
+    console.log('📋 Example worker started');
+    return worker;
+  } catch (err) {
+    console.warn('⚠️ Failed to start worker:', (err as Error).message);
+    return null;
   }
-);
+}
 
-// Event handlers
-exampleWorker.on('completed', (job) => {
-  console.log(`✅ Job ${job.id} completed successfully`);
-});
+export async function stopWorker(): Promise<void> {
+  if (worker) {
+    await worker.close();
+    worker = null;
+    console.log('🛑 Example worker stopped');
+  }
+}
 
-exampleWorker.on('failed', (job, err) => {
-  console.error(`❌ Job ${job?.id} failed with error: ${err.message}`);
-});
-
-exampleWorker.on('ready', () => {
-  console.log('🚀 Example worker is ready and connected to Redis');
-});
-
-exampleWorker.on('error', (err) => {
-  console.error('Worker error:', err);
-});
-
-console.log('📋 Example worker instance created');
+export const exampleWorker = {
+  get id() {
+    return worker?.id ?? 'not-started';
+  },
+};

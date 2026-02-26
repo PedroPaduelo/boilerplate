@@ -6,6 +6,7 @@ import fastifyRedis from '@fastify/redis';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
 import { fastify } from 'fastify';
+import { Redis } from 'ioredis';
 import path from 'path';
 import {
   jsonSchemaTransform,
@@ -33,144 +34,173 @@ import { getUser } from './http/routes/user/get-user';
 import { updateUser } from './http/routes/user/update-user';
 import { deleteUser } from './http/routes/user/delete-user';
 
-// Jobs
-import { exampleWorker } from './services/jobs/worker/example-worker';
-import { exampleQueue } from './services/jobs/queue/example-queue';
-
 // =============================================================================
-// APP INITIALIZATION
+// REDIS PRE-CHECK
 // =============================================================================
 
-const app = fastify().withTypeProvider<ZodTypeProvider>();
+async function isRedisAvailable(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const client = new Redis({
+      host: env.REDIS_URL,
+      port: env.REDIS_PORT,
+      password: env.REDIS_PASSWORD || undefined,
+      family: 4,
+      connectTimeout: 3000,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null,
+      lazyConnect: true,
+      enableOfflineQueue: false,
+    });
 
-app.setSerializerCompiler(serializerCompiler);
-app.setValidatorCompiler(validatorCompiler);
-app.setErrorHandler(errorHandler);
+    client.on('error', () => {});
+
+    const cleanup = () => {
+      try { client.disconnect(false); } catch {}
+    };
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, 4000);
+
+    client.connect()
+      .then(() => client.ping())
+      .then(() => {
+        clearTimeout(timeout);
+        client.quit().catch(() => {});
+        resolve(true);
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        cleanup();
+        resolve(false);
+      });
+  });
+}
 
 // =============================================================================
-// PLUGINS
+// START
 // =============================================================================
 
-// CORS
-app.register(fastifyCors, {
-  origin: true,
-  credentials: true,
-});
+async function start() {
+  const redisAvailable = await isRedisAvailable();
 
-// Multipart (file uploads)
-app.register(fastifyMultipart, {
-  limits: {
-    fileSize: env.MAX_FILE_SIZE,
-    files: 5,
-    fields: 50,
-  },
-});
+  const app = fastify().withTypeProvider<ZodTypeProvider>();
 
-// Static files (uploads)
-const uploadDir = env.UPLOAD_DIR
-  ? path.resolve(env.UPLOAD_DIR)
-  : path.resolve('./uploads');
+  app.setSerializerCompiler(serializerCompiler);
+  app.setValidatorCompiler(validatorCompiler);
+  app.setErrorHandler(errorHandler);
 
-console.log(`📂 Serving uploads from: ${uploadDir}`);
+  // CORS
+  app.register(fastifyCors, {
+    origin: true,
+    credentials: true,
+  });
 
-app.register(fastifyStatic, {
-  root: uploadDir,
-  prefix: '/uploads/',
-  decorateReply: false,
-});
-
-// Swagger documentation
-app.register(fastifySwagger, {
-  openapi: {
-    openapi: '3.1.0',
-    info: {
-      title: 'Backend Boilerplate API',
-      description: 'API documentation for Backend Boilerplate',
-      version: '1.0.0',
+  // Multipart
+  app.register(fastifyMultipart, {
+    limits: {
+      fileSize: env.MAX_FILE_SIZE,
+      files: 5,
+      fields: 50,
     },
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+  });
+
+  // Static files
+  const uploadDir = env.UPLOAD_DIR
+    ? path.resolve(env.UPLOAD_DIR)
+    : path.resolve('./uploads');
+
+  console.log(`📂 Serving uploads from: ${uploadDir}`);
+
+  app.register(fastifyStatic, {
+    root: uploadDir,
+    prefix: '/uploads/',
+    decorateReply: false,
+  });
+
+  // Swagger
+  app.register(fastifySwagger, {
+    openapi: {
+      openapi: '3.1.0',
+      info: {
+        title: 'Backend Boilerplate API',
+        description: 'API documentation for Backend Boilerplate',
+        version: '1.0.0',
+      },
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
         },
       },
     },
-  },
-  transform: jsonSchemaTransform,
-});
+    transform: jsonSchemaTransform,
+  });
 
-app.register(fastifySwaggerUI, {
-  routePrefix: '/docs',
-});
+  app.register(fastifySwaggerUI, {
+    routePrefix: '/docs',
+  });
 
-// Redis
-app.register(fastifyRedis, {
-  host: env.REDIS_URL,
-  password: env.REDIS_PASSWORD || undefined,
-  port: env.REDIS_PORT,
-  family: 4,
-});
+  // JWT
+  app.register(fastifyJwt, {
+    secret: env.JWT_SECRET,
+  });
 
-// JWT
-app.register(fastifyJwt, {
-  secret: env.JWT_SECRET,
-});
+  // Redis (only if available)
+  if (redisAvailable) {
+    app.register(fastifyRedis, {
+      host: env.REDIS_URL,
+      password: env.REDIS_PASSWORD || undefined,
+      port: env.REDIS_PORT,
+      family: 4,
+    });
 
-// =============================================================================
-// BULL BOARD (Queue monitoring)
-// =============================================================================
+    app.addHook('onReady', () => {
+      redisInstance.setClient(app.redis);
+      console.log('✅ Redis client shared globally');
+    });
 
-const serverAdapter = new FastifyAdapter();
+    // Bull Board
+    try {
+      const { getExampleQueue } = await import('./services/jobs/queue/example-queue');
+      const queue = getExampleQueue();
 
-createBullBoard({
-  queues: [new BullMQAdapter(exampleQueue)],
-  serverAdapter,
-});
+      if (queue) {
+        const serverAdapter = new FastifyAdapter();
+        createBullBoard({
+          queues: [new BullMQAdapter(queue)],
+          serverAdapter,
+        });
+        serverAdapter.setBasePath('/queues');
+        app.register(serverAdapter.registerPlugin(), { prefix: '/queues' });
+        console.log('📊 Bull Board registered at /queues');
+      }
+    } catch (err) {
+      console.warn('⚠️ BullMQ setup failed:', (err as Error).message);
+    }
+  } else {
+    redisInstance.setDegraded(true);
+    console.warn('⚠️ Redis offline - modo degradado (sem cache e filas)');
+  }
 
-serverAdapter.setBasePath('/queues');
-app.register(serverAdapter.registerPlugin(), { prefix: '/queues' });
+  // Routes
+  app.register(healthCheck);
+  app.register(authenticate);
+  app.register(getMe);
+  app.register(createUser);
+  app.register(listUsers);
+  app.register(getUser);
+  app.register(updateUser);
+  app.register(deleteUser);
 
-// =============================================================================
-// HOOKS
-// =============================================================================
+  // Start
+  const address = await app.listen({ port: env.PORT, host: '0.0.0.0' });
 
-app.addHook('onReady', () => {
-  redisInstance.setClient(app.redis);
-  console.log('✅ Redis client shared globally');
-  console.log(`🔧 Example Worker ID: ${exampleWorker.id}`);
-});
-
-// =============================================================================
-// ROUTES
-// =============================================================================
-
-// Health
-app.register(healthCheck);
-
-// Auth
-app.register(authenticate);
-app.register(getMe);
-
-// Users
-app.register(createUser);
-app.register(listUsers);
-app.register(getUser);
-app.register(updateUser);
-app.register(deleteUser);
-
-// =============================================================================
-// START SERVER
-// =============================================================================
-
-app
-  .listen({
-    port: env.PORT,
-    host: '0.0.0.0',
-  })
-  .then((address) => {
-    console.log(`
+  console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
 ║   🚀 Server is running on ${address}                       ║
@@ -178,12 +208,15 @@ app
 ║   📚 Docs:   ${address}/docs                               ║
 ║   📊 Queues: ${address}/queues                             ║
 ║   ❤️  Health: ${address}/health                            ║
+║   ${redisAvailable ? '✅ Redis: connected' : '⚠️  Redis: degraded mode'}                              ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
-    `);
-    setupSocketIO(app);
-  })
-  .catch((err) => {
-    app.log.error(err);
-    process.exit(1);
-  });
+  `);
+
+  setupSocketIO(app);
+}
+
+start().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});
