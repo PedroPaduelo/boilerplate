@@ -17,8 +17,8 @@ export async function listUsers(app: FastifyInstance) {
           summary: 'List all users with pagination',
           security: [{ bearerAuth: [] }],
           querystring: z.object({
-            page: z.coerce.number().default(1),
-            pageSize: z.coerce.number().default(10),
+            page: z.coerce.number().default(1).min(1),
+            pageSize: z.coerce.number().default(10).min(1).max(100),
             role: z.enum(['ADMIN', 'USER']).optional(),
             isActive: z.coerce.boolean().optional(),
             search: z.string().optional(),

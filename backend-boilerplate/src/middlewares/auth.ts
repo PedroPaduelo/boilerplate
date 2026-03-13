@@ -7,6 +7,7 @@ import { UnauthorizedError } from '@/http/routes/_errors';
 declare module 'fastify' {
   interface FastifyRequest {
     getCurrentUserId: () => Promise<string>;
+    getCurrentUserRole: () => Promise<string>;
   }
 }
 
@@ -16,6 +17,15 @@ export const auth = fastifyPlugin(async (app: FastifyInstance) => {
       try {
         const { sub } = await request.jwtVerify<{ sub: string }>();
         return sub;
+      } catch {
+        throw new UnauthorizedError('Invalid or expired token');
+      }
+    };
+
+    request.getCurrentUserRole = async () => {
+      try {
+        const decoded = await request.jwtVerify<{ sub: string; role?: string }>();
+        return decoded.role || 'USER';
       } catch {
         throw new UnauthorizedError('Invalid or expired token');
       }

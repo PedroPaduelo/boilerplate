@@ -10,7 +10,7 @@ const envSchema = z.object({
   BASE_URL: z.string().url().default('http://localhost:4000'),
 
   // JWT
-  JWT_SECRET: z.string(),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),
 
   // Database
   DATABASE_URL: z.string(),
@@ -24,6 +24,17 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().optional(),
   MAX_FILE_SIZE: z.coerce.number().default(104857600), // 100MB
   UPLOAD_TIMEOUT: z.coerce.number().default(120000), // 2min
+
+  // OpenSearch
+  OPENSEARCH_URL: z.string().default('http://localhost:9200'),
+  OPENSEARCH_USERNAME: z.string().default(''),
+  OPENSEARCH_PASSWORD: z.string().default(''),
+  OPENSEARCH_SSL: z.coerce.boolean().default(false),
+
+  // Security
+  CORS_ORIGINS: z.string().optional(),
+  SWAGGER_USER: z.string().optional(),
+  SWAGGER_PASSWORD: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

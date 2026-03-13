@@ -84,15 +84,20 @@ export const errorHandler: FastifyErrorHandler = (error, request, reply) => {
     return reply.status(404).send({ message: error.message });
   }
 
-  // Log error for debugging
-  console.error('Unhandled error:', error);
-  if (error.stack) {
-    console.error('Stack:', error.stack);
+  // Log error for debugging - only in development
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Unhandled error:', error);
+    if (typeof error === 'object' && error !== null && 'stack' in error) {
+      console.error('Stack:', error.stack);
+    }
+  } else {
+    // Production: log minimal info without sensitive details
+    console.error(`[${new Date().toISOString()}] Error: ${error.name} - ${error.message}`);
   }
 
   // Generic error response
   return reply.status(500).send({
     message: 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { error: error.message }),
+    ...(process.env.NODE_ENV === 'development' && typeof error === 'object' && error !== null && 'message' in error && { error: String(error.message) }),
   });
 };

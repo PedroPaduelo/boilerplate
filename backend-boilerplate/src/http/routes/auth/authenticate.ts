@@ -65,7 +65,7 @@ export async function authenticate(app: FastifyInstance) {
 
       const token = await reply.jwtSign(
         { sub: user.id },
-        { expiresIn: '7d' }
+        { expiresIn: '1h' }
       );
 
       return reply.send({

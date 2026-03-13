@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: ['.ddw1sl.easypanel.host'],
+    host: '0.0.0.0',
+    port: 4001,
+    allowedHosts: ['dashboard-freela.ddw1sl.easypanel.host', '.ddw1sl.easypanel.host'],
   },
 })

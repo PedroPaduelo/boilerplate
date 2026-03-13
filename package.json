@@ -1,0 +1,26 @@
+{
+  "name": "boilerplate",
+  "version": "1.0.0",
+  "description": "Monorepo fullstack com Backend (Fastify + Prisma + Redis + BullMQ + Socket.IO) e Frontend (React + Vite + TailwindCSS).",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://x-access-token: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@github.com/PedroPaduelo/boilerplate.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PedroPaduelo/boilerplate/issues"
+  },
+  "homepage": "https://github.com/PedroPaduelo/boilerplate#readme",
+  "devDependencies": {
+    "k6": "^0.0.0"
+  }
+}

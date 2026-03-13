@@ -5,6 +5,9 @@ import fastifySwaggerUI from '@fastify/swagger-ui';
 import fastifyRedis from '@fastify/redis';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
+import fastifyRateLimit from '@fastify/rate-limit';
+import fastifyHelmet from '@fastify/helmet';
+import fastifyBasicAuth from '@fastify/basic-auth';
 import { fastify } from 'fastify';
 import { Redis } from 'ioredis';
 import path from 'path';
@@ -23,6 +26,8 @@ import { errorHandler } from '@/http/error-handler';
 import { env } from '@/lib/env';
 import { redisInstance } from '@/lib/redis';
 import { setupSocketIO } from './socket';
+import { startAllWorkers } from './services/jobs/worker/worker-manager';
+import { getAllQueues } from './services/jobs/queue/queue-manager';
 
 // Routes
 import { healthCheck } from './http/routes/health/health-check';
@@ -33,6 +38,19 @@ import { listUsers } from './http/routes/user/list-users';
 import { getUser } from './http/routes/user/get-user';
 import { updateUser } from './http/routes/user/update-user';
 import { deleteUser } from './http/routes/user/delete-user';
+import { queueRoutes } from './http/routes/queue/queue-routes';
+import {
+  search,
+  geoSearch,
+  autocomplete,
+  analytics,
+} from './http/routes/search';
+import {
+  indexDocument,
+  bulkIndex,
+  deleteDocument,
+  adminIndex,
+} from './http/routes/search/admin-index';
 
 // =============================================================================
 // REDIS PRE-CHECK
@@ -91,10 +109,47 @@ async function start() {
   app.setValidatorCompiler(validatorCompiler);
   app.setErrorHandler(errorHandler);
 
-  // CORS
+  // Security headers (Helmet)
+  app.register(fastifyHelmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: { action: 'deny' },
+    dnsPrefetchControl: { allow: false },
+  });
+
+  // Rate limiting - global
+  app.register(fastifyRateLimit, {
+    max: 100, // 100 requests per window
+    timeWindow: '1 minute',
+    redis: redisAvailable ? app.redis : undefined,
+    keyGenerator: (request) => {
+      // Use IP or user ID if authenticated
+      return request.ip;
+    },
+  });
+
+  // CORS - Restrictive configuration
+  const allowedOrigins = env.CORS_ORIGINS
+    ? env.CORS_ORIGINS.split(',').map(o => o.trim())
+    : env.NODE_ENV === 'production'
+      ? []
+      : ['http://localhost:5173', 'http://localhost:4000'];
+
   app.register(fastifyCors, {
-    origin: true,
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   });
 
   // Multipart
@@ -119,7 +174,21 @@ async function start() {
     decorateReply: false,
   });
 
-  // Swagger
+  // Swagger (with optional basic auth protection)
+  const swaggerUser = env.SWAGGER_USER;
+  const swaggerPass = env.SWAGGER_PASSWORD;
+
+  if (swaggerUser && swaggerPass) {
+    app.register(fastifyBasicAuth, {
+      validate: (username, password, req, reply, done) => {
+        done({ username, valid: username === swaggerUser && password === swaggerPass });
+      },
+      ignore: (req) => !req.url.startsWith('/docs'), // Only protect /docs routes
+    });
+  } else {
+    console.warn('⚠️  Swagger is not protected - set SWAGGER_USER and SWAGGER_PASSWORD for production');
+  }
+
   app.register(fastifySwagger, {
     openapi: {
       openapi: '3.1.0',
@@ -164,21 +233,40 @@ async function start() {
       console.log('✅ Redis client shared globally');
     });
 
-    // Bull Board
+    // Bull Board with all queues
     try {
-      const { getExampleQueue } = await import('./services/jobs/queue/example-queue');
-      const queue = getExampleQueue();
+      const { QUEUE_NAMES } = await import('./services/jobs/queue/queue-manager');
+      const { getQueue } = await import('./services/jobs/queue/queue-manager');
 
-      if (queue) {
+      const queuesToMonitor = [
+        QUEUE_NAMES.EMAIL,
+        QUEUE_NAMES.NOTIFICATION,
+        QUEUE_NAMES.PROCESSING,
+        QUEUE_NAMES.WEBHOOK,
+        QUEUE_NAMES.BACKGROUND,
+        QUEUE_NAMES.DEAD_LETTER,
+      ];
+
+      const queueAdapters = queuesToMonitor
+        .map(name => {
+          const queue = getQueue(name);
+          return queue ? new BullMQAdapter(queue) : null;
+        })
+        .filter(Boolean);
+
+      if (queueAdapters.length > 0) {
         const serverAdapter = new FastifyAdapter();
         createBullBoard({
-          queues: [new BullMQAdapter(queue)],
+          queues: queueAdapters as any,
           serverAdapter,
         });
         serverAdapter.setBasePath('/queues');
         app.register(serverAdapter.registerPlugin(), { prefix: '/queues' });
         console.log('📊 Bull Board registered at /queues');
       }
+
+      // Start all workers
+      await startAllWorkers();
     } catch (err) {
       console.warn('⚠️ BullMQ setup failed:', (err as Error).message);
     }
@@ -196,6 +284,19 @@ async function start() {
   app.register(getUser);
   app.register(updateUser);
   app.register(deleteUser);
+  app.register(queueRoutes);
+
+  // Search routes (public read access)
+  app.register(search);
+  app.register(geoSearch);
+  app.register(autocomplete);
+  app.register(analytics);
+
+  // Admin search routes (protected)
+  app.register(indexDocument);
+  app.register(bulkIndex);
+  app.register(deleteDocument);
+  app.register(adminIndex);
 
   // Start
   const address = await app.listen({ port: env.PORT, host: '0.0.0.0' });

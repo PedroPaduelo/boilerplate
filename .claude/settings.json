@@ -15,11 +15,28 @@
           {
             "type": "command",
             "timeout": 5000,
-            "command": "if echo \"$TOOL_INPUT\" | grep -qE \"rm\\s+(-rf|-r\\s+-f|--recursive)\\s+/\"; then echo '{\"decision\":\"block\",\"reason\":\"Comando rm -rf bloqueado por seguranca\"}' >&2; exit 2; fi",
-            "statusMessage": "Verificando seguranca do comando..."
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE \"git (add|commit).*\\.env[^.]\"; then echo \"BLOQUEADO: Não commitar arquivos .env com credenciais!\" >&2; exit 2; fi",
+            "statusMessage": "Verificando segurança do commit..."
+          },
+          {
+            "type": "command",
+            "timeout": 5000,
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE \"(--port|:-p|PORT=)\\s*(3333|5173|8443|6080|5900)\"; then echo \"BLOQUEADO: Portas 3333, 5173, 8443, 6080, 5900 são reservadas do sistema!\" >&2; exit 2; fi",
+            "statusMessage": "Verificando portas..."
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5000,
+            "command": "if echo \"$TOOL_INPUT\" | grep -q \"components/ui/\"; then echo \"ALERTA: Componentes shadcn/ui não devem ser editados diretamente. Use 'npx shadcn@latest add' para adicionar/atualizar.\" >&2; exit 2; fi",
+            "statusMessage": "Verificando proteção shadcn/ui..."
+          }
+        ],
+        "matcher": "Edit|Write"
       }
     ],
     "PostToolUse": [
@@ -28,16 +45,9 @@
           {
             "type": "command",
             "timeout": 30000,
-            "command": "npx eslint --fix \"$TOOL_INPUT_FILE_PATH\" 2>/dev/null || true",
+            "command": "if echo \"$TOOL_INPUT\" | grep -q \"schema.prisma\"; then cd /workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/99freelaAgent && npx prisma generate 2>&1; fi",
             "isAsync": true,
-            "statusMessage": "Rodando linter..."
-          },
-          {
-            "type": "command",
-            "timeout": 30000,
-            "command": "npx eslint --fix \"$TOOL_INPUT_FILE_PATH\" 2>/dev/null || true",
-            "isAsync": true,
-            "statusMessage": "Rodando linter..."
+            "statusMessage": "Gerando Prisma Client..."
           }
         ],
         "matcher": "Write|Edit"
