@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Features — Boilerplate Docs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'var(--background)',
+            foreground: 'var(--foreground)',
+            card: 'var(--card)',
+            'card-foreground': 'var(--card-foreground)',
+            border: 'var(--border)',
+            input: 'var(--input)',
+            ring: 'var(--ring)',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --background: #0a0a0a;
+      --foreground: #ededed;
+      --card: #141414;
+      --card-foreground: #ededed;
+      --border: #262626;
+      --input: #262626;
+      --ring: #3f3f46;
+    }
+    body { background: var(--background); color: var(--foreground); font-family: 'Inter', system-ui, sans-serif; }
+    pre code { background: #1e1e1e !important; padding: 1rem; border-radius: 0.5rem; display: block; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { padding: 0.75rem; border: 1px solid var(--border); text-align: left; }
+    th { background: var(--card); font-weight: 600; }
+    .prose h1 { font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+    .prose h2 { font-size: 1.75rem; font-weight: 700; margin-top: 2.5rem; margin-bottom: 1rem; letter-spacing: -0.01em; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.7; color: #a1a1aa; }
+    .prose ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.5rem; color: #a1a1aa; }
+    .prose code { background: var(--card); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; color: #facc15; }
+    .prose pre { margin: 1.5rem 0; }
+    .prose blockquote { border-left: 4px solid #3f3f46; padding-left: 1rem; font-style: italic; color: #71717a; }
+    .prose strong { color: var(--foreground); font-weight: 700; }
+    .prose a { color: #60a5fa; text-decoration: underline; }
+    .prose a:hover { color: #93c5fd; }
+    .prose hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+    .prose pre::before { content: attr(data-lang); position: absolute; top: 0.5rem; right: 0.5rem; font-size: 0.75rem; color: #71717a; text-transform: uppercase; }
+    pre { position: relative; }
+    .sidebar { transition: transform 0.3s ease; }
+    .sidebar.closed { transform: translateX(-100%); }
+    @media (max-width: 768px) { .sidebar { position: fixed; z-index: 50; height: 100vh; } }
+  </style>
+</head>
+<body class="antialiased min-h-screen">
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar w-72 h-screen fixed left-0 top-0 border-r border-border bg-card p-6 overflow-y-auto">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-xl font-bold tracking-tight">Boilerplate Docs</h1>
+        <button id="close-sidebar" class="md:hidden text-foreground hover:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <nav class="space-y-1">
+        <a href="01-arquitetura-geral.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors" data-active>01. Arquitetura Geral</a>
+        <a href="02-modelagem-banco.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">02. Modelagem de Banco</a>
+        <a href="03-autenticacao-seguranca.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">03. Autenticação e Segurança</a>
+        <a href="04-api-rest.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">04. API REST</a>
+        <a href="05-websockets.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">05. WebSockets</a>
+        <a href="06-filas-jobs.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">06. Filas e Jobs</a>
+        <a href="07-cache-redis.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">07. Cache e Redis</a>
+        <a href="08-search-indexacao.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">08. Search e Indexação</a>
+        <a href="09-frontend-estrutura.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">09. Frontend Estrutura</a>
+        <a href="10-auth-frontend.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">10. Auth Frontend</a>
+        <a href="11-features.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">11. Features</a>
+        <a href="12-ui-shared.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">12. UI Components</a>
+        <a href="13-seguranca-backend.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">13. Segurança Backend</a>
+        <a href="14-servicos-negocio.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">14. Serviços e Regras</a>
+        <a href="15-integracao-deploy.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">15. Integração e Deploy</a>
+      </nav>
+      <div class="mt-12 pt-8 border-t border-border">
+        <a href="../index.html" class="text-sm text-muted-foreground hover:text-foreground">← Voltar ao Índice</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 md:ml-72 p-8 md:p-16 max-w-6xl mx-auto">
+      <button id="open-sidebar" class="md:hidden fixed bottom-6 right-6 bg-primary text-primary-foreground p-3 rounded-full shadow-lg">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+
+      <article class="prose prose-invert max-w-none" id="content">
+        <h1>Relatrio completo das Features do Frontend</h1></p><p><h2>Estrutura Geral</h2></p><p>O projeto utiliza a arquitetura <strong>Feature-based</strong> (baseada em domnio), onde cada feature  autnoma e contm todos os arquivos necessrios:
+<p>- Componentes de UI</p>
+<p>- Hooks customizados</p>
+<p>- API calls</p>
+<p>- Types/Tipos</p>
+<p>- State Management (stores)</p><p><strong>Localizao:</strong> <code>/frontend-boilerplate/src/features/</code></p><p><strong>Features identificadas:</strong></p>
+<p>1. <code>auth</code> - Sistema de autenticao</p>
+<p>2. <code>dashboard</code> - Painel principal com grficos e estatsticas</p><p>---</p><p><h2>1. Feature Auth</h2></p><p><strong>Propsito:</strong> Gesto completa de autenticao de usurios, incluindo login, registro e proteo de rotas.</p><p><strong>Localizao:</strong> <code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/frontend-boilerplate/src/features/auth/</code></p><p><h3>1.1. Tipos e Interfaces</h3></p><p><strong>Arquivo:</strong> <code>types.ts</code></p><p>``<code>typescript</p>
+<p>export interface User {</p>
+<p>  id: string</p>
+<p>  email: string</p>
+<p>  name: string | null</p>
+<p>  role: 'ADMIN' | 'USER'</p>
+<p>  isActive: boolean</p>
+<p>  createdAt: string</p>
+<p>  updatedAt: string</p>
+<p>}</p><p>export interface LoginInput {</p>
+<p>  email: string</p>
+<p>  password: string</p>
+<p>}</p><p>export interface RegisterInput {</p>
+<p>  name: string</p>
+<p>  email: string</p>
+<p>  password: string</p>
+<p>}</p><p>export interface AuthResponse {</p>
+<p>  user: User</p>
+<p>  token: string</p>
+<p>}</p>
+<p></code>`<code></p><p><h3>1.2. API Calls</h3></p><p><strong>Arquivo:</strong> </code>api.ts<code></p><p>Retorna um objeto com funes de API usando </code>apiClient<code> configurado:</p><p>- </code>login(input: LoginInput)<code> - POST </code>/sessions/password<code></p>
+<p>- </code>register(input: RegisterInput)<code> - POST </code>/auth/register<code></p>
+<p>- </code>getMe()<code> - GET </code>/me<code></p><p><h3>1.3. State Management (Zustand)</h3></p><p><strong>Arquivo:</strong> </code>store.ts<code></p><p>Store usando Zustand com persistncia no localStorage:</p><p></code>`<code>typescript</p>
+<p>interface AuthState {</p>
+<p>  user: User | null</p>
+<p>  token: string | null</p>
+<p>  isAuthenticated: boolean</p>
+<p>  isLoading: boolean</p>
+<p>  isHydrated: boolean</p>
+<p>  setAuth: (user: User, token: string) => void</p>
+<p>  setUser: (user: User) => void</p>
+<p>  logout: () => void</p>
+<p>  setLoading: (loading: boolean) => void</p>
+<p>  setHydrated: () => void</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>Caractersticas:</strong></p>
+<p>- Persistncia com nome </code>auth<code> no localStorage</p>
+<p>- </code>isHydrated<code> para evitar problemas de hidratao com SSR</p>
+<p>- Token salvo diretamente no localStorage e no store</p><p><h3>1.4. Hooks Customizados</h3></p><p><strong>Arquivo:</strong> </code>hooks/use-auth.ts<code></p><p><h4></code>useLogin()<code></h4></p>
+<p>- Retorna </code>useMutation<code> do React Query</p>
+<p>- Realiza login e atualiza o store de auth</p>
+<p>- Navega para </code>/dashboard<code> no sucesso</p>
+<p>- Exibe toast de erro/sucesso com </code>sonner<code></p><p><h4></code>useRegister()<code></h4></p>
+<p>-Similar ao </code>useLogin<code> mas para registro</p><p><h4></code>useCurrentUser()<code></h4></p>
+<p>- </code>useQuery<code> para buscar dados do usurio atual</p>
+<p>- Dependncia: </code>!!token<code></p>
+<p>- Atualiza o store com </code>setUser<code></p>
+<p>- Configuraes: </code>retry: false<code>, </code>staleTime: 5min<code></p><p><h3>1.5. Componentes</h3></p><p><h4>Pginas</h4></p><p><strong></code>login.tsx<code></strong> - Pgina de login com animao Framer Motion</p>
+<p>- Utiliza </code>LoginForm<code></p>
+<p>- Link para registro</p><p><strong></code>register.tsx<code></strong> - Pgina de registro</p>
+<p>- Utiliza </code>RegisterForm<code></p>
+<p>- Link para login</p><p><h4>Componentes de Formulrio</h4></p><p><strong></code>components/login-form.tsx<code></strong></p>
+<p>- Form com </code>react-hook-form<code> + </code>zod<code> para validao</p>
+<p>- Schema: email (vido) + password (mnimo 6 caracteres)</p>
+<p>- Campos: email, password</p>
+<p>- Loading state com disabled no submit</p><p><strong></code>components/register-form.tsx<code></strong></p>
+<p>- Schema: name (mnimo 2), email (vido), password (mnimo 6)</p>
+<p>- Campos: nome, email, senha</p><p><h4>Componentes Auxiliares</h4></p><p><strong></code>components/protected-route.tsx<code></strong></p>
+<p>- Wrapper que protege rotas autenticadas</p>
+<p>- Verifica </code>token<code>, </code>isHydrated<code> e </code>error<code> do </code>useAuthStore<code></p>
+<p>- Mostra skeleton durante carregamento</p>
+<p>- Redireciona para </code>/login<code> se no autenticado ou erro</p><p><h3>1.6. Fluxo de Dados</h3></p><p></code>`<code></p>
+<p>Leitura das Pginas (login/register)</p>
+<p>  V</p>
+<p>Requisio ao API (authApi)</p>
+<p>  V</p>
+<p>Response (authApi response)</p>
+<p>  V</p>
+<p>Hook Mutation (useLogin/useRegister.onSuccess)</p>
+<p>  V</p>
+<p>Atualizao do Store (useAuthStore.setAuth)</p>
+<p>  V</p>
+<p>Redirecionamento (useNavigate to /dashboard)</p>
+<p>  V</p>
+<p>useCurrentUser carrega dados completa</p><p></p>
+<p></code>`<code></p><p><h3>1.7. Tecnologias Utilizadas</h3></p><p>- <strong>Zustand</strong> - State management com persistncia</p>
+<p>- <strong>TanStack Query</strong> - Cache e server state</p>
+<p>- <strong>React Hook Form</strong> - Formulrios performticos</p>
+<p>- <strong>Zod</strong> - Validao de schemas</p>
+<p>- <strong>Sonner</strong> - Toast notifications</p>
+<p>- <strong>Framer Motion</strong> - Animaes</p><p>---</p><p><h2>2. Feature Dashboard</h2></p><p><strong>Propsito:</strong> Exibio de statisticas, grficos e tabela de atividade do sistema.</p><p><strong>Localizao:</strong> </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/frontend-boilerplate/src/features/dashboard/<code></p><p><h3>2.1. Tipos e Interfaces</h3></p><p><strong>Arquivo:</strong> </code>types.ts<code></p><p></code>`<code>typescript</p>
+<p>export interface DashboardStats {</p>
+<p>  totalUsers: number</p>
+<p>  totalAgents: number</p>
+<p>  totalConversations: number</p>
+<p>  totalTokens: number</p>
+<p>  activeUsers: number</p>
+<p>  avgSessionDuration: number</p>
+<p>  conversionRate: number</p>
+<p>}</p><p>export interface TimeSeriesData {</p>
+<p>  date: string</p>
+<p>  value: number</p>
+<p>  users?: number</p>
+<p>  conversations?: number</p>
+<p>  tokens?: number</p>
+<p>}</p><p>export interface ChartData {</p>
+<p>  name: string</p>
+<p>  value: number</p>
+<p>  fill?: string</p>
+<p>}</p><p>export interface DataTableItem {</p>
+<p>  id: string</p>
+<p>  user: string</p>
+<p>  email: string</p>
+<p>  agent: string</p>
+<p>  status: 'active' <table><thead><tr><th>'inactive'</th></tr></thead><tbody><tr><td>'30d'</td><td>'90d'</td></tr><tr><td>Query Key</td><td>Funo</td><td>Finalidade</td></tr><tr><td>-----------</td><td>------</td><td>------------</td></tr><tr><td></code>['dashboard','stats']<code></td><td>getStats</td><td>KPIs principais</td></tr><tr><td></code>['dashboard','timeSeries', dateRange]<code></td><td>getTimeSeriesData</td><td>Grfico de uso no tempo</td></tr><tr><td></code>['dashboard','agentDistribution']<code></td><td>getAgentDistribution</td><td>Grfico de distribuio</td></tr><tr><td></code>['dashboard','activityByHour']<code></td><td>getActivityByHour</td><td>Atividade por hora</td></tr><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table> 'pending'</p>
+<p>  lastActivity: string</p>
+<p>  tokens: number</p>
+<p>}</p><p>export interface FilterOptions {</p>
+<p>  dateRange: '7d' <table><thead><tr><th>'30d'</th><th>'90d'</th></tr></thead><tbody><tr><td>Query Key</td><td>Funo</td><td>Finalidade</td></tr><tr><td>-----------</td><td>------</td><td>------------</td></tr><tr><td></code>['dashboard','stats']<code></td><td>getStats</td><td>KPIs principais</td></tr><tr><td></code>['dashboard','timeSeries', dateRange]<code></td><td>getTimeSeriesData</td><td>Grfico de uso no tempo</td></tr><tr><td></code>['dashboard','agentDistribution']<code></td><td>getAgentDistribution</td><td>Grfico de distribuio</td></tr><tr><td></code>['dashboard','activityByHour']<code></td><td>getActivityByHour</td><td>Atividade por hora</td></tr><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table> '1y'</p>
+<p>  status: string[]</p>
+<p>  agent?: string</p>
+<p>  search?: string</p>
+<p>}</p>
+<p></code>`<code></p><p><h3>2.2. API Calls</h3></p><p><strong>Arquivo:</strong> </code>api.ts<code> - Dados mockados com timeouts simulados:</p><p></code>`<code>typescript</p>
+<p>export const dashboardApi = {</p>
+<p>  getStats: Promise<DashboardStats>                    // 800ms delay</p>
+<p>  getTimeSeriesData: (range) => Promise<TimeSeriesData[]>  // 600ms, gera dados baseado no range</p>
+<p>  getAgentDistribution: Promise<ChartData[]>           // 400ms</p>
+<p>  getActivityByHour: Promise<ChartData[]>              // 400ms, 24 horas</p>
+<p>  getTableData: Promise<DataTableItem[]>               // 700ms, 50 itens</p>
+<p>  getTopAgents: Promise<ChartData[]>                   // 300ms</p>
+<p>}</p>
+<p></code>`<code></p><p><h3>2.3. Componentes Principais</h3></p><p><strong></code>index.tsx<code></strong> - Pgina principal do dashboard</p><p><h4>Componentes Internos:</h4></p><p><strong></code>StatCard<code></strong> - Card de KPI com:</p>
+<p>- Ttulo, value, cone</p>
+<p>- Trend (up/down) com valor</p>
+<p>- Animaao com Framer Motion</p>
+<p>- Animao de entrada atrasada pelo </code>delay<code></p><p><strong></code>TimeSeriesChart<code></strong> - Grfico de rea (Area Chart) com:</p>
+<p>- Grfico responsivo com </code>ResponsiveContainer<code></p>
+<p>- Dados otimizados (max 15 pontos via downsampling)</p>
+<p>- Gradiente customizado</p>
+<p>- Tooltip customizado</p>
+<p>- Formatao pt-BR</p><p><strong></code>DonutChart<code></strong> - Grfico de pizza com buraco (Pie Chart innerRadius)</p>
+<p>- Cores customizadas via props</p>
+<p>- Tooltip e Legend</p><p><strong></code>BarChartComponent<code></strong> - Grfico de barras</p>
+<p>- Cores por barra via </code>fill<code></p>
+<p>- Tooltip customizado</p><p><strong></code>DataTable<code></strong> - Tabela completa com:</p>
+<p>- Filtros: busca por texto, filtro de status</p>
+<p>- Ordenao por colunas (clique no header)</p>
+<p>- Paginao (10 itens/pgina)</p>
+<p>- Exportao CSV</p>
+<p>- Dropdown menu por linha</p>
+<p>- Skeleton loading</p><p><strong></code>StatusBadge<code></strong> - Badge com cores condicionais:</p>
+<p>- </code>active<code> - verde (Ativo)</p>
+<p>- </code>inactive<code> - cinza (Inativo)</p>
+<p>- </code>pending<code> - ambar (Pendente)</p><p><strong></code>ChartSkeleton<code></strong> - Skeleton de carregamento para grficos</p><p><strong></code>CustomTooltip<code></strong> - Tooltip reutilizvel para todos os grficos</p>
+<p>- Formatao pt-BR</p>
+<p>- Design glassmorphism</p><p><h3>2.4. Principais Hooks e Consultas</h3></p><p><strong>React Query Queries</strong> (todas na pgina principal):</p><table><thead><tr><th>Query Key</th><th>Funo</th><th>Finalidade</th></tr></thead><tbody><tr><td></code>['dashboard','stats']<code></td><td>getStats</td><td>KPIs principais</td></tr><tr><td></code>['dashboard','timeSeries', dateRange]<code></td><td>getTimeSeriesData</td><td>Grfico de uso no tempo</td></tr><tr><td></code>['dashboard','agentDistribution']<code></td><td>getAgentDistribution</td><td>Grfico de distribuio</td></tr><tr><td></code>['dashboard','activityByHour']<code></td><td>getActivityByHour</td><td>Atividade por hora</td></tr><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th>-----------</th><th>------</th><th>------------</th></tr></thead><tbody><tr><td></code>['dashboard','stats']<code></td><td>getStats</td><td>KPIs principais</td></tr><tr><td></code>['dashboard','timeSeries', dateRange]<code></td><td>getTimeSeriesData</td><td>Grfico de uso no tempo</td></tr><tr><td></code>['dashboard','agentDistribution']<code></td><td>getAgentDistribution</td><td>Grfico de distribuio</td></tr><tr><td></code>['dashboard','activityByHour']<code></td><td>getActivityByHour</td><td>Atividade por hora</td></tr><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th></code>['dashboard','stats']<code></th><th>getStats</th><th>KPIs principais</th></tr></thead><tbody><tr><td></code>['dashboard','timeSeries', dateRange]<code></td><td>getTimeSeriesData</td><td>Grfico de uso no tempo</td></tr><tr><td></code>['dashboard','agentDistribution']<code></td><td>getAgentDistribution</td><td>Grfico de distribuio</td></tr><tr><td></code>['dashboard','activityByHour']<code></td><td>getActivityByHour</td><td>Atividade por hora</td></tr><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th></code>['dashboard','timeSeries', dateRange]<code></th><th>getTimeSeriesData</th><th>Grfico de uso no tempo</th></tr></thead><tbody><tr><td></code>['dashboard','agentDistribution']<code></td><td>getAgentDistribution</td><td>Grfico de distribuio</td></tr><tr><td></code>['dashboard','activityByHour']<code></td><td>getActivityByHour</td><td>Atividade por hora</td></tr><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th></code>['dashboard','agentDistribution']<code></th><th>getAgentDistribution</th><th>Grfico de distribuio</th></tr></thead><tbody><tr><td></code>['dashboard','activityByHour']<code></td><td>getActivityByHour</td><td>Atividade por hora</td></tr><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th></code>['dashboard','activityByHour']<code></th><th>getActivityByHour</th><th>Atividade por hora</th></tr></thead><tbody><tr><td></code>['dashboard','topAgents']<code></td><td>getTopAgents</td><td>Top agents</td></tr><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th></code>['dashboard','topAgents']<code></th><th>getTopAgents</th><th>Top agents</th></tr></thead><tbody><tr><td></code>['dashboard','tableData']<code></td><td>getTableData</td><td>Tabela detalhada</td></tr><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th></code>['dashboard','tableData']<code></th><th>getTableData</th><th>Tabela detalhada</th></tr></thead><tbody><tr><td>Feature</td><td>State Local</td><td>API</td><td>Components</td><td>Types</td></tr><tr><td>---------</td><td>-------------</td><td>-----</td><td>------------</td><td>-------</td></tr><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table><p><strong>Estados locais:</strong></p>
+<p>- </code>dateRange<code> - controla o perodo dos grficos</p>
+<p>- </code>darkMode<code> - toggle de tema (s visual, no persistido)</p><p><h3>2.5. Fluxo de Dados</h3></p><p></code>`<code></p>
+<p>DashboardPage renderiza</p>
+<p>  V</p>
+<p>Monta queries do React Query</p>
+<p>  V</p>
+<p>Cada query chama dashboardApi correspondente</p>
+<p>  V</p>
+<p>Dados mockados retornados</p>
+<p>  V</p>
+<p>StatCards preenchidos com stats</p>
+<p>  V</p>
+<p>Grficos renderizados com dados correspondentes</p>
+<p>  V</p>
+<p>Tabela renderizada com dados e funcionalidades de UI</p>
+<p></code>`<code></p><p><h3>2.6. Tecnologias Utilizadas</h3></p><p>- <strong>Recharts</strong> - Grficos (Area, Pie, Bar)</p>
+<p>- <strong>React Query</strong> - Gerenciamento de server state</p>
+<p>- <strong>Framer Motion</strong> - Animaes</p>
+<p>- <strong>Shadcn/ui</strong> - Componentes base (Card, Button, Input, Select, Skeleton, etc.)</p>
+<p>- <strong>Lucide React</strong> - cones</p><p>---</p><p><h2>3. Resumo da Arquitetura</h2></p><p><h3>Features vs. Global</h3></p><table><thead><tr><th>Feature</th><th>State Local</th><th>API</th><th>Components</th><th>Types</th></tr></thead><tbody><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th>---------</th><th>-------------</th><th>-----</th><th>------------</th><th>-------</th></tr></thead><tbody><tr><td>auth</td><td>Zustand store (persist)</td><td>authApi</td><td>Login/Register pages + forms</td><td>Login/Register/User/AuthResponse</td></tr><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th>auth</th><th>Zustand store (persist)</th><th>authApi</th><th>Login/Register pages + forms</th><th>Login/Register/User/AuthResponse</th></tr></thead><tbody><tr><td>dashboard</td><td>React Query cache</td><td>dashboardApi</td><td>Charts + Table + Cards</td><td>Stats/TimeSeries/ChartData/DataTableItem</td></tr><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th>dashboard</th><th>React Query cache</th><th>dashboardApi</th><th>Charts + Table + Cards</th><th>Stats/TimeSeries/ChartData/DataTableItem</th></tr></thead><tbody><tr><td>Feature</td><td>Arquivos</td></tr><tr><td>---------</td><td>----------</td></tr><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table><p><h3>Padro Implementado</h3></p><p>Cada feature segue este padro:</p>
+<p>1. </code>types.ts<code> - interfaces TypeScript</p>
+<p>2. </code>api.ts<code> - funes de chamada de API</p>
+<p>3. </code>store.ts<code> (opcional) - Zustand store</p>
+<p>4. </code>hooks/<code> - hooks customizados com React Query mutations/queries</p>
+<p>5. </code>components/<code> - componentes reutilizveis</p>
+<p>6. Pginas principais em </code>index.tsx<code> ou nome da feature</p><p><h3>Shared Layer</h3></p><p>A feature usa componentes compartilhados de:</p>
+<p>- </code>@/shared/components/ui/*<code> - Shadcn UI components</p>
+<p>- </code>@/shared/lib/api-client<code> - Cliente HTTP configurado</p><p>---</p><p><h2>4. Observaes de Segurana</h2></p><p>- Token armazenado no localStorage (vulnervel a XSS)</p>
+<p>- Falta de refresh token</p>
+<p>- Requer implementao real de API (atualmente mockado)</p><p>---</p><p><h2>Arquivos Relevantes</h2></p><table><thead><tr><th>Feature</th><th>Arquivos</th></tr></thead><tbody><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th>---------</th><th>----------</th></tr></thead><tbody><tr><td>auth</td><td></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></td></tr><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<table><thead><tr><th>auth</th><th></code>/features/auth/types.ts<code>, </code>/features/auth/store.ts<code>, </code>/features/auth/hooks/use-auth.ts<code>, </code>/features/auth/api.ts<code>, </code>/features/auth/login.tsx<code>, </code>/features/auth/register.tsx<code>, </code>/features/auth/components/<code></th></tr></thead><tbody><tr><td>dashboard</td><td></code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx`</td></tr></tbody></table>
+<p>| dashboard | </code>/features/dashboard/types.ts<code>, </code>/features/dashboard/api.ts<code>, </code>/features/dashboard/index.tsx` |</p>
+
+      </article>
+    </main>
+  </div>
+
+  <script>
+    // Highlight code blocks
+    document.addEventListener('DOMContentLoaded', () => {
+      hljs.highlightAll();
+
+      // Sidebar toggle
+      const sidebar = document.getElementById('sidebar');
+      const openBtn = document.getElementById('open-sidebar');
+      const closeBtn = document.getElementById('close-sidebar');
+      const navLinks = sidebar.querySelectorAll('a');
+
+      // Set active link
+      const currentPage = location.pathname.split('/').pop();
+      navLinks.forEach(link => {
+        if (link.getAttribute('href') === currentPage) {
+          link.classList.add('bg-border', 'text-foreground');
+        } else {
+          link.classList.remove('bg-border', 'text-foreground');
+        }
+      });
+
+      openBtn?.addEventListener('click', () => sidebar.classList.remove('closed'));
+      closeBtn?.addEventListener('click', () => sidebar.classList.add('closed'));
+
+      // Close sidebar on mobile when clicking a link
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 768) sidebar.classList.add('closed');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

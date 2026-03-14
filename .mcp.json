@@ -4,11 +4,32 @@
       "type": "http",
       "url": "https://nommand-mcp-easypanel.ddw1sl.easypanel.host/mcp"
     },
-    "serende-browser-mcp": {
+    "remote-browser": {
       "type": "http",
       "url": "https://serende-mcp.ddw1sl.easypanel.host/mcp",
       "headers": {
         "X-API-Key": "serende-dev-key-2024"
+      }
+    },
+    "orquestrador": {
+      "type": "http",
+      "url": "http://0.0.0.0:3334/mcp",
+      "headers": {
+        "Authorization": "Bearer exk_qKT4g__hD-ErSOp6rinOEV0BAiYmodNM9fS0SGwUz9I"
+      }
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ctx7sk-a3853a85-f006-4527-b6fc-5c8bf4c36ac3"
+      }
+    },
+    "web-search-prime": {
+      "type": "http",
+      "url": "https://api.z.ai/api/mcp/web_reader/mcp",
+      "headers": {
+        "Authorization": "Bearer 558b473f0636436286630a8289624f45.W7w6qAfd2PPjfNK1"
       }
     }
   }

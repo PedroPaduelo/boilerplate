@@ -76,6 +76,7 @@ Usar `VITE_API_URL` para apontar para o backend. Padrao: `http://localhost:4001`
 | `npm run db:push` | Push schema |
 | `npm run db:seed` | Seed do banco |
 | `npm run db:studio` | Prisma Studio |
+| `npm run test` | Rodar testes unitarios (Jest + Supertest) |
 
 ### Frontend
 
@@ -84,6 +85,71 @@ Usar `VITE_API_URL` para apontar para o backend. Padrao: `http://localhost:4001`
 | `npm run dev` | Desenvolvimento |
 | `npm run build` | Build producao |
 | `npm run lint` | ESLint |
+| `npm run test` | Rodar testes unitarios (Vitest + Testing Library) |
+| `npm run test:watch` | Rodar testes em modo watch |
+
+### Raiz (Monorepo)
+
+| Comando | Descricao |
+|---------|-----------|
+| `npm run test` | Rodar todos os testes (backend + frontend) |
+| `npm run test:backend` | Rodar apenas testes do backend |
+| `npm run test:frontend` | Rodar apenas testes do frontend |
+| `npm run test:performance` | Rodar testes de performance (k6) |
+
+## Testes
+
+### Estrutura de Testes
+
+```
+tests/
+├── backend/          # Testes do backend (Jest + Supertest)
+│   ├── jest.config.js
+│   ├── test-helper.ts
+│   ├── health.test.ts      # Testa endpoint /health
+│   ├── auth.test.ts        # Testa POST /auth/login
+│   └── users.test.ts       # Testa GET /users e GET /users/:id
+└── frontend/         # Testes do frontend (Vitest + React Testing Library)
+    ├── setup.ts
+    ├── App.test.tsx
+    ├── LoginForm.test.tsx
+    └── Dashboard.test.tsx
+```
+
+### Backend (Jest + Supertest)
+
+- **Health Tests**: Verifica se o endpoint `/health` retorna status 200 com `{status: 'ok'}`
+- **Auth Tests**: Testa autenticacao via JWT, validacao de credenciais
+- **Users Tests**: Testa listagem e busca de usuarios com autenticacao
+
+### Frontend (Vitest + React Testing Library)
+
+- **App.test.tsx**: Testa renderizacao do componente App
+- **LoginForm.test.tsx**: Testa formulario de login (validacao, submit)
+- **Dashboard.test.tsx**: Testa renderizacao do dashboard com dados mockados
+- **@testing-library/jest-dom**: Matchers adicionais para assertions
+
+### Executar Testes
+
+```bash
+# Todos os testes
+npm run test
+
+# Apenas backend
+npm run test:backend
+
+# Apenas frontend
+npm run test:frontend
+
+# Backend (na pasta backend-boilerplate)
+cd backend-boilerplate && npm test
+
+# Frontend (na pasta frontend-boilerplate)
+cd frontend-boilerplate && npm test
+
+# Frontend em watch mode
+cd frontend-boilerplate && npm run test:watch
+```
 
 ## Estrutura
 

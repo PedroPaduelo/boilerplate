@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq';
-import { connectionRedisConfigWorker } from './connection-redis-config';
-import { getQueue, QUEUE_NAMES } from './queue-manager';
+import { connectionRedisConfigWorker } from '../connection-redis-config';
+import { getQueue, QUEUE_NAMES } from '../queue/queue-manager';
 import { redisInstance } from '@/lib/redis';
 import { RateLimiterRedis, RateLimiterMemory } from 'rate-limiter-flexible';
 

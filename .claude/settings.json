@@ -9,48 +9,6 @@
             "command": "/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/.claude/hooks/restrict-directory.sh"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "timeout": 5000,
-            "command": "if echo \"$TOOL_INPUT\" | grep -qE \"git (add|commit).*\\.env[^.]\"; then echo \"BLOQUEADO: Não commitar arquivos .env com credenciais!\" >&2; exit 2; fi",
-            "statusMessage": "Verificando segurança do commit..."
-          },
-          {
-            "type": "command",
-            "timeout": 5000,
-            "command": "if echo \"$TOOL_INPUT\" | grep -qE \"(--port|:-p|PORT=)\\s*(3333|5173|8443|6080|5900)\"; then echo \"BLOQUEADO: Portas 3333, 5173, 8443, 6080, 5900 são reservadas do sistema!\" >&2; exit 2; fi",
-            "statusMessage": "Verificando portas..."
-          }
-        ],
-        "matcher": "Bash"
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "timeout": 5000,
-            "command": "if echo \"$TOOL_INPUT\" | grep -q \"components/ui/\"; then echo \"ALERTA: Componentes shadcn/ui não devem ser editados diretamente. Use 'npx shadcn@latest add' para adicionar/atualizar.\" >&2; exit 2; fi",
-            "statusMessage": "Verificando proteção shadcn/ui..."
-          }
-        ],
-        "matcher": "Edit|Write"
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "timeout": 30000,
-            "command": "if echo \"$TOOL_INPUT\" | grep -q \"schema.prisma\"; then cd /workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/99freelaAgent && npx prisma generate 2>&1; fi",
-            "isAsync": true,
-            "statusMessage": "Gerando Prisma Client..."
-          }
-        ],
-        "matcher": "Write|Edit"
       }
     ]
   }

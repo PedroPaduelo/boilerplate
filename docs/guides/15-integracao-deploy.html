@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integração e Deploy — Boilerplate Docs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'var(--background)',
+            foreground: 'var(--foreground)',
+            card: 'var(--card)',
+            'card-foreground': 'var(--card-foreground)',
+            border: 'var(--border)',
+            input: 'var(--input)',
+            ring: 'var(--ring)',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --background: #0a0a0a;
+      --foreground: #ededed;
+      --card: #141414;
+      --card-foreground: #ededed;
+      --border: #262626;
+      --input: #262626;
+      --ring: #3f3f46;
+    }
+    body { background: var(--background); color: var(--foreground); font-family: 'Inter', system-ui, sans-serif; }
+    pre code { background: #1e1e1e !important; padding: 1rem; border-radius: 0.5rem; display: block; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { padding: 0.75rem; border: 1px solid var(--border); text-align: left; }
+    th { background: var(--card); font-weight: 600; }
+    .prose h1 { font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+    .prose h2 { font-size: 1.75rem; font-weight: 700; margin-top: 2.5rem; margin-bottom: 1rem; letter-spacing: -0.01em; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.7; color: #a1a1aa; }
+    .prose ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.5rem; color: #a1a1aa; }
+    .prose code { background: var(--card); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; color: #facc15; }
+    .prose pre { margin: 1.5rem 0; }
+    .prose blockquote { border-left: 4px solid #3f3f46; padding-left: 1rem; font-style: italic; color: #71717a; }
+    .prose strong { color: var(--foreground); font-weight: 700; }
+    .prose a { color: #60a5fa; text-decoration: underline; }
+    .prose a:hover { color: #93c5fd; }
+    .prose hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+    .prose pre::before { content: attr(data-lang); position: absolute; top: 0.5rem; right: 0.5rem; font-size: 0.75rem; color: #71717a; text-transform: uppercase; }
+    pre { position: relative; }
+    .sidebar { transition: transform 0.3s ease; }
+    .sidebar.closed { transform: translateX(-100%); }
+    @media (max-width: 768px) { .sidebar { position: fixed; z-index: 50; height: 100vh; } }
+  </style>
+</head>
+<body class="antialiased min-h-screen">
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar w-72 h-screen fixed left-0 top-0 border-r border-border bg-card p-6 overflow-y-auto">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-xl font-bold tracking-tight">Boilerplate Docs</h1>
+        <button id="close-sidebar" class="md:hidden text-foreground hover:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <nav class="space-y-1">
+        <a href="01-arquitetura.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors" data-active>01. Arquitetura Geral</a>
+        <a href="02-modelagem-banco.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">02. Modelagem de Banco</a>
+        <a href="03-autenticacao-seguranca.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">03. Autenticação e Segurança</a>
+        <a href="04-api-endpoints.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">04. API REST</a>
+        <a href="05-websockets.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">05. WebSockets</a>
+        <a href="06-filas-jobs.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">06. Filas e Jobs</a>
+        <a href="07-cache-redis.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">07. Cache e Redis</a>
+        <a href="08-search-indexacao.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">08. Search e Indexação</a>
+        <a href="09-frontend-estrutura.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">09. Frontend Estrutura</a>
+        <a href="10-auth-frontend.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">10. Auth Frontend</a>
+        <a href="11-features.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">11. Features</a>
+        <a href="12-ui-shared.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">12. UI Components</a>
+        <a href="13-seguranca-backend.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">13. Segurança Backend</a>
+        <a href="14-servicos-negocio.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">14. Serviços e Regras</a>
+        <a href="15-integracao-deploy.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">15. Integração e Deploy</a>
+      </nav>
+      <div class="mt-12 pt-8 border-t border-border">
+        <a href="index.html" class="text-sm text-muted-foreground hover:text-foreground">← Voltar ao Índice</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 md:ml-72 p-8 md:p-16 max-w-6xl mx-auto">
+      <button id="open-sidebar" class="md:hidden fixed bottom-6 right-6 bg-primary text-primary-foreground p-3 rounded-full shadow-lg">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+
+      <article class="prose prose-invert max-w-none" id="content">
+        <h1>Relatório de Integrações Externas, Deploy e Configuração</h1></p><p><h2>Data da Análise</h2>
+<p>14 de Março de 2026</p><p>---</p><p><h2>Sumário Executivo</h2></p><p>Este projeto é um <strong>monorepo fullstack</strong> contendo múltiplas aplicações:</p>
+<p>- <strong>Backend</strong>: Fastify + Prisma + Redis + BullMQ + Socket.IO (porta 3333)</p>
+<p>- <strong>Frontend</strong>: React + Vite + TailwindCSS (porta 5173)</p>
+<p>- <strong>Next.js API REST</strong>: Next.js 15 + NextAuth (porta 4001)</p>
+<p>- <strong>Next.js Boilerplate</strong>: Aplicação fullstack Next.js com Prisma</p><p>Infraestrutura com Docker Compose para PostgreSQL e Redis, configurada paraEasyPanel.</p><p>---</p><p><h2>1. Variáveis de Ambiente</h2></p><p><h3>1.1 Arquivo <code>.env.example</code> (Nível Projeto)</h3></p><p>Localização: <code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/.env.example</code></p><p>``<code>env</p>
+<p># Variáveis de Ambiente do Projeto</p><p><h2>Backend</h2></p>
+<p>NODE_ENV=development</p>
+<p>PORT=3333</p>
+<p>BASE_URL=http://localhost:3333</p>
+<p>JWT_SECRET=your-super-secret-jwt-key-change-in-production</p>
+<p>DATABASE_URL=postgres://postgres:postgres@localhost:5432/boilerplate?sslmode=disable</p>
+<p>REDIS_URL=localhost</p>
+<p>REDIS_PASSWORD=</p>
+<p>REDIS_PORT=6379</p>
+<p>UPLOAD_DIR=./uploads</p>
+<p>MAX_FILE_SIZE=104857600</p>
+<p>UPLOAD_TIMEOUT=120000</p>
+<p>CORS_ORIGINS=http://localhost:5173,http://localhost:3333</p><p><h2>Frontend</h2></p>
+<p>VITE_API_URL=http://localhost:3333</p>
+<p></code>`<code></p><p><h3>1.2 Schema de Validação (</code>backend-boilerplate/src/lib/env.ts<code>)</h3></p><p>O backend implementa validação rigorosa com Zod:</p><p></code>`<code>typescript</p>
+<p>const envSchema = z.object({</p>
+<p>  // Application</p>
+<p>  NODE_ENV: z.string().default('development'),</p>
+<p>  PORT: z.coerce.number().default(4000),</p>
+<p>  BASE_URL: z.string().url().default('http://localhost:4000'),</p><p>  // JWT</p>
+<p>  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),</p><p>  // Database</p>
+<p>  DATABASE_URL: z.string(),</p><p>  // Redis</p>
+<p>  REDIS_URL: z.string(),</p>
+<p>  REDIS_PASSWORD: z.string().default(''),</p>
+<p>  REDIS_PORT: z.coerce.number().default(6379),</p><p>  // Upload</p>
+<p>  UPLOAD_DIR: z.string().optional(),</p>
+<p>  MAX_FILE_SIZE: z.coerce.number().default(104857600), // 100MB</p>
+<p>  UPLOAD_TIMEOUT: z.coerce.number().default(120000), // 2min</p><p>  // OpenSearch</p>
+<p>  OPENSEARCH_URL: z.string().default('http://localhost:9200'),</p>
+<p>  OPENSEARCH_USERNAME: z.string().default(''),</p>
+<p>  OPENSEARCH_PASSWORD: z.string().default(''),</p>
+<p>  OPENSEARCH_SSL: z.coerce.boolean().default(false),</p><p>  // Security</p>
+<p>  CORS_ORIGINS: z.string().optional(),</p>
+<p>  SWAGGER_USER: z.string().optional(),</p>
+<p>  SWAGGER_PASSWORD: z.string().optional(),</p>
+<p>});</p>
+<p></code>`<code></p><p><strong>Observações Críticas</strong>:</p>
+<p>- </code>JWT_SECRET<code> exige mínimo de 32 caracteres em produção</p>
+<p>- </code>SWAGGER_USER<code> e </code>SWAGGER_PASSWORD<code> são opcionais - quando não definidos, o Swagger fica desprotegido</p>
+<p>- Validação no startup - falha se variáveis obrigatórias ausentes</p>
+<p>- OpenSearch está configurado mas não parece ativamente utilizado</p><p><h3>1.3 Outros Arquivos </code>.env.example<code></h3></p><p><strong>Frontend</strong> (</code>frontend-boilerplate/.env.development<code>):</p>
+<p></code>`<code>env</p>
+<p>NODE_ENV=development</p>
+<p>VITE_API_URL=http://localhost:3333</p>
+<p></code>`<code></p><p><strong>Next.js API REST</strong> (</code>nextjs-api-rest/.env.example<code>):</p>
+<p></code>`<code>env</p>
+<p>DATABASE_URL="postgresql://user:password@localhost:5432/99freela"</p>
+<p>JWT_SECRET="your-secret-key-change-this"</p>
+<p>NEXTAUTH_SECRET="your-nextauth-secret"</p>
+<p>NEXTAUTH_URL="http://localhost:4001"</p>
+<p>PORT=4001</p>
+<p></code>`<code></p><p><strong>Next.js Boilerplate</strong> (</code>nextjs-boilerplate/.env.example<code>):</p>
+<p></code>`<code>env</p>
+<p>DATABASE_URL="postgresql://user:password@localhost:5432/nextjs_boilerplate?schema=public"</p>
+<p>NEXTAUTH_URL="http://localhost:4001"</p>
+<p>NEXTAUTH_SECRET="your-secret-key-change-this-in-production"</p>
+<p>GOOGLE_CLIENT_ID=""</p>
+<p>GOOGLE_CLIENT_SECRET=""</p>
+<p>SMTP_HOST=""</p>
+<p>SMTP_PORT="587"</p>
+<p>SMTP_USER=""</p>
+<p>SMTP_PASSWORD=""</p>
+<p></code>`<code></p><p><h3>1.4 Script de Configuração de Ambiente</h3></p><p>Localização: </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/scripts/setup-env.sh<code></p><p></code>`<code>bash</p>
+<p>#!/bin/bash</p><p># Script para configurar variáveis de ambiente</p>
+<p># Uso: ./scripts/setup-env.sh</p><p>set -e</p><p># Cores para output</p>
+<p>RED='\033[0;31m'</p>
+<p>GREEN='\033[0;32m'</p>
+<p>YELLOW='\033[1;33m'</p>
+<p>NC='\033[0m'</p><p>echo -e "${YELLOW}🔧 Configurando variáveis de ambiente...${NC}"</p><p># Verifica se existe .env na raiz</p>
+<p>if [ ! -f ".env" ]; then</p>
+<p>    echo -e "${RED}❌ Arquivo .env não encontrado na raiz!${NC}"</p>
+<p>    echo -e "${YELLOW}📝 Copie .env.example para .env e configure${NC}"</p>
+<p>    exit 1</p>
+<p>fi</p><p># Copia .env para backend</p>
+<p>if [ -f "backend-boilerplate/.env" ]; then</p>
+<p>    cp .env backend-boilerplate/.env.local</p>
+<p>    echo -e "${GREEN}✅ .env copiado para backend-boilerplate/.env.local${NC}"</p>
+<p>else</p>
+<p>    echo -e "${RED}❌ Diretório backend-boilerplate não encontrado${NC}"</p>
+<p>fi</p><p># Copia .env para frontend (como .env.local)</p>
+<p>if [ -f "frontend-boilerplate/.env" ]; then</p>
+<p>    # Extrai apenas variáveis do frontend</p>
+<p>    grep "^VITE_" .env > frontend-boilerplate/.env.local 2>/dev/null || true</p>
+<p>    echo -e "${GREEN}✅ Variáveis VITE copiadas para frontend-boilerplate/.env.local${NC}"</p>
+<p>else</p>
+<p>    echo -e "${RED}❌ Diretório frontend-boilerplate não encontrado${NC}"</p>
+<p>fi</p><p>echo -e "${GREEN}✨ Configuração concluída!${NC}"</p>
+<p></code>`<code></p><p>---</p><p><h2>2. Docker e docker-compose</h2></p><p><h3>2.1 Dockerfile do Backend</h3></p><p>Localização: </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/Dockerfile<code></p><p><strong>Multi-stage build otimizado</strong>:</p><p></code>`<code>dockerfile</p>
+<p># Build stage</p>
+<p>FROM node:20-alpine AS builder</p><p>WORKDIR /app</p><p># Copy package files</p>
+<p>COPY package*.json ./</p>
+<p>COPY prisma ./prisma/</p><p># Install dependencies</p>
+<p>RUN npm ci</p><p># Copy source code</p>
+<p>COPY . .</p><p># Generate Prisma client</p>
+<p>RUN npx prisma generate</p><p># Build the application</p>
+<p>RUN npm run build</p><p># Production stage</p>
+<p>FROM node:20-alpine AS production</p><p>WORKDIR /app</p><p># Copy package files</p>
+<p>COPY package*.json ./</p><p># Install production dependencies only</p>
+<p>RUN npm ci --only=production</p><p># Copy Prisma schema and migrations</p>
+<p>COPY prisma ./prisma/</p><p># Generate Prisma client</p>
+<p>RUN npx prisma generate</p><p># Copy built application</p>
+<p>COPY --from=builder /app/dist ./dist</p><p># Create uploads directory</p>
+<p>RUN mkdir -p /app/uploads</p><p># Set environment</p>
+<p>ENV NODE_ENV=production</p>
+<p>ENV PORT=3333</p><p># Expose port</p>
+<p>EXPOSE 3333</p><p># Health check</p>
+<p>HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \</p>
+<p>  CMD node -e "require('http').get('http://localhost:3333/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1));"</p><p>CMD ["node", "dist/server.js"]</p>
+<p></code>`<code></p><p><strong>Características</strong>:</p>
+<p>- Usa Alpine Linux para imagem leve (~120MB)</p>
+<p>- Separação clara entre build e runtime</p>
+<p>- Prisma generate executado em ambas as fases (necessário)</p>
+<p>- Health check via endpoint </code>/health<code></p>
+<p>- Porta exposta 3333</p><p><strong>.dockerignore</strong>:</p>
+<p></code>`<code></p>
+<p>node_modules/</p>
+<p>dist/</p>
+<p>.env</p>
+<p>.env.local</p>
+<p>.env.*.local</p>
+<p>.vscode/</p>
+<p>.idea/</p>
+<p>*.log</p>
+<p>uploads/</p>
+<p></code>`<code></p><p><h3>2.2 Docker Compose</h3></p><p>Localização: </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/docker-compose.yml<code></p><p></code>`<code>yaml</p>
+<p>version: '3.8'</p><p>services:</p>
+<p>  postgres:</p>
+<p>    image: postgres:16-alpine</p>
+<p>    container_name: boilerplate-postgres</p>
+<p>    restart: unless-stopped</p>
+<p>    environment:</p>
+<p>      POSTGRES_USER: postgres</p>
+<p>      POSTGRES_PASSWORD: postgres</p>
+<p>      POSTGRES_DB: boilerplate</p>
+<p>    ports:</p>
+<p>      - "5432:5432"</p>
+<p>    volumes:</p>
+<p>      - postgres_data:/var/lib/postgresql/data</p>
+<p>    healthcheck:</p>
+<p>      test: ["CMD-SHELL", "pg_isready -U postgres"]</p>
+<p>      interval: 10s</p>
+<p>      timeout: 5s</p>
+<p>      retries: 5</p><p>  redis:</p>
+<p>    image: redis:7-alpine</p>
+<p>    container_name: boilerplate-redis</p>
+<p>    restart: unless-stopped</p>
+<p>    ports:</p>
+<p>      - "6379:6379"</p>
+<p>    volumes:</p>
+<p>      - redis_data:/data</p>
+<p>    healthcheck:</p>
+<p>      test: ["CMD", "redis-cli", "ping"]</p>
+<p>      interval: 10s</p>
+<p>      timeout: 5s</p>
+<p>      retries: 5</p><p>volumes:</p>
+<p>  postgres_data:</p>
+<p>  redis_data:</p>
+<p></code>`<code></p><p><strong>Notas</strong>:</p>
+<p>- Foca apenas nos serviços de dados (PostgreSQL + Redis)</p>
+<p>- A aplicação backend roda fora do compose, conectando-se aos containers</p>
+<p>- Volume persistente para dados de banco e Redis</p>
+<p>- Health checks configurados</p>
+<p>- PostgreSQL 16, Redis 7</p><p>---</p><p><h2>3. Build Scripts</h2></p><p><h3>3.1 Backend (package.json)</h3></p><p></code>`<code>json</p>
+<p>{</p>
+<p>  "name": "backend-boilerplate",</p>
+<p>  "scripts": {</p>
+<p>    "build": "tsup",</p>
+<p>    "start": "node dist/server.js",</p>
+<p>    "dev": "tsx watch src/server.ts",</p>
+<p>    "service:up": "docker-compose up -d postgres redis",</p>
+<p>    "service:down": "docker-compose down",</p>
+<p>    "dev:up": "npm run service:up && npm run dev",</p>
+<p>    "db:migrate": "npx prisma migrate dev",</p>
+<p>    "db:push": "npx prisma db push",</p>
+<p>    "db:seed": "npx prisma db seed",</p>
+<p>    "db:studio": "npx prisma studio"</p>
+<p>  }</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>Ferramentas de build</strong>:</p>
+<p>- <strong>tsup</strong>: Bundler TypeScript (builder), output CJS para Node.js</p>
+<p>- <strong>tsx</strong>: Runtime TypeScript com hot reload (desenvolvimento)</p>
+<p>- Configuração </code>tsup.config.ts<code>:</p>
+<p>  - Entry: </code>src/server.ts<code></p>
+<p>  - Formato: CJS (CommonJS)</p>
+<p>  - Sourcemaps: habilitado</p>
+<p>  - Target: Node 20</p><p><h3>3.2 Frontend (Vite)</h3></p><p></code>`<code>json</p>
+<p>{</p>
+<p>  "scripts": {</p>
+<p>    "dev": "vite",</p>
+<p>    "build": "tsc -b && vite build",</p>
+<p>    "lint": "eslint .",</p>
+<p>    "preview": "vite preview"</p>
+<p>  }</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>Configuração Vite</strong> (</code>vite.config.ts<code>):</p>
+<p></code>`<code>typescript</p>
+<p>export default defineConfig({</p>
+<p>  plugins: [react()],</p>
+<p>  resolve: {</p>
+<p>    alias: {</p>
+<p>      '@': path.resolve(__dirname, './src'),</p>
+<p>    },</p>
+<p>  },</p>
+<p>  server: {</p>
+<p>    host: '0.0.0.0',</p>
+<p>    port: 4001,</p>
+<p>    allowedHosts: ['dashboard-freela.ddw1sl.easypanel.host', '.ddw1sl.easypanel.host'],</p>
+<p>  },</p>
+<p>})</p>
+<p></code>`<code></p><p><strong>Observação</strong>: O frontend Vite está configurado para rodar na porta 4001 (conflito com backend), compatível com EasyPanel.</p><p><h3>3.3 Next.js Projects</h3></p><p><strong>nextjs-api-rest</strong>:</p>
+<p></code>`<code>json</p>
+<p>{</p>
+<p>  "scripts": {</p>
+<p>    "dev": "next dev",</p>
+<p>    "build": "next build",</p>
+<p>    "start": "next start",</p>
+<p>    "lint": "next lint",</p>
+<p>    "db:generate": "prisma generate",</p>
+<p>    "db:push": "prisma db push",</p>
+<p>    "db:migrate": "prisma migrate dev",</p>
+<p>    "db:studio": "prisma studio",</p>
+<p>    "test": "jest",</p>
+<p>    "test:watch": "jest --watch"</p>
+<p>  }</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>nextjs-boilerplate</strong>: Similar ao acima.</p><p><h3>3.4 Monorepo Root</h3></p><p></code>package.json<code> principal é metadata-only:</p>
+<p></code>`<code>json</p>
+<p>{</p>
+<p>  "name": "boilerplate",</p>
+<p>  "scripts": {</p>
+<p>    "test": "echo \"Error: no test specified\" && exit 1"</p>
+<p>  }</p>
+<p>}</p>
+<p></code>`<code></p><p>---</p><p><h2>4. Deploy no EasyPanel</h2></p><p><h3>4.1 Conexão MCP EasyPanel</h3></p><p>Configurado em </code>.mcp.json<code>:</p><p></code>`<code>json</p>
+<p>{</p>
+<p>  "mcpServers": {</p>
+<p>    "mcp-easypanel": {</p>
+<p>      "type": "http",</p>
+<p>      "url": "https://nommand-mcp-easypanel.ddw1sl.easypanel.host/mcp"</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>URL do Painel</strong>: </code>https://nommand-mcp-easypanel.ddw1sl.easypanel.host<code></p><p><h3>4.2 Domínios Configurados</h3></p><p>Evidência do uso de EasyPanel no </code>vite.config.ts<code>:</p><p></code>`<code>typescript</p>
+<p>server: {</p>
+<p>  host: '0.0.0.0',</p>
+<p>  port: 4001,</p>
+<p>  allowedHosts: ['dashboard-freela.ddw1sl.easypanel.host', '.ddw1sl.easypanel.host'],</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>Domínio identificado</strong>: </code>dashboard-freela.ddw1sl.easypanel.host<code></p><p><h3>4.3 Processo de Deploy Recomendado EasyPanel</h3></p><p>1. <strong>Backend Fastify</strong>:</p>
+<p>   - Service: </code>backend-boilerplate<code></p>
+<p>   - Dockerfile: </code>backend-boilerplate/Dockerfile<code></p>
+<p>   - Porta: 3333</p>
+<p>   - Variáveis: DATABASE_URL, REDIS_URL, JWT_SECRET, etc.</p><p>2. <strong>Frontend Vite</strong>:</p>
+<p>   - Service: </code>frontend-boilerplate<code></p>
+<p>   - Build command: </code>npm run build<code></p>
+<p>   - Output dir: </code>dist<code></p>
+<p>   - Porta: 5173 (ou configurada 4001)</p>
+<p>   - Domínio: app.ddw1sl.easypanel.host</p><p>3. <strong>Next.js API</strong>:</p>
+<p>   - Service: </code>nextjs-api-rest<code></p>
+<p>   - Build command: </code>npm run build<code></p>
+<p>   - Porta: 4001</p><p>4. <strong>PostgreSQL e Redis</strong>:</p>
+<p>   - Pode ser via EasyPanel services ou Docker Compose externo</p><p>5. <strong>Volumes</strong>:</p>
+<p>   - Uploads: montar volume persistente em </code>/app/uploads<code></p>
+<p>   - Arquivos estáticos:渤</p><p>---</p><p><h2>5. Logs e Monitoração</h2></p><p><h3>5.1 Estrutura de Logs Atual</h3></p><p><strong>Sem framework de logging dedicado</strong>. Logs via </code>console<code>:</p><p></code>`<code>typescript</p>
+<p>// server.ts start</p>
+<p>console.log(</code></p>
+<p>╔════════════════════════════════════════════════════════════╗</p>
+<p>║                                                            ║</p>
+<p>║   Server is running on ${address}                       ║</p>
+<p>║                                                            ║</p>
+<p>║   Docs:   ${address}/docs                               ║</p>
+<p>║   Queues: ${address}/queues                             ║</p>
+<p>║   Health: ${address}/health                             ║</p>
+<p>║   ${redisAvailable ? 'Redis: connected' : 'Redis: degraded mode'} ║</p>
+<p>║                                                            ║</p>
+<p>╚════════════════════════════════════════════════════════════╝</p>
+<p><code>);</p>
+<p></code>`<code></p><p><strong>Error handler</strong> (</code>src/http/error-handler.ts<code>):</p><p></code>`<code>typescript</p>
+<p>// Development: log completo</p>
+<p>if (process.env.NODE_ENV === 'development') {</p>
+<p>  console.error('Unhandled error:', error);</p>
+<p>  if (typeof error === 'object' && error !== null && 'stack' in error) {</p>
+<p>    console.error('Stack:', error.stack);</p>
+<p>  }</p>
+<p>} else {</p>
+<p>  // Production: log mínimo</p>
+<p>  console.error(</code>[${new Date().toISOString()}] Error: ${error.name} - ${error.message}<code>);</p>
+<p>}</p>
+<p></code>`<code></p><p><h3>5.2 Logs no Docker</h3></p><p><strong>Estratégia atual</strong>:</p>
+<p>- Logs stdout/stderr (Docker capture automática)</p>
+<p>- Arquivos </code>*.log<code> no .gitignore</p>
+<p>- Sem rotação configurada</p>
+<p>- Sem ferramenta como Winston/Pino</p><p>Logs existentes no projeto:</p>
+<p></code>`<code></p>
+<p>/workspace/.../backend-build.log</p>
+<p>/workspace/.../backend-tsc.log</p>
+<p>/workspace/.../frontend-build.log</p>
+<p>/workspace/.../server.log</p>
+<p></code>`<code></p><p><h3>5.3 Monitoração Disponivel</h3></p><p><strong>Health Check</strong> (</code>src/http/routes/health/health-check.ts<code>):</p><p></code>`<code>typescript</p>
+<p>// endpoint GET /health</p>
+<p>// Retorna status 200 se API operacional</p>
+<p></code>`<code></p><p>Usado tanto pelo Docker HEALTHCHECK quanto por load balancers.</p><p><strong>Bull Board</strong>: Visualização de filas em </code>/queues<code> (ver seção 6).</p><p><strong>Sem métricas</strong>: Não configurado Prometheus, Grafana ou similar.</p><p>---</p><p><h2>6. Swagger UI e Bull Board</h2></p><p><h3>6.1 Swagger / OpenAPI</h3></p><p><strong>Plugins Fastify</strong>:</p>
+<p></code>`<code>typescript</p>
+<p>import fastifySwagger from '@fastify/swagger';</p>
+<p>import fastifySwaggerUI from '@fastify/swagger-ui';</p><p>// Registro</p>
+<p>app.register(fastifySwagger, {</p>
+<p>  openapi: {</p>
+<p>    openapi: '3.1.0',</p>
+<p>    info: {</p>
+<p>      title: 'Backend Boilerplate API',</p>
+<p>      description: 'API documentation for Backend Boilerplate',</p>
+<p>      version: '1.0.0',</p>
+<p>    },</p>
+<p>    components: {</p>
+<p>      securitySchemes: {</p>
+<p>        bearerAuth: {</p>
+<p>          type: 'http',</p>
+<p>          scheme: 'bearer',</p>
+<p>          bearerFormat: 'JWT',</p>
+<p>        },</p>
+<p>      },</p>
+<p>    },</p>
+<p>  },</p>
+<p>  transform: jsonSchemaTransform,</p>
+<p>});</p><p>app.register(fastifySwaggerUI, {</p>
+<p>  routePrefix: '/docs',</p>
+<p>});</p>
+<p></code>`<code></p><p><strong>Acesso</strong>:</p>
+<p>- Local: http://localhost:3333/docs</p>
+<p>- OpenAPI JSON: http://localhost:3333/docs/json</p><p><strong>Proteção opcional com Basic Auth</strong>:</p><p></code>`<code>typescript</p>
+<p>const swaggerUser = env.SWAGGER_USER;</p>
+<p>const swaggerPass = env.SWAGGER_PASSWORD;</p><p>if (swaggerUser && swaggerPass) {</p>
+<p>  app.register(fastifyBasicAuth, {</p>
+<p>    validate: (username, password, req, reply, done) => {</p>
+<p>      done({ username, valid: username === swaggerUser && password === swaggerPass });</p>
+<p>    },</p>
+<p>    ignore: (req) => !req.url.startsWith('/docs'),</p>
+<p>  });</p>
+<p>} else {</p>
+<p>  console.warn('Swagger is not protected - set SWAGGER_USER and SWAGGER_PASSWORD for production');</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>Ameaça</strong>: Sem variáveis SWAGGER_USER/PASS, docs expostas publicamente.</p><p><h3>6.2 Bull Board (Monitoramento de Filas)</h3></p><p><strong>Setup</strong>:</p><p></code>`<code>typescript</p>
+<p>import { createBullBoard } from '@bull-board/api';</p>
+<p>import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';</p>
+<p>import { FastifyAdapter } from '@bull-board/fastify';</p><p>// Em start()</p>
+<p>const queuesToMonitor = [</p>
+<p>  QUEUE_NAMES.EMAIL,</p>
+<p>  QUEUE_NAMES.NOTIFICATION,</p>
+<p>  QUEUE_NAMES.PROCESSING,</p>
+<p>  QUEUE_NAMES.WEBHOOK,</p>
+<p>  QUEUE_NAMES.BACKGROUND,</p>
+<p>  QUEUE_NAMES.DEAD_LETTER,</p>
+<p>];</p><p>const queueAdapters = queuesToMonitor</p>
+<p>  .map(name => {</p>
+<p>    const queue = getQueue(name);</p>
+<p>    return queue ? new BullMQAdapter(queue) : null;</p>
+<p>  })</p>
+<p>  .filter(Boolean);</p><p>if (queueAdapters.length > 0) {</p>
+<p>  const serverAdapter = new FastifyAdapter();</p>
+<p>  createBullBoard({</p>
+<p>    queues: queueAdapters as any,</p>
+<p>    serverAdapter,</p>
+<p>  });</p>
+<p>  serverAdapter.setBasePath('/queues');</p>
+<p>  app.register(serverAdapter.registerPlugin(), { prefix: '/queues' });</p>
+<p>  console.log('Bull Board registered at /queues');</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>Acesso</strong>:</p>
+<p>- Local: http://localhost:3333/queues</p>
+<p>- Interface web completa: status de jobs, retry, clean, details</p><p><strong>Filas configuradas</strong> (</code>queue-manager.ts<code>):</p><table><thead><tr><th>Nome</th><th>Prioridade</th><th>Tentativas</th><th>Backoff</th><th>Observação</th></tr></thead><tbody><tr><td>email-queue</td><td>1 (alta)</td><td>5</td><td>exponential (2s)</td><td>emails</td></tr><tr><td>notification-queue</td><td>2</td><td>3</td><td>exponential (1s)</td><td>notificações</td></tr><tr><td>processing-queue</td><td>3</td><td>3</td><td>fixed (5s)</td><td>processamento</td></tr><tr><td>webhook-queue</td><td>2</td><td>2</td><td>fixed (3s)</td><td>webhooks</td></tr><tr><td>background-queue</td><td>5 (baixa)</td><td>2</td><td>exponential (5s)</td><td>bg jobs</td></tr><tr><td>dead-letter-queue</td><td>-</td><td>1</td><td>-</td><td>DLQ (sem purge)</td><td></p><p>---</p><p><h2>7. Domínios e Portas</h2></p><p><h3>7.1 Portas de Desenvolvimento</h3></p><p></td><td>Serviço</td><td>Porta</td><td>URL Local</td></tr><tr><td>---------</td><td>-------</td><td>-----------</td></tr><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>------</th><th>-----------</th><th>------------</th><th>---------</th><th>-----------</th></tr></thead><tbody><tr><td>email-queue</td><td>1 (alta)</td><td>5</td><td>exponential (2s)</td><td>emails</td></tr><tr><td>notification-queue</td><td>2</td><td>3</td><td>exponential (1s)</td><td>notificações</td></tr><tr><td>processing-queue</td><td>3</td><td>3</td><td>fixed (5s)</td><td>processamento</td></tr><tr><td>webhook-queue</td><td>2</td><td>2</td><td>fixed (3s)</td><td>webhooks</td></tr><tr><td>background-queue</td><td>5 (baixa)</td><td>2</td><td>exponential (5s)</td><td>bg jobs</td></tr><tr><td>dead-letter-queue</td><td>-</td><td>1</td><td>-</td><td>DLQ (sem purge)</td><td></p><p>---</p><p><h2>7. Domínios e Portas</h2></p><p><h3>7.1 Portas de Desenvolvimento</h3></p><p></td><td>Serviço</td><td>Porta</td><td>URL Local</td></tr><tr><td>---------</td><td>-------</td><td>-----------</td></tr><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>email-queue</th><th>1 (alta)</th><th>5</th><th>exponential (2s)</th><th>emails</th></tr></thead><tbody><tr><td>notification-queue</td><td>2</td><td>3</td><td>exponential (1s)</td><td>notificações</td></tr><tr><td>processing-queue</td><td>3</td><td>3</td><td>fixed (5s)</td><td>processamento</td></tr><tr><td>webhook-queue</td><td>2</td><td>2</td><td>fixed (3s)</td><td>webhooks</td></tr><tr><td>background-queue</td><td>5 (baixa)</td><td>2</td><td>exponential (5s)</td><td>bg jobs</td></tr><tr><td>dead-letter-queue</td><td>-</td><td>1</td><td>-</td><td>DLQ (sem purge)</td><td></p><p>---</p><p><h2>7. Domínios e Portas</h2></p><p><h3>7.1 Portas de Desenvolvimento</h3></p><p></td><td>Serviço</td><td>Porta</td><td>URL Local</td></tr><tr><td>---------</td><td>-------</td><td>-----------</td></tr><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>notification-queue</th><th>2</th><th>3</th><th>exponential (1s)</th><th>notificações</th></tr></thead><tbody><tr><td>processing-queue</td><td>3</td><td>3</td><td>fixed (5s)</td><td>processamento</td></tr><tr><td>webhook-queue</td><td>2</td><td>2</td><td>fixed (3s)</td><td>webhooks</td></tr><tr><td>background-queue</td><td>5 (baixa)</td><td>2</td><td>exponential (5s)</td><td>bg jobs</td></tr><tr><td>dead-letter-queue</td><td>-</td><td>1</td><td>-</td><td>DLQ (sem purge)</td><td></p><p>---</p><p><h2>7. Domínios e Portas</h2></p><p><h3>7.1 Portas de Desenvolvimento</h3></p><p></td><td>Serviço</td><td>Porta</td><td>URL Local</td></tr><tr><td>---------</td><td>-------</td><td>-----------</td></tr><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>processing-queue</th><th>3</th><th>3</th><th>fixed (5s)</th><th>processamento</th></tr></thead><tbody><tr><td>webhook-queue</td><td>2</td><td>2</td><td>fixed (3s)</td><td>webhooks</td></tr><tr><td>background-queue</td><td>5 (baixa)</td><td>2</td><td>exponential (5s)</td><td>bg jobs</td></tr><tr><td>dead-letter-queue</td><td>-</td><td>1</td><td>-</td><td>DLQ (sem purge)</td><td></p><p>---</p><p><h2>7. Domínios e Portas</h2></p><p><h3>7.1 Portas de Desenvolvimento</h3></p><p></td><td>Serviço</td><td>Porta</td><td>URL Local</td></tr><tr><td>---------</td><td>-------</td><td>-----------</td></tr><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>webhook-queue</th><th>2</th><th>2</th><th>fixed (3s)</th><th>webhooks</th></tr></thead><tbody><tr><td>background-queue</td><td>5 (baixa)</td><td>2</td><td>exponential (5s)</td><td>bg jobs</td></tr><tr><td>dead-letter-queue</td><td>-</td><td>1</td><td>-</td><td>DLQ (sem purge)</td><td></p><p>---</p><p><h2>7. Domínios e Portas</h2></p><p><h3>7.1 Portas de Desenvolvimento</h3></p><p></td><td>Serviço</td><td>Porta</td><td>URL Local</td></tr><tr><td>---------</td><td>-------</td><td>-----------</td></tr><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>background-queue</th><th>5 (baixa)</th><th>2</th><th>exponential (5s)</th><th>bg jobs</th></tr></thead><tbody><tr><td>---------</td><td>-------</td><td>-----------</td></tr><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>dead-letter-queue</th><th>-</th><th>1</th><th>-</th><th>DLQ (sem purge)</th><th></p><p>---</p><p><h2>7. Domínios e Portas</h2></p><p><h3>7.1 Portas de Desenvolvimento</h3></p><p></th><th>Serviço</th><th>Porta</th><th>URL Local</th></tr></thead><tbody><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>---------</th><th>-------</th><th>-----------</th></tr></thead><tbody><tr><td>Backend Fastify</td><td>3333</td><td>http://localhost:3333</td></tr><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Backend Fastify</th><th>3333</th><th>http://localhost:3333</th></tr></thead><tbody><tr><td>Frontend Vite</td><td>4001 (config) / 5173 (padrão)</td><td>http://localhost:4001</td></tr><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Frontend Vite</th><th>4001 (config) / 5173 (padrão)</th><th>http://localhost:4001</th></tr></thead><tbody><tr><td>Next.js API REST</td><td>4001 (conflito!)</td><td>http://localhost:4001</td></tr><tr><td>Next.js Boilerplate</td><td>-</td><td>-</td></tr><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Next.js API REST</th><th>4001 (conflito!)</th><th>http://localhost:4001</th></tr></thead><tbody><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Next.js Boilerplate</th><th>-</th><th>-</th></tr></thead><tbody><tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td></tr><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>PostgreSQL</th><th>5432</th><th>localhost:5432</th></tr></thead><tbody><tr><td>Redis</td><td>6379</td><td>localhost:6379</td></tr><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Redis</th><th>6379</th><th>localhost:6379</th></tr></thead><tbody><tr><td>Prisma Studio</td><td>5555</td><td>http://localhost:5555</td></tr><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Prisma Studio</th><th>5555</th><th>http://localhost:5555</th></tr></thead><tbody><tr><td>Serviço</td><td>Rota</td><td>Descrição</td></tr><tr><td>---------</td><td>------</td><td>-----------</td></tr><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table><p><strong>Problema identificado</strong>: Frontend Vite e Next.js API REST configurados para mesma porta 4001.</p><p><h3>7.2 Domínios EasyPanel</h3></p><p>Evidências encontradas:</p>
+<p>- </code>dashboard-freela.ddw1sl.easypanel.host<code> (domínio principal)</p>
+<p>- </code>ddw1sl.easypanel.host<code> (wildcard)</p>
+<p>- </code>.ddw1sl.easypanel.host<code> (allowedHosts)</p><p><strong>Configuração allowedHosts no Vite</strong>:</p>
+<p></code>`<code>typescript</p>
+<p>allowedHosts: ['dashboard-freela.ddw1sl.easypanel.host', '.ddw1sl.easypanel.host']</p>
+<p></code>`<code></p><p><h3>7.3 URLs de Produção Esperadas</h3></p><table><thead><tr><th>Serviço</th><th>Rota</th><th>Descrição</th></tr></thead><tbody><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>---------</th><th>------</th><th>-----------</th></tr></thead><tbody><tr><td>API Backend</td><td>https://api.dominio.com</td><td>Fastify API</td></tr><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>API Backend</th><th>https://api.dominio.com</th><th>Fastify API</th></tr></thead><tbody><tr><td>Frontend</td><td>https://app.dominio.com</td><td>React + Vite</td></tr><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Frontend</th><th>https://app.dominio.com</th><th>React + Vite</th></tr></thead><tbody><tr><td>Next.js API</td><td>https://next-api.dominio.com</td><td>Next.js App Router</td></tr><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Next.js API</th><th>https://next-api.dominio.com</th><th>Next.js App Router</th></tr></thead><tbody><tr><td>API Docs</td><td>https://api.dominio.com/docs</td><td>Swagger UI</td></tr><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>API Docs</th><th>https://api.dominio.com/docs</th><th>Swagger UI</th></tr></thead><tbody><tr><td>Bull Board</td><td>https://api.dominio.com/queues</td><td>Queue monitor</td></tr><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Bull Board</th><th>https://api.dominio.com/queues</th><th>Queue monitor</th></tr></thead><tbody><tr><td>Health</td><td>https://api.dominio.com/health</td><td>Health check</td><td></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></td><td>Serviço</td><td>Versão</td><td>Cliente</td><td>Uso</td></tr><tr><td>---------</td><td>--------</td><td>---------</td><td>-----</td></tr><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Health</th><th>https://api.dominio.com/health</th><th>Health check</th><th></p><p>---</p><p><h2>8. Integrações Externas Configuradas</h2></p><p><h3>8.1 Serviços de Dados</h3></p><p></th><th>Serviço</th><th>Versão</th><th>Cliente</th><th>Uso</th></tr></thead><tbody><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>---------</th><th>--------</th><th>---------</th><th>-----</th></tr></thead><tbody><tr><td>PostgreSQL</td><td>16-alpine</td><td>Prisma ORM</td><td>Banco principal</td></tr><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>PostgreSQL</th><th>16-alpine</th><th>Prisma ORM</th><th>Banco principal</th></tr></thead><tbody><tr><td>Redis</td><td>7-alpine</td><td>ioredis + bullmq</td><td>Cache + Filas</td></tr><tr></tr><tr></tr></tbody></table>
+<table><thead><tr><th>Redis</th><th>7-alpine</th><th>ioredis + bullmq</th><th>Cache + Filas</th></tr></thead><tbody><tr></tr><tr></tr></tbody></table><p><strong>Redis Connection Config</strong> (</code>services/jobs/connection-redis-config.ts<code>):</p><p></code>`<code>typescript</p>
+<p>export const connectionRedisConfigQueue = {</p>
+<p>  host: env.REDIS_URL,</p>
+<p>  password: env.REDIS_PASSWORD || undefined,</p>
+<p>  port: env.REDIS_PORT,</p>
+<p>  family: 4, // Force IPv4</p>
+<p>};</p><p>export const connectionRedisConfigWorker = {</p>
+<p>  maxRetriesPerRequest: null, // Required by BullMQ</p>
+<p>  host: env.REDIS_URL,</p>
+<p>  password: env.REDIS_PASSWORD || undefined,</p>
+<p>  port: env.REDIS_PORT,</p>
+<p>  family: 4,</p>
+<p>  connectTimeout: 10000,</p>
+<p>};</p>
+<p></code>`<code></p><p><h3>8.2 OpenSearch</h3></p><p>Configurado em </code>env.ts<code> mas <strong>não utilizado ativamente</strong> no código.</p><p>Dependencies encontradas:</p>
+<p>- </code>@elastic/elasticsearch: ^9.3.4<code></p>
+<p>- </code>@opensearch-project/opensearch: ^3.5.1<code></p><p>Variáveis:</p>
+<p></code>`<code>env</p>
+<p>OPENSEARCH_URL=http://localhost:9200</p>
+<p>OPENSEARCH_USERNAME=</p>
+<p>OPENSEARCH_PASSWORD=</p>
+<p>OPENSEARCH_SSL=false</p>
+<p></code>`<code></p><p><strong>Observação</strong>: Serviço de search/indexing mencionado em estrutura mas não conectado.</p><p><h3>8.3 Socket.IO</h3></p><p></code>`<code>typescript</p>
+<p>import { setupSocketIO } from './socket';</p><p>// Em server.ts</p>
+<p>setupSocketIO(app);</p>
+<p></code>`<code></p><p>Configurado mas detalhes implementation em </code>src/socket/<code>.</p><p><h3>8.4 SMTP (apenas Next.js Boilerplate)</h3></p><p>Variáveis configuráveis no </code>.env.example<code> do Next.js:</p>
+<p></code>`<code>env</p>
+<p>SMTP_HOST=</p>
+<p>SMTP_PORT="587"</p>
+<p>SMTP_USER=</p>
+<p>SMTP_PASSWORD=</p>
+<p></code>`<code></p><p>---</p><p><h2>9. Segurança de Deploy</h2></p><p><h3>9.1 Headers de Segurança</h3></p><p></code>`<code>typescript</p>
+<p>app.register(fastifyHelmet, {</p>
+<p>  contentSecurityPolicy: {</p>
+<p>    directives: {</p>
+<p>      defaultSrc: ["'self'"],</p>
+<p>      styleSrc: ["'self'", "'unsafe-inline'"],</p>
+<p>      scriptSrc: ["'self'"],</p>
+<p>      imgSrc: ["'self'", "data:", "https:"],</p>
+<p>    },</p>
+<p>  },</p>
+<p>  hsts: {</p>
+<p>    maxAge: 31536000,</p>
+<p>    includeSubDomains: true,</p>
+<p>    preload: true,</p>
+<p>  },</p>
+<p>  frameguard: { action: 'deny' },</p>
+<p>  dnsPrefetchControl: { allow: false },</p>
+<p>});</p>
+<p></code>`<code></p><p><h3>9.2 Rate Limiting</h3></p><p></code>`<code>typescript</p>
+<p>app.register(fastifyRateLimit, {</p>
+<p>  max: 100, // 100 requests per window</p>
+<p>  timeWindow: '1 minute',</p>
+<p>  redis: redisAvailable ? app.redis : undefined, // com Redis</p>
+<p>  keyGenerator: (request) => request.ip,</p>
+<p>});</p>
+<p></code>`<code></p><p><h3>9.3 CORS</h3></p><p></code>`<code>typescript</p>
+<p>const allowedOrigins = env.CORS_ORIGINS</p>
+<p>  ? env.CORS_ORIGINS.split(',').map(o => o.trim())</p>
+<p>  : env.NODE_ENV === 'production'</p>
+<p>    ? []</p>
+<p>    : ['http://localhost:5173', 'http://localhost:4000'];</p><p>app.register(fastifyCors, {</p>
+<p>  origin: allowedOrigins.length > 0 ? allowedOrigins : true,</p>
+<p>  credentials: true,</p>
+<p>  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],</p>
+<p>});</p>
+<p></code>`<code></p><p><strong>Modo produção</strong>: Se </code>CORS_ORIGINS<code> não definido, array vazio bloqueia tudo.</p><p><h3>9.4 Uploads</h3></p><p></code>`<code>typescript</p>
+<p>app.register(fastifyMultipart, {</p>
+<p>  limits: {</p>
+<p>    fileSize: env.MAX_FILE_SIZE,</p>
+<p>    files: 5,</p>
+<p>    fields: 50,</p>
+<p>  },</p>
+<p>});</p><p>const uploadDir = env.UPLOAD_DIR</p>
+<p>  ? path.resolve(env.UPLOAD_DIR)</p>
+<p>  : path.resolve('./uploads');</p><p>app.register(fastifyStatic, {</p>
+<p>  root: uploadDir,</p>
+<p>  prefix: '/uploads/',</p>
+<p>  decorateReply: false,</p>
+<p>});</p>
+<p></code>`<code></p><p>---</p><p><h2>10. Gap Analysis e Recomendações</h2></p><p><h3>10.1 Problemas Identificados</h3></p><p>1. <strong>Conflito de portas</strong>: Frontend Vite e Next.js API na mesma porta (4001)</p>
+<p>2. <strong>Swagger desprotegido por padrão</strong>: Requer configuração manual de SWAGGER_USER/PASS</p>
+<p>3. <strong>Falta logging estruturado</strong>: Uso de console apenas, sem Pino/Winston</p>
+<p>4. <strong>Rotação de logs</strong>: Não configurada para Docker</p>
+<p>5. <strong>OpenSearch ocioso</strong>: Dependências incluídas sem uso</p>
+<p>6. <strong>Porta backend .env.example errada</strong>: Em </code>.env.example<code> (4000) vs config (3333)</p>
+<p>7. <strong>Uploads no container</strong>: Volume sugerido no Dockerfile mas não mountado</p><p><h3>10.2 Recomendações Deploy EasyPanel</h3></p><p><strong>Backend Fastify</strong>:</p>
+<p></code>`<code>yaml</p>
+<p># Service config</p>
+<p>- Build: Dockerfile em raiz do backend</p>
+<p>- Port: 3333 → External: 80/443 (via proxy)</p>
+<p>- Env: JWT_SECRET, DATABASE_URL, REDIS_URL, CORS_ORIGINS, SWAGGER_USER, SWAGGER_PASSWORD</p>
+<p>- Volumes: /app/uploads (persistente)</p>
+<p></code>`<code></p><p><strong>Frontend</strong>:</p>
+<p></code>`<code>yaml</p>
+<p>- Build command: npm ci && npm run build</p>
+<p>- Output: dist/</p>
+<p>- Env: VITE_API_URL (apontar para API)</p>
+<p></code>`<code></p><p><strong>Proxy/Traefik</strong>:</p>
+<p>- Rotear dominios diferentes para Serviços diferentes</p>
+<p>- HTTPS automático via Let's Encrypt</p><p><h3>10.3 Monitoração Recomendada</h3></p><p>1. <strong>Logging</strong>: Adicionar Pino + pino-pretty para dev</p>
+<p>2. <strong>Métricas</strong>: Health endpoints existentes, adicionar /metrics (Prometheus)</p>
+<p>3. <strong>Alertas</strong>: Monitorar filas Bull Board (thresholds de jobs)</p>
+<p>4. <strong>APM</strong>: Considerar Sentry ou similar para erros</p>
+<p>5. <strong>Redis</strong>: monitorar memory usage via INFO</p><p>---</p><p><h2>Conclusão</h2></p><p>O projeto apresenta <strong>boa arquitetura de deployment</strong> com:</p>
+<p>- Docker multi-stage otimizado</p>
+<p>- Compose para serviços de dados</p>
+<p>- Validação de ambiente com Zod</p>
+<p>- Configuração clara de filas e endpoints de monitoração</p><p>Pontos de atenção para produção:</p>
+<p>- Configurar SWAGGER_USER/PASS ou remover端点/docs</p>
+<p>- Ajustar conflitos de porta</p>
+<p>- Estruturar logging profissional</p>
+<p>- Definir domínios e proxy no EasyPanel</p><p>---</p><p><strong>Arquivos analisados</strong>:</p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/.env.example<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/Dockerfile<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/docker-compose.yml<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/src/lib/env.ts<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/src/server.ts<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/package.json<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/scripts/setup-env.sh<code></p>
+<p>- </code>/workspace/temp-oruestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/frontend-boilerplate/vite.config.ts<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/.mcp.json<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/backend-boilerplate/src/services/jobs/queue/queue-manager.ts<code></p>
+<p>- </code>/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/nextjs-api-rest/src/app/api/docs/route.ts`</p>
+
+      </article>
+    </main>
+  </div>
+
+  <script>
+    // Highlight code blocks
+    document.addEventListener('DOMContentLoaded', () => {
+      hljs.highlightAll();
+
+      // Sidebar toggle
+      const sidebar = document.getElementById('sidebar');
+      const openBtn = document.getElementById('open-sidebar');
+      const closeBtn = document.getElementById('close-sidebar');
+      const navLinks = sidebar.querySelectorAll('a');
+
+      // Set active link
+      const currentPage = location.pathname.split('/').pop();
+      navLinks.forEach(link => {
+        if (link.getAttribute('href') === currentPage) {
+          link.classList.add('bg-border', 'text-foreground');
+        } else {
+          link.classList.remove('bg-border', 'text-foreground');
+        }
+      });
+
+      openBtn?.addEventListener('click', () => sidebar.classList.remove('closed'));
+      closeBtn?.addEventListener('click', () => sidebar.classList.add('closed'));
+
+      // Close sidebar on mobile when clicking a link
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 768) sidebar.classList.add('closed');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

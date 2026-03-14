@@ -1,5 +1,5 @@
 import { Queue, QueueEvents } from 'bullmq';
-import { connectionRedisConfigQueue } from './connection-redis-config';
+import { connectionRedisConfigQueue } from '../connection-redis-config';
 import { redisInstance } from '@/lib/redis';
 
 // =============================================================================

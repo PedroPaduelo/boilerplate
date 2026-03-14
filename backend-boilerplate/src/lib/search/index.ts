@@ -1,5 +1,5 @@
 import { Client } from '@opensearch-project/opensearch';
-import { env } from './env';
+import { env } from '../env';
 
 let client: Client | null = null;
 

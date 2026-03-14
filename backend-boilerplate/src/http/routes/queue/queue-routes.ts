@@ -6,8 +6,9 @@ import {
   getQueue,
   QUEUE_NAMES,
   QueueName,
-} from '../queue/queue-manager';
+} from '../../../services/jobs/queue/queue-manager';
 import { redisInstance } from '@/lib/redis';
+import { auth } from '@/middlewares/auth';
 
 // =============================================================================
 // SCHEMAS
@@ -76,16 +77,16 @@ const jobIdParamSchema = z.object({
 // ROUTES
 // =============================================================================
 
-export async function queueRoutes(fastify: FastifyInstance) {
+export async function queueRoutes(app: FastifyInstance) {
+  const fastify = app.withTypeProvider<ZodTypeProvider>().register(auth);
+
   // =============================================================================
   // GET QUEUE STATUS
   // =============================================================================
 
   fastify.get(
     '/queues',
-    {
-      preHandler: [fastify.authenticate],
-    },
+    {},
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (redisInstance.isDegraded()) {
         return reply.status(503).send({
@@ -147,7 +148,6 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/queues/add',
     {
-      preHandler: [fastify.authenticate],
       schema: {
         body: addJobSchema,
       },
@@ -195,7 +195,6 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/queues/add-bulk',
     {
-      preHandler: [fastify.authenticate],
       schema: {
         body: addBulkJobsSchema,
       },
@@ -234,7 +233,7 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/queues/:queue/jobs',
     {
-      preHandler: [fastify.authenticate],
+      // authentication done via app.register(auth) above
       schema: {
         params: queueParamSchema,
       },
@@ -299,7 +298,7 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/queues/:queue/jobs/:jobId',
     {
-      preHandler: [fastify.authenticate],
+      // authentication done via app.register(auth) above
       schema: {
         params: jobIdParamSchema,
       },
@@ -358,7 +357,7 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/queues/:queue/jobs/:jobId/retry',
     {
-      preHandler: [fastify.authenticate],
+      // authentication done via app.register(auth) above
       schema: {
         params: jobIdParamSchema,
       },
@@ -409,7 +408,7 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.delete(
     '/queues/:queue/jobs/:jobId',
     {
-      preHandler: [fastify.authenticate],
+      // authentication done via app.register(auth) above
       schema: {
         params: jobIdParamSchema,
       },
@@ -460,7 +459,7 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.delete(
     '/queues/:queue/clean',
     {
-      preHandler: [fastify.authenticate],
+      // authentication done via app.register(auth) above
       schema: {
         params: queueParamSchema,
       },
@@ -514,7 +513,7 @@ export async function queueRoutes(fastify: FastifyInstance) {
   fastify.delete(
     '/queues/:queue/empty',
     {
-      preHandler: [fastify.authenticate],
+      // authentication done via app.register(auth) above
       schema: {
         params: queueParamSchema,
       },

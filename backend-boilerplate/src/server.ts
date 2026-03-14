@@ -45,12 +45,10 @@ import {
   autocomplete,
   analytics,
 } from './http/routes/search';
-import {
-  indexDocument,
-  bulkIndex,
-  deleteDocument,
-  adminIndex,
-} from './http/routes/search/admin-index';
+import { adminIndex } from './http/routes/search/admin-index';
+import { indexDocument } from './http/routes/search/index-document';
+import { bulkIndex } from './http/routes/search/bulk-index';
+import { deleteDocument } from './http/routes/search/delete-document';
 
 // =============================================================================
 // REDIS PRE-CHECK

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boilerplate — Portal de Documentação</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: '#0a0a0a',
+            foreground: '#ededed',
+            card: '#141414',
+            'card-foreground': '#ededed',
+            border: '#262626',
+            muted: '#3f3f46',
+            'muted-foreground': '#a1a1aa',
+            primary: '#3b82f6',
+            'primary-foreground': '#0a0a0a',
+            accent: '#8b5cf6',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0a0a0a; color: #ededed; }
+    .card { background: #141414; border: 1px solid #262626; border-radius: 0.75rem; padding: 1.5rem; }
+    .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge.completed { background: #22c55e; color: black; }
+    .badge.inprogress { background: #3b82f6; color: white; }
+    .badge.pending { background: #374151; color: #9ca3af; }
+    .grid-link { display: block; padding: 1.25rem; border: 1px solid #262626; border-radius: 0.5rem; transition: all 0.2s; }
+    .grid-link:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 10px 40px rgba(59,130,246,0.15); }
+    .side-link { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border: 1px solid #262626; border-radius: 0.5rem; margin-bottom: 0.5rem; transition: all 0.2s; }
+    .side-link:hover { border-color: #8b5cf6; background: rgba(139,92,246,0.05); }
+    .side-link .title { font-weight: 600; }
+    .side-link .meta { color: #a1a1aa; font-size: 0.875rem; }
+  </style>
+</head>
+<body class="antialiased min-h-screen">
+  <div class="max-w-7xl mx-auto px-6 py-12">
+    <!-- Header -->
+    <header class="mb-16">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">B</div>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">Boilerplate</h1>
+          <p class="text-muted-foreground">Documentação Técnica Completa</p>
+        </div>
+      </div>
+      <p class="text-muted-foreground max-w-3xl leading-relaxed">
+        Este portal documenta a arquitetura, fluxos de dados, regras de negócio, APIs, frontend, segurança, deploy e todos os aspectos do sistema.
+        Explore os módulos abaixo para entender cada camada da aplicação.
+      </p>
+    </header>
+
+    <!-- Grid de Módulos -->
+    <section class="mb-20">
+      <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        Módulos de Documentação
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="modules-grid">
+        <!-- Módulos serão injetados via JS -->
+      </div>
+    </section>
+
+    <!-- Tasks -->
+    <section class="mb-20">
+      <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+        <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Progresso das Tasks
+      </h2>
+      <div class="card">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2" id="tasks-list">
+          <!-- Tasks injetadas via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Links Laterais -->
+    <section>
+      <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        Acesso Rápido
+      </h2>
+      <div class="space-y-2">
+        <a href="guides/01-arquitetura-geral.html" class="side-link">
+          <span class="title">📘 Ver Documentação Completa</span>
+          <span class="meta">Portal interativo</span>
+        </a>
+        <a href="guides/07-cache-redis.html" class="side-link">
+          <span class="title">🗺️ Mapa de Fluxo de Dados</span>
+          <span class="meta">Redis, Filas, Cache</span>
+        </a>
+        <a href="guides/14-servicos-negocio.html" class="side-link">
+          <span class="title">⚙️ Regras de Negócio</span>
+          <span class="meta">Services, Workers, Jobs</span>
+        </a>
+        <a href="guides/04-api-endpoints.html" class="side-link">
+          <span class="title">🔌 API REST Reference</span>
+          <span class="meta">Endpoints, exemplos cURL</span>
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const modules = [
+      { num: 1, title: 'Arquitetura Geral', file: '01-arquitetura-geral.html', color: 'from-blue-500 to-blue-600' },
+      { num: 2, title: 'Modelagem de Banco', file: '02-modelagem-banco.html', color: 'from-green-500 to-green-600' },
+      { num: 3, title: 'Autenticação e Segurança', file: '03-autenticacao-seguranca.html', color: 'from-red-500 to-red-600' },
+      { num: 4, title: 'API REST', file: '04-api-rest.html', color: 'from-yellow-500 to-yellow-600' },
+      { num: 5, title: 'WebSockets', file: '05-websockets.html', color: 'from-purple-500 to-purple-600' },
+      { num: 6, title: 'Filas e Jobs', file: '06-filas-jobs.html', color: 'from-pink-500 to-pink-600' },
+      { num: 7, title: 'Cache e Redis', file: '07-cache-redis.html', color: 'from-orange-500 to-orange-600' },
+      { num: 8, title: 'Search e Indexação', file: '08-search-indexacao.html', color: 'from-teal-500 to-teal-600' },
+      { num: 9, title: 'Frontend Estrutura', file: '09-frontend-estrutura.html', color: 'from-indigo-500 to-indigo-600' },
+      { num: 10, title: 'Auth Frontend', file: '10-auth-frontend.html', color: 'from-cyan-500 to-cyan-600' },
+      { num: 11, title: 'Features', file: '11-features.html', color: 'from-lime-500 to-lime-600' },
+      { num: 12, title: 'UI Components', file: '12-ui-shared.html', color: 'from-amber-500 to-amber-600' },
+      { num: 13, title: 'Segurança Backend', file: '13-seguranca-backend.html', color: 'from-rose-500 to-rose-600' },
+      { num: 14, title: 'Serviços e Regras', file: '14-servicos-negocio.html', color: 'from-violet-500 to-violet-600' },
+      { num: 15, title: 'Integração e Deploy', file: '15-integracao-deploy.html', color: 'from-emerald-500 to-emerald-600' }
+    ];
+
+    // Render Grid
+    const grid = document.getElementById('modules-grid');
+    modules.forEach(m => {
+      const card = document.createElement('a');
+      card.href = `guides/${m.file}`;
+      card.className = 'grid-link group';
+      card.innerHTML = `
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-8 h-8 rounded bg-gradient-to-br ${m.color} flex items-center justify-center text-white text-sm font-bold">${m.num}</div>
+          <h3 class="font-semibold text-foreground group-hover:text-primary transition-colors">${m.title}</h3>
+        </div>
+        <p class="text-sm text-muted-foreground">Clique para abrir a documentação completa</p>
+      `;
+      grid.appendChild(card);
+    });
+
+    // Render fake tasks (simulated)
+    const tasksList = document.getElementById('tasks-list');
+    const taskStatuses = ['✅ Concluída', '✅ Concluída', '✅ Concluída', '✅ Concluída', '✅ Concluída'];
+    const tasks = [
+      { name: 'Task 01 — Análise de Arquitetura', status: 'completed' },
+      { name: 'Task 02 — Modelagem de Dados', status: 'completed' },
+      { name: 'Task 03 — Segurança e Auth', status: 'completed' },
+      { name: 'Task 04 — API Endpoints', status: 'completed' },
+      { name: 'Task 05 — WebSockets & Tempo Real', status: 'completed' },
+      { name: 'Task 06 — Filas Assíncronas', status: 'completed' },
+      { name: 'Task 07 — Cache & Redis', status: 'completed' },
+      { name: 'Task 08 — Search & Indexação', status: 'completed' },
+      { name: 'Task 09 — Frontend Estrutura', status: 'completed' },
+      { name: 'Task 10 — Auth Frontend', status: 'completed' },
+      { name: 'Task 11 — Features', status: 'completed' },
+      { name: 'Task 12 — UI Components', status: 'completed' },
+      { name: 'Task 13 — Segurança Backend', status: 'completed' },
+      { name: 'Task 14 — Serviços e Regras', status: 'completed' },
+      { name: 'Task 15 — Deploy & Integrações', status: 'completed' }
+    ];
+    tasks.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between p-3 border border-border rounded-lg bg-card hover:bg-card/80 transition-colors';
+      row.innerHTML = `
+        <span class="font-medium">${t.name}</span>
+        <span class="badge ${t.status}">${t.status === 'completed' ? 'Concluído' : 'Pendente'}</span>
+      `;
+      tasksList.appendChild(row);
+    });
+  </script>
+</body>
+</html>

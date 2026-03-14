@@ -1,33 +1,90 @@
-# Dependencies
+# Node.js dependencies
 node_modules/
+npm/node_modules/
+yarn/node_modules/
 
-# Build
+# Build outputs
 dist/
+build/
+out/
+next/dist/
+.next/
 
-# Environment
+# Environment files
 .env
 .env.local
 .env.*.local
-
-# IDE
-.vscode/
-.idea/
+.env.local.backup
+.env.staging
+.env.production
 
 # Logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+report.[0-9]*.[0-9]*.json
+*.tsbuildinfo
 
-# OS
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
+/.idea/
+/.vscode/
+
+# Test coverage
+coverage/
+.nyc_output
+coverage-*.json
 
 # Uploads
-uploads/*
-!uploads/.gitkeep
+uploads/
+*.upload
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Cache directories
+.cache/
+.temp/
+tmp/
+temp/
+
+# Vite
+.vite/
+
+# TypeScript
+*.tsbuildinfo
 
 # Prisma
-prisma/migrations/*_migration_lock.toml
+prisma/dev/ migrations/archive/ (
+Note: migrations folder itself is NOT ignored - only archive subfolder.
+Actual migrations should be tracked in git.
+or: prisma/migrations/ if the project structure differs)
 
-# Temp
-temp/
-*.tmp
+# Testing
+mochawesome-report/
+test-results/
+
+# Misc
+.cursorrules
+.mcp.json

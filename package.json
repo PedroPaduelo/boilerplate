@@ -7,7 +7,10 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend-boilerplate && npm test",
+    "test:frontend": "cd frontend-boilerplate && npm test",
+    "test:performance": "node k6-v0.55.0-linux-amd64/k6 run tests/performance/k6-performance-test.js"
   },
   "repository": {
     "type": "git",

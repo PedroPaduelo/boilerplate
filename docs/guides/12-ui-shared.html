@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI Components — Boilerplate Docs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'var(--background)',
+            foreground: 'var(--foreground)',
+            card: 'var(--card)',
+            'card-foreground': 'var(--card-foreground)',
+            border: 'var(--border)',
+            input: 'var(--input)',
+            ring: 'var(--ring)',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --background: #0a0a0a;
+      --foreground: #ededed;
+      --card: #141414;
+      --card-foreground: #ededed;
+      --border: #262626;
+      --input: #262626;
+      --ring: #3f3f46;
+    }
+    body { background: var(--background); color: var(--foreground); font-family: 'Inter', system-ui, sans-serif; }
+    pre code { background: #1e1e1e !important; padding: 1rem; border-radius: 0.5rem; display: block; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { padding: 0.75rem; border: 1px solid var(--border); text-align: left; }
+    th { background: var(--card); font-weight: 600; }
+    .prose h1 { font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+    .prose h2 { font-size: 1.75rem; font-weight: 700; margin-top: 2.5rem; margin-bottom: 1rem; letter-spacing: -0.01em; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.7; color: #a1a1aa; }
+    .prose ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.5rem; color: #a1a1aa; }
+    .prose code { background: var(--card); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; color: #facc15; }
+    .prose pre { margin: 1.5rem 0; }
+    .prose blockquote { border-left: 4px solid #3f3f46; padding-left: 1rem; font-style: italic; color: #71717a; }
+    .prose strong { color: var(--foreground); font-weight: 700; }
+    .prose a { color: #60a5fa; text-decoration: underline; }
+    .prose a:hover { color: #93c5fd; }
+    .prose hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+    .prose pre::before { content: attr(data-lang); position: absolute; top: 0.5rem; right: 0.5rem; font-size: 0.75rem; color: #71717a; text-transform: uppercase; }
+    pre { position: relative; }
+    .sidebar { transition: transform 0.3s ease; }
+    .sidebar.closed { transform: translateX(-100%); }
+    @media (max-width: 768px) { .sidebar { position: fixed; z-index: 50; height: 100vh; } }
+  </style>
+</head>
+<body class="antialiased min-h-screen">
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar w-72 h-screen fixed left-0 top-0 border-r border-border bg-card p-6 overflow-y-auto">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-xl font-bold tracking-tight">Boilerplate Docs</h1>
+        <button id="close-sidebar" class="md:hidden text-foreground hover:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <nav class="space-y-1">
+        <a href="01-arquitetura.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors" data-active>01. Arquitetura Geral</a>
+        <a href="02-modelagem-banco.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">02. Modelagem de Banco</a>
+        <a href="03-autenticacao-seguranca.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">03. Autenticação e Segurança</a>
+        <a href="04-api-endpoints.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">04. API REST</a>
+        <a href="05-websockets.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">05. WebSockets</a>
+        <a href="06-filas-jobs.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">06. Filas e Jobs</a>
+        <a href="07-cache-redis.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">07. Cache e Redis</a>
+        <a href="08-search-indexacao.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">08. Search e Indexação</a>
+        <a href="09-frontend-estrutura.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">09. Frontend Estrutura</a>
+        <a href="10-auth-frontend.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">10. Auth Frontend</a>
+        <a href="11-features.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">11. Features</a>
+        <a href="12-ui-shared.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">12. UI Components</a>
+        <a href="13-seguranca-backend.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">13. Segurança Backend</a>
+        <a href="14-servicos-negocio.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">14. Serviços e Regras</a>
+        <a href="15-integracao-deploy.html" class="block px-3 py-2 rounded-md text-sm font-medium hover:bg-border transition-colors">15. Integração e Deploy</a>
+      </nav>
+      <div class="mt-12 pt-8 border-t border-border">
+        <a href="index.html" class="text-sm text-muted-foreground hover:text-foreground">← Voltar ao Índice</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 md:ml-72 p-8 md:p-16 max-w-6xl mx-auto">
+      <button id="open-sidebar" class="md:hidden fixed bottom-6 right-6 bg-primary text-primary-foreground p-3 rounded-full shadow-lg">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+
+      <article class="prose prose-invert max-w-none" id="content">
+        <h1>Relatrio Completo: Componentes UI e Shared - Frontend Boilerplate</h1></p><p><strong>Data:</strong> 14/03/2026
+<p><strong>Reviso:</strong> 12 - Componentes Compartilhados e UI</p><p>---</p><p><h2>Sumrio Executivo</h2></p><p>Este relatrio documenta a arquitetura de componentes compartilhados (shared) do frontend boilerplate, incluindo componentes UI baseados no shadcn/ui, hooks customizados, utilities, design tokens e layout. O projeto adota uma arquitetura modular com foco em reutilizao, tipagem TypeScript e design system consistente.</p><p>---</p><p><h2>1. shared/components/ui/ (shadcn components)</h2></p><p>A pasta <code>shared/components/ui/</code> contm componentes baseados no shadcn/ui, uma coleo de componentes acessveis e customizveis baseados em Radix UI e Tailwind CSS.</p><p><h3>1.1 Components Disponveis</h3></p><table><thead><tr><th>Componente</th><th>Props Principais</th><th>Recursos</th><th>Dependncias</th></tr></thead><tbody><tr><td>Button</td><td>variant, size, asChild</td><td>6 variants (default, destructive, outline, secondary, ghost, link), 4 tamanhos</td><td>radix-ui/react-slot, class-variance-authority</td></tr><tr><td>Card</td><td>className</td><td>Composite: Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter</td><td>-</td></tr><tr><td>Input</td><td>type, className</td><td>Suporte a todos os tipos de input HTML</td><td>-</td></tr><tr><td>Avatar</td><td>className</td><td>Comps: Avatar, AvatarImage, AvatarFallback</td><td>radix-ui/react-avatar</td></tr><tr><td>Label</td><td>className</td><td>Associado a inputs via htmlFor</td><td>radix-ui/react-label, cva</td></tr><tr><td>Skeleton</td><td>className</td><td>Estado de carregamento com animao pulse</td><td>-</td></tr><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>------------</th><th>------------------</th><th>----------</th><th>-------------</th></tr></thead><tbody><tr><td>Button</td><td>variant, size, asChild</td><td>6 variants (default, destructive, outline, secondary, ghost, link), 4 tamanhos</td><td>radix-ui/react-slot, class-variance-authority</td></tr><tr><td>Card</td><td>className</td><td>Composite: Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter</td><td>-</td></tr><tr><td>Input</td><td>type, className</td><td>Suporte a todos os tipos de input HTML</td><td>-</td></tr><tr><td>Avatar</td><td>className</td><td>Comps: Avatar, AvatarImage, AvatarFallback</td><td>radix-ui/react-avatar</td></tr><tr><td>Label</td><td>className</td><td>Associado a inputs via htmlFor</td><td>radix-ui/react-label, cva</td></tr><tr><td>Skeleton</td><td>className</td><td>Estado de carregamento com animao pulse</td><td>-</td></tr><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Button</th><th>variant, size, asChild</th><th>6 variants (default, destructive, outline, secondary, ghost, link), 4 tamanhos</th><th>radix-ui/react-slot, class-variance-authority</th></tr></thead><tbody><tr><td>Input</td><td>type, className</td><td>Suporte a todos os tipos de input HTML</td><td>-</td></tr><tr><td>Avatar</td><td>className</td><td>Comps: Avatar, AvatarImage, AvatarFallback</td><td>radix-ui/react-avatar</td></tr><tr><td>Label</td><td>className</td><td>Associado a inputs via htmlFor</td><td>radix-ui/react-label, cva</td></tr><tr><td>Skeleton</td><td>className</td><td>Estado de carregamento com animao pulse</td><td>-</td></tr><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Card</th><th>className</th><th>Composite: Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter</th><th>-</th></tr></thead><tbody><tr><td>Avatar</td><td>className</td><td>Comps: Avatar, AvatarImage, AvatarFallback</td><td>radix-ui/react-avatar</td></tr><tr><td>Label</td><td>className</td><td>Associado a inputs via htmlFor</td><td>radix-ui/react-label, cva</td></tr><tr><td>Skeleton</td><td>className</td><td>Estado de carregamento com animao pulse</td><td>-</td></tr><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Input</th><th>type, className</th><th>Suporte a todos os tipos de input HTML</th><th>-</th></tr></thead><tbody><tr><td>Avatar</td><td>className</td><td>Comps: Avatar, AvatarImage, AvatarFallback</td><td>radix-ui/react-avatar</td></tr><tr><td>Label</td><td>className</td><td>Associado a inputs via htmlFor</td><td>radix-ui/react-label, cva</td></tr><tr><td>Skeleton</td><td>className</td><td>Estado de carregamento com animao pulse</td><td>-</td></tr><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Avatar</th><th>className</th><th>Comps: Avatar, AvatarImage, AvatarFallback</th><th>radix-ui/react-avatar</th></tr></thead><tbody><tr><td>Label</td><td>className</td><td>Associado a inputs via htmlFor</td><td>radix-ui/react-label, cva</td></tr><tr><td>Skeleton</td><td>className</td><td>Estado de carregamento com animao pulse</td><td>-</td></tr><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Label</th><th>className</th><th>Associado a inputs via htmlFor</th><th>radix-ui/react-label, cva</th></tr></thead><tbody><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Skeleton</th><th>className</th><th>Estado de carregamento com animao pulse</th><th>-</th></tr></thead><tbody><tr><td>Switch</td><td>checked, onCheckedChange</td><td>Toggle binrio com animao</td><td>radix-ui/react-switch</td></tr><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Switch</th><th>checked, onCheckedChange</th><th>Toggle binrio com animao</th><th>radix-ui/react-switch</th></tr></thead><tbody><tr><td>Select</td><td>value, onValueChange</td><td>Dropdown com busca, scroll</td><td>radix-ui/react-select</td></tr><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Select</th><th>value, onValueChange</th><th>Dropdown com busca, scroll</th><th>radix-ui/react-select</th></tr></thead><tbody><tr><td>DropdownMenu</td><td>items, trigger</td><td>Menu contextual completo</td><td>radix-ui/react-dropdown-menu</td></tr><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>DropdownMenu</th><th>items, trigger</th><th>Menu contextual completo</th><th>radix-ui/react-dropdown-menu</th></tr></thead><tbody><tr><td>Sonner</td><td>Aqui</td><td>Sistema de notificaes</td><td>sonner</td></tr><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>Sonner</th><th>Aqui</th><th>Sistema de notificaes</th><th>sonner</th></tr></thead><tbody><tr></tr><tr></tr><tr><td>Token</td><td>Light</td><td>Dark</td></tr><tr><td>-------</td><td>-------</td><td>------</td></tr><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table><p><h3>1.2 Padro de Implementao</h3></p><p>Todos os componentes seguem um padro consistente:</p><p>``<code>typescript</p>
+<p>// 1. Importaes</p>
+<p>import * as React from 'react'</p>
+<p>import * as [Primitive] from '@radix-ui/react-[component]'</p>
+<p>import { cn } from '@/shared/lib/utils'</p><p>// 2. ForwardRef com tipagem correta</p>
+<p>export const Component = React.forwardRef<</p>
+<p>  React.ElementRef<typeof Primitive.Root>,</p>
+<p>  React.ComponentPropsWithoutRef<typeof Primitive.Root></p>
+<p>>(({ className, ...props }, ref) => (</p>
+<p>  <Primitive.Root</p>
+<p>    ref={ref}</p>
+<p>    className={cn('classes base', className)}</p>
+<p>    {...props}</p>
+<p>  /></p>
+<p>))</p>
+<p>Component.displayName = Primitive.Root.displayName</p><p>// 3. Exportao</p>
+<p>export { Component }</p>
+<p></code>`<code></p><p><h3>1.3 Componentes Detalhados</h3></p><p><h4>Button</h4></p><p>O componente Button oferece mltiplas variaes:</p><p>- <strong>Variants:</strong></p>
+<p>  - </code>default<code>: estilo primrio azul</p>
+<p>  - </code>destructive<code>: vermelho para aes destrutivas</p>
+<p>  - </code>outline<code>: borda com fundo transparente</p>
+<p>  - </code>secondary<code>: estilo secundrio (cinza claro)</p>
+<p>  - </code>ghost<code>: sem fundo, s hover</p>
+<p>  - </code>link<code>: estilo de link com underline</p><p>- <strong>Sizes:</strong> default (h-10), sm (h-8), lg (h-12), icon (h-10 w-10 quadrado)</p><p>- <strong>Recurso asChild:</strong> permite renderizar como outro elemento usando Radix Slot</p><p></code>`<code>typescript</p>
+<p>export interface ButtonProps</p>
+<p>  extends React.ButtonHTMLAttributes<HTMLButtonElement>,</p>
+<p>    VariantProps<typeof buttonVariants> {</p>
+<p>  asChild?: boolean</p>
+<p>}</p>
+<p></code>`<code></p><p><h4>Card</h4></p><p>Componente composto para layout de contedo:</p><p></code>`<code>typescript</p>
+<p><Card></p>
+<p>  <CardHeader></p>
+<p>    <CardTitle>Ttulo</CardTitle></p>
+<p>    <CardDescription>Descrio</CardDescription></p>
+<p>  </CardHeader></p>
+<p>  <CardContent>Contedo</CardContent></p>
+<p>  <CardFooter>Rodap</CardFooter></p>
+<p></Card></p>
+<p></code>`<code></p><p>Classes: </code>rounded-lg border bg-card text-card-foreground shadow-sm<code></p><p><h4>Avatar</h4></p><p>Suporte a imagem com fallback:</p><p></code>`<code>typescript</p>
+<p><Avatar></p>
+<p>  <AvatarImage src="url" alt="nome" /></p>
+<p>  <AvatarFallback>IN</AvatarFallback></p>
+<p></Avatar></p>
+<p></code>`<code></p><p>Fallback padro 40x40 com bg-muted.</p><p><h4>Switch</h4></p><p>Toggle com estados checked/unchecked:</p><p></code>`<code>typescript</p>
+<p><Switch checked={value} onCheckedChange={setValue} /></p>
+<p></code>`<code></p><p>Animao de thumb com </code>translate-x-5<code> quando ativo.</p><p><h4>Select</h4></p><p>Dropdown com opes selecionveis:</p><p>- Scroll buttons (up/down)</p>
+<p>- Portal para renderizao fora do fluxo</p>
+<p>- Suporte a grupos e separadores</p>
+<p>- Checkmark no item selecionado</p><p><h4>DropdownMenu</h4></p><p>Componente de menu contextual completo:</p><p><strong>Subcomponents:</strong></p>
+<p>- Root, Trigger, Content, Item, CheckboxItem, RadioItem</p>
+<p>- Label, Separator, Shortcut</p>
+<p>- Sub, SubTrigger, SubContent</p>
+<p>- Group, Portal, RadioGroup</p><p>Animaes via </code>tailwindcss-animate<code>:</p>
+<p>- </code>data-[state=open]:animate-in<code></p>
+<p>- </code>data-[state=closed]:animate-out<code></p>
+<p>- Slide directions baseados em </code>data-[side]<code></p><p><h4>Sonner</h4></p><p>Wrapper do pacote </code>sonner<code> para notificaes:</p><p>- Tema fixo como </code>light<code> (design choice do projeto)</p>
+<p>- Custom classes via </code>toastOptions.classNames<code></p><p>---</p><p><h2>2. shared/components/layout/ (header, sidebar)</h2></p><p>Componentes de layout da aplicao.</p><p><h3>2.1 Header</h3></p><p><strong>Arquivo:</strong> </code>header.tsx<code></p><p></code>`<code>typescript</p>
+<p>export function Header() {</p>
+<p>  const { user } = useAuthStore()</p><p>  const initials = user?.name</p>
+<p>    ?.split(' ')</p>
+<p>    .map((n) => n[0])</p>
+<p>    .join('')</p>
+<p>    .toUpperCase()</p>
+<p>    .slice(0, 2)</p><p>  return (</p>
+<p>    <header className="flex h-16 items-center justify-between border-b bg-card px-6"></p>
+<p>      <div /></p>
+<p>      <div className="flex items-center gap-4"></p>
+<p>        <span className="text-sm text-muted-foreground">{user?.name}</span></p>
+<p>        <Avatar></p>
+<p>          <AvatarFallback>{initials || 'U'}</AvatarFallback></p>
+<p>        </Avatar></p>
+<p>      </div></p>
+<p>    </header></p>
+<p>  )</p>
+<p>}</p>
+<p></code>`<code></p><p><strong>Caractersticas:</strong></p>
+<p>- Altura fixa: </code>h-16<code></p>
+<p>- Borda inferior: </code>border-b<code></p>
+<p>- Fundo card: </code>bg-card<code></p>
+<p>- Padding: </code>px-6<code></p>
+<p>- Layout flex com justify-between</p>
+<p>- direito so username + avatar com iniciais</p><p><h3>2.2 Sidebar</h3></p><p><strong>Arquivo:</strong> </code>sidebar.tsx<code></p><p><strong>Recursos:</strong></p>
+<p>- Largura fixa: </code>w-64<code></p>
+<p>- Altura full: </code>h-full<code></p>
+<p>- Borda direita: </code>border-r<code></p>
+<p>- Fundo card: </code>bg-card<code></p>
+<p>- Logo com link para home</p>
+<p>- Navegao animada com Framer Motion (</code>whileHover={{ x: 4 }}<code>)</p>
+<p>- Active state: bg-primary com texto primary-foreground</p>
+<p>- Inactive: text-muted-foreground hover:bg-muted</p>
+<p>- Item de logout com handler </code>logout()<code></p>
+<p>- Uso de </code>useLocation<code> para active highlighting</p>
+<p>- Menu configurvel via array </code>menuItems<code></p><p></code>`<code>typescript</p>
+<p>const menuItems = [</p>
+<p>  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },</p>
+<p>  { icon: Settings, label: 'Configuracoes', href: '/settings' },</p>
+<p>]</p>
+<p></code>`<code></p><p><h3>2.3 Exportaes</h3></p><p></code>index.ts<code> exporta ambos:</p><p></code>`<code>typescript</p>
+<p>export { Sidebar } from './sidebar'</p>
+<p>export { Header } from './header'</p>
+<p></code>`<code></p><p>---</p><p><h2>3. shared/hooks/ (useDebounce, useLocalStorage)</h2></p><p>Hooks customizados reutilizveis.</p><p><h3>3.1 useDebounce</h3></p><p><strong>Arquivo:</strong> </code>use-debounce.ts<code></p><p></code>`<code>typescript</p>
+<p>export function useDebounce<T>(value: T, delay: number = 300): T</p>
+<p></code>`<code></p><p><strong>Props:</strong></p>
+<p>- </code>value<code>: valor a ser debounced</p>
+<p>- </code>delay<code> (opcional, default 300ms): tempo de debounce</p><p><strong>Comportamento:</strong></p>
+<p>- Usa </code>setTimeout<code> + </code>clearTimeout<code> no useEffect</p>
+<p>- Retorna </code>debouncedValue<code> que s atualiza aps </code>delay<code> da ltima mudana</p>
+<p>- Cleanup automtico no cleanup do useEffect</p>
+<p>- Genrico com tipo </code>T<code></p><p><strong>Use cases:</strong> inputs de busca, autocomplete, filtros.</p><p><h3>3.2 useLocalStorage</h3></p><p><strong>Arquivo:</strong> </code>use-local-storage.ts<code></p><p></code>`<code>typescript</p>
+<p>export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void]</p>
+<p></code>`<code></p><p><strong>Props:</strong></p>
+<p>- </code>key<code>: chave do localStorage</p>
+<p>- </code>initialValue<code>: valor inicial se no houver valor salvo</p><p><strong>Retorno:</strong></p>
+<p>- Tuple </code>[storedValue, setStoredValue]<code> (const assertion)</p><p><strong>Comportamento:</strong></p>
+<p>- Lazy initialization no useState:</p>
+<p>  </code>`<code>typescript</p>
+<p>  const [storedValue, setStoredValue] = useState<T>(() => {</p>
+<p>    try {</p>
+<p>      const item = window.localStorage.getItem(key)</p>
+<p>      return item ? JSON.parse(item) : initialValue</p>
+<p>    } catch {</p>
+<p>      return initialValue</p>
+<p>    }</p>
+<p>  })</p>
+<p>  </code>`<code></p>
+<p>- Sincroniza bidirecional via useEffect</p>
+<p>- Error handling para JSON parse/setItem</p>
+<p>- Suporte a valores complexos via JSON</p><p>---</p><p><h2>4. shared/lib/ (api-client, utils)</h2></p><p>Utilities e lgica compartilhada.</p><p><h3>4.1 Utils (</code>utils.ts<code>)</h3></p><p><strong>Funcoes:</strong></p><p></code>`<code>typescript</p>
+<p>// Merge de classes CSS com clsx + tailwind-merge</p>
+<p>export function cn(...inputs: ClassValue[]): string</p><p>// Date formatting - Brazilian Portuguese</p>
+<p>export function formatDate(date: string | Date): string</p>
+<p>// Formato: DD/MM/YYYY</p><p>export function formatDateTime(date: string | Date): string</p>
+<p>// Formato: DD/MM/YYYY HH:MM</p>
+<p></code>`<code></p><p><strong>Implementao:</strong></p>
+<p>- </code>cn<code> usa </code>clsx<code> + </code>twMerge<code> para evitar conflitos de classes Tailwind</p>
+<p>- Datas usam </code>Intl.DateTimeFormat('pt-BR')<code></p><p><h3>4.2 Constants (</code>constants.ts<code>)</h3></p><p></code>`<code>typescript</p>
+<p>export const APP_NAME = 'App'</p><p>export const QUERY_KEYS = {</p>
+<p>  AUTH: {</p>
+<p>    ME: ['auth', 'me'],</p>
+<p>  },</p>
+<p>} as const</p>
+<p></code>`<code></p><p>Padro de chaves para TanStack Query (ou similar). Extensvel por mdulo.</p><p><h3>4.3 API Client (</code>api-client.ts<code>)</h3></p><p><strong>Configurao:</strong></p><p></code>`<code>typescript</p>
+<p>const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001'</p><p>export const apiClient = axios.create({</p>
+<p>  baseURL: API_URL,</p>
+<p>  headers: { 'Content-Type': 'application/json' }</p>
+<p>})</p>
+<p></code>`<code></p><p><strong>Interceptors:</strong></p><p>1. <strong>Request</strong> - Adiciona token JWT automaticamente:</p>
+<p>   </code>`<code>typescript</p>
+<p>   apiClient.interceptors.request.use((config) => {</p>
+<p>     const token = localStorage.getItem('token')</p>
+<p>     if (token) config.headers.Authorization = </code>Bearer ${token}<code></p>
+<p>     return config</p>
+<p>   })</p>
+<p>   </code>`<code></p><p>2. <strong>Response Error</strong> - Trata 401 (unauthorized):</p>
+<p>   </code>`<code>typescript</p>
+<p>   if (error.response?.status === 401) {</p>
+<p>     localStorage.removeItem('token')</p>
+<p>     window.location.href = '/login'</p>
+<p>   }</p>
+<p>   </code>`<code></p><p><strong>Observaes:</strong></p>
+<p>- Token armazenado em localStorage (considerar HttpOnly cookie para segurana)</p>
+<p>- Redirect hardcoded para </code>/login<code></p><p><h3>4.4 Types (</code>types/common.ts<code>)</h3></p><p></code>`<code>typescript</p>
+<p>export interface PaginatedResponse<T> {</p>
+<p>  data: T[]</p>
+<p>  total: number</p>
+<p>  page: number</p>
+<p>  pageSize: number</p>
+<p>  totalPages: number</p>
+<p>}</p><p>export interface ApiError {</p>
+<p>  message: string</p>
+<p>  code?: string</p>
+<p>  details?: Record<string, string[]></p>
+<p>}</p>
+<p></code>`<code></p><p>Padro para responses paginados e erros de API.</p><p>---</p><p><h2>5. Editor Rich Text (</code>shared/components/editor/<code>)</h2></p><p>Componente de editor de texto rico:</p><p><strong>Dependncias:</strong> @tiptap/react, @tiptap/starter-kit, @tiptap/extension-placeholder, @tiptap/extension-link, @tiptap/extension-image</p><p><strong>Funcionalidades:</strong></p>
+<p>- Bold, Italic, Bullet List, Ordered List</p>
+<p>- Links e imagens</p>
+<p>- Placeholder customizvel</p>
+<p>- Modo editvel/read-only</p>
+<p>- Controle via props </code>content<code> e </code>onChange<code></p><p><strong>Toolbar:</strong> inline com buttons simples</p><p>---</p><p><h2>6. Design Tokens</h2></p><p><h3>6.1 Tailwind Config (</code>tailwind.config.js<code>)</h3></p><p><strong>Dark Mode:</strong> </code>darkMode: ['class']<code> - controlled via CSS class</p><p><strong>Design Tokens (CSS Variables):</strong></p><table><thead><tr><th>Token</th><th>Light</th><th>Dark</th></tr></thead><tbody><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>-------</th><th>-------</th><th>------</th></tr></thead><tbody><tr><td>--background</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--background</th><th>hsl(0 0% 100%)</th><th>hsl(222.2 84% 4.9%)</th></tr></thead><tbody><tr><td>--foreground</td><td>hsl(222.2 84% 4.9%)</td><td>hsl(210 40% 98%)</td></tr><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--foreground</th><th>hsl(222.2 84% 4.9%)</th><th>hsl(210 40% 98%)</th></tr></thead><tbody><tr><td>--primary</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(217.2 91.2% 59.8%)</td></tr><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--primary</th><th>hsl(221.2 83.2% 53.3%)</th><th>hsl(217.2 91.2% 59.8%)</th></tr></thead><tbody><tr><td>--primary-foreground</td><td>hsl(210 40% 98%)</td><td>hsl(222.2 47.4% 11.2%)</td></tr><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--primary-foreground</th><th>hsl(210 40% 98%)</th><th>hsl(222.2 47.4% 11.2%)</th></tr></thead><tbody><tr><td>--secondary</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--secondary</th><th>hsl(210 40% 96.1%)</th><th>hsl(217.2 32.6% 17.5%)</th></tr></thead><tbody><tr><td>--muted</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--muted</th><th>hsl(210 40% 96.1%)</th><th>hsl(217.2 32.6% 17.5%)</th></tr></thead><tbody><tr><td>--accent</td><td>hsl(210 40% 96.1%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--accent</th><th>hsl(210 40% 96.1%)</th><th>hsl(217.2 32.6% 17.5%)</th></tr></thead><tbody><tr><td>--destructive</td><td>hsl(0 84.2% 60.2%)</td><td>hsl(0 62.8% 30.6%)</td></tr><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--destructive</th><th>hsl(0 84.2% 60.2%)</th><th>hsl(0 62.8% 30.6%)</th></tr></thead><tbody><tr><td>--success</td><td>hsl(142.1 76.2% 36.3%)</td><td>hsl(142.1 70.6% 45.3%)</td></tr><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--success</th><th>hsl(142.1 76.2% 36.3%)</th><th>hsl(142.1 70.6% 45.3%)</th></tr></thead><tbody><tr><td>--warning</td><td>hsl(45.4 93.4% 47.5%)</td><td>hsl(48 96.5% 53.1%)</td></tr><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--warning</th><th>hsl(45.4 93.4% 47.5%)</th><th>hsl(48 96.5% 53.1%)</th></tr></thead><tbody><tr><td>--border</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--border</th><th>hsl(214.3 31.8% 91.4%)</th><th>hsl(217.2 32.6% 17.5%)</th></tr></thead><tbody><tr><td>--input</td><td>hsl(214.3 31.8% 91.4%)</td><td>hsl(217.2 32.6% 17.5%)</td></tr><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--input</th><th>hsl(214.3 31.8% 91.4%)</th><th>hsl(217.2 32.6% 17.5%)</th></tr></thead><tbody><tr><td>--ring</td><td>hsl(221.2 83.2% 53.3%)</td><td>hsl(224.3 76.3% 48%)</td></tr><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--ring</th><th>hsl(221.2 83.2% 53.3%)</th><th>hsl(224.3 76.3% 48%)</th></tr></thead><tbody><tr><td>--card</td><td>hsl(0 0% 100%)</td><td>hsl(222.2 84% 4.9%)</td></tr><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<table><thead><tr><th>--card</th><th>hsl(0 0% 100%)</th><th>hsl(222.2 84% 4.9%)</th></tr></thead><tbody><tr><td>--radius</td><td>0.5rem</td><td>0.5rem</td></tr></tbody></table>
+<p>| --radius | 0.5rem | 0.5rem |</p><p><strong>Border Radius:</strong></p>
+<p>- </code>lg<code>: </code>var(--radius)<code></p>
+<p>- </code>md<code>: </code>calc(var(--radius) - 2px)<code></p>
+<p>- </code>sm<code>: </code>calc(var(--radius) - 4px)<code></p><p><h3>6.2 CSS Global (</code>src/app/index.css<code>)</h3></p><p></code>`<code>css</p>
+<p>:root {</p>
+<p>  /<em> tokens light </em>/</p>
+<p>}</p><p>.dark {</p>
+<p>  /<em> tokens dark </em>/</p>
+<p>}</p><p>* { @apply border-border; }</p>
+<p>body {</p>
+<p>  @apply bg-background text-foreground font-sans antialiased;</p>
+<p>}</p><p>html, body, #root { height: 100%; }</p>
+<p>body { font-family: 'Inter', system-ui, sans-serif; }</p>
+<p></code>`<code></p><p><strong>Camadas:</strong></p>
+<p>- </code>@layer base<code>: :root, .dark, *, body</p>
+<p>- </code>@layer components<code>: components</p>
+<p>- </code>@layer utilities<code>: utilitrios</p><p><h3>6.3 Custom Colors</h3></p><p>Alm dos padrões shadcn, o projeto inclui:</p>
+<p>- </code>success<code>: verde (paraFeedback positivo)</p>
+<p>- </code>warning<code>: ambar/alaranjado (para alertas)</p><p>Ambos com foregrounds apropriados.</p><p><h3>6.4 Keyframes Custom</h3></p><p></code>`<code>javascript</p>
+<p>'accordion-down', 'accordion-up', 'fade-in', 'slide-up'</p>
+<p></code>`<code></p><p><h3>6.5 Dark Mode Implementation</h3></p><p>Ativado via classe CSS </code>.dark<code> no elemento root.</p><p></code>`<code>typescript</p>
+<p>// Exemplo de toggle:</p>
+<p>document.documentElement.classList.toggle('dark')</p>
+<p></code>`<code></p><p>Os componentes shadcn usam tokens CSS que mudam automaticamente com base na presena da classe </code>dark<code>.</p><p>---</p><p><h2>7. Responsividade</h2></p><p><h3>7.1 Layout Components</h3></p><p><strong>Sidebar:</strong></p>
+<p>- Largura fixa </code>w-64<code> (256px)</p>
+<p>- No responsivo (não colapsa em mobile)</p>
+<p>- Recomendao: adicionar SidebarMobile ou Sheet para mobile</p><p><strong>Header:</strong></p>
+<p>- Flex com espaamento px-6</p>
+<p>- Altura fixa h-16</p>
+<p>- No contm toggle de tema</p><p><h3>7.2 Container config</h3></p><p></code>`<code>javascript</p>
+<p>container: {</p>
+<p>  center: true,</p>
+<p>  padding: '2rem',</p>
+<p>  screens: { '2xl': '1400px' }</p>
+<p>}</p>
+<p></code>`<code></p><p>Breakpoints padrão Tailwind + </code>2xl<code> custom.</p><p><h3>7.3 Recomendações</h3></p><p>1. <strong>Mobile Sidebar:</strong> Implementar Sheet ou Drawer responsivo</p>
+<p>2. <strong>Spacing:</strong> Verificar se paddings usam </code>md<code>, </code>lg<code> para responsividade</p>
+<p>3. <strong>Typography:</strong> Prose no editor pode precisar ajustes em mobile</p><p>---</p><p><h2>8. Dependncias Principais</h2></p><p></code>`<code>json</p>
+<p>{</p>
+<p>  "dependencies": {</p>
+<p>    "react": "^18",</p>
+<p>    "react-dom": "^18",</p>
+<p>    "react-router-dom": "^6",</p>
+<p>    "tailwindcss": "^3.x",</p>
+<p>    "class-variance-authority": "^0.7.x",</p>
+<p>    "clsx": "^2.x",</p>
+<p>    "tailwind-merge": "^2.x",</p>
+<p>    "tailwindcss-animate": "^1.x",</p>
+<p>    "radix-ui/*": "^1.x",</p>
+<p>    "lucide-react": "^0.4xx",</p>
+<p>    "sonner": "^1.x",</p>
+<p>    "axios": "^1.x",</p>
+<p>    "@tanstack/react-query": "^5.x",</p>
+<p>    "framer-motion": "^10.x or ^11.x",</p>
+<p>    "@tiptap/react": "^2.x",</p>
+<p>    "@tiptap/starter-kit": "^2.x"</p>
+<p>  }</p>
+<p>}</p>
+<p></code>`<code></p><p>---</p><p><h2>9. Pontos de Ateno / Melhorias</h2></p><p><h3>9.1 Segurana</h3></p>
+<p>- [ ] Token localStorage - migrar para HttpOnly cookie quando possvel</p>
+<p>- [ ] CSRF protection no apiClient</p>
+<p>- [ ] Refresh token automtico no interceptor 401</p><p><h3>9.2 Responsividade</h3></p>
+<p>- [ ] Implementar Sheet/SidebarMobile</p>
+<p>- [ ] Testar breakpoints xs, sm, md</p>
+<p>- [ ] Verificar overflow em telas pequenas</p><p><h3>9.3 Acessibilidade</h3></p>
+<p>- [ ] Adicionar </code>aria-label<code> em controles sem texto</p>
+<p>- [ ] Testar navegao por teclado</p>
+<p>- [ ] Contraste WCAG AA em todos os componentes</p><p><h3>9.4 Performance</h3></p>
+<p>- [ ] Lazy load de componentes pesados (Dropdown, Select)</p>
+<p>- [ ] Code splitting por rota</p>
+<p>- [ ] Suspense boundaries</p><p><h3>9.5 Consistncia</h3></p>
+<p>- [ ] Sonner tema hardcoded </code>light<code> - considerar tema dinmico</p>
+<p>- [ ] Verificar se todos os componentes suportam </code>className<code> em todas as subpartes</p>
+<p>- [ ] Padronizar </code>data-[state]<code> usage</p><p><h3>9.6 Manuteno</h3></p>
+<p>- [ ] Componente Accordion ausente do shadcn (estado parcial)</p>
+<p>- [ ] Dialog/Sheet/Drawer ausentes (necessrios para modais)</p>
+<p>- [ ] Form components: Textarea, Checkbox, Radio</p><p>---</p><p><h2>10. Arquivos Referenciados</h2></p><p><h3>Estrutura completa</h3></p><p></code>`<code></p>
+<p>frontend-boilerplate/src/shared/</p>
+<p> components/</p>
+<p>   ui/</p>
+<p>     button.tsx</p>
+<p>     card.tsx (e subcomponents)</p>
+<p>     input.tsx</p>
+<p>     avatar.tsx (e subcomponents)</p>
+<p>     label.tsx</p>
+<p>     skeleton.tsx</p>
+<p>     select.tsx (e subcomponents)</p>
+<p>     switch.tsx</p>
+<p>     dropdown-menu.tsx (completo)</p>
+<p>     sonner.tsx</p>
+<p>   layout/</p>
+<p>     header.tsx</p>
+<p>     sidebar.tsx</p>
+<p>     index.ts</p>
+<p>   editor/</p>
+<p>     rich-text-editor.tsx</p>
+<p> hooks/</p>
+<p>   use-debounce.ts</p>
+<p>   use-local-storage.ts</p>
+<p> lib/</p>
+<p>   utils.ts</p>
+<p>   constants.ts</p>
+<p>   api-client.ts</p>
+<p> types/</p>
+<p>   common.ts</p>
+<p></code>``</p><p>---</p><p><h2>11. Concluso</h2></p><p>O sistema de componentes compartilhados est bem estruturado, seguindo as melhores prticas do ecossistema React moderno:</p><p><strong>Pontos Fortes:</strong></p>
+<p>- Padronizao com shadcn/ui</p>
+<p>- Tipagem TypeScript completa</p>
+<p>- Acessibilidade via Radix UI</p>
+<p>- Customizao via design tokens CSS</p>
+<p>- Dark mode nativo via CSS variables</p>
+<p>- Hooks reutilizveis e genricos</p><p><strong>Recomendao Prioritria:</strong> Implementar responsive sidebar (Sheet) e revisar componentes de formulrio faltantes para completar a suíte shadcn.</p><p>---</p><p><em>Fim do relatrio</em></p>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    // Highlight code blocks
+    document.addEventListener('DOMContentLoaded', () => {
+      hljs.highlightAll();
+
+      // Sidebar toggle
+      const sidebar = document.getElementById('sidebar');
+      const openBtn = document.getElementById('open-sidebar');
+      const closeBtn = document.getElementById('close-sidebar');
+      const navLinks = sidebar.querySelectorAll('a');
+
+      // Set active link
+      const currentPage = location.pathname.split('/').pop();
+      navLinks.forEach(link => {
+        if (link.getAttribute('href') === currentPage) {
+          link.classList.add('bg-border', 'text-foreground');
+        } else {
+          link.classList.remove('bg-border', 'text-foreground');
+        }
+      });
+
+      openBtn?.addEventListener('click', () => sidebar.classList.remove('closed'));
+      closeBtn?.addEventListener('click', () => sidebar.classList.add('closed'));
+
+      // Close sidebar on mobile when clicking a link
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 768) sidebar.classList.add('closed');
+        });
+      });
+    });
+  </script>
+</body>
+</html>
