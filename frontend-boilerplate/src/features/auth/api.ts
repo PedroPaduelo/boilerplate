@@ -3,7 +3,7 @@ import type { AuthResponse, LoginInput, RegisterInput, User } from './types'
 
 export const authApi = {
   login: async (input: LoginInput): Promise<AuthResponse> => {
-    const { data } = await apiClient.post('/sessions/password', input)
+    const { data } = await apiClient.post('/auth/login', input)
     return data
   },
 

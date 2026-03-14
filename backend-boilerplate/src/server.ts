@@ -32,6 +32,7 @@ import { getAllQueues } from './services/jobs/queue/queue-manager';
 // Routes
 import { healthCheck } from './http/routes/health/health-check';
 import { authenticate } from './http/routes/auth/authenticate';
+import { register } from './http/routes/auth/register';
 import { getMe } from './http/routes/auth/get-me';
 import { createUser } from './http/routes/user/create-user';
 import { listUsers } from './http/routes/user/list-users';
@@ -276,6 +277,7 @@ async function start() {
   // Routes
   app.register(healthCheck);
   app.register(authenticate);
+  app.register(register);
   app.register(getMe);
   app.register(createUser);
   app.register(listUsers);
