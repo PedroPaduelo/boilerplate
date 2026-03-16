@@ -12,6 +12,22 @@ import { RegisterPage } from '@/features/auth/register'
 const DashboardPage = lazy(() =>
   import('@/features/dashboard').then((m) => ({ default: m.DashboardPage }))
 )
+const UsersPage = lazy(() =>
+  import('@/features/users').then((m) => ({ default: m.UsersPage }))
+)
+const PostsPage = lazy(() =>
+  import('@/features/posts').then((m) => ({ default: m.PostsPage }))
+)
+
+const ShowcasePage = lazy(() =>
+  import('@/features/showcase').then((m) => ({ default: m.ShowcasePage }))
+)
+const SettingsPage = lazy(() =>
+  import('@/features/settings').then((m) => ({ default: m.SettingsPage }))
+)
+const ProfilePage = lazy(() =>
+  import('@/features/profile').then((m) => ({ default: m.ProfilePage }))
+)
 
 // Loader
 const PageLoader = () => (
@@ -42,6 +58,46 @@ export const router = createBrowserRouter([
         element: (
           <Lazy>
             <DashboardPage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <Lazy>
+            <UsersPage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'posts',
+        element: (
+          <Lazy>
+            <PostsPage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'showcase',
+        element: (
+          <Lazy>
+            <ShowcasePage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <Lazy>
+            <SettingsPage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'profile',
+        element: (
+          <Lazy>
+            <ProfilePage />
           </Lazy>
         ),
       },
