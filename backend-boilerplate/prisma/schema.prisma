@@ -25,6 +25,8 @@ model User {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  posts Post[]
+
   @@map("users")
 }
 
@@ -34,30 +36,39 @@ enum UserRole {
 }
 
 // =============================================================================
-// EXAMPLE: Add more models below following the same pattern
+// POST MODEL
 // =============================================================================
 
-// model Post {
-//   id          String   @id @default(cuid())
-//   title       String
-//   content     String?
-//   published   Boolean  @default(false)
-//   authorId    String   @map("author_id")
-//   createdAt   DateTime @default(now()) @map("created_at")
-//   updatedAt   DateTime @updatedAt @map("updated_at")
-//
-//   author      User     @relation(fields: [authorId], references: [id])
-//
-//   @@index([authorId])
-//   @@map("posts")
-// }
+model Post {
+  id         String   @id @default(cuid())
+  title      String
+  content    String?
+  published  Boolean  @default(false)
+  authorId   String   @map("author_id")
+  categoryId String?  @map("category_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-// model Category {
-//   id        String   @id @default(cuid())
-//   name      String   @unique
-//   slug      String   @unique
-//   createdAt DateTime @default(now()) @map("created_at")
-//   updatedAt DateTime @updatedAt @map("updated_at")
-//
-//   @@map("categories")
-// }
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([authorId])
+  @@index([categoryId])
+  @@map("posts")
+}
+
+// =============================================================================
+// CATEGORY MODEL
+// =============================================================================
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  posts Post[]
+
+  @@map("categories")
+}
