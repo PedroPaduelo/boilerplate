@@ -12,6 +12,12 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 4001,
-    allowedHosts: true,
+    allowedHosts: 'all',
+    cors: true,
+  },
+  preview: {
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+    cors: true,
   },
 })

@@ -544,7 +544,7 @@ const DataTable = ({ data }: { data: DataTableItem[] }) => {
 
 export function DashboardPage() {
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'))
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard', 'stats'],
@@ -616,8 +616,8 @@ export function DashboardPage() {
     : []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto p-6 space-y-6">
+    <div className="bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -649,7 +649,16 @@ export function DashboardPage() {
               <Sun className="h-4 w-4 text-muted-foreground" />
               <Switch
                 checked={darkMode}
-                onCheckedChange={setDarkMode}
+                onCheckedChange={(checked) => {
+                  setDarkMode(checked)
+                  if (checked) {
+                    document.documentElement.classList.add('dark')
+                    localStorage.setItem('theme', 'dark')
+                  } else {
+                    document.documentElement.classList.remove('dark')
+                    localStorage.setItem('theme', 'light')
+                  }
+                }}
               />
               <Moon className="h-4 w-4 text-muted-foreground" />
             </div>

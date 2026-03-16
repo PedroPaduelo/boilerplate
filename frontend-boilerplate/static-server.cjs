@@ -12,32 +12,42 @@ const mimeTypes = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.webp': 'image/webp',
+  '.map': 'application/json',
 };
 
-const server = http.createServer(async (req, res) => {
-  let filePath = path.join(ROOT, req.url === '/' ? 'index.html' : req.url);
-  const ext = path.extname(filePath);
-  const contentType = mimeTypes[ext] || 'application/octet-stream';
+const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'));
 
-  try {
-    const data = await fs.promises.readFile(filePath);
-    res.writeHead(200, { 'Content-Type': contentType });
-    res.end(data);
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      res.writeHead(404);
-      res.end('Not found');
-    } else {
-      res.writeHead(500);
-      res.end('Server error');
+const server = http.createServer((req, res) => {
+  const url = req.url.split('?')[0];
+  const filePath = path.join(ROOT, url === '/' ? 'index.html' : url);
+  const ext = path.extname(filePath);
+
+  if (ext && mimeTypes[ext]) {
+    try {
+      const data = fs.readFileSync(filePath);
+      res.writeHead(200, {
+        'Content-Type': mimeTypes[ext],
+        'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable',
+      });
+      res.end(data);
+    } catch {
+      res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
+      res.end(indexHtml);
     }
+  } else {
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
+    res.end(indexHtml);
   }
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Frontend estático servindo em http://0.0.0.0:${PORT}`);
+  console.log(`Frontend estatico servindo em http://0.0.0.0:${PORT}`);
 });

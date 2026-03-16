@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guia - Boilerplate App</title>
+  <style>
+    :root { --bg: #0a0f1e; --card: #111827; --text: #e2e8f0; --muted: #94a3b8; --primary: #6366f1; --border: #1e293b; --success: #10b981; --warning: #f59e0b; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.4rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--primary); }
+    p { margin-bottom: 1rem; color: var(--muted); }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { background: var(--card); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: var(--success); }
+    pre { background: var(--card); padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+    .badge-success { background: rgba(16,185,129,0.15); color: var(--success); }
+    .badge-warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+    ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.5rem; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text); font-weight: 600; }
+    td { color: var(--muted); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin: 1rem 0; }
+    .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Boilerplate Fullstack</h1>
+  <p class="subtitle">Guia completo de uso da aplicacao</p>
+
+  <h2>O que e</h2>
+  <p>Um boilerplate fullstack profissional com backend Fastify + frontend React, incluindo autenticacao JWT, dashboard com graficos, dark/light mode e API documentada com Swagger.</p>
+
+  <h2>URLs do Projeto</h2>
+  <div class="card">
+    <table>
+      <tr><th>Servico</th><th>URL</th></tr>
+      <tr><td>Aplicacao (Frontend)</td><td><a href="https://boilerplate-app.ddw1sl.easypanel.host" target="_blank">https://boilerplate-app.ddw1sl.easypanel.host</a></td></tr>
+      <tr><td>API (Backend)</td><td><a href="https://boilerplate-api.ddw1sl.easypanel.host" target="_blank">https://boilerplate-api.ddw1sl.easypanel.host</a></td></tr>
+      <tr><td>API Docs (Swagger)</td><td><a href="https://boilerplate-api.ddw1sl.easypanel.host/docs" target="_blank">https://boilerplate-api.ddw1sl.easypanel.host/docs</a></td></tr>
+      <tr><td>Health Check</td><td><a href="https://boilerplate-api.ddw1sl.easypanel.host/health" target="_blank">https://boilerplate-api.ddw1sl.easypanel.host/health</a></td></tr>
+      <tr><td>Documentacao</td><td><a href="https://docs-boilerplate.ddw1sl.easypanel.host" target="_blank">https://docs-boilerplate.ddw1sl.easypanel.host</a></td></tr>
+    </table>
+  </div>
+
+  <h2>Como acessar</h2>
+  <h3>Login</h3>
+  <ol>
+    <li>Acesse <a href="https://boilerplate-app.ddw1sl.easypanel.host" target="_blank">https://boilerplate-app.ddw1sl.easypanel.host</a></li>
+    <li>Voce sera redirecionado para a tela de login</li>
+    <li>Use as credenciais abaixo</li>
+    <li>Clique em "Entrar"</li>
+    <li>Voce sera redirecionado para o Dashboard</li>
+  </ol>
+
+  <h3>Usuarios de teste</h3>
+  <div class="card">
+    <table>
+      <tr><th>Tipo</th><th>Email</th><th>Senha</th><th>Role</th></tr>
+      <tr><td><span class="badge badge-success">Admin</span></td><td><code>admin@example.com</code></td><td><code>admin123</code></td><td>ADMIN</td></tr>
+      <tr><td><span class="badge badge-warning">Usuario</span></td><td><code>user@example.com</code></td><td><code>user123</code></td><td>USER</td></tr>
+    </table>
+  </div>
+
+  <h3>Registro</h3>
+  <ol>
+    <li>Na tela de login, clique em "Criar conta"</li>
+    <li>Preencha nome, email e senha (min 6 caracteres)</li>
+    <li>Clique em "Criar conta"</li>
+    <li>Voce sera logado automaticamente e redirecionado ao Dashboard</li>
+  </ol>
+
+  <h2>Funcionalidades</h2>
+
+  <h3>Dashboard</h3>
+  <ul>
+    <li><strong>KPI Cards</strong> — Total de Usuarios, Agentes Ativos, Conversas, Tokens Usados</li>
+    <li><strong>Grafico de Linha</strong> — Uso ao longo do tempo (7d, 30d, 90d, 1 ano)</li>
+    <li><strong>Grafico Donut</strong> — Distribuicao por agente</li>
+    <li><strong>Grafico de Barras</strong> — Atividade por horario e top agentes</li>
+    <li><strong>Tabela de Dados</strong> — Lista de usuarios com busca, filtro, ordenacao, paginacao e exportacao CSV</li>
+    <li><strong>Toggle Dark/Light</strong> — Alterne entre temas no canto superior direito</li>
+  </ul>
+
+  <h3>Autenticacao</h3>
+  <ul>
+    <li>Login com email/senha (JWT)</li>
+    <li>Registro de novos usuarios</li>
+    <li>Rotas protegidas (redirect automatico para login)</li>
+    <li>Logout via sidebar</li>
+    <li>Sessao persistida no localStorage</li>
+  </ul>
+
+  <h2>Endpoints da API</h2>
+  <div class="card">
+    <table>
+      <tr><th>Metodo</th><th>Rota</th><th>Descricao</th><th>Auth</th></tr>
+      <tr><td><code>GET</code></td><td>/health</td><td>Health check</td><td>Nao</td></tr>
+      <tr><td><code>POST</code></td><td>/auth/login</td><td>Login</td><td>Nao</td></tr>
+      <tr><td><code>POST</code></td><td>/auth/register</td><td>Registro</td><td>Nao</td></tr>
+      <tr><td><code>GET</code></td><td>/auth/me</td><td>Usuario atual</td><td>Sim</td></tr>
+      <tr><td><code>POST</code></td><td>/users</td><td>Criar usuario</td><td>Sim</td></tr>
+      <tr><td><code>GET</code></td><td>/users</td><td>Listar usuarios</td><td>Sim</td></tr>
+      <tr><td><code>GET</code></td><td>/users/:id</td><td>Buscar usuario</td><td>Sim</td></tr>
+      <tr><td><code>PUT</code></td><td>/users/:id</td><td>Atualizar usuario</td><td>Sim</td></tr>
+      <tr><td><code>DELETE</code></td><td>/users/:id</td><td>Deletar usuario</td><td>Sim</td></tr>
+    </table>
+  </div>
+
+  <h3>Exemplos com curl</h3>
+  <pre><code># Login
+curl -X POST https://boilerplate-api.ddw1sl.easypanel.host/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"admin123"}'
+
+# Registro
+curl -X POST https://boilerplate-api.ddw1sl.easypanel.host/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Novo Usuario","email":"novo@email.com","password":"123456"}'
+
+# Buscar usuario atual (com token)
+curl https://boilerplate-api.ddw1sl.easypanel.host/auth/me \
+  -H "Authorization: Bearer SEU_TOKEN_AQUI"</code></pre>
+
+  <h2>Stack Tecnica</h2>
+  <div class="card">
+    <h3>Backend</h3>
+    <p>Fastify 5 + TypeScript + Prisma 6 + PostgreSQL + JWT + Zod + BullMQ + Socket.IO + Swagger</p>
+    <h3>Frontend</h3>
+    <p>React 19 + Vite 7 + TypeScript + Tailwind CSS + shadcn/ui + Zustand + TanStack Query + React Hook Form + Recharts + Framer Motion</p>
+  </div>
+
+  <h2>Dicas</h2>
+  <ul>
+    <li>O Swagger UI esta disponivel em <code>/docs</code> — use para testar endpoints interativamente</li>
+    <li>O dark mode e o padrao. O tema e persistido no localStorage</li>
+    <li>A tabela do dashboard suporta exportacao CSV — clique no icone de download</li>
+    <li>Redis esta em modo degradado (sem cache/filas), mas a aplicacao funciona normalmente</li>
+    <li>O backend roda em modo producao com build otimizado via tsup</li>
+  </ul>
+</body>
+</html>
