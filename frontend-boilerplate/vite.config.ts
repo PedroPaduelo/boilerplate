@@ -11,12 +11,13 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 4001,
+    port: 4051,
     allowedHosts: true,
     cors: true,
   },
   preview: {
     host: '0.0.0.0',
+    port: 4051,
     allowedHosts: true,
     cors: true,
   },
