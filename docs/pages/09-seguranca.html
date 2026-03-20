@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segurança - Backend Boilerplate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        critical: '#dc2626',
+                        high: '#f97316',
+                        medium: '#eab308',
+                        low: '#22c55e',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .check-ok { color: #22c55e; }
+        .check-warn { color: #eab308; }
+        .check-crit { color: #dc2626; }
+        .code-block {
+            background: #1e293b;
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+        }
+        .severity-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 border-b border-slate-700 pb-6">
+            <h1 class="text-4xl font-bold mb-2 text-emerald-400">
+                🔒 Segurança - Backend Boilerplate
+            </h1>
+            <p class="text-slate-400 text-lg">
+                Análise Completa de Segurança • OWASP Top 10 • Configurações
+            </p>
+            <div class="mt-4 flex gap-4">
+                <span class="px-3 py-1 bg-red-900/30 border border-red-700 rounded text-sm">2 Críticos</span>
+                <span class="px-3 py-1 bg-yellow-900/30 border border-yellow-700 rounded text-sm">4 Altos</span>
+                <span class="px-3 py-1 bg-green-900/30 border border-green-700 rounded text-sm">4 OK</span>
+            </div>
+        </header>
+
+        <!-- OWASP Top 10 -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-blue-400">
+                🎯 OWASP Top 10 2021 - Checklist
+            </h2>
+            <div class="space-y-4">
+                <!-- A01 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl">⚠️</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A01: Broken Access Control
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    POST /users sem verificação de role explícita. Usuários podem criar outros usuários sem restrição de permissão.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// backend-boilerplate/src/http/routes/user/create-user.ts
+app
+  .register(auth) // ✅ Autenticado, mas sem verificação de role
+  .post('/users', async (request, reply) => {
+    const { role } = request.body; // ⚠️ Role do usuário pode ser qualquer coisa
+    // Qualquer usuário autenticado pode criar outros usuários
+    const user = await prisma.user.create({
+      data: { role, ... } // ⚠️ Sem verificação se é ADMIN
+    });
+  });</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded">
+                                    <p class="text-sm text-yellow-300">
+                                        <strong>Recommendation:</strong> Middleware de autorização (ex: requireRole(['ADMIN'])) ou verificação no handler: <code>if (user.role !== 'ADMIN') throw new ForbiddenError()</code>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-yellow-600 text-white">HIGH</span>
+                    </div>
+                </div>
+
+                <!-- A02 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl check-ok">✅</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A02: Cryptographic Failures
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    Senhas criptografadas com bcrypt (10 rounds). JWT via HTTPS. Configuração segura.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// Hash bcrypt (10 rounds)
+const passwordHash = await hash(password, 10);
+
+// JWT com expiresIn de 1 hora
+const token = await reply.jwtSign(
+  { sub: user.id },
+  { expiresIn: '1h' }
+);</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-green-900/20 border border-green-700 rounded">
+                                    <p class="text-sm text-green-300">
+                                        ✅ Bcrypt resistente a rainbow tables. JWT secret deve estar em <code>.env</code>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-green-600 text-white">OK</span>
+                    </div>
+                </div>
+
+                <!-- A03 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl check-ok">✅</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A03: Injection
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    Prisma ORM usa prepared statements automaticamente. Sem concatenação de SQL.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// Prisma - safe por padrão
+const user = await prisma.user.findUnique({
+  where: { email } // ✅ Parametrizado
+});
+
+const user = await prisma.user.create({
+  data: { name, email, password: hash } // ✅ Safe
+});</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-green-900/20 border border-green-700 rounded">
+                                    <p class="text-sm text-green-300">
+                                        Se usar raw queries, sempre utilize <code>$params</code> do Prisma para parametrização.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-green-600 text-white">OK</span>
+                    </div>
+                </div>
+
+                <!-- A04 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl">⚠️</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A04: Insecure Design
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    <strong>JWT no localStorage</strong> → vulnerável a XSS. Se site tiver XSS, attacker lê token.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// ❌ Vulnerável a XSS
+localStorage.setItem('token', response.token);
+
+// ✅ Melhor: httpOnly cookie (set via server)
+// ou Redux/Zustand store (menos acessível que localStorage)
+// mas ainda acessível via window.__REDUX_STATE__ se injetado</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded">
+                                    <p class="text-sm text-yellow-300">
+                                        <strong>Mitigação:</strong> usar cookies <code>httpOnly</code>, <code>secure</code>, <code>sameSite=strict</code>. Implementar Content Security Policy forte.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-yellow-600 text-white">HIGH</span>
+                    </div>
+                </div>
+
+                <!-- A05 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl">⚠️</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A05: Security Misconfiguration
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    CORS habilitado em produção sem <code>CORS_ORIGINS</code> definido (default: desativado). Swagger sem proteção se credenciais não configuradas.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// server.ts - CORS
+const allowedOrigins = env.CORS_ORIGINS
+  ? env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : env.NODE_ENV === 'production'
+    ? []  // ✅ Desativado em prod por padrão
+    : ['http://localhost:5173', 'http://localhost:4000'];
+
+app.register(fastifyCors, {
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+  credentials: true,
+});</code></pre>
+                                </div>
+                                <div class="code-block p-4 rounded overflow-x-auto mt-3">
+                                    <pre class="text-sm text-slate-300"><code>// server.ts - Swagger sem proteção
+const swaggerUser = env.SWAGGER_USER;
+const swaggerPass = env.SWAGGER_PASSWORD;
+
+if (swaggerUser && swaggerPass) {
+  app.register(fastifyBasicAuth, { ... });
+} else {
+  console.warn('⚠️ Swagger is not protected - set SWAGGER_USER...');
+}</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded">
+                                    <p class="text-sm text-yellow-300">
+                                        CORS ok se <code>CORS_ORIGINS</code> definido em produção. Swagger deve ter basic-auth em prod.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-yellow-600 text-white">MEDIUM</span>
+                    </div>
+                </div>
+
+                <!-- A06 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl">⏳</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A06: Vulnerable and Outdated Components
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    Necessário verificar dependências regelmäßig com <code>npm audit</code>, <code>snyk</code> ou <code>dependabot</code>.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code># Verificar vulnerabilidades
+npm audit
+npm audit fix --force
+
+# Usar Dependabot (GitHub) ou Snyk
+# Atualizar packages major com cuidado
+npm outdated</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-slate-700/50 border border-slate-600 rounded">
+                                    <p class="text-sm text-slate-300">
+                                        <strong>Ação:</strong> Verificar <code>package.json</code> e <code>npm audit</code> no CI/CD.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-slate-500 text-white">PENDENTE</span>
+                    </div>
+                </div>
+
+                <!-- A07 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl">⚠️</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A07: Identification and Authentication Failures
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    Sem refresh token, sem 2FA, sem proteção contra brute-force (rate limiting por IP apenas).
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// AUTH ATUAL
+// ❌ Sem refresh token - token expira em 1h
+const token = await reply.jwtSign({ sub: user.id }, { expiresIn: '1h' });
+
+// ❌ Sem 2FA
+// ❌ Sem rate limit por usuário (apenas por IP)
+// ❌ Sem conta de tentativas falhas</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded">
+                                    <p class="text-sm text-yellow-300">
+                                        <strong>Melhorias:</strong> Implementar refresh tokens comRevogação (Redis), rate limit por userId, TOTP 2FA com speakeasy, e bloqueio após N tentativas.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-yellow-600 text-white">HIGH</span>
+                    </div>
+                </div>
+
+                <!-- A08 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl check-ok">✅</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A08: Software and Data Integrity Failures
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    Prisma validation com Zod. Schemas bem definidos em todos endpoints.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// Validação Zod em todos endpoints
+schema: {
+  body: z.object({
+    email: z.string().email(), // ✅ Valida formato
+    password: z.string().min(6), // ✅ Mínimo
+    role: z.enum(['ADMIN', 'USER']), // ✅ Enum restrito
+  })
+}
+
+// Prisma validation automática
+const user = await prisma.user.create({
+  data: { email, name } // ✅ Tipos e constraints do schema
+});</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-green-900/20 border border-green-700 rounded">
+                                    <p class="text-sm text-green-300">
+                                        Prisma + Zod garantem integridade de dados no input.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-green-600 text-white">OK</span>
+                    </div>
+                </div>
+
+                <!-- A09 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl">⚠️</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A09: Security Logging and Monitoring Failures
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    Senhas não devem ser logadas (estão ok, Prisma não loga). Falta requestId para tracing.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// ❌ Falta requestId para tracing distribuído
+// ❌ Sem log estruturado (JSON) para ingestão no ELK/Datadog
+// ✅ Senhas não logadas (hash only)</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded">
+                                    <p class="text-sm text-yellow-300">
+                                        <strong>Melhoria:</strong> Adicionar requestId no contexto, log estruturado (pino), e logs de eventos de segurança (login fails, password changes).
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-yellow-600 text-white">MEDIUM</span>
+                    </div>
+                </div>
+
+                <!-- A10 -->
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl check-ok">✅</div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-100 mb-2">
+                                    A10: Server-Side Request Forgery
+                                </h3>
+                                <p class="text-slate-300 mb-3">
+                                    Sem fetch ou HTTP client com URL controlada pelo usuário. Prisma usa conexões DB diretas.
+                                </p>
+                                <div class="code-block p-4 rounded overflow-x-auto">
+                                    <pre class="text-sm text-slate-300"><code>// ✅ Prisma - conexão DB fixa no .env
+DATABASE_URL="postgresql://..."
+
+// ✅ Sem requisições HTTP baseadas em input do usuário
+// Todos os endpoints usam Prisma ou serviços internos</code></pre>
+                                </div>
+                                <div class="mt-3 p-3 bg-green-900/20 border border-green-700 rounded">
+                                    <p class="text-sm text-green-300">
+                                        PrismaConnection não acessa URLs dinâmicas. Sem SSRF.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="severity-badge bg-green-600 text-white">OK</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Config Helmet -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-purple-400">
+                🛡️ Configuração Helmet (server.ts)
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    Helmet adiciona headers de segurança HTTP automaticamente.
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// server.ts - Linhas 111-128
+app.register(fastifyHelmet, {
+  // Content Security Policy
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],              // Apenas próprio domínio
+      styleSrc: ["'self'", "'unsafe-inline'"], // Inline styles necessários
+      scriptSrc: ["'self'"],               // Apenas scripts próprios
+      imgSrc: ["'self'", "data:", "https:"], // Imagens e data URIs
+    },
+  },
+
+  // HSTS - Força HTTPS
+  hsts: {
+    maxAge: 31536000,          // 1 ano
+    includeSubDomains: true,  // Inclui subdomínios
+    preload: true,            // Pode ser preloaded no Chrome
+  },
+
+  // Clickjacking protection
+  frameguard: { action: 'deny' },  // Bloqueia iframes
+
+  // DNS prefetch control
+  dnsPrefetchControl: { allow: false }, // Desabilita dns-prefetch
+});</code></pre>
+                </div>
+                <div class="mt-4 p-4 bg-purple-900/20 border border-purple-700 rounded">
+                    <p class="text-sm text-purple-300">
+                        <strong>Nota:</strong> CSP pode ser ajustada conforme frontend precisa (ex:允许 CDN Tailwind, Google Fonts). Para produção rigorosa, remover <code>unsafe-inline</code> e usar nonces/hashes.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CORS -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-emerald-400">
+                🔀 CORS Configuration
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    CORS restritivo baseado em variável de ambiente. Em produção, desativado por padrão se <code>CORS_ORIGINS</code> não definido.
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// server.ts - Linhas 141-152
+const allowedOrigins = env.CORS_ORIGINS
+  ? env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : env.NODE_ENV === 'production'
+    ? []  // ❌ Production: CORS desativado sem whitelist explícita
+    : ['http://localhost:5173', 'http://localhost:4000']; // Dev: localhost allowed
+
+app.register(fastifyCors, {
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+  // Se array vazia em prod → origin: false (CORS bloqueado)
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+});</code></pre>
+                </div>
+                <div class="mt-4 grid md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-green-900/20 border border-green-700 rounded">
+                        <p class="text-green-300 font-semibold mb-2">✅ Padrão Seguro</p>
+                        <p class="text-sm text-slate-300">
+                            Prod sem <code>CORS_ORIGINS</code> → CORS bloqueado. Dev localhost liberado.
+                        </p>
+                    </div>
+                    <div class="p-4 bg-yellow-900/20 border border-yellow-700 rounded">
+                        <p class="text-yellow-300 font-semibold mb-2">⚠️ Config Necessária</p>
+                        <p class="text-sm text-slate-300">
+                            Em prod, setar <code>CORS_ORIGINS=https://meuapp.com,https://app.meuapp.com</code> no .env.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- JWT -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-blue-400">
+                🔐 JWT Configuration
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    JWT configurado com secret no <code>.env</code> e expiração de 1 hora. Sem refresh token (⚠️ crítico).
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// server.ts - Linhas 216-219
+app.register(fastifyJwt, {
+  secret: env.JWT_SECRET,  // ⚠️ Deve ser forte e em .env
+});
+
+// authenticate.ts - Linhas 66-69
+const token = await reply.jwtSign(
+  { sub: user.id },
+  { expiresIn: '1h' }  // ✅ Expiração curta (apenas 1h)
+);</code></pre>
+                </div>
+                <div class="mt-4 p-4 bg-red-900/20 border border-red-700 rounded">
+                    <p class="text-red-300 font-semibold mb-2">❌ Missing: Refresh Token</p>
+                    <p class="text-sm text-slate-300">
+                        Sem refresh token, usuário precisa logar novamente após 1h. Implementar refresh tokens com blacklist no Redis para revogação.
+                        Exemplo: <code>refresh_token</code> com expiração de 7d, armazenado em httpOnly cookie, válido apenas para troca por novo access_token.
+                    </p>
+                </div>
+                <div class="mt-4 grid md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-yellow-900/20 border border-yellow-700 rounded">
+                        <p class="text-yellow-300 font-semibold mb-2">⚠️ Brute-force</p>
+                        <p class="text-sm text-slate-300">
+                            Rate limit atual é por IP. Adicionar rate limit por userId para evitar bloqueio de contas.
+                        </p>
+                    </div>
+                    <div class="p-4 bg-yellow-900/20 border border-yellow-700 rounded">
+                        <p class="text-yellow-300 font-semibold mb-2">⚠️ 2FA</p>
+                        <p class="text-sm text-slate-300">
+                            Sem Two-Factor Authentication. Implementar TOTP com speakeasy para contas ADMIN ou opcional para todos.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Files -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-orange-400">
+                📁 File Upload Security
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    fastifyMultipart configurado com limits. Falta validação de tipo MIME e scan de malware.
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// server.ts - Linhas 155-161
+app.register(fastifyMultipart, {
+  limits: {
+    fileSize: env.MAX_FILE_SIZE, // ✅ Limite configurável
+    files: 5,     // ✅ Máximo 5 arquivos por request
+    fields: 50,   // ✅ Máximo 50 campos
+  },
+});</code></pre>
+                </div>
+                <div class="mt-4 p-4 bg-red-900/20 border border-red-700 rounded">
+                    <p class="text-red-300 font-semibold mb-2">❌ Missing: MIME Validation & Malware Scan</p>
+                    <p class="text-sm text-slate-300 mb-2">
+                        Qualquer tipo de arquivo pode ser enviado se dentro do size limit. Ataque: upload de .php ou .exe, se execução possível.
+                    </p>
+                    <p class="text-sm text-slate-300">
+                        <strong>Solução:</strong> Validar MIME com <code>file-type</code> (não confiar em Content-Type header) e escanear com ClamAV se需 alta segurança.
+                    </p>
+                </div>
+                <div class="mt-4 code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// Exemplo de validação MIME
+import { fileTypeFromStream } from 'file-type';
+
+const fileType = await fileTypeFromStream(req.payload);
+if (!['image/jpeg', 'image/png', 'application/pdf'].includes(fileType.mime)) {
+  throw new BadRequestError('Tipo de arquivo não permitido');
+}</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- SQL Injection -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-green-400">
+                💉 SQL Injection Protection
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    Prisma usa prepared statements automaticamente. Sem risco de SQL Injection com query builder.
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// ✅ SAFE - Prepared statements automáticos
+const user = await prisma.user.findUnique({
+  where: { email }  // Parâmetro parametrizado
+});
+
+// ✅ SAFE - Prisma valida tipos
+const user = await prisma.user.create({
+  data: {
+    email,  // 🛡️ Escapado
+    name,
+  }
+});
+
+// ⚠️ CUIDADO se usar raw queries:
+await prisma.$executeRaw`SELECT * FROM users WHERE email = ${email}`;
+// ✅ OK usando template literal do Prisma (parametriza)
+
+// ❌ NUNCA fazer:
+await prisma.$executeRaw(`SELECT * FROM users WHERE email = '${email}'`);
+// SQL Injection possível</code></pre>
+                </div>
+                <div class="mt-4 p-4 bg-green-900/20 border border-green-700 rounded">
+                    <p class="text-sm text-green-300">
+                        ✅ Prisma é seguro por padrão. Apenas evitar concatenação de strings em <code>$executeRaw</code> ou <code>$queryRaw</code>.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Redis Auth -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-cyan-400">
+                🔑 Redis Security
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    Redis pode ter senha configurada via <code>.env</code>. TLS opcional mas recomendado em produção.
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// .env
+REDIS_URL=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=  # ⚠️ Senha opcional mas recomendada
+
+// server.ts - Linhas 222-228
+if (redisAvailable) {
+  app.register(fastifyRedis, {
+    host: env.REDIS_URL,
+    password: env.REDIS_PASSWORD || undefined,  // ✅ Senha usada se definida
+    port: env.REDIS_PORT,
+    family: 4,
+  });
+}</code></pre>
+                </div>
+                <div class="mt-4 p-4 bg-yellow-900/20 border border-yellow-700 rounded">
+                    <p class="text-sm text-yellow-300">
+                        <strong>Melhoria:</strong> Em produção, usar Redis com TLS (<code>rediss://</code> ou <code>tls: {}</code> no ioredis) e always senha.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rate Limiting -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-indigo-400">
+                ⏱️ Rate Limiting
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    Rate limit global 100 req/min via Redis. Se Redis indisponível, limitação cai (degraded mode).
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// server.ts - Linhas 130-139
+app.register(fastifyRateLimit, {
+  max: 100,              // 100 requests
+  timeWindow: '1 minute', // por minuto
+  redis: redisAvailable ? app.redis : undefined, // ⚠️ Sem Redis → sem rate limit
+  keyGenerator: (request) => {
+    return request.ip;  // ✅ Por IP
+    // TODO: por userId se autenticado
+  },
+});</code></pre>
+                </div>
+                <div class="mt-4 p-4 bg-yellow-900/20 border border-yellow-700 rounded">
+                    <p class="text-sm text-yellow-300">
+                        <strong>Limitação:</strong> Se Redis cair, rate limit não funciona. Considerar fallback em memória (concurrent requests) ou reject imediato se Redis falhou? Atualmente degrada silenciosamente.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sensitive Data -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-pink-400">
+                🤫 Sensitive Data Protection
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <p class="text-slate-300 mb-4">
+                    .env e arquivos de segredos não devem ser commitados. ✅ Já em .gitignore.
+                </p>
+                <div class="code-block p-4 rounded overflow-x-auto">
+                    <pre class="text-sm text-slate-300"><code>// .gitignore (trecho)
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.staging
+.env.production
+
+# ✅ Senhas e secrets nunca no git
+// .env.example (template seguro)
+DATABASE_URL="postgresql://..."
+JWT_SECRET="change-me-in-production"
+REDIS_PASSWORD=""
+SWAGGER_USER=""
+SWAGGER_PASSWORD=""</code></pre>
+                </div>
+                <div class="mt-4 grid md:grid-cols-3 gap-4">
+                    <div class="p-4 bg-green-900/20 border border-green-700 rounded">
+                        <p class="text-green-300 font-semibold mb-2">✅ .env no gitignore</p>
+                        <p class="text-sm text-slate-300">
+                            Environment files ignoradas corretamente.
+                        </p>
+                    </div>
+                    <div class="p-4 bg-green-900/20 border border-green-700 rounded">
+                        <p class="text-green-300 font-semibold mb-2">✅ Senhas com bcrypt</p>
+                        <p class="text-sm text-slate-300">
+                            Senhas sempre hash antes de salvar no DB.
+                        </p>
+                    </div>
+                    <div class="p-4 bg-yellow-900/20 border border-yellow-700 rounded">
+                        <p class="text-yellow-300 font-semibold mb-2">⚠️ JWT Secret</p>
+                        <p class="text-sm text-slate-300">
+                            Gerar strong secret em produção (32+ chars, random).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Security Summary -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-red-400">
+                📊 Security Ranking & Priorities
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-xl font-semibold text-red-500 mb-3">🔴 Critical / High</h3>
+                        <ul class="list-disc list-inside space-y-2 text-slate-300 text-sm ml-4">
+                            <li><strong>A01 Broken Access Control:</strong> POST /users sem verificação de role → implementar middleware <code>requireRole('ADMIN')</code></li>
+                            <li><strong>A07 Auth Failure:</strong> Sem refresh token, 2FA ou brute-force → criar sistema de refresh tokens com blacklist Redis</li>
+                            <li><strong>A04 Insecure Design:</strong> JWT localStorage → migrar para httpOnly cookies</li>
+                            <li><strong>MIME Validation:</strong> Uploads sem validação → implementar <code>file-type</code> check</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-yellow-500 mb-3">🟡 Medium</h3>
+                        <ul class="list-disc list-inside space-y-2 text-slate-300 text-sm ml-4">
+                            <li><strong>A05 Misconfig:</strong> Swagger sem proteção em prod → ativar basic-auth</li>
+                            <li><strong>A09 Logging:</strong> Sem requestId tracing → integrar logging estruturado</li>
+                            <li><strong>Rate Limit fallback:</strong> Sem Redis → rate limit para de funcionar → implementar memória fallback</li>
+                            <li><strong>Redis TLS:</strong> Sem TLS em produção → configurar <code>tls: {}</code></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-green-500 mb-3">🟢 Low / OK</h3>
+                        <ul class="list-disc list-inside space-y-2 text-slate-300 text-sm ml-4">
+                            <li><strong>A02 Crypto:</strong> Bcrypt e HTTPS ok</li>
+                            <li><strong>A03 Injection:</strong> Prisma safe</li>
+                            <li><strong>A08 Data Integrity:</strong> Zod + Prisma validation</li>
+                            <li><strong>A10 SSRF:</strong> Sem user-controlled URLs</li>
+                            <li><strong>.env protection:</strong> gitignore configurado</li>
+                            <li><strong>Helmet:</strong> HSTS, CSP, frameguard ativos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recommendations -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-semibold mb-6 text-teal-400">
+                🚀 Recomendações de Melhoria
+            </h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="p-4 bg-slate-700/50 rounded border border-slate-600">
+                        <h4 class="font-semibold text-blue-300 mb-2">Imediato (P0)</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-sm text-slate-300">
+                            <li>Criar middleware <code>requireRole(['ADMIN'])</code> para rotas sensíveis (POST /users)</li>
+                            <li>Implementar refresh tokens com blacklist Redis</li>
+                            <li>Ativar basic-auth no Swagger em produção</li>
+                        </ol>
+                    </div>
+                    <div class="p-4 bg-slate-700/50 rounded border border-slate-600">
+                        <h4 class="font-semibold text-blue-300 mb-2">Curto Prazo (P1)</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-sm text-slate-300">
+                            <li>Implementar HTTP-only cookies para JWT (eliminar localStorage)</li>
+                            <li>Adicionar validação MIME em uploads</li>
+                            <li>Criar rate limit por userId (além de IP)</li>
+                            <li>Implementar 2FA com TOTP</li>
+                        </ol>
+                    </div>
+                    <div class="p-4 bg-slate-700/50 rounded border border-slate-600">
+                        <h4 class="font-semibold text-blue-300 mb-2">Médio Prazo (P2)</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-sm text-slate-300">
+                            <li>Adicionar logging estruturado com requestId</li>
+                            <li>Configurar Redis TLS em produção</li>
+                            <li>Implementar account lockout após N tentativas falhas</li>
+                            <li>Refinar CSP (remover unsafe-inline, usar nonces)</li>
+                        </ol>
+                    </div>
+                    <div class="p-4 bg-slate-700/50 rounded border border-slate-600">
+                        <h4 class="font-semibold text-blue-300 mb-2">Contínuo</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-sm text-slate-300">
+                            <li>npm audit / dependabot para vulnerabilidades</li>
+                            <li>Penetration testing periódico</li>
+                            <li>Atualizar dependências regularly</li>
+                            <li>Monitorar logs de tentativas de acesso suspeitas</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-12 pt-6 border-t border-slate-700 text-center text-slate-500 text-sm">
+            <p>Backend Boilerplate • Security Analysis • Generated 2025</p>
+            <p class="mt-2">
+                <a href="index.html" class="text-blue-400 hover:text-blue-300 transition">← Voltar ao Índice</a>
+            </p>
+        </footer>
+    </div>
+    <script>
+        // Dark mode toggle (optional enhancement)
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modelo de Dados - Boilerplate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { primary: {50: '#f0f9ff',100: '#e0f2fe',200: '#bae6fd',300: '#7dd3fc',400: '#38bdf8',500: '#0ea5e9',600: '#0284c7',700: '#0369a1',800: '#075985',900: '#0c4a6e'}, accent: {50: '#faf5ff',100: '#f3e8ff',200: '#e9d5ff',300: '#d8b4fe',400: '#c084fc',500: '#a855f7',600: '#9333ea',700: '#7e22ce',800: '#6b21a8',900: '#581c87'}}}}}'
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #e5e5e5; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .card { background: #1a1a1a; border: 1px solid #333; border-radius: 0.75rem; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-6xl mx-auto px-6 py-12">
+        <header class="mb-12">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-3xl">🗄️</span>
+                <h1 class="text-4xl font-bold bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">Modelo de Dados</h1>
+            </div>
+            <p class="text-gray-400 text-lg">Diagrama ER, entidades, relacionamentos e análise de restrições.</p>
+        </header>
+
+        <!-- Diagrama ER -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Diagrama ER</h2>
+            <div class="card p-8 overflow-x-auto">
+                <svg viewBox="0 0 800 350" class="w-full">
+                    <defs>
+                        <marker id="arrow1" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#0ea5e9"/>
+                        </marker>
+                        <marker id="arrowN" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#a855f7"/>
+                        </marker>
+                    </defs>
+
+                    <!-- User -->
+                    <g transform="translate(50,80)">
+                        <rect width="180" height="140" rx="8" fill="rgba(14,165,233,0.1)" stroke="rgba(14,165,233,0.6)" stroke-width="2"/>
+                        <text x="90" y="35" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="600">User</text>
+                        <text x="90" y="55" text-anchor="middle" fill="#9ca3af" font-size="12">(PK) id</text>
+                        <text x="90" y="70" text-anchor="middle" fill="#9ca3af" font-size="12">email (unique)</text>
+                        <text x="90" y="85" text-anchor="middle" fill="#9ca3af" font-size="12">name (nullable)</text>
+                        <text x="90" y="100" text-anchor="middle" fill="#9ca3af" font-size="12">password</text>
+                        <text x="90" y="115" text-anchor="middle" fill="#9ca3af" font-size="12">role: ADMIN|USER</text>
+                        <text x="90" y="130" text-anchor="middle" fill="#9ca3af" font-size="12">isActive: boolean</text>
+                        <text x="90" y="150" text-anchor="middle" fill="#6b7280" font-size="10">posts (1:N)</text>
+                    </g>
+
+                    <!-- Arrow 1:N -->
+                    <path d="M 230 150 L 350 150" stroke="#0ea5e9" stroke-width="2" marker-end="url(#arrow1)"/>
+                    <text x="290" y="165" text-anchor="middle" fill="#6b7280" font-size="10">1:N</text>
+
+                    <!-- Post -->
+                    <g transform="translate(350,80)">
+                        <rect width="180" height="140" rx="8" fill="rgba(168,85,247,0.1)" stroke="rgba(168,85,247,0.6)" stroke-width="2"/>
+                        <text x="90" y="35" text-anchor="middle" fill="#c084fc" font-size="16" font-weight="600">Post</text>
+                        <text x="90" y="55" text-anchor="middle" fill="#9ca3af" font-size="12">(PK) id</text>
+                        <text x="90" y="70" text-anchor="middle" fill="#9ca3af" font-size="12">title</text>
+                        <text x="90" y="85" text-anchor="middle" fill="#9ca3af" font-size="12">content (nullable)</text>
+                        <text x="90" y="100" text-anchor="middle" fill="#9ca3af" font-size="12">published: boolean</text>
+                        <text x="90" y="115" text-anchor="middle" fill="#9ca3af" font-size="12">(FK) authorId</text>
+                        <text x="90" y="130" text-anchor="middle" fill="#9ca3af" font-size="12">(FK) categoryId?</text>
+                        <text x="90" y="150" text-anchor="middle" fill="#6b7280" font-size="10">author ← User</text>
+                    </g>
+
+                    <!-- Arrow category optional -->
+                    <path d="M 530 120 L 620 120" stroke="#a855f7" stroke-width="2" stroke-dasharray="4,4"/>
+                    <text x="575" y="105" text-anchor="middle" fill="#6b7280" font-size="10">0:1 (optional)</text>
+
+                    <!-- Category -->
+                    <g transform="translate(620,80)">
+                        <rect width="160" height="100" rx="8" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.6)" stroke-width="2"/>
+                        <text x="80" y="35" text-anchor="middle" fill="#f59e0b" font-size="16" font-weight="600">Category</text>
+                        <text x="80" y="55" text-anchor="middle" fill="#9ca3af" font-size="12">(PK) id</text>
+                        <text x="80" y="70" text-anchor="middle" fill="#9ca3af" font-size="12">name (unique)</text>
+                        <text x="80" y="85" text-anchor="middle" fill="#9ca3af" font-size="12">slug (unique)</text>
+                        <text x="80" y="100" text-anchor="middle" fill="#6b7280" font-size="10">posts (1:N)</text>
+                    </g>
+
+                </svg>
+            </div>
+        </section>
+
+        <!-- Entidades -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Definição das Entidades</h2>
+
+            <div class="space-y-8">
+                <!-- User -->
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold text-primary-400 mb-4 flex items-center gap-2">
+                        <span class="text-2xl">👤</span> User
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-gray-500 border-b border-gray-800">
+                                <tr><th class="text-left py-2 px-3">Campo</th><th class="text-left py-2 px-3">Tipo</th><th class="text-left py-2 px-3">Constraints</th><th class="text-left py-2 px-3">Descrição</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800">
+                                <tr><td class="py-2 px-3 mono text-yellow-300">id</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"><span class="bg-blue-900/30 text-blue-300 px-2 rounded text-xs">PK</span> <span class="bg-gray-700 px-2 rounded text-xs">@default(cuid())</span></td><td class="py-2 px-3 text-gray-400">Identificador único</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">email</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"><span class="bg-green-900/30 text-green-300 px-2 rounded text-xs">unique</span></td><td class="py-2 px-3 text-gray-400">Email único no sistema</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">name</td><td class="py-2 px-3 text-gray-300">String?</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">nullable</span></td><td class="py-2 px-3 text-gray-400">Nome completo (opcional)</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">password</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"></td><td class="py-2 px-3 text-red-400">⚠️Texto plano (RISCO!)</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">role</td><td class="py-2 px-3 text-gray-300">UserRole</td><td class="py-2 px-3"><span class="bg-purple-900/30 text-purple-300 px-2 rounded text-xs">default: USER</span></td><td class="py-2 px-3 text-gray-400">ADMIN ou USER</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">isActive</td><td class="py-2 px-3 text-gray-300">Boolean</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">default: true</span></td><td class="py-2 px-3 text-gray-400">Conta ativa?</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">lastLoginAt</td><td class="py-2 px-3 text-gray-300">DateTime?</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">nullable</span></td><td class="py-2 px-3 text-gray-400">Último login</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">createdAt</td><td class="py-2 px-3 text-gray-300">DateTime</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">default: now()</span></td><td class="py-2 px-3 text-gray-400">Criado em</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">updatedAt</td><td class="py-2 px-3 text-gray-300">DateTime</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">@updatedAt</span></td><td class="py-2 px-3 text-gray-400">Atualizado em</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Post -->
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold text-purple-400 mb-4 flex items-center gap-2">
+                        <span class="text-2xl">📝</span> Post
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-gray-500 border-b border-gray-800">
+                                <tr><th class="text-left py-2 px-3">Campo</th><th class="text-left py-2 px-3">Tipo</th><th class="text-left py-2 px-3">Constraints</th><th class="text-left py-2 px-3">Descrição</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800">
+                                <tr><td class="py-2 px-3 mono text-yellow-300">id</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"><span class="bg-blue-900/30 text-blue-300 px-2 rounded text-xs">PK</span></td><td class="py-2 px-3 text-gray-400">Identificador</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">title</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"></td><td class="py-2 px-3 text-gray-400">Título obrigatório</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">content</td><td class="py-2 px-3 text-gray-300">String?</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">nullable</span></td><td class="py-2 px-3 text-gray-400">Conteúdo (opcional)</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">published</td><td class="py-2 px-3 text-gray-300">Boolean</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">default: false</span></td><td class="py-2 px-3 text-gray-400">Publicado?</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">authorId</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"><span class="bg-blue-900/30 text-blue-300 px-2 rounded text-xs">FK → User.id</span></td><td class="py-2 px-3 text-red-400">onDelete: Cascade!</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">categoryId</td><td class="py-2 px-3 text-gray-300">String?</td><td class="py-2 px-3"><span class="bg-blue-900/30 text-blue-300 px-2 rounded text-xs">FK → Category.id</span></td><td class="py-2 px-3 text-gray-400">Opcional</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">createdAt</td><td class="py-2 px-3 text-gray-300">DateTime</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">default: now()</span></td><td class="py-2 px-3 text-gray-400">Criado em</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">updatedAt</td><td class="py-2 px-3 text-gray-300">DateTime</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">@updatedAt</span></td><td class="py-2 px-3 text-gray-400">Atualizado em</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Category -->
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold text-amber-400 mb-4 flex items-center gap-2">
+                        <span class="text-2xl">🏷️</span> Category
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-gray-500 border-b border-gray-800">
+                                <tr><th class="text-left py-2 px-3">Campo</th><th class="text-left py-2 px-3">Tipo</th><th class="text-left py-2 px-3">Constraints</th><th class="text-left py-2 px-3">Descrição</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800">
+                                <tr><td class="py-2 px-3 mono text-yellow-300">id</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"><span class="bg-blue-900/30 text-blue-300 px-2 rounded text-xs">PK</span></td><td class="py-2 px-3 text-gray-400">Identificador</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">name</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"><span class="bg-green-900/30 text-green-300 px-2 rounded text-xs">unique</span></td><td class="py-2 px-3 text-gray-400">Nome único</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">slug</td><td class="py-2 px-3 text-gray-300">String</td><td class="py-2 px-3"><span class="bg-green-900/30 text-green-300 px-2 rounded text-xs">unique</span></td><td class="py-2 px-3 text-gray-400">Slug único (URL friendly)</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">createdAt</td><td class="py-2 px-3 text-gray-300">DateTime</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">default: now()</span></td><td class="py-2 px-3 text-gray-400">Criado em</td></tr>
+                                <tr><td class="py-2 px-3 mono text-yellow-300">updatedAt</td><td class="py-2 px-3 text-gray-300">DateTime</td><td class="py-2 px-3"><span class="bg-gray-700 px-2 rounded text-xs">@updatedAt</span></td><td class="py-2 px-3 text-gray-400">Atualizado em</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Riscos -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Riscos de Dados</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-red-900/10 border border-red-800/50 rounded-xl p-6">
+                    <h3 class="text-red-400 font-semibold mb-3 flex items-center gap-2">
+                        <span>🚨</span> Deleção em Cascata
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-3">
+                        Quando um <code class="mono bg-gray-800 px-1 rounded">User</code> é deletado, todos os seus <code class="mono bg-gray-800 px-1 rounded">Post</code> são automaticamente deletados (<code class="mono bg-gray-800 px-1 rounded">onDelete: Cascade</code>).
+                    </p>
+                    <p class="text-gray-300 text-sm">
+                        <strong>Impacto:</strong> Perda total de conteúdo关联ado ao usuário.
+                    </p>
+                </div>
+
+                <div class="bg-yellow-900/10 border border-yellow-800/50 rounded-xl p-6">
+                    <h3 class="text-yellow-400 font-semibold mb-3 flex items-center gap-2">
+                        <span>⚠️</span> Senha em Texto Plano
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-3">
+                        O campo <code class="mono bg-gray-800 px-1 rounded">password</code> da tabela <code class="mono bg-gray-800 px-1 rounded">users</code> armazena senhas sem hash.
+                    </p>
+                    <p class="text-gray-300 text-sm">
+                        <strong>Mitigação recommended:</strong> Usar <code class="mono bg-gray-800 px-1 rounded">bcrypt.hash</code> com salt rounds (10+).
+                    </p>
+                </div>
+
+                <div class="bg-blue-900/10 border border-blue-800/50 rounded-xl p-6">
+                    <h3 class="text-blue-400 font-semibold mb-3 flex items-center gap-2">
+                        <span>📊</span> Índices Insuficientes
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-3">
+                        Apenas índices simples em <code class="mono bg-gray-800 px-1 rounded">authorId</code> e <code class="mono bg-gray-800 px-1 rounded">categoryId</code>.
+                    </p>
+                    <p class="text-gray-300 text-sm">
+                        <strong>Melhoria:</strong> Índices compostos para queries frequentes (ex: <code class="mono bg-gray-800 px-1 rounded">published + createdAt</code>).
+                    </p>
+                </div>
+
+                <div class="bg-green-900/10 border border-green-800/50 rounded-xl p-6">
+                    <h3 class="text-green-400 font-semibold mb-3 flex items-center gap-2">
+                        <span>✅</span> Boas Práticas
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-3">
+                        <code class="mono bg-gray-800 px-1 rounded">@updatedAt</code> automático, timestamps com <code class="mono bg-gray-800 px-1 rounded">@map</code> para snake_case, unique constraints.
+                    </p>
+                    <p class="text-gray-300 text-sm">
+                        <strong>Schema bem projetado</strong> para um boilerplate.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prisma Queries -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Exemplos de Queries (Prisma)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h4 class="font-semibold mb-3 text-primary-400">Listar posts com autor</h4>
+                    <pre class="mono text-xs bg-gray-900 p-3 rounded overflow-x-auto text-gray-300"><code>const posts = await prisma.post.findMany({
+  where: { published: true },
+  include: {
+    author: { select: { id: true, email: true, name: true } },
+    category: true
+  },
+  orderBy: { createdAt: 'desc' },
+  skip: 0,
+  take: 20
+});</code></pre>
+                </div>
+
+                <div class="card p-6">
+                    <h4 class="font-semibold mb-3 text-purple-400">Criar post</h4>
+                    <pre class="mono text-xs bg-gray-900 p-3 rounded overflow-x-auto text-gray-300"><code>const post = await prisma.post.create({
+  data: {
+    title: 'Novo Post',
+    content: 'Conteúdo...',
+    authorId: userId,
+    categoryId: categoryId
+  }
+});</code></pre>
+                </div>
+
+                <div class="card p-6">
+                    <h4 class="font-semibold mb-3 text-amber-400">Count de posts por autor</h4>
+                    <pre class="mono text-xs bg-gray-900 p-3 rounded overflow-x-auto text-gray-300"><code>const count = await prisma.post.count({
+  where: { authorId: userId }
+});</code></pre>
+                </div>
+
+                <div class="card p-6">
+                    <h4 class="font-semibold mb-3 text-green-400">Deletar usuário (trigger cascata)</h4>
+                    <pre class="mono text-xs bg-gray-900 p-3 rounded overflow-x-auto text-gray-300"><code>// Isto deleta o usuário E TODOS os seus posts
+await prisma.user.delete({
+  where: { id: userId }
+});</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- rodapé -->
+        <footer class="border-t border-gray-800 pt-6 text-center text-gray-500 text-sm">
+            Documentação do Schema Prisma
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regras de Negócio e RBAC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .code-block {
+            background: #1e293b;
+            border-left: 4px solid #3b82f6;
+        }
+        .zebra-table tr:nth-child(even) {
+            background-color: rgba(51, 65, 85, 0.5);
+        }
+        .role-admin {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .role-user {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        .role-public {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .flow-line {
+            border-top: 2px dashed #3b82f6;
+        }
+        .diagram-box {
+            border: 2px solid #8b5cf6;
+            border-radius: 8px;
+        }
+        .risk-high {
+            border-left: 4px solid #ef4444;
+        }
+        .risk-medium {
+            border-left: 4px solid #f59e0b;
+        }
+        .risk-low {
+            border-left: 4px solid #10b981;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 border-b border-slate-700 pb-6">
+            <h1 class="text-4xl font-bold mb-2 text-purple-400">
+                🔐 Regras de Negócio e Controle de Acesso (RBAC)
+            </h1>
+            <p class="text-slate-400 text-lg">
+                Backend Boilerplate • Sistema de Autenticação e Autorização
+            </p>
+            <div class="mt-4 flex gap-4 flex-wrap">
+                <span class="px-3 py-1 bg-purple-900/30 border border-purple-700 rounded text-sm">Backend: ✅ Implementado</span>
+                <span class="px-3 py-1 bg-blue-900/30 border border-blue-700 rounded text-sm">Frontend: ✅ Parcial</span>
+                <span class="px-3 py-1 bg-yellow-900/30 border border-yellow-700 rounded text-sm">Regras: ⚠️ Melhorar</span>
+            </div>
+        </header>
+
+        <!-- Matriz RBAC -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6 text-emerald-400">📋 Matriz RBAC (Role-Based Access Control)</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Admin -->
+                <div class="role-admin p-6 rounded-lg text-white">
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <span>👑</span> ADMIN
+                    </h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Criar/editar/deletar qualquer usuário</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Indexar documentos de qualquer usuário</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Ver todas as métricas e logs</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Gerenciar roles e permissões</span>
+                        </li>
+                    </ul>
+                    <div class="mt-4 pt-4 border-t border-red-300/30">
+                        <code class="text-xs bg-black/30 px-2 py-1 rounded">role: 'ADMIN'</code>
+                    </div>
+                </div>
+
+                <!-- User -->
+                <div class="role-user p-6 rounded-lg text-white">
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <span>👤</span> USER
+                    </h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Editar próprio perfil</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Buscar documentos (read-only)</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Indexar próprios documentos</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Ver próprias métricas</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-red-300 mt-1">✗</span>
+                            <span>Deletar outros usuários</span>
+                        </li>
+                    </ul>
+                    <div class="mt-4 pt-4 border-t border-blue-300/30">
+                        <code class="text-xs bg-black/30 px-2 py-1 rounded">role: 'USER'</code>
+                    </div>
+                </div>
+
+                <!-- Public -->
+                <div class="role-public p-6 rounded-lg text-white">
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <span>🌍</span> PUBLIC
+                    </h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Registrar nova conta</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Login com credenciais</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-green-300 mt-1">✓</span>
+                            <span>Buscar (read-only, sem auth)</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-red-300 mt-1">✗</span>
+                            <span>Indexar documentos</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-red-300 mt-1">✗</span>
+                            <span>Editar qualquer recurso</span>
+                        </li>
+                    </ul>
+                    <div class="mt-4 pt-4 border-t border-emerald-300/30">
+                        <code class="text-xs bg-black/30 px-2 py-1 rounded">não autenticado</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tabela de Regras por Endpoint -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6 text-amber-400">📑 Regras por Endpoint</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full zebra-table border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800 text-slate-200">
+                            <th class="px-4 py-3 text-left border-b border-slate-600">Método</th>
+                            <th class="px-4 py-3 text-left border-b border-slate-600">Rota</th>
+                            <th class="px-4 py-3 text-left border-b border-slate-600">Papel</th>
+                            <th class="px-4 py-3 text-left border-b border-slate-600">Validações</th>
+                            <th class="px-4 py-3 text-left border-b border-slate-600">Side Effects</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">POST</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/auth/register</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 role-public text-white text-xs rounded">Public</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>email válido e único</li>
+                                    <li>password ≥ 6 caracteres</li>
+                                    <li>Zod: registerSchema</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                Cria User com role=USER<br>Envia email de confirmação (se houver)
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">POST</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/auth/login</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 role-public text-white text-xs rounded">Public</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>email exists?</li>
+                                    <li>user active?</li>
+                                    <li>password match (bcrypt)</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                update lastLoginAt<br>Gera JWT (access + refresh)
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">GET</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/users</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 bg-red-600 text-white text-xs rounded">Admin Only</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>JWT válido</li>
+                                    <li>user.role === 'ADMIN'</li>
+                                    <li>Query params opcionais: page, limit</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                Retorna lista paginada<br>Nenhuma modificação
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">GET</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/users/:id</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 bg-blue-600 text-white text-xs rounded">User/Admin</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>JWT válido</li>
+                                    <li>OWN: user.id === :id</li>
+                                    <li>ADMIN: any :id allowed</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                Retorna dados do usuário<br>Nenhuma modificação
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">PATCH</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/users/:id</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 bg-blue-600 text-white text-xs rounded">User/Admin</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>JWT válido</li>
+                                    <li>OWN: user.id === :id</li>
+                                    <li>ADMIN: pode atualizar role</li>
+                                    <li>Zod: updateUserSchema</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                Update user fields<br>Admin pode alterar role
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">DELETE</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/users/:id</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 bg-red-600 text-white text-xs rounded">Admin Only</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>JWT válido</li>
+                                    <li>user.role === 'ADMIN'</li>
+                                    <li>Proteção contra self-delete</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                CASCADE delete posts<br>Remove de userSockets<br>Remove de connectedSockets
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">POST</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/documents/index</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 bg-red-600 text-white text-xs rounded">Admin Only</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>JWT válido + ADMIN</li>
+                                    <li>Arquivo válido (maxSize, mimeType)</li>
+                                    <li>Validação de metadados</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                Upload → S3/MinIO<br>Index no OpenSearch<br>Gera embedding (se habilitado)
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">POST</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/search</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 role-public text-white text-xs rounded">Public</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>query: string (min 1 char)</li>
+                                    <li>page: number (default 1)</li>
+                                    <li>limit: number (1-100)</li>
+                                    <li>filters opcionais</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                OpenSearch DSL query<br>Aplica filtros por role<br>Log da busca (se habilitado)
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="px-4 py-3"><code class="px-2 py-1 bg-slate-700 rounded text-xs">GET</code></td>
+                            <td class="px-4 py-3 font-mono text-blue-300">/health</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 role-public text-white text-xs rounded">Public</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-disc ml-4 space-y-1 text-xs text-slate-300">
+                                    <li>Nenhuma validação</li>
+                                    <li>Retorna status dos serviços</li>
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                Check DB + Redis + OpenSearch<br>Nenhuma modificação
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Fluxos ASCII -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6 text-cyan-400">🔄 Fluxos de Negócio (ASCII)</h2>
+
+            <!-- Fluxo de Registro -->
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-6">
+                <h3 class="text-lg font-semibold mb-4 text-emerald-300">Registro de Usuário</h3>
+                <pre class="text-sm font-mono text-slate-300 overflow-x-auto">
+┌─────────────┐
+│   CLIENT    │
+└──────┬──────┘
+       │ POST /auth/register
+       │ {email, password}
+       ▼
+┌────────────────────┐
+│  Validação Zod     │
+│  • email único?    │
+│  • password ≥ 6    │
+└─────────┬──────────┘
+          │ válido
+          ▼
+┌────────────────────┐
+│  bcrypt.hash()     │
+│  saltRounds=10     │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│  Criar User        │
+│  • role = USER     │
+│  • isActive = true │
+│  • lastLoginAt =   │
+│    null            │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│  Enviar Email      │
+│  (se configured)   │
+└─────────┬──────────┘
+          │ 201 Created
+          ▼
+┌─────────────┐
+│   CLIENT    │
+└─────────────┘
+                </pre>
+            </div>
+
+            <!-- Fluxo de Login -->
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-6">
+                <h3 class="text-lg font-semibold mb-4 text-blue-300">Login</h3>
+                <pre class="text-sm font-mono text-slate-300 overflow-x-auto">
+┌─────────────┐
+│   CLIENT    │
+└──────┬──────┘
+       │ POST /auth/login
+       │ {email, password}
+       ▼
+┌────────────────────┐
+│  Buscar User       │
+│  WHERE email=?     │
+└─────────┬──────────┘
+          │ found?
+          │
+       ┌──┴───┐
+       │ NO   │─────► 401 Unauthorized
+       └──────┘
+          │ YES
+          ▼
+┌────────────────────┐
+│  user.isActive?    │
+└─────────┬──────────┘
+          │ true?
+          │
+       ┌──┴────┐
+       │ false │─────► 403 Forbidden
+       └───────┘
+          │ true
+          ▼
+┌────────────────────┐
+│  bcrypt.compare()  │
+│  password vs hash  │
+└─────────┬──────────┘
+          │ match?
+          │
+       ┌──┴────┐
+       │ NO    │─────► 401 Unauthorized
+       └───────┘
+          │ YES
+          ▼
+┌────────────────────┐
+│  update             │
+│  lastLoginAt = NOW │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│  Gerar JWT         │
+│  • accessToken     │
+│  • refreshToken    │
+└─────────┬──────────┘
+          │ 200 OK
+          ▼
+┌─────────────┐
+│   CLIENT    │
+└─────────────┘
+                </pre>
+            </div>
+
+            <!-- Fluxo de Busca -->
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-6">
+                <h3 class="text-lg font-semibold mb-4 text-purple-300">Busca de Documentos</h3>
+                <pre class="text-sm font-mono text-slate-300 overflow-x-auto">
+┌─────────────┐
+│   CLIENT    │
+└──────┬──────┘
+       │ GET /search?query=...
+       │ or POST /search
+       ▼
+┌────────────────────┐
+│  Construir Query   │
+│  OpenSearch DSL    │
+│  • match: query    │
+│  • bool: filters   │
+│  • pagination       │
+│  • role filter     │
+└─────────┬──────────┘
+          │
+          ▼
+    ┌─────────────┐
+    │ OpenSearch  │
+    │  execute()  │
+    └──────┬──────┘
+           │
+           ▼
+    ┌────────────────────┐
+    │  Processar Hits    │
+    │  • highlight       │
+    │  • score           │
+    │  • source filter   │
+    └─────────┬──────────┘
+              │
+              ▼
+    ┌────────────────────┐
+    │  Log da Busca      │
+    │  (se audit log)    │
+    └─────────┬──────────┘
+              │ {hits, total, page, limit}
+              ▼
+    ┌─────────────┐
+    │   CLIENT    │
+    └─────────────┘
+                </pre>
+            </div>
+
+            <!-- Fluxo de Deleção -->
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <h3 class="text-lg font-semibold mb-4 text-red-300">Deleção de Usuário (Cascata)</h3>
+                <pre class="text-sm font-mono text-slate-300 overflow-x-auto">
+┌─────────────┐
+│   CLIENT    │
+└──────┬──────┘
+       │ DELETE /users/:id
+       │ (ADMIN only)
+       ▼
+┌────────────────────┐
+│  Verificar Role    │
+│  user.role ===     │
+│  'ADMIN'?          │
+└─────────┬──────────┘
+          │ NO
+          ▼        403 Forbidden
+┌────────────────────┐
+│  Proteção Self     │
+│  :id ===            │
+│  user.id?          │
+└─────────┬──────────┘
+          │ YES self
+          ▼        403 Forbidden
+┌────────────────────┐
+│  Deleção em Cascata│
+│  1. Delete posts   │
+│     WHERE userId=? │
+│  2. Delete files   │
+│     WHERE userId=? │
+│  3. Delete user    │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│  Limpar Sockets    │
+│  • Remove de       │
+│    connectedSockets│
+│  • Remove de       │
+│    userSockets     │
+└─────────┬──────────┘
+          │ 204 No Content
+          ▼
+    ┌─────────────┐
+    │   CLIENT    │
+    └─────────────┘
+                </pre>
+            </div>
+        </section>
+
+        <!-- Validações Zod -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6 text-green-400">✅ Validações Zod</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Schema Auth -->
+                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                    <h3 class="text-lg font-semibold mb-3 text-blue-300">🔐 Auth Schemas</h3>
+                    <div class="space-y-4 text-sm font-mono">
+                        <div class="bg-slate-900 p-3 rounded border border-slate-600">
+                            <code class="text-cyan-300">registerSchema</code>
+                            <pre class="text-xs text-slate-300 mt-2">
+{
+  email: string.email(),
+  password: string.min(6)
+}
+                            </pre>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded border border-slate-600">
+                            <code class="text-cyan-300">loginSchema</code>
+                            <pre class="text-xs text-slate-300 mt-2">
+{
+  email: string.email(),
+  password: string.min(1)
+}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schema User -->
+                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                    <h3 class="text-lg font-semibold mb-3 text-emerald-300">👤 User Schema</h3>
+                    <div class="bg-slate-900 p-3 rounded border border-slate-600 text-sm font-mono">
+                        <code class="text-cyan-300">userSchema</code>
+                        <pre class="text-xs text-slate-300 mt-2">
+{
+  name: string.min(1).max(100),
+  email: string.email(),
+  password: string.min(6),
+  role: enum(['ADMIN', 'USER']),
+  isActive: boolean.default(true)
+}
+                        </pre>
+                    </div>
+                </div>
+
+                <!-- Schema Search -->
+                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 md:col-span-2">
+                    <h3 class="text-lg font-semibold mb-3 text-purple-300">🔍 Search Schema</h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-slate-900 p-3 rounded border border-slate-600 text-sm font-mono">
+                            <code class="text-cyan-300">searchSchema</code>
+                            <pre class="text-xs text-slate-300 mt-2">
+{
+  query: string.optional(),
+  page: number.int().min(1).default(1),
+  limit: number.int().min(1).max(100).default(20)
+}
+                            </pre>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded border border-slate-600 text-sm font-mono">
+                            <code class="text-cyan-300">filterSchema</code>
+                            <pre class="text-xs text-slate-300 mt-2">
+{
+  role: enum(['ADMIN', 'USER']).optional(),
+  isActive: boolean.optional(),
+  dateFrom: string.date().optional(),
+  dateTo: string.date().optional()
+}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Uso dos Schemas -->
+            <div class="mt-6 bg-slate-800 p-5 rounded-lg border border-slate-700">
+                <h3 class="text-lg font-semibold mb-3 text-amber-300">📦 Uso nos Endpoints</h3>
+                <pre class="text-sm font-mono bg-slate-900 p-4 rounded-lg text-slate-300 overflow-x-auto">
+// Exemplo: POST /products
+const validate = registerSchema.safeParse(req.body);
+if (!validate.success) {
+  throw new BadRequestException(validate.error.flatten());
+}
+const { email, password } = validate.data;
+
+// Exemplo: GET /search
+const { query, page, limit, filters } = searchSchema.parse({
+  ...req.query,
+  ...(req.body || {})
+});
+                </pre>
+            </div>
+        </section>
+
+        <!-- Riscos de Segurança -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6 text-red-400">⚠️ Riscos de Segurança Identificados</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Risco Alto -->
+                <div class="risk-high bg-slate-800 p-5 rounded-lg border-l-4 border-red-500">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">🔥</span>
+                        <div>
+                            <h3 class="text-red-400 font-semibold mb-2">Deleção em Cascata</h3>
+                            <p class="text-sm text-slate-300 mb-3">
+                                Deleção de um usuário remove todos os seus posts, arquivos e dados relacionados.
+                            </p>
+                            <div class="bg-red-900/20 p-3 rounded text-xs font-mono text-red-200">
+                                <strong>Impacto:</strong> Perda irreversível de dados<br>
+                                <strong>Mitigação:</strong> Implementar soft delete, backup automático, confirmação antes da deleção
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risco Médio -->
+                <div class="risk-medium bg-slate-800 p-5 rounded-lg border-l-4 border-amber-500">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">⚡</span>
+                        <div>
+                            <h3 class="text-amber-400 font-semibold mb-2">Rate Limit Limitado</h3>
+                            <p class="text-sm text-slate-300 mb-3">
+                                Rate limit apenas global por IP, sem Rate Limit por usuário autenticado.
+                            </p>
+                            <div class="bg-amber-900/20 p-3 rounded text-xs font-mono text-amber-200">
+                                <strong>Impacto:</strong> Ataque DoS via múltiplas contas<br>
+                                <strong>Mitigação:</strong> Adicionar rate limit por user ID após auth
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risco Alto -->
+                <div class="risk-high bg-slate-800 p-5 rounded-lg border-l-4 border-red-500">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">🔓</span>
+                        <div>
+                            <h3 class="text-red-400 font-semibold mb-2">Sem 2FA (Two-Factor Authentication)</h3>
+                            <p class="text-sm text-slate-300 mb-3">
+                                Sistema não possui autenticação de dois fatores, apenas senha.
+                            </p>
+                            <div class="bg-red-900/20 p-3 rounded text-xs font-mono text-red-200">
+                                <strong>Impacto:</strong> Vulnerável a credential stuffing, phishing<br>
+                                <strong>Mitigação:</strong> Implementar TOTP (Google Authenticator) ou SMS/Email 2FA
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risco Médio -->
+                <div class="risk-medium bg-slate-800 p-5 rounded-lg border-l-4 border-amber-500">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">✉️</span>
+                        <div>
+                            <h3 class="text-amber-400 font-semibold mb-2">Sem Verificação de Email</h3>
+                            <p class="text-sm text-slate-300 mb-3">
+                                Usuários registrados podem usar o sistema sem confirmar_email.
+                            </p>
+                            <div class="bg-amber-900/20 p-3 rounded text-xs font-mono text-amber-200">
+                                <strong>Impacto:</strong> Contas falsas, spam, impossible to recover<br>
+                                <strong>Mitigação:</strong> Bloquear login sem verificação, token de confirmação
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risco Baixo -->
+                <div class="risk-low bg-slate-800 p-5 rounded-lg border-l-4 border-emerald-500">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">📜</span>
+                        <div>
+                            <h3 class="text-emerald-400 font-semibold mb-2">JWT sem Refresh Token Rotation</h3>
+                            <p class="text-sm text-slate-300 mb-3">
+                                Refresh tokens podem ser reutilizados se roubados (sem verificação de jti).
+                            </p>
+                            <div class="bg-emerald-900/20 p-3 rounded text-xs font-mono text-emerald-200">
+                                <strong>Impacto:</strong> Sessão prolongada não autorizada<br>
+                                <strong>Mitigação:</strong> Implementar jti, invalidar após uso, curta validade access token
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risco Baixo -->
+                <div class="risk-low bg-slate-800 p-5 rounded-lg border-l-4 border-emerald-500">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">🔍</span>
+                        <div>
+                            <h3 class="text-emerald-400 font-semibold mb-2">Busca sem Limite de Resultados</h3>
+                            <p class="text-sm text-slate-300 mb-3">
+                                Limite default de 20, mas pode ser elevado para 100 via query param.
+                            </p>
+                            <div class="bg-emerald-900/20 p-3 rounded text-xs font-mono text-emerald-200">
+                                <strong>Impacto:</strong> DoS via open search广度扫描<br>
+                                <strong>Mitigação:</strong> Max 50 hard coded, monitorar uso
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Resumo -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6 text-indigo-400">📊 Resumo da Implementação</h2>
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <div class="grid md:grid-cols-4 gap-4 text-center">
+                    <div class="p-4 bg-slate-900 rounded-lg">
+                        <div class="text-3xl font-bold text-green-400">3</div>
+                        <div class="text-sm text-slate-400 mt-1">Roles Definidas</div>
+                    </div>
+                    <div class="p-4 bg-slate-900 rounded-lg">
+                        <div class="text-3xl font-bold text-blue-400">8</div>
+                        <div class="text-sm text-slate-400 mt-1">Endpoints Protegidos</div>
+                    </div>
+                    <div class="p-4 bg-slate-900 rounded-lg">
+                        <div class="text-3xl font-bold text-purple-400">5</div>
+                        <div class="text-sm text-slate-400 mt-1">Schemas Zod</div>
+                    </div>
+                    <div class="p-4 bg-slate-900 rounded-lg">
+                        <div class="text-3xl font-bold text-amber-400">6</div>
+                        <div class="text-sm text-slate-400 mt-1">Riscos Ativos</div>
+                    </div>
+                </div>
+                <div class="mt-6 pt-6 border-t border-slate-700">
+                    <h3 class="text-lg font-semibold mb-3 text-cyan-300">Recomendações de Melhoria</h3>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex items-start gap-2">
+                            <span class="text-cyan-400 mt-1">1.</span>
+                            <span>Implementar soft delete para usuários (isDeleted + deletedAt)</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-cyan-400 mt-1">2.</span>
+                            <span>Adicionar rate limit por user ID (após autenticação)</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-cyan-400 mt-1">3.</span>
+                            <span>Implementar verificação de email (token + expiry)</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-cyan-400 mt-1">4.</span>
+                            <span>Adicionar 2FA com TOTP (Google Authenticator / Authy)</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-cyan-400 mt-1">5.</span>
+                            <span>Implementar refresh token rotation com blacklist/Redis</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-cyan-400 mt-1">6.</span>
+                            <span>Auditar logs de todas as ações sensíveis (auth, delete, role change)</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-12 pt-6 border-t border-slate-700 text-center text-slate-500 text-sm">
+            <p>Backend Boilerplate • Documentação de Regras de Negócio • Versão 1.0</p>
+            <p class="mt-1">Última atualização: Março 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

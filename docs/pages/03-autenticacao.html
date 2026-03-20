@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Autenticação JWT - Análise Completa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .code-block {
+            background: #1e293b;
+            border-left: 4px solid #3b82f6;
+        }
+        .flow-arrow {
+            border-top: 2px dashed #3b82f6;
+            position: relative;
+        }
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: -6px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid #3b82f6;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+        .endpoint-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+        .public {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+        .protected {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+        .risk-high {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .risk-medium {
+            background: #fed7aa;
+            color: #9a3412;
+            border: 1px solid #fdba74;
+        }
+        .step-box {
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .step-box:hover {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 border-b border-slate-700 pb-6">
+            <h1 class="text-4xl font-bold mb-2 text-blue-400">
+                🔐 Sistema de Autenticação JWT - Análise Completa
+            </h1>
+            <p class="text-slate-400 text-lg">
+                Backend Boilerplate • Autenticação com Fastify + Prisma + Socket.IO
+            </p>
+            <div class="mt-4 flex gap-4 flex-wrap">
+                <span class="px-3 py-1 bg-green-900/30 border border-green-700 rounded text-sm">Backend: ✅ Implementado</span>
+                <span class="px-3 py-1 bg-blue-900/30 border border-blue-700 rounded text-sm">Frontend: ✅ Implementado</span>
+                <span class="px-3 py-1 bg-yellow-900/30 border border-yellow-700 rounded text-sm">Security: ⚠️ Riscos Identificados</span>
+            </div>
+        </header>
+
+        <!-- Visão Geral -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-emerald-400">📋 Visão Geral</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <p class="mb-4 text-slate-300">
+                    O sistema de autenticação implementa fluxos completos de registro e login usando JWT (JSON Web Tokens),
+                    com hash de senhas via bcrypt, persistência no PostgreSQL via Prisma, e integração com Socket.IO
+                    para autenticação em tempo real.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div class="bg-slate-700/50 p-4 rounded border border-slate-600">
+                        <h3 class="font-semibold text-blue-400 mb-2">🔑 JWT</h3>
+                        <p class="text-sm text-slate-300">Tokens com expiração de 1 hora, assinados com HS256</p>
+                    </div>
+                    <div class="bg-slate-700/50 p-4 rounded border border-slate-600">
+                        <h3 class="font-semibold text-blue-400 mb-2">🔒 Bcrypt</h3>
+                        <p class="text-sm text-slate-300">Hash de senhas com salt rounds = 10</p>
+                    </div>
+                    <div class="bg-slate-700/50 p-4 rounded border border-slate-600">
+                        <h3 class="font-semibold text-blue-400 mb-2">💾 Prisma</h3>
+                        <p class="text-sm text-slate-300">ORM com migrations automatizadas</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fluxo de Registro -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-400">📝 Fluxo de REGISTRO</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-6">
+                <div class="mb-4">
+                    <span class="endpoint-badge public">POST /auth/register</span>
+                    <span class="text-slate-400 text-sm ml-2">Público - Sem autenticação</span>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">1️⃣ Validação de Email Único</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>const existing = await prisma.user.findUnique({
+  where: { email }
+});
+
+if (existing) {
+  throw new BadRequestError('User with same email already exists');
+}</code></pre>
+                    </div>
+
+                    <div class="flow-arrow h-2 w-full my-4"></div>
+
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">2️⃣ Hash da Senha</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>const passwordHash = await hash(password, 10);</code></pre>
+                        <p class="text-sm text-slate-400 mt-2">bcrypt com 10 salt rounds</p>
+                    </div>
+
+                    <div class="flow-arrow h-2 w-full my-4"></div>
+
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">3️⃣ Criar User (role=USER)</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>const user = await prisma.user.create({
+  data: {
+    name,
+    email,
+    password: passwordHash,
+    role: 'USER',  // ⬅️ Role fixa
+  },
+  select: {
+    id: true,
+    name: true,
+    email: true,
+  },
+});</code></pre>
+                    </div>
+
+                    <div class="flow-arrow h-2 w-full my-4"></div>
+
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">4️⃣ Retornar JWT</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>const token = await reply.jwtSign(
+  { sub: user.id },
+  { expiresIn: '1h' }
+);
+
+return reply.status(201).send({
+  token,
+  user,
+});</code></pre>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-blue-700/50 rounded-lg p-4">
+                    <h5 class="font-semibold text-blue-300 mb-2">📄 Arquivo fonte</h5>
+                    <p class="text-sm text-slate-400">backend-boilerplate/src/http/routes/auth/register.ts</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fluxo de Login -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-400">🔑 Fluxo de LOGIN</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-6">
+                <div class="mb-4">
+                    <span class="endpoint-badge public">POST /auth/login</span>
+                    <span class="endpoint-badge public">POST /auth/authenticate</span>
+                    <span class="text-slate-400 text-sm ml-2">Público - Sem autenticação</span>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">1️⃣ Buscar Usuário</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>const user = await prisma.user.findUnique({
+  where: { email },
+  select: {
+    id: true,
+    name: true,
+    email: true,
+    password: true,  // ⬅️ Senha hash
+    isActive: true,
+  },
+});
+
+if (!user) {
+  throw new BadRequestError('Invalid credentials');
+}
+
+if (!user.isActive) {
+  throw new BadRequestError('User account is disabled');
+}</code></pre>
+                    </div>
+
+                    <div class="flow-arrow h-2 w-full my-4"></div>
+
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">2️⃣ Verificar Senha (bcrypt.compare)</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>const isPasswordValid = await compare(password, user.password);
+
+if (!isPasswordValid) {
+  throw new BadRequestError('Invalid credentials');
+}</code></pre>
+                    </div>
+
+                    <div class="flow-arrow h-2 w-full my-4"></div>
+
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">3️⃣ Atualizar lastLoginAt</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>await prisma.user.update({
+  where: { id: user.id },
+  data: { lastLoginAt: new Date() },
+});</code></pre>
+                    </div>
+
+                    <div class="flow-arrow h-2 w-full my-4"></div>
+
+                    <div class="step-box bg-slate-700/30 p-4 rounded">
+                        <h4 class="font-semibold text-blue-300 mb-2">4️⃣ Assinar JWT (exp: 1h)</h4>
+                        <pre class="bg-slate-900 p-3 rounded text-sm overflow-x-auto"><code>const token = await reply.jwtSign(
+  { sub: user.id },
+  { expiresIn: '1h' }  // ⬅️ 3600 segundos
+);
+
+return reply.send({
+  token,
+  user: {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+  },
+});</code></pre>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-blue-700/50 rounded-lg p-4">
+                    <h5 class="font-semibold text-blue-300 mb-2">📄 Arquivo fonte</h5>
+                    <p class="text-sm text-slate-400">backend-boilerplate/src/http/routes/auth/authenticate.ts</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Middlewares -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-amber-400">🛡️ Middlewares de Autenticação</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- HTTP Auth Middleware -->
+                <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                    <h3 class="font-semibold text-lg text-blue-300 mb-3">📡 HTTP (REST API)</h3>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto h-64 overflow-y-auto"><code>export const auth = fastifyPlugin(async (app) => {
+  app.addHook('preHandler', async (request) => {
+    request.getCurrentUserId = async () => {
+      try {
+        const { sub } = await request.jwtVerify<{ sub: string }>();
+        return sub;
+      } catch {
+        throw new UnauthorizedError('Invalid or expired token');
+      }
+    };
+
+    request.getCurrentUserRole = async () => {
+      try {
+        const decoded = await request.jwtVerify<{ sub: string; role?: string }>();
+        return decoded.role || 'USER';
+      } catch {
+        throw new UnauthorizedError('Invalid or expired token');
+      }
+    };
+  });
+});</code></pre>
+                    <div class="bg-slate-900 border border-blue-700/50 rounded-lg p-3 mt-4">
+                        <p class="text-sm text-slate-400">Arquivo: backend-boilerplate/src/middlewares/auth.ts</p>
+                    </div>
+                </div>
+
+                <!-- Socket Auth Middleware -->
+                <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                    <h3 class="font-semibold text-lg text-blue-300 mb-3">🔌 Socket.IO Handshake</h3>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto h-64 overflow-y-auto"><code>export async function authenticate(
+  socket: Socket,
+  next: (err?: Error) => void
+): Promise<void> {
+  try {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+      return next(new Error('Authentication token required'));
+    }
+
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
+
+    // Attach user info to socket
+    (socket as any).user_id = decoded.sub;
+
+    next();
+  } catch (error) {
+    next(new Error('Invalid or expired token'));
+  }
+}</code></pre>
+                    <div class="bg-slate-900 border border-blue-700/50 rounded-lg p-3 mt-4">
+                        <p class="text-sm text-slate-400">Arquivo: backend-boilerplate/src/middlewares/auth-socket.ts</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Frontend -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-emerald-400">💻 Frontend - Zustand + localStorage</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <h3 class="font-semibold text-lg text-blue-300 mb-3">Auth Store (Zustand)</h3>
+                <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      isHydrated: false,
+
+      setAuth: (user, token) => {
+        localStorage.setItem('token', token)  // ⚠️ XSS Risk!
+        set({ user, token, isAuthenticated: true, isLoading: false })
+      },
+
+      logout: () => {
+        localStorage.removeItem('token')
+        set({ user: null, token: null, isAuthenticated: false })
+      },
+
+      setHydrated: () => set({ isHydrated: true }),
+    }),
+    {
+      name: 'auth',
+      partialize: (state) => ({ token: state.token }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated()
+      },
+    }
+  )
+)</code></pre>
+
+                <div class="bg-slate-900 border border-amber-700/50 rounded-lg p-4 mt-4">
+                    <p class="text-sm text-amber-300">
+                        <strong>⚠️ Observação:</strong> O token JWT é armazenado no localStorage, que é vulnerável a ataques XSS.
+                        Em produção, considere usar <code class="bg-slate-800 px-1 rounded">httpOnly cookies</code>.
+                    </p>
+                </div>
+
+                <div class="bg-slate-900 border border-blue-700/50 rounded-lg p-3 mt-4">
+                    <p class="text-sm text-slate-400">Arquivo: frontend-boilerplate/src/features/auth/store.ts</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tabela de Endpoints -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-purple-400">📊 Tabela de Endpoints</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-700">
+                            <th class="py-3 px-4 text-blue-300 font-semibold">Método</th>
+                            <th class="py-3 px-4 text-blue-300 font-semibold">Endpoint</th>
+                            <th class="py-3 px-4 text-blue-300 font-semibold">Auth</th>
+                            <th class="py-3 px-4 text-blue-300 font-semibold">Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-700">
+                            <td class="py-3 px-4"><code class="bg-slate-900 px-2 py-1 rounded text-emerald-400">POST</code></td>
+                            <td class="py-3 px-4"><code class="text-slate-300">/auth/register</code></td>
+                            <td class="py-3 px-4"><span class="endpoint-badge public">PUBLIC</span></td>
+                            <td class="py-3 px-4 text-slate-300">Criar nova conta de usuário</td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="py-3 px-4"><code class="bg-slate-900 px-2 py-1 rounded text-emerald-400">POST</code></td>
+                            <td class="py-3 px-4"><code class="text-slate-300">/auth/authenticate</code></td>
+                            <td class="py-3 px-4"><span class="endpoint-badge public">PUBLIC</span></td>
+                            <td class="py-3 px-4 text-slate-300">Autenticar com email e senha</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4"><code class="bg-slate-900 px-2 py-1 rounded text-emerald-400">GET</code></td>
+                            <td class="py-3 px-4"><code class="text-slate-300">/auth/me</code></td>
+                            <td class="py-3 px-4"><span class="endpoint-badge protected">JWT REQUIRED</span></td>
+                            <td class="py-3 px-4 text-slate-300">Obter usuário autenticado atual</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Riscos de Segurança -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-red-400">⚠️ Riscos de Segurança Identificados</h2>
+            <div class="space-y-4">
+                <div class="bg-slate-800 rounded-lg p-6 border-l-4 border-red-500 border-slate-700">
+                    <h3 class="font-semibold text-lg text-red-300 mb-2">1. JWT no localStorage (XSS)</h3>
+                    <p class="text-slate-300 mb-3">
+                        O token JWT é armazenado no <code class="bg-slate-900 px-1 rounded">localStorage</code>, que é acessível via JavaScript.
+                        Um ataque XSS pode roubar o token e dar acesso total à conta.
+                    </p>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <p class="text-sm text-slate-400"><strong>Solução recomendada:</strong> Usar httpOnly cookies com SameSite=Strict/Lax</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-6 border-l-4 border-yellow-500 border-slate-700">
+                    <h3 class="font-semibold text-lg text-yellow-300 mb-2">2. Sem Refresh Token</h3>
+                    <p class="text-slate-300 mb-3">
+                        O JWT expira em 1 hora, mas não há refresh token. O usuário precisa fazer login novamente após expirar.
+                        Isso prejudica a UX e força reautenticação frequente.
+                    </p>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <p class="text-sm text-slate-400"><strong>Solução:</strong> Implementar refresh tokens com maior expiração (7 dias)</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-6 border-l-4 border-yellow-500 border-slate-700">
+                    <h3 class="font-semibold text-lg text-yellow-300 mb-2">3. Sem Blacklist/Revogação</h3>
+                    <p class="text-slate-300 mb-3">
+                        Não há forma de invalidar um JWT antes da expiração. Se o token for comprometido, válido até expirar.
+                    </p>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <p class="text-sm text-slate-400"><strong>Solução:</strong> Manter blacklist de tokens revogados no Redis (IAT check)</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-6 border-l-4 border-orange-500 border-slate-700">
+                    <h3 class="font-semibold text-lg text-orange-300 mb-2">4. Sem Rate Limiting por IP</h3>
+                    <p class="text-slate-300 mb-3">
+                        Os endpoints <code class="bg-slate-900 px-1 rounded">/auth/register</code> e <code class="bg-slate-900 px-1 rounded">/auth/login</code> não têm rate limit.
+                        Isso permite ataques de força bruta e spam de criação de contas.
+                    </p>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <p class="text-sm text-slate-400"><strong>Solução:</strong> Adicionar rate limit por IP (ex: 5 tentativas/minuto)</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-6 border-l-4 border-orange-500 border-slate-700">
+                    <h3 class="font-semibold text-lg text-orange-300 mb-2">5. Senhas em Texto Plano na Query</h3>
+                    <p class="text-slate-300 mb-3">
+                        Na rota de login, o schema Zod permite qualquer string, mas não há validação de complexidade
+                        (maiúsculas, números, símbolos). Apenas min 6 caracteres.
+                    </p>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <p class="text-sm text-slate-400"><strong>Solução:</strong> Aumentar mínimo e adicionar regras: upper, number, specialChar</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exemplos cURL -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-cyan-400">💻 Exemplos cURL</h2>
+
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 space-y-6">
+                <!-- Register -->
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="endpoint-badge public">POST /auth/register</span>
+                    </div>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "João Silva",
+    "email": "joao@email.com",
+    "password": "senha123"
+  }'</code></pre>
+                </div>
+
+                <!-- Register Success Response -->
+                <div>
+                    <h4 class="font-semibold text-emerald-300 mb-2">✅ Resposta de Sucesso (201)</h4>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "clx123abc456",
+    "name": "João Silva",
+    "email": "joao@email.com"
+  }
+}</code></pre>
+                </div>
+
+                <!-- Login -->
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="endpoint-badge public">POST /auth/authenticate</span>
+                    </div>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>curl -X POST http://localhost:3000/auth/authenticate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "joao@email.com",
+    "password": "senha123"
+  }'</code></pre>
+                </div>
+
+                <!-- Login Success Response -->
+                <div>
+                    <h4 class="font-semibold text-emerald-300 mb-2">✅ Resposta de Sucesso (200)</h4>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "clx123abc456",
+    "name": "João Silva",
+    "email": "joao@email.com"
+  }
+}</code></pre>
+                </div>
+
+                <!-- Get Me -->
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="endpoint-badge protected">GET /auth/me</span>
+                    </div>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>curl -X GET http://localhost:3000/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."</code></pre>
+                </div>
+
+                <!-- Get Me Success Response -->
+                <div>
+                    <h4 class="font-semibold text-emerald-300 mb-2">✅ Resposta de Sucesso (200)</h4>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>{
+  "id": "clx123abc456",
+  "name": "João Silva",
+  "email": "joao@email.com",
+  "role": "USER",
+  "isActive": true,
+  "createdAt": "2025-03-20T10:30:00.000Z"
+}</code></pre>
+                </div>
+
+                <!-- Error Responses -->
+                <div>
+                    <h4 class="font-semibold text-red-300 mb-2">❌ Respostas de Erro</h4>
+                    <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code># Email já existe (400)
+{
+  "statusCode": 400,
+  "error": "Bad Request",
+  "message": "User with same email already exists"
+}
+
+# Credenciais inválidas (400)
+{
+  "statusCode": 400,
+  "error": "Bad Request",
+  "message": "Invalid credentials"
+}
+
+# Token ausente/inválido (401)
+{
+  "statusCode": 401,
+  "error": "Unauthorized",
+  "message": "Invalid or expired token"
+}</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Diagrama de Fluxo -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-400">🔄 Diagrama de Fluxo Completo</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <div class="flex flex-col items-center space-y-4">
+                    <!-- Registro Flow -->
+                    <div class="w-full">
+                        <h3 class="font-semibold text-blue-300 text-center mb-3">REGISTRO</h3>
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-2 text-sm">
+                            <div class="bg-blue-600/20 border border-blue-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-blue-300">1. POST</div>
+                                <div class="text-slate-300">/auth/register</div>
+                            </div>
+                            <svg class="w-8 h-4 text-blue-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-blue-600/20 border border-blue-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-blue-300">2. Validar</div>
+                                <div class="text-slate-300">Email único</div>
+                            </div>
+                            <svg class="w-8 h-4 text-blue-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-blue-600/20 border border-blue-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-blue-300">3. Hash</div>
+                                <div class="text-slate-300">bcrypt(senha)</div>
+                            </div>
+                            <svg class="w-8 h-4 text-blue-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-blue-600/20 border border-blue-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-blue-300">4. Criar</div>
+                                <div class="text-slate-300">User(role='USER')</div>
+                            </div>
+                            <svg class="w-8 h-4 text-blue-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-green-600/20 border border-green-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-green-300">5. JWT</div>
+                                <div class="text-slate-300">exp: 1h</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Login Flow -->
+                    <div class="w-full mt-6 pt-6 border-t border-slate-700">
+                        <h3 class="font-semibold text-amber-300 text-center mb-3">LOGIN</h3>
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-2 text-sm">
+                            <div class="bg-amber-600/20 border border-amber-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-amber-300">1. POST</div>
+                                <div class="text-slate-300">/auth/authenticate</div>
+                            </div>
+                            <svg class="w-8 h-4 text-amber-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-amber-600/20 border border-amber-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-amber-300">2. Buscar</div>
+                                <div class="text-slate-300">user por email</div>
+                            </div>
+                            <svg class="w-8 h-4 text-amber-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-amber-600/20 border border-amber-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-amber-300">3. bcrypt</div>
+                                <div class="text-slate-300">compare</div>
+                            </div>
+                            <svg class="w-8 h-4 text-amber-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-amber-600/20 border border-amber-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-amber-300">4. Update</div>
+                                <div class="text-slate-300">lastLoginAt</div>
+                            </div>
+                            <svg class="w-8 h-4 text-amber-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-green-600/20 border border-green-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-green-300">5. JWT</div>
+                                <div class="text-slate-300">exp: 1h</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auth Protected Flow -->
+                    <div class="w-full mt-6 pt-6 border-t border-slate-700">
+                        <h3 class="font-semibold text-emerald-300 text-center mb-3">REQUISIÇÕES PROTEGIDAS</h3>
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-2 text-sm">
+                            <div class="bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-center min-w-[200px]">
+                                <div class="font-semibold text-slate-300">1. Requisição com</div>
+                                <div class="text-emerald-300">Authorization: Bearer &lt;JWT&gt;</div>
+                            </div>
+                            <svg class="w-8 h-4 text-emerald-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-center min-w-[180px]">
+                                <div class="font-semibold text-slate-300">2. Middleware</div>
+                                <div class="text-emerald-300">auth.ts</div>
+                            </div>
+                            <svg class="w-8 h-4 text-emerald-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-slate-300">3. jwtVerify()</div>
+                                <div class="text-emerald-300">Valida assinatura</div>
+                            </div>
+                            <svg class="w-8 h-4 text-emerald-400 pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            <div class="bg-emerald-600/20 border border-emerald-500 rounded-lg px-4 py-3 text-center min-w-[160px]">
+                                <div class="font-semibold text-emerald-300">4. Acesso</div>
+                                <div class="text-slate-300">Permitido</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Arquivos Analisados -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-300">📁 Arquivos Analisados</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-slate-700/30 p-3 rounded border border-slate-600">
+                        <code class="text-blue-400 text-sm">backend-boilerplate/src/http/routes/auth/register.ts</code>
+                    </div>
+                    <div class="bg-slate-700/30 p-3 rounded border border-slate-600">
+                        <code class="text-blue-400 text-sm">backend-boilerplate/src/http/routes/auth/authenticate.ts</code>
+                    </div>
+                    <div class="bg-slate-700/30 p-3 rounded border border-slate-600">
+                        <code class="text-blue-400 text-sm">backend-boilerplate/src/http/routes/auth/get-me.ts</code>
+                    </div>
+                    <div class="bg-slate-700/30 p-3 rounded border border-slate-600">
+                        <code class="text-blue-400 text-sm">backend-boilerplate/src/middlewares/auth.ts</code>
+                    </div>
+                    <div class="bg-slate-700/30 p-3 rounded border border-slate-600">
+                        <code class="text-blue-400 text-sm">backend-boilerplate/src/middlewares/auth-socket.ts</code>
+                    </div>
+                    <div class="bg-slate-700/30 p-3 rounded border border-slate-600">
+                        <code class="text-blue-400 text-sm">frontend-boilerplate/src/features/auth/store.ts</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comparação: Tradicional vs JWT -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-300">🔍 Comparação: Sessão Tradicional vs JWT</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-700">
+                            <th class="py-3 px-4 text-blue-300 font-semibold w-1/3">Característica</th>
+                            <th class="py-3 px-4 text-blue-300 font-semibold">Tradicional (Session)</th>
+                            <th class="py-3 px-4 text-blue-300 font-semibold">JWT (Implementado)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-700">
+                            <td class="py-3 px-4 font-medium text-slate-300">Armazenamento</td>
+                            <td class="py-3 px-4 text-slate-300">Server-side (Redis/DB)</td>
+                            <td class="py-3 px-4 text-emerald-300">Client-side (token)</td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="py-3 px-4 font-medium text-slate-300">Estado</td>
+                            <td class="py-3 px-4 text-slate-300">Stateful</td>
+                            <td class="py-3 px-4 text-emerald-300">Stateless</td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="py-3 px-4 font-medium text-slate-300">Scalability</td>
+                            <td class="py-3 px-4 text-slate-300">Requer compartilhamento de sessão</td>
+                            <td class="py-3 px-4 text-emerald-300">Fácil escalonamento</td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="py-3 px-4 font-medium text-slate-300">Revogação</td>
+                            <td class="py-3 px-4 text-slate-300">Imediata (delete session)</td>
+                            <td class="py-3 px-4 text-red-300">Apenas após expiração</td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="py-3 px-4 font-medium text-slate-300">Tamanho payload</td>
+                            <td class="py-3 px-4 text-slate-300">ID da sessão pequeno</td>
+                            <td class="py-3 px-4 text-yellow-300">Maior (dados incluídos)</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 font-medium text-slate-300">CSRF</td>
+                            <td class="py-3 px-4 text-red-300">Vulnerável</td>
+                            <td class="py-3 px-4 text-emerald-300">Imune (não usa cookies)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Recomendações -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-green-400">✅ Recomendações de Melhoria</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <div class="space-y-4">
+                    <div class="flex items-start gap-3">
+                        <div class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">1</div>
+                        <div>
+                            <h4 class="font-semibold text-blue-300 mb-1">Substituir localStorage por httpOnly cookies</h4>
+                            <p class="text-slate-300 text-sm">
+                                Armazene o JWT em cookies httpOnly para proteção contra XSS. Use SameSite=Strict para evitar CSRF.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <div class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">2</div>
+                        <div>
+                            <h4 class="font-semibold text-blue-300 mb-1">Implementar refresh tokens</h4>
+                            <p class="text-slate-300 text-sm">
+                                Short-lived access tokens (15min) + long-lived refresh tokens (7 dias). Refresh endpoint para renovação.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <div class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">3</div>
+                        <div>
+                            <h4 class="font-semibold text-blue-300 mb-1">Adicionar rate limiting</h4>
+                            <p class="text-slate-300 text-sm">
+                                Limitadores por IP e por email nos endpoints de auth. Use Redis para contadores distribuídos.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <div class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">4</div>
+                        <div>
+                            <h4 class="font-semibold text-blue-300 mb-1">Blacklist de tokens revogados</h4>
+                            <p class="text-slate-300 text-sm">
+                                Armazene JTI (JWT ID) dos tokens invalidados no Redis com TTL igual à expiração. Verificar em middleware.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <div class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">5</div>
+                        <div>
+                            <h4 class="font-semibold text-blue-300 mb-1">Política de senhas mais forte</h4>
+                            <p class="text-slate-300 text-sm">
+                                Min 8+ chars, uppercase, numbers, symbols. Validar com regex ou biblioteca como validator.js.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <div class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">6</div>
+                        <div>
+                            <h4 class="font-semibold text-blue-300 mb-1">2FA (Two-Factor Authentication)</h4>
+                            <p class="text-slate-300 text-sm">
+                                Adicionar segunda camada com TOTP (Google Authenticator) ou codes por email/SMS.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Schema Prisma User -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-orange-400">📐 Schema do Banco - Model User</h2>
+            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <pre class="bg-slate-900 p-4 rounded text-sm overflow-x-auto"><code>model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String    @unique
+  password         String
+  role             Role       @default(USER)
+  isActive         Boolean    @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Relations
+  messages         Message[]
+  rooms           RoomMember[]
+  createdRooms    Room[]     @relation("RoomCreator")
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}</code></pre>
+                <div class="bg-slate-900 border border-blue-700/50 rounded-lg p-3 mt-4">
+                    <p class="text-sm text-slate-400">Arquivo: backend-boilerplate/prisma/schema.prisma</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-12 pt-6 border-t border-slate-700 text-center text-slate-500 text-sm">
+            <p>Backend Boilerplate • Documentação de Autenticação</p>
+            <p class="mt-1">Stack: Fastify + Prisma + PostgreSQL + JWT + Socket.IO + React + Zustand</p>
+        </footer>
+    </div>
+</body>
+</html>

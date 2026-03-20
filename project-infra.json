@@ -1,0 +1,16 @@
+{
+  "projectName": "boilerplate",
+  "createdAt": "2025-03-20T06:30:00Z",
+  "updatedAt": "2025-03-20T06:30:00Z",
+  "services": [
+    {
+      "name": "docs",
+      "port": 4006,
+      "pm2Name": "docs-boilerplate",
+      "domain": "docs-boilerplate.ddw1sl.easypanel.host",
+      "url": "https://docs-boilerplate.ddw1sl.easypanel.host",
+      "type": "docs",
+      "startCommand": "pm2 start /workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/boilerplate/docs-server.js --name docs-boilerplate --interpreter /usr/bin/node"
+    }
+  ]
+}

@@ -25,5 +25,8 @@
   "homepage": "https://github.com/PedroPaduelo/boilerplate#readme",
   "devDependencies": {
     "k6": "^0.0.0"
+  },
+  "dependencies": {
+    "cmdk": "^1.1.1"
   }
 }

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitetura - Boilerplate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { primary: {50: '#f0f9ff',100: '#e0f2fe',200: '#bae6fd',300: '#7dd3fc',400: '#38bdf8',500: '#0ea5e9',600: '#0284c7',700: '#0369a1',800: '#075985',900: '#0c4a6e'}, accent: {50: '#faf5ff',100: '#f3e8ff',200: '#e9d5ff',300: '#d8b4fe',400: '#c084fc',500: '#a855f7',600: '#9333ea',700: '#7e22ce',800: '#6b21a8',900: '#581c87'}}}}}'
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #e5e5e5; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .card { background: #1a1a1a; border: 1px solid #333; border-radius: 0.75rem; }
+        .service-box { transition: all 0.3s ease; }
+        .service-box:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(14,165,233,0.15); }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;}}
+        .pulse-dot { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-6xl mx-auto px-6 py-12">
+        <header class="mb-12">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-3xl">🏗️</span>
+                <h1 class="text-4xl font-bold bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">Arquitetura do Sistema</h1>
+            </div>
+            <p class="text-gray-400 text-lg">Visão geral completa da arquitetura, componentes, fluxo de dados e pontos únicos de falha.</p>
+        </header>
+
+        <!-- Diagrama -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400 text-lg">📐</span>
+                Diagrama de Arquitetura
+            </h2>
+            <div class="card p-8 overflow-x-auto">
+                <svg viewBox="0 0 1200 550" class="w-full">
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#0ea5e9"/>
+                        </marker>
+                        <marker id="arrowdb" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#a855f7"/>
+                        </marker>
+                    </defs>
+
+                    <!-- Client -->
+                    <g transform="translate(50,80)">
+                        <rect width="200" height="100" rx="12" fill="rgba(14,165,233,0.1)" stroke="rgba(14,165,233,0.5)" stroke-width="2"/>
+                        <text x="100" y="40" text-anchor="middle" fill="#38bdf8" font-size="18" font-weight="600">Client</text>
+                        <text x="100" y="70" text-anchor="middle" fill="#9ca3af" font-size="14">React + Vite</text>
+                        <text x="100" y="90" text-anchor="middle" fill="#6b7280" font-size="12">Port: 5173</text>
+                    </g>
+
+                    <!-- Arrow Client → Server -->
+                    <path d="M 250 130 L 370 130" stroke="#0ea5e9" stroke-width="3" marker-end="url(#arrow)" stroke-dasharray="8,4"/>
+
+                    <!-- Fastify Server -->
+                    <g transform="translate(370,80)">
+                        <rect width="260" height="100" rx="12" fill="rgba(253,224,71,0.1)" stroke="rgba(253,224,71,0.5)" stroke-width="2"/>
+                        <text x="130" y="40" text-anchor="middle" fill="#fbbf24" font-size="18" font-weight="600">Fastify Server</text>
+                        <text x="130" y="70" text-anchor="middle" fill="#9ca3af" font-size="14">TypeScript + Zod</text>
+                        <text x="130" y="90" text-anchor="middle" fill="#6b7280" font-size="12">Port: 3333</text>
+                    </g>
+
+                    <!-- Down to Infra -->
+                    <path d="M 500 180 L 500 250" stroke="#6b7280" stroke-width="2" stroke-dasharray="4,4"/>
+
+                    <!-- Infrastructure Row -->
+                    <g transform="translate(200,250)">
+                        <!-- PostgreSQL -->
+                        <g transform="translate(0,0)">
+                            <rect width="180" height="100" rx="12" fill="rgba(147,51,234,0.1)" stroke="rgba(147,51,234,0.5)" stroke-width="2"/>
+                            <text x="90" y="35" text-anchor="middle" fill="#c084fc" font-size="16" font-weight="600">PostgreSQL</text>
+                            <text x="90" y="65" text-anchor="middle" fill="#9ca3af" font-size="13">Port: 5432</text>
+                            <text x="90" y="85" text-anchor="middle" fill="#6b7280" font-size="11">Prisma ORM</text>
+                        </g>
+
+                        <!-- Redis -->
+                        <g transform="translate(220,0)">
+                            <rect width="160" height="100" rx="12" fill="rgba(34,197,94,0.1)" stroke="rgba(34,197,94,0.5)" stroke-width="2"/>
+                            <text x="80" y="35" text-anchor="middle" fill="#22c55e" font-size="16" font-weight="600">Redis</text>
+                            <text x="80" y="65" text-anchor="middle" fill="#9ca3af" font-size="13">Port: 6379</text>
+                            <text x="80" y="85" text-anchor="middle" fill="#6b7280" font-size="11">Cache, Sessions, BullMQ</text>
+                        </g>
+
+                        <!-- OpenSearch -->
+                        <g transform="translate(410,0)">
+                            <rect width="180" height="100" rx="12" fill="rgba(59,130,246,0.1)" stroke="rgba(59,130,246,0.5)" stroke-width="2"/>
+                            <text x="90" y="35" text-anchor="middle" fill="#3b82f6" font-size="16" font-weight="600">OpenSearch</text>
+                            <text x="90" y="65" text-anchor="middle" fill="#9ca3af" font-size="13">Port: 9200</text>
+                            <text x="90" y="85" text-anchor="middle" fill="#6b7280" font-size="11">Search Engine</text>
+                        </g>
+                    </g>
+
+                    <!-- Arrows to DBs -->
+                    <path d="M 500 250 L 590 300" stroke="#a855f7" stroke-width="3" marker-end="url(#arrowdb)"/>
+                    <path d="M 500 250 L 570 300" stroke="#22c55e" stroke-width="3" marker-end="url(#arrowdb)"/>
+                    <path d="M 500 250 L 650 300" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrowdb)"/>
+
+                    <!-- Workers Row -->
+                    <g transform="translate(750,80)">
+                        <!-- BullMQ -->
+                        <g transform="translate(0,0)">
+                            <rect width="200" height="100" rx="12" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.5)" stroke-width="2"/>
+                            <text x="100" y="35" text-anchor="middle" fill="#f59e0b" font-size="16" font-weight="600">BullMQ Workers</text>
+                            <text x="100" y="65" text-anchor="middle" fill="#9ca3af" font-size="13">6 Queues</text>
+                            <text x="100" y="85" text-anchor="middle" fill="#6b7280" font-size="11">Background Jobs</text>
+                        </g>
+
+                        <!-- Socket.IO -->
+                        <g transform="translate(240,0)">
+                            <rect width="180" height="100" rx="12" fill="rgba(236,72,153,0.1)" stroke="rgba(236,72,153,0.5)" stroke-width="2"/>
+                            <text x="90" y="35" text-anchor="middle" fill="#ec4899" font-size="16" font-weight="600">Socket.IO</text>
+                            <text x="90" y="65" text-anchor="middle" fill="#9ca3af" font-size="13">Real-time</text>
+                            <text x="90" y="85" text-anchor="middle" fill="#6b7280" font-size="11">WebSocket</text>
+                        </g>
+                    </g>
+
+                    <!-- Arrow Server → Workers -->
+                    <path d="M 630 130 L 750 130" stroke="#6b7280" stroke-width="2" stroke-dasharray="4,4"/>
+
+                </svg>
+            </div>
+        </section>
+
+        <!-- Serviços -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Serviços</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-6 service-box">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400 text-xl">🚀</div>
+                        <div>
+                            <h3 class="font-semibold">Fastify Server</h3>
+                            <p class="text-gray-500 text-sm">Porta 3333</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">API HTTP com validação Zod, rate limiting, CORS, upload, Swagger.</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex"><span class="text-primary-400 w-32">Framework:</span><span class="mono text-gray-300">Fastify 5.1.0</span></div>
+                        <div class="flex"><span class="text-primary-400 w-32">Validação:</span><span class="mono text-gray-300"> Zod 4.x</span></div>
+                        <div class="flex"><span class="text-primary-400 w-32">Rate Limit:</span><span class="mono text-gray-300">100 req/min</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-6 service-box">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 text-xl">🗄️</div>
+                        <div>
+                            <h3 class="font-semibold">PostgreSQL</h3>
+                            <p class="text-gray-500 text-sm">Porta 5432</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">Banco relacional com Prisma ORM. Suporte a migrations e pooling.</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex"><span class="text-green-400 w-32">ORM:</span><span class="mono text-gray-300">Prisma 6.0.1</span></div>
+                        <div class="flex"><span class="text-green-400 w-32">Driver:</span><span class="mono text-gray-300">pg</span></div>
+                        <div class="flex"><span class="text-green-400 w-32">Connection:</span><span class="mono text-gray-300">Pooled</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-6 service-box">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 text-xl">⚡</div>
+                        <div>
+                            <h3 class="font-semibold">Redis</h3>
+                            <p class="text-gray-500 text-sm">Porta 6379</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">Cache, sessões, BullMQ broker. Modo degradado se indisponível.</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex"><span class="text-purple-400 w-32">Cliente:</span><span class="mono text-gray-300">ioredis 5.4.1</span></div>
+                        <div class="flex"><span class="text-purple-400 w-32">Pre-check:</span><span class="mono text-gray-300">4s timeout</span></div>
+                        <div class="flex"><span class="text-purple-400 w-32">Fallback:</span><span class="mono text-gray-300">Modo offline</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-6 service-box">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 text-xl">🔍</div>
+                        <div>
+                            <h3 class="font-semibold">OpenSearch</h3>
+                            <p class="text-gray-500 text-sm">Porta 9200</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">Motor de busca full-text, geo-search e autocomplete.</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex"><span class="text-blue-400 w-32">Cliente:</span><span class="mono text-gray-300">@opensearch-project</span></div>
+                        <div class="flex"><span class="text-blue-400 w-32">HTTP API:</span><span class="mono text-gray-300">REST</span></div>
+                        <div class="flex"><span class="text-blue-400 w-32">Features:</span><span class="mono text-gray-300">Full-text, Geo</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-6 service-box">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 text-xl">👷</div>
+                        <div>
+                            <h3 class="font-semibold">BullMQ Workers</h3>
+                            <p class="text-gray-500 text-sm">6 Filas</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">Processamento assíncrono com dashboard em /queues.</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex"><span class="text-amber-400 w-32">Library:</span><span class="mono text-gray-300">BullMQ 5.64.0</span></div>
+                        <div class="flex"><span class="text-amber-400 w-32">Dashboard:</span><span class="mono text-gray-300">@bull-board</span></div>
+                        <div class="flex"><span class="text-amber-400 w-32">Redis:</span><span class="mono text-gray-300">Required</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-6 service-box">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400 text-xl">🔌</div>
+                        <div>
+                            <h3 class="font-semibold">Socket.IO</h3>
+                            <p class="text-gray-500 text-sm">WebSocket</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">Real-time events com autenticação JWT e rooms.</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex"><span class="text-pink-400 w-32">Version:</span><span class="mono text-gray-300">Socket.IO 4.8.3</span></div>
+                        <div class="flex"><span class="text-pink-400 w-32">Auth:</span><span class="mono text-gray-300">JWT middleware</span></div>
+                        <div class="flex"><span class="text-pink-400 w-32">Events:</span><span class="mono text-gray-300">join/leave/disconnect</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inicialização -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Fluxo de Inicialização</h2>
+            <div class="card p-6">
+                <div class="space-y-6">
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-primary-500/20 border-2 border-primary-400 flex items-center justify-center text-primary-400 font-bold mr-4 flex-shrink-0">1</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Verificação de Redis</h4>
+                            <p class="text-gray-400 text-sm">Testa conexão Redis com timeout 4s. Se falhar, entra em modo degradado.</p>
+                            <code class="mono text-xs bg-gray-900 px-2 py-1 rounded block mt-2">src/server.ts:58-96</code>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-primary-500/20 border-2 border-primary-400 flex items-center justify-center text-primary-400 font-bold mr-4 flex-shrink-0">2</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Criar Fastify Instance</h4>
+                            <p class="text-gray-400 text-sm">Instancia Fastify com ZodTypeProvider e configura compilers.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-green-500/20 border-2 border-green-400 flex items-center justify-center text-green-400 font-bold mr-4 flex-shrink-0">3</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Registrar Plugins</h4>
+                            <p class="text-gray-400 text-sm mb-2">Ordem: Helmet → Rate Limit → CORS → Multipart → Static → Basic Auth → Swagger → JWT.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-green-500/20 border-2 border-green-400 flex items-center justify-center text-green-400 font-bold mr-4 flex-shrink-0">4</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Inicializar Redis (se disponível)</h4>
+                            <p class="text-gray-400 text-sm">Registra plugin @fastify/redis e compartilha cliente global.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-green-500/20 border-2 border-green-400 flex items-center justify-center text-green-400 font-bold mr-4 flex-shrink-0">5</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Configurar BullMQ</h4>
+                            <p class="text-gray-400 text-sm">Cria adaptadores, registra dashboard /queues, e inicia workers.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-400 flex items-center justify-center text-purple-400 font-bold mr-4 flex-shrink-0">6</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Registrar Rotas</h4>
+                            <p class="text-gray-400 text-sm">Todas as rotas: health, auth, users, search, queues.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-400 flex items-center justify-center text-purple-400 font-bold mr-4 flex-shrink-0">7</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Socket.IO Setup</h4>
+                            <p class="text-gray-400 text-sm">Anexa Socket.IO ao servidor, configura CORS e middleware JWT.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-400 flex items-center justify-center text-purple-400 font-bold mr-4 flex-shrink-0">8</div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Listen</h4>
+                            <p class="text-gray-400 text-sm">Inicia servidor na porta configurada e exibe banner.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Riscos -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Riscos de Infraestrutura</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-red-900/10 border border-red-800/50 rounded-xl p-6">
+                    <h3 class="text-red-400 font-semibold mb-4 flex items-center gap-2">
+                        <span class="text-xl">🔴</span> Crítico
+                    </h3>
+                    <ul class="space-y-3 text-sm">
+                        <li>
+                            <p class="font-medium text-white">Redis Single Point</p>
+                            <p class="text-gray-400 text-xs">Se Redis cair, perde cache, sessões e BullMQ. Sistema em modo degradado.</p>
+                            <p class="text-blue-400 text-xs mt-1"><strong>Mitigação:</strong> Redis Cluster + replicação.</p>
+                        </li>
+                        <li>
+                            <p class="font-medium text-white">PostgreSQL Single Point</p>
+                            <p class="text-gray-400 text-xs">Database outage = sistema inoperante.</p>
+                            <p class="text-blue-400 text-xs mt-1"><strong>Mitigação:</strong> HA + replicação + pool.</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-yellow-900/10 border border-yellow-800/50 rounded-xl p-6">
+                    <h3 class="text-yellow-400 font-semibold mb-4 flex items-center gap-2">
+                        <span class="text-xl">🟡</span> Médio
+                    </h3>
+                    <ul class="space-y-3 text-sm">
+                        <li>
+                            <p class="font-medium text-white">Socket.IO Scaling</p>
+                            <p class="text-gray-400 text-xs">Socket.IO não distribuído nativamente. Precisa adapter Redis.</p>
+                            <p class="text-blue-400 text-xs mt-1"><strong>Mitigação:</strong> @socket.io/redis-adapter.</p>
+                        </li>
+                        <li>
+                            <p class="font-medium text-white">BullMQ Workers Memory</p>
+                            <p class="text-gray-400 text-xs">Workers mantêm conexões abertas. Memory leak pode degradar.</p>
+                            <p class="text-blue-400 text-xs mt-1"><strong>Mitigação:</strong> Graceful restart + monitor.</p>
+                        </li>
+                        <li>
+                            <p class="font-medium text-white">Swagger Exposure</p>
+                            <p class="text-gray-400 text-xs">Se SWAGGER_USER/PASS não configurados, docs públicos.</p>
+                            <p class="text-blue-400 text-xs mt-1"><strong>Mitigação:</strong> Forçar auth em produção.</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-green-900/10 border border-green-800/50 rounded-xl p-6">
+                    <h3 class="text-green-400 font-semibold mb-4 flex items-center gap-2">
+                        <span class="text-xl">🟢</span> Baixo
+                    </h3>
+                    <ul class="space-y-3 text-sm">
+                        <li>
+                            <p class="font-medium text-white">Fastify Performance</p>
+                            <p class="text-gray-400 text-xs">Fastify é rápido, performance suficiente.</p>
+                            <p class="text-blue-400 text-xs mt-1"><strong>Status:</strong> OK</p>
+                        </li>
+                        <li>
+                            <p class="font-medium text-white">Helmet Security</p>
+                            <p class="text-gray-400 text-xs">Configurado com CSP, HSTS, frameguard.</p>
+                            <p class="text-blue-400 text-xs mt-1"><strong>Status:</strong> OK</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stack -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Stack Tecnológica</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="card p-4">
+                    <h4 class="text-primary-400 font-semibold mb-2 text-sm">Backend Core</h4>
+                    <div class="text-xs space-y-1">
+                        <div class="flex justify-between"><span>Fastify</span><span class="mono text-gray-300">v5.1.0</span></div>
+                        <div class="flex justify-between"><span>TypeScript</span><span class="mono text-gray-300">~5.9</span></div>
+                        <div class="flex justify-between"><span>Zod</span><span class="mono text-gray-300">v4.x</span></div>
+                        <div class="flex justify-between"><span>Prisma</span><span class="mono text-gray-300">v6.0.1</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h4 class="text-green-400 font-semibold mb-2 text-sm">Cache & Jobs</h4>
+                    <div class="text-xs space-y-1">
+                        <div class="flex justify-between"><span>Redis</span><span class="mono text-gray-300">5.4.1</span></div>
+                        <div class="flex justify-between"><span>BullMQ</span><span class="mono text-gray-300">v5.64.0</span></div>
+                        <div class="flex justify-between"><span>Bull Board</span><span class="mono text-gray-300">v6.14</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h4 class="text-pink-400 font-semibold mb-2 text-sm">Real-time</h4>
+                    <div class="text-xs space-y-1">
+                        <div class="flex justify-between"><span>Socket.IO</span><span class="mono text-gray-300">v4.8.3</span></div>
+                        <div class="flex justify-between"><span>JWT</span><span class="mono text-gray-300">v9.0.3</span></div>
+                        <div class="flex justify-between"><span>bcrypt</span><span class="mono text-gray-300">v2.4.3</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h4 class="text-blue-400 font-semibold mb-2 text-sm">Search</h4>
+                    <div class="text-xs space-y-1">
+                        <div class="flex justify-between"><span>Elastic JS</span><span class="mono text-gray-300">v9.3.4</span></div>
+                        <div class="flex justify-between"><span>OpenSearch</span><span class="mono text-gray-300">v3.5.1</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h4 class="text-amber-400 font-semibold mb-2 text-sm">Frontend</h4>
+                    <div class="text-xs space-y-1">
+                        <div class="flex justify-between"><span>React</span><span class="mono text-gray-300">v19.2</span></div>
+                        <div class="flex justify-between"><span>Vite</span><span class="mono text-gray-300">v8.0</span></div>
+                        <div class="flex justify-between"><span>Tailwind</span><span class="mono text-gray-300">v3.4</span></div>
+                        <div class="flex justify-between"><span>Zustand</span><span class="mono text-gray-300">v5.0.9</span></div>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h4 class="text-cyan-400 font-semibold mb-2 text-sm">Dev & Docs</h4>
+                    <div class="text-xs space-y-1">
+                        <div class="flex justify-between"><span>Swagger</span><span class="mono text-gray-300">fastify</span></div>
+                        <div class="flex justify-between"><span>Testing</span><span class="mono text-gray-300">Jest/Vitest</span></div>
+                        <div class="flex justify-between"><span>Lint</span><span class="mono text-gray-300">ESLint 9.x</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Estrutura -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-6">Estrutura de Arquivos</h2>
+            <div class="card p-6">
+                <pre class="mono text-xs text-gray-300 overflow-x-auto"><code><span class="text-yellow-400">backend-boilerplate/</span>
+├── <span class="text-blue-400">src/</span>
+│   ├── <span class="text-green-300">server.ts</span>              # Fastify setup & startup
+│   ├── <span class="text-green-300">socket.ts</span>             # Socket.IO config
+│   ├── <span class="text-green-300">lib/</span>
+│   │   ├── <span class="text-purple-300">env.ts</span>                # Environment
+│   │   └── <span class="text-purple-300">redis.ts</span>              # Redis singleton
+│   ├── <span class="text-green-300">http/</span>
+│   │   ├── <span class="text-orange-300">routes/</span> (auth, user, search, queue)
+│   │   └── <span class="text-orange-300">middlewares/</span> (auth, errors)
+│   └── <span class="text-green-300">services/</span>
+│       ├── <span class="text-pink-300">jobs/</span> (queue & worker manager)
+│       └── <span class="text-pink-300">socket/</span> (events, manager)
+├── <span class="text-blue-400">prisma/</span>
+│   ├── <span class="text-green-300">schema.prisma</span>  # Models: User, Post, Category
+│   └── <span class="text-green-300">seed.ts</span>
+└── <span class="text-blue-400">package.json</span>
+
+<span class="text-gray-500">// Frontend</span>
+<span class="text-yellow-400">frontend-boilerplate/</span>
+├── <span class="text-blue-400">src/</span>
+│   ├── <span class="text-green-300">App.tsx</span>, <span class="text-green-300">main.tsx</span>
+│   ├── <span class="text-green-300">features/</span> (auth, dashboard, posts)
+│   ├── <span class="text-green-300">shared/</span> (components, lib, hooks)
+│   └── <span class="text-green-300">lib/</span> (api-client, utils)
+├── <span class="text-blue-400">index.html</span>
+├── <span class="text-blue-400">vite.config.ts</span>
+└── <span class="text-blue-400">package.json</span>
+</code></pre>
+            </div>
+        </section>
+
+        <!-- Rodapé -->
+        <footer class="border-t border-gray-800 pt-8 flex justify-between items-center text-sm text-gray-500">
+            <div>📄 Documentação do Boilerplate</div>
+            <div>Gerado automaticamente</div>
+        </footer>
+    </div>
+</body>
+</html>
