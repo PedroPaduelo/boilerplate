@@ -16,6 +16,12 @@ interface AuthState {
   setHydrated: () => void
 }
 
+/**
+ * Fonte unica de verdade do token de autenticacao: o store persistido pelo
+ * zustand (`persist`), na chave `auth`. Nada de `localStorage.setItem('token')`
+ * em paralelo — o api-client le o token diretamente daqui via
+ * `useAuthStore.getState().token`.
+ */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -26,14 +32,12 @@ export const useAuthStore = create<AuthState>()(
       isHydrated: false,
 
       setAuth: (user, token) => {
-        localStorage.setItem('token', token)
         set({ user, token, isAuthenticated: true, isLoading: false })
       },
 
       setUser: (user) => set({ user }),
 
       logout: () => {
-        localStorage.removeItem('token')
         set({ user: null, token: null, isAuthenticated: false })
       },
 

@@ -1,17 +1,17 @@
 import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+import { env } from './env'
+import { useAuthStore } from '@/features/auth/store'
 
 export const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: env.API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Adiciona token automaticamente
+// Adiciona token automaticamente (fonte unica de verdade: store de auth)
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = useAuthStore.getState().token
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -23,7 +23,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
+      useAuthStore.getState().logout()
       window.location.href = '/login'
     }
     return Promise.reject(error)
