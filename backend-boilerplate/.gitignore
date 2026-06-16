@@ -26,7 +26,10 @@ uploads/*
 !uploads/.gitkeep
 
 # Prisma
-prisma/migrations/*_migration_lock.toml
+# Note: `prisma/migrations/migration_lock.toml` is intentionally NOT ignored
+# — Prisma's docs require it to be committed so the migration engine knows
+# the provider. Earlier versions of this .gitignore listed
+# `*_migration_lock.toml`, which never matched the real filename.
 
 # Temp
 temp/

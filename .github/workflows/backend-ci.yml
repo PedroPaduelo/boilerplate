@@ -1,0 +1,61 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - 'backend-boilerplate/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    paths:
+      - 'backend-boilerplate/**'
+      - '.github/workflows/backend-ci.yml'
+
+# Cancel in-flight runs for the same ref so PRs don't queue.
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend-boilerplate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend-boilerplate/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        # No Postgres/Redis services needed: the example test only validates
+        # the pure `passwordSchema` (zod). If integration tests are added
+        # later, wire service containers here.
+        run: npm test -- --ci
+
+      - name: Build
+        run: npm run build
