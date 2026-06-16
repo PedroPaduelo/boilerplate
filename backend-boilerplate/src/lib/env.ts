@@ -28,12 +28,6 @@ const envSchema = z.object({
   MAX_FILE_SIZE: z.coerce.number().default(104857600), // 100MB
   UPLOAD_TIMEOUT: z.coerce.number().default(120000), // 2min
 
-  // OpenSearch
-  OPENSEARCH_URL: z.string().default('http://localhost:9200'),
-  OPENSEARCH_USERNAME: z.string().default(''),
-  OPENSEARCH_PASSWORD: z.string().default(''),
-  OPENSEARCH_SSL: z.coerce.boolean().default(false),
-
   // Security
   CORS_ORIGINS: z.string().optional(),
   SWAGGER_USER: z.string().optional(),

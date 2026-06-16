@@ -28,7 +28,7 @@ import { redisInstance } from '@/lib/redis';
 import { setupSocketIO } from './socket';
 import { prisma } from '@/lib/prisma';
 import { startAllWorkers, closeAllWorkers } from './services/jobs/worker/worker-manager';
-import { getAllQueues, closeAllQueues } from './services/jobs/queue/queue-manager';
+import { closeAllQueues } from './services/jobs/queue/queue-manager';
 
 // Routes
 import { healthCheck } from './http/routes/health/health-check';
@@ -40,17 +40,6 @@ import { listUsers } from './http/routes/user/list-users';
 import { getUser } from './http/routes/user/get-user';
 import { updateUser } from './http/routes/user/update-user';
 import { deleteUser } from './http/routes/user/delete-user';
-import { queueRoutes } from './http/routes/queue/queue-routes';
-import {
-  search,
-  geoSearch,
-  autocomplete,
-  analytics,
-} from './http/routes/search';
-import { adminIndex } from './http/routes/search/admin-index';
-import { indexDocument } from './http/routes/search/index-document';
-import { bulkIndex } from './http/routes/search/bulk-index';
-import { deleteDocument } from './http/routes/search/delete-document';
 
 // =============================================================================
 // REDIS PRE-CHECK
@@ -251,8 +240,8 @@ async function start() {
 
     // Bull Board with all queues
     try {
-      const { QUEUE_NAMES } = await import('./services/jobs/queue/queue-manager');
-      const { getQueue } = await import('./services/jobs/queue/queue-manager');
+      const { QUEUE_NAMES } = await import('./services/jobs/queue/queue-manager.js');
+      const { getQueue } = await import('./services/jobs/queue/queue-manager.js');
 
       const queuesToMonitor = [
         QUEUE_NAMES.EMAIL,
@@ -301,19 +290,6 @@ async function start() {
   app.register(getUser);
   app.register(updateUser);
   app.register(deleteUser);
-  app.register(queueRoutes);
-
-  // Search routes (public read access)
-  app.register(search);
-  app.register(geoSearch);
-  app.register(autocomplete);
-  app.register(analytics);
-
-  // Admin search routes (protected)
-  app.register(indexDocument);
-  app.register(bulkIndex);
-  app.register(deleteDocument);
-  app.register(adminIndex);
 
   // Start
   const address = await app.listen({ port: env.PORT, host: '0.0.0.0' });
