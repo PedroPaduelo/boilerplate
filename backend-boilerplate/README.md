@@ -1,6 +1,6 @@
 # Backend Boilerplate
 
-Backend boilerplate com Fastify, Prisma, Redis, BullMQ e Socket.IO.
+Backend boilerplate com Fastify, Prisma, Redis, BullMQ e Socket.IO. Inclui o exemplo mínimo de auth + users CRUD com RBAC (papéis `ADMIN` e `USER`).
 
 ## Stack
 
@@ -85,28 +85,32 @@ npm run dev:up
 
 ```
 ├── prisma/
-│   ├── schema.prisma      # Schema do banco
-│   └── seed.ts            # Seed de dados
+│   ├── schema.prisma            # Schema do banco
+│   ├── seed.ts                  # Seed de dados
+│   └── migrations/              # Migrations Prisma (geradas)
+│       ├── 0_init/
+│       │   └── migration.sql
+│       └── migration_lock.toml
 ├── src/
-│   ├── @types/            # Tipos TypeScript
+│   ├── @types/                  # Tipos TypeScript
 │   ├── http/
-│   │   ├── routes/        # Rotas por módulo
-│   │   │   ├── _errors/   # Classes de erro
-│   │   │   ├── auth/      # Autenticação
-│   │   │   ├── user/      # CRUD usuários
-│   │   │   └── health/    # Health check
+│   │   ├── routes/              # Rotas por módulo
+│   │   │   ├── _errors/         # Classes de erro
+│   │   │   ├── auth/            # Autenticação (login, register, me)
+│   │   │   ├── user/            # CRUD usuários
+│   │   │   └── health/          # Health check
 │   │   └── error-handler.ts
 │   ├── lib/
-│   │   ├── env.ts         # Variáveis de ambiente
-│   │   ├── prisma.ts      # Cliente Prisma
-│   │   └── redis/         # Serviços Redis
-│   ├── middlewares/       # Middlewares
+│   │   ├── env.ts               # Variáveis de ambiente
+│   │   ├── prisma.ts            # Cliente Prisma
+│   │   ├── redis/               # Cliente e serviço Redis
+│   │   └── validators/          # Validadores (ex.: senha)
+│   ├── middlewares/             # Middlewares (auth/RBAC, etc.)
 │   ├── services/
-│   │   ├── jobs/          # Filas BullMQ
-│   │   └── notification/  # Notificações
-│   ├── socket/            # Socket.IO
-│   ├── server.ts          # Entry point
-│   └── socket.ts          # Setup Socket.IO
+│   │   └── jobs/                # Filas BullMQ (queue + worker)
+│   ├── socket/                  # Socket.IO
+│   ├── server.ts                # Entry point
+│   └── socket.ts                # Setup Socket.IO
 ├── docker-compose.yml
 ├── Dockerfile
 └── package.json
@@ -116,8 +120,8 @@ npm run dev:up
 
 | Email | Senha | Role |
 |-------|-------|------|
-| admin@example.com | admin123 | ADMIN |
-| user@example.com | user123 | USER |
+| admin@example.com | admin1234 | ADMIN |
+| user@example.com | user1234 | USER |
 
 ## Autenticação
 
@@ -126,7 +130,7 @@ npm run dev:up
 ```bash
 curl -X POST http://localhost:4000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "admin123"}'
+  -d '{"email": "admin@example.com", "password": "admin1234"}'
 ```
 
 ### Usar token
