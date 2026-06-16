@@ -1,0 +1,58 @@
+name: Frontend CI
+
+on:
+  push:
+    paths:
+      - 'frontend-boilerplate/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    paths:
+      - 'frontend-boilerplate/**'
+      - '.github/workflows/frontend-ci.yml'
+
+# Cancel in-flight runs for the same ref so PRs don't queue.
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: frontend-boilerplate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend-boilerplate/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        # Example test only validates pure components/hooks/utils — no network
+        # or browser service containers required. If integration/E2E tests are
+        # added later, wire a Playwright service here.
+        run: npm test -- --ci
+
+      - name: Build
+        run: npm run build
