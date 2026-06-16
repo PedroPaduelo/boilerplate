@@ -1,16 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '@/shared/lib/utils'
-import { LayoutDashboard, Users, FileText, Settings, LogOut, UserCircle, Sparkles } from 'lucide-react'
+import { Users, LogOut } from 'lucide-react'
 import { useAuthStore } from '@/features/auth/store'
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: Users, label: 'Usuarios', href: '/users' },
-  { icon: FileText, label: 'Posts', href: '/posts' },
-  { icon: Sparkles, label: 'Showcase', href: '/showcase' },
-  { icon: UserCircle, label: 'Perfil', href: '/profile' },
-  { icon: Settings, label: 'Configuracoes', href: '/settings' },
 ]
 
 export function Sidebar() {

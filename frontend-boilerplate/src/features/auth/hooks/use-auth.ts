@@ -14,7 +14,7 @@ export function useLogin() {
     onSuccess: (data) => {
       setAuth(data.user, data.token)
       toast.success('Login realizado com sucesso!')
-      navigate('/dashboard')
+      navigate('/users')
     },
     onError: () => {
       toast.error('Email ou senha invalidos')
@@ -31,7 +31,7 @@ export function useRegister() {
     onSuccess: (data) => {
       setAuth(data.user, data.token)
       toast.success('Conta criada com sucesso!')
-      navigate('/dashboard')
+      navigate('/users')
     },
     onError: () => {
       toast.error('Erro ao criar conta')
