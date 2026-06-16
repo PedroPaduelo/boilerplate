@@ -39,6 +39,7 @@ export async function authenticate(app: FastifyInstance) {
           name: true,
           email: true,
           password: true,
+          role: true,
           isActive: true,
         },
       });
@@ -64,7 +65,7 @@ export async function authenticate(app: FastifyInstance) {
       });
 
       const token = await reply.jwtSign(
-        { sub: user.id },
+        { sub: user.id, role: user.role },
         { expiresIn: '1h' }
       );
 

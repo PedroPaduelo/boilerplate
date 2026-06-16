@@ -26,6 +26,8 @@ export async function deleteUser(app: FastifyInstance) {
         },
       },
       async (request, reply) => {
+        await request.requireRole('ADMIN');
+
         const { id } = request.params;
 
         const existingUser = await prisma.user.findUnique({

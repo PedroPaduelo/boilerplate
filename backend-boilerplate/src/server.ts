@@ -26,8 +26,9 @@ import { errorHandler } from '@/http/error-handler';
 import { env } from '@/lib/env';
 import { redisInstance } from '@/lib/redis';
 import { setupSocketIO } from './socket';
-import { startAllWorkers } from './services/jobs/worker/worker-manager';
-import { getAllQueues } from './services/jobs/queue/queue-manager';
+import { prisma } from '@/lib/prisma';
+import { startAllWorkers, closeAllWorkers } from './services/jobs/worker/worker-manager';
+import { getAllQueues, closeAllQueues } from './services/jobs/queue/queue-manager';
 
 // Routes
 import { healthCheck } from './http/routes/health/health-check';
@@ -102,7 +103,23 @@ async function isRedisAvailable(): Promise<boolean> {
 async function start() {
   const redisAvailable = await isRedisAvailable();
 
-  const app = fastify().withTypeProvider<ZodTypeProvider>();
+  const app = fastify({
+    logger: {
+      level: env.LOG_LEVEL,
+      // Redact sensitive headers so secrets never end up in logs.
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'request.headers.authorization',
+          'request.headers.cookie',
+          'headers.authorization',
+          'headers.cookie',
+        ],
+        censor: '[REDACTED]',
+      },
+    },
+  }).withTypeProvider<ZodTypeProvider>();
 
   app.setSerializerCompiler(serializerCompiler);
   app.setValidatorCompiler(validatorCompiler);
@@ -314,7 +331,55 @@ async function start() {
 ╚════════════════════════════════════════════════════════════╝
   `);
 
-  setupSocketIO(app);
+  const io = setupSocketIO(app);
+
+  // ===========================================================================
+  // GRACEFUL SHUTDOWN
+  // ===========================================================================
+
+  let shuttingDown = false;
+
+  async function shutdown(signal: string) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log(`\n🛑 Received ${signal} - starting graceful shutdown...`);
+
+    // Safety timeout: force-exit if shutdown hangs.
+    const forceExit = setTimeout(() => {
+      console.error('⏱️  Graceful shutdown timed out - forcing exit');
+      process.exit(1);
+    }, 15000);
+    forceExit.unref();
+
+    try {
+      // 1. Stop accepting new connections (HTTP + plugins, incl. Redis client).
+      await io.close();
+      console.log('✅ Socket.IO closed');
+
+      await app.close();
+      console.log('✅ Fastify closed');
+
+      // 2. Drain BullMQ workers and queues.
+      await closeAllWorkers();
+      await closeAllQueues();
+
+      // 3. Close database connections.
+      await prisma.$disconnect();
+      console.log('✅ Prisma disconnected');
+
+      clearTimeout(forceExit);
+      console.log('👋 Graceful shutdown complete');
+      process.exit(0);
+    } catch (err) {
+      clearTimeout(forceExit);
+      console.error('❌ Error during shutdown:', err);
+      process.exit(1);
+    }
+  }
+
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 }
 
 start().catch((err) => {

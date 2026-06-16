@@ -45,6 +45,8 @@ export async function listUsers(app: FastifyInstance) {
         },
       },
       async (request, reply) => {
+        await request.requireRole('ADMIN');
+
         const { page, pageSize, role, isActive, search } = request.query;
 
         const where: any = {};

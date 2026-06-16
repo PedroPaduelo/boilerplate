@@ -266,6 +266,27 @@ export function stopAllWorkers(): void {
   console.log('✅ All workers stopped');
 }
 
+/**
+ * Gracefully closes all workers, awaiting each `worker.close()` so in-flight
+ * jobs can finish/release locks before the process exits. Use this in the
+ * shutdown flow (SIGTERM/SIGINT).
+ */
+export async function closeAllWorkers(): Promise<void> {
+  console.log('🛑 Closing all workers...');
+  await Promise.all(
+    Array.from(workers.entries()).map(async ([key, instance]) => {
+      try {
+        await instance.worker.close();
+        console.log(`🛑 Worker closed for ${key}`);
+      } catch (error) {
+        console.error(`❌ Failed to close worker for ${key}:`, error);
+      }
+    })
+  );
+  workers.clear();
+  console.log('✅ All workers closed');
+}
+
 export function getWorkerStatus(queueName: string) {
   const instance = workers.get(queueName);
   if (!instance) {

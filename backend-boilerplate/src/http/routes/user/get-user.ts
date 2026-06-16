@@ -35,6 +35,8 @@ export async function getUser(app: FastifyInstance) {
         },
       },
       async (request, reply) => {
+        await request.requireRole('ADMIN');
+
         const { id } = request.params;
 
         const user = await prisma.user.findUnique({

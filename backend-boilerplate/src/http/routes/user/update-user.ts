@@ -6,6 +6,7 @@ import z from 'zod';
 import { auth } from '@/middlewares/auth';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, BadRequestError } from '@/http/routes/_errors';
+import { passwordSchema } from '@/lib/validators/password';
 
 export async function updateUser(app: FastifyInstance) {
   app
@@ -24,7 +25,7 @@ export async function updateUser(app: FastifyInstance) {
           body: z.object({
             name: z.string().min(1).optional(),
             email: z.string().email().optional(),
-            password: z.string().min(6).optional(),
+            password: passwordSchema.optional(),
             role: z.enum(['ADMIN', 'USER']).optional(),
             isActive: z.boolean().optional(),
           }),
@@ -41,6 +42,8 @@ export async function updateUser(app: FastifyInstance) {
         },
       },
       async (request, reply) => {
+        await request.requireRole('ADMIN');
+
         const { id } = request.params;
         const { name, email, password, role, isActive } = request.body;
 

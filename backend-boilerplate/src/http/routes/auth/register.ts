@@ -5,6 +5,7 @@ import z from 'zod';
 
 import { BadRequestError } from '@/http/routes/_errors';
 import { prisma } from '@/lib/prisma';
+import { passwordSchema } from '@/lib/validators/password';
 
 export async function register(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -16,7 +17,7 @@ export async function register(app: FastifyInstance) {
         body: z.object({
           name: z.string().min(1),
           email: z.string().email(),
-          password: z.string().min(6),
+          password: passwordSchema,
         }),
         response: {
           201: z.object({
@@ -54,11 +55,12 @@ export async function register(app: FastifyInstance) {
           id: true,
           name: true,
           email: true,
+          role: true,
         },
       });
 
       const token = await reply.jwtSign(
-        { sub: user.id },
+        { sub: user.id, role: user.role },
         { expiresIn: '1h' }
       );
 

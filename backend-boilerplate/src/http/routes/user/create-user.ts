@@ -6,6 +6,7 @@ import z from 'zod';
 import { BadRequestError } from '@/http/routes/_errors';
 import { auth } from '@/middlewares/auth';
 import { prisma } from '@/lib/prisma';
+import { passwordSchema } from '@/lib/validators/password';
 
 export async function createUser(app: FastifyInstance) {
   app
@@ -21,7 +22,7 @@ export async function createUser(app: FastifyInstance) {
           body: z.object({
             name: z.string().min(1),
             email: z.string().email(),
-            password: z.string().min(6),
+            password: passwordSchema,
             role: z.enum(['ADMIN', 'USER']).default('USER'),
           }),
           response: {
@@ -37,6 +38,8 @@ export async function createUser(app: FastifyInstance) {
         },
       },
       async (request, reply) => {
+        await request.requireRole('ADMIN');
+
         const { name, email, password, role } = request.body;
 
         const userWithSameEmail = await prisma.user.findUnique({
