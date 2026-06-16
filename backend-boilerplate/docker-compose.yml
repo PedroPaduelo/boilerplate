@@ -1,20 +1,26 @@
 version: '3.8'
 
+# IMPORTANT: The credentials and simple configuration below are intended
+# ONLY for local development. Do NOT use these defaults in production or any
+# publicly reachable environment. For production, override every password
+# (POSTGRES_PASSWORD, REDIS_PASSWORD if you set one) and secrets via env vars
+# or a secrets manager, and put the services behind a private network.
 services:
   postgres:
     image: postgres:16-alpine
     container_name: boilerplate-postgres
     restart: unless-stopped
+    # DEV-ONLY credentials. Override POSTGRES_PASSWORD in production.
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: boilerplate
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-boilerplate}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,12 +29,15 @@ services:
     image: redis:7-alpine
     container_name: boilerplate-redis
     restart: unless-stopped
+    # DEV-ONLY: no authentication. Set REDIS_PASSWORD (e.g. via --requirepass)
+    # before exposing Redis outside the host machine.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

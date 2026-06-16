@@ -1,20 +1,33 @@
 # Dependencies
 node_modules/
+npm-debug.log*
 
 # Build output
 dist/
+build/
 
-# Environment files
+# Environment files — never bake secrets into the image
 .env
 .env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
 .env.*.local
+**/.env
+**/.env.*
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # Logs
 *.log
+logs/
 
 # OS
 .DS_Store
@@ -23,15 +36,33 @@ Thumbs.db
 # Git
 .git/
 .gitignore
+.gitattributes
 
-# Test
+# Tests / coverage
 coverage/
-*.test.ts
-*.spec.ts
+**/*.test.ts
+**/*.spec.ts
+**/__tests__/
+**/tests/
 
 # Temp
 temp/
 *.tmp
+tmp/
 
-# Uploads (will be mounted as volume)
+# Uploads (mounted as a volume at runtime)
 uploads/
+
+# CI
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Docs
+README.md
+*.md
+docs/
+
+# Misc
+.history/
+.cache/

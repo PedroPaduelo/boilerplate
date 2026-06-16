@@ -62,10 +62,10 @@ npm run dev:up
 
 | Serviço | URL |
 |---------|-----|
-| API | http://localhost:3333 |
-| Swagger Docs | http://localhost:3333/docs |
-| Bull Board | http://localhost:3333/queues |
-| Health Check | http://localhost:3333/health |
+| API | http://localhost:4000 |
+| Swagger Docs | http://localhost:4000/docs |
+| Bull Board | http://localhost:4000/queues |
+| Health Check | http://localhost:4000/health |
 
 ## Scripts
 
@@ -124,7 +124,7 @@ npm run dev:up
 ### Login
 
 ```bash
-curl -X POST http://localhost:3333/auth/login \
+curl -X POST http://localhost:4000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@example.com", "password": "admin123"}'
 ```
@@ -132,7 +132,7 @@ curl -X POST http://localhost:3333/auth/login \
 ### Usar token
 
 ```bash
-curl http://localhost:3333/auth/me \
+curl http://localhost:4000/auth/me \
   -H "Authorization: Bearer SEU_TOKEN"
 ```
 
