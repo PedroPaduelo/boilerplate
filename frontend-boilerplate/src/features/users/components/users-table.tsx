@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Search,
   Plus,
@@ -14,20 +14,20 @@ import {
   ChevronRight,
   UserCheck,
   UserX,
-} from 'lucide-react'
+} from 'lucide-react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/shared/components/ui/card'
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Badge } from '@/shared/components/ui/badge'
-import { Checkbox } from '@/shared/components/ui/checkbox'
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
-import { Skeleton } from '@/shared/components/ui/skeleton'
+} from '@/shared/components/ui/card';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Badge } from '@/shared/components/ui/badge';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -35,69 +35,70 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/shared/components/ui/table'
+} from '@/shared/components/ui/table';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select'
+} from '@/shared/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu'
-import { formatDate } from '@/shared/lib/utils'
-import type { User, UserRole, UserStatus, UserFilters } from '../types'
+} from '@/shared/components/ui/dropdown-menu';
+import { formatDate } from '@/shared/lib/utils';
+import type { User, UserRole, UserStatus, UserFilters } from '../types';
 
 interface UsersTableProps {
-  users: User[]
-  total: number
-  page: number
-  totalPages: number
-  filters: UserFilters
-  onFiltersChange: (filters: UserFilters) => void
-  onEdit: (user: User) => void
-  onDelete: (user: User) => void
-  onBulkDelete: (ids: string[]) => void
-  onBulkStatusChange: (ids: string[], status: UserStatus) => void
-  onCreate: () => void
-  isLoading?: boolean
+  users: User[];
+  total: number;
+  page: number;
+  totalPages: number;
+  filters: UserFilters;
+  onFiltersChange: (filters: UserFilters) => void;
+  onEdit: (user: User) => void;
+  onDelete: (user: User) => void;
+  onBulkDelete: (ids: string[]) => void;
+  onBulkStatusChange: (ids: string[], status: UserStatus) => void;
+  onCreate: () => void;
+  isLoading?: boolean;
 }
 
 const roleLabels: Record<UserRole, string> = {
   admin: 'Administrador',
   user: 'Usuário',
   editor: 'Editor',
-}
+};
 
 const roleBadgeStyles: Record<UserRole, string> = {
   admin: 'bg-purple-500/10 text-purple-500 border-purple-500/20 hover:bg-purple-500/20',
   user: 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20',
   editor: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20',
-}
+};
 
 const statusLabels: Record<UserStatus, string> = {
   active: 'Ativo',
   inactive: 'Inativo',
-}
+};
 
 const statusBadgeStyles: Record<UserStatus, string> = {
-  active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20',
+  active:
+    'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20',
   inactive: 'bg-slate-500/10 text-slate-500 border-slate-500/20 hover:bg-slate-500/20',
-}
+};
 
 function getInitials(name: string): string {
   return name
     .split(' ')
-    .map(n => n[0])
+    .map((n) => n[0])
     .filter(Boolean)
     .slice(0, 2)
     .join('')
-    .toUpperCase()
+    .toUpperCase();
 }
 
 const TableSkeleton = () => (
@@ -116,7 +117,7 @@ const TableSkeleton = () => (
       </div>
     ))}
   </div>
-)
+);
 
 export function UsersTable({
   users,
@@ -132,92 +133,92 @@ export function UsersTable({
   onCreate,
   isLoading,
 }: UsersTableProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const allSelected = users.length > 0 && users.every(u => selectedIds.has(u.id))
-  const someSelected = selectedIds.size > 0
+  const allSelected = users.length > 0 && users.every((u) => selectedIds.has(u.id));
+  const someSelected = selectedIds.size > 0;
 
   const toggleSelectAll = () => {
     if (allSelected) {
-      setSelectedIds(new Set())
+      setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(users.map(u => u.id)))
+      setSelectedIds(new Set(users.map((u) => u.id)));
     }
-  }
+  };
 
   const toggleSelect = (id: string) => {
-    const next = new Set(selectedIds)
+    const next = new Set(selectedIds);
     if (next.has(id)) {
-      next.delete(id)
+      next.delete(id);
     } else {
-      next.add(id)
+      next.add(id);
     }
-    setSelectedIds(next)
-  }
+    setSelectedIds(next);
+  };
 
   const clearSelection = () => {
-    setSelectedIds(new Set())
-  }
+    setSelectedIds(new Set());
+  };
 
   const handleSearchChange = (search: string) => {
-    onFiltersChange({ ...filters, search, page: 1 })
-  }
+    onFiltersChange({ ...filters, search, page: 1 });
+  };
 
   const handleRoleChange = (role: string) => {
     onFiltersChange({
       ...filters,
       role: role as UserRole | 'all',
       page: 1,
-    })
-  }
+    });
+  };
 
   const handleStatusChange = (status: string) => {
     onFiltersChange({
       ...filters,
       status: status as UserStatus | 'all',
       page: 1,
-    })
-  }
+    });
+  };
 
   const handlePageChange = (newPage: number) => {
-    onFiltersChange({ ...filters, page: newPage })
-  }
+    onFiltersChange({ ...filters, page: newPage });
+  };
 
   const handleBulkDelete = () => {
-    onBulkDelete(Array.from(selectedIds))
-    clearSelection()
-  }
+    onBulkDelete(Array.from(selectedIds));
+    clearSelection();
+  };
 
   const handleBulkActivate = () => {
-    onBulkStatusChange(Array.from(selectedIds), 'active')
-    clearSelection()
-  }
+    onBulkStatusChange(Array.from(selectedIds), 'active');
+    clearSelection();
+  };
 
   const handleBulkDeactivate = () => {
-    onBulkStatusChange(Array.from(selectedIds), 'inactive')
-    clearSelection()
-  }
+    onBulkStatusChange(Array.from(selectedIds), 'inactive');
+    clearSelection();
+  };
 
   const exportToCSV = () => {
-    const headers = ['Nome', 'Email', 'Cargo', 'Status', 'Criado em']
-    const rows = users.map(user => [
+    const headers = ['Nome', 'Email', 'Cargo', 'Status', 'Criado em'];
+    const rows = users.map((user) => [
       user.name,
       user.email,
       roleLabels[user.role],
       statusLabels[user.status],
       formatDate(user.createdAt),
-    ])
+    ]);
 
-    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `usuarios-${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-  }
+    const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `usuarios-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
 
-  const startItem = (page - 1) * (filters.limit || 10) + 1
-  const endItem = Math.min(page * (filters.limit || 10), total)
+  const startItem = (page - 1) * (filters.limit || 10) + 1;
+  const endItem = Math.min(page * (filters.limit || 10), total);
 
   return (
     <Card>
@@ -232,7 +233,12 @@ export function UsersTable({
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={exportToCSV} title="Exportar CSV">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={exportToCSV}
+                title="Exportar CSV"
+              >
                 <Download className="h-4 w-4" />
               </Button>
               <Button onClick={onCreate}>
@@ -255,10 +261,7 @@ export function UsersTable({
             </div>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
-              <Select
-                value={filters.role || 'all'}
-                onValueChange={handleRoleChange}
-              >
+              <Select value={filters.role || 'all'} onValueChange={handleRoleChange}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Cargo" />
                 </SelectTrigger>
@@ -269,10 +272,7 @@ export function UsersTable({
                   <SelectItem value="user">Usuário</SelectItem>
                 </SelectContent>
               </Select>
-              <Select
-                value={filters.status || 'all'}
-                onValueChange={handleStatusChange}
-              >
+              <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -297,35 +297,19 @@ export function UsersTable({
                 {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
               </span>
               <div className="flex items-center gap-2 ml-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkActivate}
-                >
+                <Button variant="outline" size="sm" onClick={handleBulkActivate}>
                   <UserCheck className="mr-1.5 h-3.5 w-3.5" />
                   Ativar
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkDeactivate}
-                >
+                <Button variant="outline" size="sm" onClick={handleBulkDeactivate}>
                   <UserX className="mr-1.5 h-3.5 w-3.5" />
                   Desativar
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBulkDelete}
-                >
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                   Excluir
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearSelection}
-                >
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
                   Limpar
                 </Button>
               </div>
@@ -402,10 +386,7 @@ export function UsersTable({
                         </div>
                       </td>
                       <td className="p-4 align-middle">
-                        <Badge
-                          variant="outline"
-                          className={roleBadgeStyles[user.role]}
-                        >
+                        <Badge variant="outline" className={roleBadgeStyles[user.role]}>
                           {roleLabels[user.role]}
                         </Badge>
                       </td>
@@ -428,11 +409,7 @@ export function UsersTable({
                       <td className="p-4 align-middle text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                            >
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">Ações</span>
                             </Button>
@@ -463,7 +440,8 @@ export function UsersTable({
             {totalPages > 0 && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t">
                 <p className="text-sm text-muted-foreground">
-                  Mostrando {startItem} a {endItem} de {total} resultado{total !== 1 ? 's' : ''}
+                  Mostrando {startItem} a {endItem} de {total} resultado
+                  {total !== 1 ? 's' : ''}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -476,15 +454,15 @@ export function UsersTable({
                   </Button>
                   <div className="flex items-center gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(p => {
+                      .filter((p) => {
                         // Show first, last, and pages around current
-                        if (totalPages <= 7) return true
-                        if (p === 1 || p === totalPages) return true
-                        if (Math.abs(p - page) <= 1) return true
-                        return false
+                        if (totalPages <= 7) return true;
+                        if (p === 1 || p === totalPages) return true;
+                        if (Math.abs(p - page) <= 1) return true;
+                        return false;
                       })
                       .map((p, idx, arr) => {
-                        const showEllipsis = idx > 0 && p - arr[idx - 1] > 1
+                        const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
                         return (
                           <div key={p} className="flex items-center">
                             {showEllipsis && (
@@ -499,7 +477,7 @@ export function UsersTable({
                               {p}
                             </Button>
                           </div>
-                        )
+                        );
                       })}
                   </div>
                   <Button
@@ -517,5 +495,5 @@ export function UsersTable({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

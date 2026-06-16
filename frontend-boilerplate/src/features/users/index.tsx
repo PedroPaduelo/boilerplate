@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Users } from 'lucide-react'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Users } from 'lucide-react';
 import {
   useUsers,
   useUserStats,
@@ -11,13 +11,13 @@ import {
   useDeleteUser,
   useBulkDeleteUsers,
   useBulkUpdateStatus,
-} from './hooks/use-users'
-import { UsersStats } from './components/users-stats'
-import { UsersTable } from './components/users-table'
-import { UserFormDialog } from './components/user-form-dialog'
-import type { UserFormValues } from './components/user-form-dialog'
-import { UserDeleteAlert } from './components/user-delete-alert'
-import type { User, UserFilters } from './types'
+} from './hooks/use-users';
+import { UsersStats } from './components/users-stats';
+import { UsersTable } from './components/users-table';
+import { UserFormDialog } from './components/user-form-dialog';
+import type { UserFormValues } from './components/user-form-dialog';
+import { UserDeleteAlert } from './components/user-delete-alert';
+import type { User, UserFilters } from './types';
 
 export function UsersPage() {
   const [filters, setFilters] = useState<UserFilters>({
@@ -26,40 +26,40 @@ export function UsersPage() {
     status: 'all',
     page: 1,
     limit: 10,
-  })
+  });
 
-  const [formDialogOpen, setFormDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
 
   // Queries
-  const { data: usersData, isLoading: usersLoading } = useUsers(filters)
-  const { data: stats, isLoading: statsLoading } = useUserStats()
+  const { data: usersData, isLoading: usersLoading } = useUsers(filters);
+  const { data: stats, isLoading: statsLoading } = useUserStats();
 
   // Mutations
-  const createUser = useCreateUser()
-  const updateUser = useUpdateUser()
-  const deleteUser = useDeleteUser()
-  const bulkDelete = useBulkDeleteUsers()
-  const bulkUpdateStatus = useBulkUpdateStatus()
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+  const bulkDelete = useBulkDeleteUsers();
+  const bulkUpdateStatus = useBulkUpdateStatus();
 
   const handleCreateUser = () => {
-    setSelectedUser(null)
-    setFormMode('create')
-    setFormDialogOpen(true)
-  }
+    setSelectedUser(null);
+    setFormMode('create');
+    setFormDialogOpen(true);
+  };
 
   const handleEditUser = (user: User) => {
-    setSelectedUser(user)
-    setFormMode('edit')
-    setFormDialogOpen(true)
-  }
+    setSelectedUser(user);
+    setFormMode('edit');
+    setFormDialogOpen(true);
+  };
 
   const handleDeleteUser = (user: User) => {
-    setSelectedUser(user)
-    setDeleteDialogOpen(true)
-  }
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
+  };
 
   const handleFormSubmit = (data: UserFormValues) => {
     if (formMode === 'create') {
@@ -68,7 +68,7 @@ export function UsersPage() {
         email: data.email,
         role: data.role,
         status: data.status,
-      })
+      });
     } else if (selectedUser) {
       updateUser.mutate({
         id: selectedUser.id,
@@ -76,32 +76,32 @@ export function UsersPage() {
         email: data.email,
         role: data.role,
         status: data.status,
-      })
+      });
     }
-    setFormDialogOpen(false)
-  }
+    setFormDialogOpen(false);
+  };
 
   const handleConfirmDelete = () => {
     if (selectedUser) {
-      deleteUser.mutate(selectedUser.id)
+      deleteUser.mutate(selectedUser.id);
     }
-    setDeleteDialogOpen(false)
-    setSelectedUser(null)
-  }
+    setDeleteDialogOpen(false);
+    setSelectedUser(null);
+  };
 
   const handleBulkDelete = (ids: string[]) => {
-    bulkDelete.mutate(ids)
-  }
+    bulkDelete.mutate(ids);
+  };
 
   const handleBulkStatusChange = (ids: string[], status: 'active' | 'inactive') => {
-    bulkUpdateStatus.mutate({ ids, status })
-  }
+    bulkUpdateStatus.mutate({ ids, status });
+  };
 
   const handleFiltersChange = (newFilters: UserFilters) => {
-    setFilters(newFilters)
-  }
+    setFilters(newFilters);
+  };
 
-  const isFormLoading = createUser.isPending || updateUser.isPending
+  const isFormLoading = createUser.isPending || updateUser.isPending;
 
   return (
     <div className="bg-gradient-to-br from-background via-background to-muted/20 min-h-screen">
@@ -119,9 +119,7 @@ export function UsersPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
-                <p className="text-muted-foreground">
-                  Gerencie os usuários do sistema
-                </p>
+                <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
               </div>
             </div>
           </div>
@@ -166,7 +164,7 @@ export function UsersPage() {
         />
       </motion.div>
     </div>
-  )
+  );
 }
 
-export default UsersPage
+export default UsersPage;

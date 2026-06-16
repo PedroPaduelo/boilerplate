@@ -1,6 +1,6 @@
-import { Outlet } from 'react-router-dom'
-import { Sidebar } from '@/shared/components/layout/sidebar'
-import { Header } from '@/shared/components/layout/header'
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from '@/shared/components/layout/sidebar';
+import { Header } from '@/shared/components/layout/header';
 
 export function AppLayout() {
   return (
@@ -15,5 +15,5 @@ export function AppLayout() {
         </main>
       </div>
     </div>
-  )
+  );
 }

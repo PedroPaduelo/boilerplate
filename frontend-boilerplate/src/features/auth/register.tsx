@@ -1,7 +1,13 @@
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { RegisterForm } from './components/register-form'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { RegisterForm } from './components/register-form';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
 
 export function RegisterPage() {
   return (
@@ -28,5 +34,5 @@ export function RegisterPage() {
         </Card>
       </motion.div>
     </div>
-  )
+  );
 }

@@ -1,17 +1,17 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
-import { AppLayout } from './app-layout'
-import { ProtectedRoute } from '@/features/auth/components/protected-route'
-import { Skeleton } from '@/shared/components/ui/skeleton'
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { AppLayout } from './app-layout';
+import { ProtectedRoute } from '@/features/auth/components/protected-route';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 
 // Auth - sem lazy (critico)
-import { LoginPage } from '@/features/auth/login'
-import { RegisterPage } from '@/features/auth/register'
+import { LoginPage } from '@/features/auth/login';
+import { RegisterPage } from '@/features/auth/register';
 
 // Lazy load paginas
 const UsersPage = lazy(() =>
-  import('@/features/users').then((m) => ({ default: m.UsersPage }))
-)
+  import('@/features/users').then((m) => ({ default: m.UsersPage })),
+);
 
 // Loader
 const PageLoader = () => (
@@ -19,11 +19,11 @@ const PageLoader = () => (
     <Skeleton className="h-8 w-48 mb-4" />
     <Skeleton className="h-64 w-full" />
   </div>
-)
+);
 
 const Lazy = ({ children }: { children: React.ReactNode }) => (
   <Suspense fallback={<PageLoader />}>{children}</Suspense>
-)
+);
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -49,4 +49,4 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '*', element: <Navigate to="/users" replace /> },
-])
+]);

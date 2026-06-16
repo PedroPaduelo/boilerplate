@@ -1,24 +1,14 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import {
-  Users,
-  UserCheck,
-  UserX,
-  Shield,
-  TrendingUp,
-  TrendingDown,
-} from 'lucide-react'
-import {
-  Card,
-  CardContent,
-} from '@/shared/components/ui/card'
-import { Skeleton } from '@/shared/components/ui/skeleton'
-import type { UserStats } from '../types'
+import { motion } from 'framer-motion';
+import { Users, UserCheck, UserX, Shield, TrendingUp, TrendingDown } from 'lucide-react';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import type { UserStats } from '../types';
 
 interface UsersStatsProps {
-  stats?: UserStats
-  isLoading?: boolean
+  stats?: UserStats;
+  isLoading?: boolean;
 }
 
 const StatCard = ({
@@ -30,13 +20,13 @@ const StatCard = ({
   color,
   delay = 0,
 }: {
-  title: string
-  value: string | number
-  icon: React.ElementType
-  trend?: 'up' | 'down'
-  trendValue?: string
-  color: string
-  delay?: number
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  trend?: 'up' | 'down';
+  trendValue?: string;
+  color: string;
+  delay?: number;
 }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
@@ -71,7 +61,7 @@ const StatCard = ({
       </CardContent>
     </Card>
   </motion.div>
-)
+);
 
 const StatCardSkeleton = ({ delay = 0 }: { delay?: number }) => (
   <motion.div
@@ -86,7 +76,7 @@ const StatCardSkeleton = ({ delay = 0 }: { delay?: number }) => (
       </CardContent>
     </Card>
   </motion.div>
-)
+);
 
 export function UsersStats({ stats, isLoading }: UsersStatsProps) {
   if (isLoading || !stats) {
@@ -97,7 +87,7 @@ export function UsersStats({ stats, isLoading }: UsersStatsProps) {
         <StatCardSkeleton delay={0.2} />
         <StatCardSkeleton delay={0.3} />
       </div>
-    )
+    );
   }
 
   return (
@@ -137,5 +127,5 @@ export function UsersStats({ stats, isLoading }: UsersStatsProps) {
         delay={0.3}
       />
     </div>
-  )
+  );
 }

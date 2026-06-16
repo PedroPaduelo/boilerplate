@@ -1,13 +1,13 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
-  children: ReactNode
-  fallback?: ReactNode
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface ErrorBoundaryState {
-  hasError: boolean
-  error: Error | null
+  hasError: boolean;
+  error: Error | null;
 }
 
 /**
@@ -15,32 +15,32 @@ interface ErrorBoundaryState {
  * exibe um fallback amigavel em vez de derrubar a aplicacao com tela branca.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false, error: null }
+  state: ErrorBoundaryState = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Ponto de integracao para um servico de monitoramento (Sentry, etc.).
-    console.error('[ErrorBoundary] erro capturado:', error, info.componentStack)
+    console.error('[ErrorBoundary] erro capturado:', error, info.componentStack);
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null })
-  }
+    this.setState({ hasError: false, error: null });
+  };
 
   handleReload = () => {
-    window.location.reload()
-  }
+    window.location.reload();
+  };
 
   render() {
     if (!this.state.hasError) {
-      return this.props.children
+      return this.props.children;
     }
 
     if (this.props.fallback) {
-      return this.props.fallback
+      return this.props.fallback;
     }
 
     return (
@@ -74,6 +74,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           </button>
         </div>
       </div>
-    )
+    );
   }
 }

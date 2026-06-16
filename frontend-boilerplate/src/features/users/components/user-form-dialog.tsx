@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useEffect } from 'react'
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,19 +11,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/components/ui/dialog'
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select'
-import { Loader2 } from 'lucide-react'
-import type { User } from '../types'
+} from '@/shared/components/ui/select';
+import { Loader2 } from 'lucide-react';
+import type { User } from '../types';
 
 const userFormSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -34,17 +34,17 @@ const userFormSchema = z.object({
   status: z.enum(['active', 'inactive'], {
     error: 'Selecione um status',
   }),
-})
+});
 
-export type UserFormValues = z.infer<typeof userFormSchema>
+export type UserFormValues = z.infer<typeof userFormSchema>;
 
 interface UserFormDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: UserFormValues) => void
-  user?: User | null
-  isLoading?: boolean
-  mode: 'create' | 'edit'
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: UserFormValues) => void;
+  user?: User | null;
+  isLoading?: boolean;
+  mode: 'create' | 'edit';
 }
 
 export function UserFormDialog({
@@ -70,10 +70,10 @@ export function UserFormDialog({
       role: 'user',
       status: 'active',
     },
-  })
+  });
 
-  const role = watch('role')
-  const status = watch('status')
+  const role = watch('role');
+  const status = watch('status');
 
   useEffect(() => {
     if (user && mode === 'edit') {
@@ -82,20 +82,20 @@ export function UserFormDialog({
         email: user.email,
         role: user.role,
         status: user.status,
-      })
+      });
     } else if (mode === 'create') {
       reset({
         name: '',
         email: '',
         role: 'user',
         status: 'active',
-      })
+      });
     }
-  }, [user, mode, reset, open])
+  }, [user, mode, reset, open]);
 
   const handleFormSubmit = (data: UserFormValues) => {
-    onSubmit(data)
-  }
+    onSubmit(data);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,11 +114,7 @@ export function UserFormDialog({
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
-            <Input
-              id="name"
-              placeholder="João Silva"
-              {...register('name')}
-            />
+            <Input id="name" placeholder="João Silva" {...register('name')} />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
             )}
@@ -142,7 +138,9 @@ export function UserFormDialog({
               <Label htmlFor="role">Cargo</Label>
               <Select
                 value={role}
-                onValueChange={(value) => setValue('role', value as 'admin' | 'user' | 'editor')}
+                onValueChange={(value) =>
+                  setValue('role', value as 'admin' | 'user' | 'editor')
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
@@ -162,7 +160,9 @@ export function UserFormDialog({
               <Label htmlFor="status">Status</Label>
               <Select
                 value={status}
-                onValueChange={(value) => setValue('status', value as 'active' | 'inactive')}
+                onValueChange={(value) =>
+                  setValue('status', value as 'active' | 'inactive')
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
@@ -203,5 +203,5 @@ export function UserFormDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

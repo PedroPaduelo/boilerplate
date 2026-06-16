@@ -1,8 +1,8 @@
-import { RouterProvider } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from '@/shared/components/ui/sonner'
-import { ErrorBoundary } from './error-boundary'
-import { router } from './routes'
+import { RouterProvider } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/shared/components/ui/sonner';
+import { ErrorBoundary } from './error-boundary';
+import { router } from './routes';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,7 +16,7 @@ const queryClient = new QueryClient({
       retry: 0,
     },
   },
-})
+});
 
 export function App() {
   return (
@@ -26,5 +26,5 @@ export function App() {
         <Toaster position="top-right" richColors />
       </QueryClientProvider>
     </ErrorBoundary>
-  )
+  );
 }

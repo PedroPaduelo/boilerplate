@@ -1,20 +1,20 @@
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useLogin } from '../hooks/use-auth'
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useLogin } from '../hooks/use-auth';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalido'),
   password: z.string().min(6, 'Minimo 6 caracteres'),
-})
+});
 
-type LoginFormData = z.infer<typeof loginSchema>
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const { mutate: login, isPending } = useLogin()
+  const { mutate: login, isPending } = useLogin();
 
   const {
     register,
@@ -22,11 +22,11 @@ export function LoginForm() {
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-  })
+  });
 
   const onSubmit = (data: LoginFormData) => {
-    login(data)
-  }
+    login(data);
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -60,5 +60,5 @@ export function LoginForm() {
         {isPending ? 'Entrando...' : 'Entrar'}
       </Button>
     </form>
-  )
+  );
 }

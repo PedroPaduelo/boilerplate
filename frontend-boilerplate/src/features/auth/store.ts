@@ -1,19 +1,19 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { User } from './types'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { User } from './types';
 
 interface AuthState {
-  user: User | null
-  token: string | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  isHydrated: boolean
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isHydrated: boolean;
 
-  setAuth: (user: User, token: string) => void
-  setUser: (user: User) => void
-  logout: () => void
-  setLoading: (loading: boolean) => void
-  setHydrated: () => void
+  setAuth: (user: User, token: string) => void;
+  setUser: (user: User) => void;
+  logout: () => void;
+  setLoading: (loading: boolean) => void;
+  setHydrated: () => void;
 }
 
 /**
@@ -32,13 +32,13 @@ export const useAuthStore = create<AuthState>()(
       isHydrated: false,
 
       setAuth: (user, token) => {
-        set({ user, token, isAuthenticated: true, isLoading: false })
+        set({ user, token, isAuthenticated: true, isLoading: false });
       },
 
       setUser: (user) => set({ user }),
 
       logout: () => {
-        set({ user: null, token: null, isAuthenticated: false })
+        set({ user: null, token: null, isAuthenticated: false });
       },
 
       setLoading: (isLoading) => set({ isLoading }),
@@ -49,8 +49,8 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth',
       partialize: (state) => ({ token: state.token }),
       onRehydrateStorage: () => (state) => {
-        state?.setHydrated()
+        state?.setHydrated();
       },
-    }
-  )
-)
+    },
+  ),
+);

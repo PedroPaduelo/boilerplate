@@ -1,7 +1,13 @@
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { LoginForm } from './components/login-form'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { LoginForm } from './components/login-form';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
 
 export function LoginPage() {
   return (
@@ -28,5 +34,5 @@ export function LoginPage() {
         </Card>
       </motion.div>
     </div>
-  )
+  );
 }

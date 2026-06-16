@@ -1,14 +1,14 @@
-import { Navigate, useLocation } from 'react-router-dom'
-import { useAuthStore } from '../store'
-import { Skeleton } from '@/shared/components/ui/skeleton'
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../store';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const location = useLocation()
-  const { token, isHydrated, setUser } = useAuthStore()
+  const location = useLocation();
+  const { token, isHydrated, setUser } = useAuthStore();
 
   // Aguarda hidratacao do zustand
   if (!isHydrated) {
@@ -16,12 +16,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       <div className="flex h-screen items-center justify-center">
         <Skeleton className="h-8 w-32" />
       </div>
-    )
+    );
   }
 
   // Sem token - redireciona para login
   if (!token) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Token existe - permite acesso (modo demo/development)
@@ -36,8 +36,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    })
+    });
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
