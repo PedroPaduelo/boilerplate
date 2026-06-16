@@ -14,7 +14,7 @@
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
-    "prepare": "husky"
+    "prepare": "node scripts/setup-husky.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

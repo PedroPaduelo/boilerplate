@@ -1,1 +1,7 @@
+#!/usr/bin/env sh
+# Author-facing hook definition. The actual commit-msg hook lives in
+# `.husky-run/commit-msg` and is invoked by the husky shim via
+# `core.hooksPath=.husky-run/_/`. This file is kept here as
+# documentation and as a fallback for environments that set
+# `core.hooksPath` to this directory; the two should stay in sync.
 npx --no -- commitlint --edit "$1"

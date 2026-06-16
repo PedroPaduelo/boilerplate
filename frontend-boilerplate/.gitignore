@@ -48,3 +48,8 @@ test-results
 *.sln
 *.sw?
 Thumbs.db
+
+# Local husky shim directory (managed by scripts/setup-husky.mjs).
+# Contains `core.hooksPath` files which encode the absolute path of the
+# package; safe to regenerate via `npm install`.
+.husky-run/
