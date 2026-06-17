@@ -2,13 +2,16 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
+type UserRole = 'ADMIN' | 'USER';
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRole?: UserRole;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const location = useLocation();
-  const { token, isHydrated, setUser } = useAuthStore();
+  const { user, token, isHydrated } = useAuthStore();
 
   // Aguarda hidratacao do zustand
   if (!isHydrated) {
@@ -19,24 +22,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Sem token - redireciona para login
-  if (!token) {
+  // Sem token ou sem usuario carregado - redireciona para login
+  if (!token || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Token existe - permite acesso (modo demo/development)
-  // O usuario pode fazer login real depois via /login
-  if (!useAuthStore.getState().user) {
-    // Define usuario mock para modo demo
-    setUser({
-      id: '1',
-      name: 'Usuario Demo',
-      email: 'demo@teste.com',
-      role: 'ADMIN',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+  // Checagem de role quando exigida
+  if (requiredRole && user.role !== requiredRole) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
