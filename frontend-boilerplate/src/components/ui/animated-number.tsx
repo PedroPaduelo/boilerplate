@@ -75,14 +75,14 @@ function AnimatedNumber({ value, className }: AnimatedNumberProps) {
 /*                               AnimatedScore                                 */
 /* -------------------------------------------------------------------------- */
 /**
- * Placar com feedback de cor: ao mudar, escala (bounce) e pisca verde se o
- * valor subiu, vermelho se desceu, voltando para branco. As cores são fixas
- * (brand do efeito), por isso os exemplos usam um fundo escuro para contraste.
+ * Placar com feedback de cor: ao mudar, escala (bounce) e pisca verde (good)
+ * se o valor subiu, vermelho (bad) se desceu, voltando para a cor de texto
+ * padrão. As cores vêm dos tokens do DS via CSS vars, acompanhando o tema.
  */
 
-const SCORE_NEUTRAL = "#fff"
-const SCORE_UP = "#37ff1a"
-const SCORE_DOWN = "#ff1a4b"
+const SCORE_NEUTRAL = "var(--foreground)"
+const SCORE_UP = "var(--chart-2)"
+const SCORE_DOWN = "var(--destructive)"
 
 function ScoreContainer({
   value,

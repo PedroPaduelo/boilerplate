@@ -5,6 +5,7 @@ import {
   UserX,
   Shield,
   Search,
+  SearchX,
 } from 'lucide-react';
 import { useUsers, useUserStats } from './hooks/use-users';
 import type { UserRole, UserStatus } from './types';
@@ -13,6 +14,8 @@ import {
   Badge,
   Input,
   Skeleton,
+  Section,
+  SectionHeader,
   TableFluid,
   TableFluidHeader,
   TableFluidBody,
@@ -20,17 +23,45 @@ import {
   TableFluidHead,
   TableFluidCell,
 } from '@/components/ui';
-import { formatDate } from '@/shared/lib/utils';
+import { cn, formatDate } from '@/shared/lib/utils';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 
-const roleVariant = (role: UserRole) =>
-  role === 'admin' ? 'default' : role === 'editor' ? 'secondary' : 'outline';
-const roleLabel = (role: UserRole) =>
-  role === 'admin' ? 'Admin' : role === 'editor' ? 'Editor' : 'Usuário';
-const statusVariant = (status: UserStatus) =>
-  status === 'active' ? 'default' : 'destructive';
-const statusLabel = (status: UserStatus) =>
-  status === 'active' ? 'Ativo' : 'Inativo';
+// Badges tonalizadas por token semântico do DS (sem paleta crua):
+// função e status mapeiam para chart-*/muted, mantendo legibilidade em
+// light e dark. Pills com rounded-full e borda transparente.
+const roleConfig: Record<UserRole, { label: string; className: string }> = {
+  admin: { label: 'Admin', className: 'bg-chart-1/10 text-chart-1' },
+  editor: { label: 'Editor', className: 'bg-chart-4/10 text-chart-4' },
+  user: { label: 'Usuário', className: 'bg-muted text-muted-foreground' },
+};
+
+const statusConfig: Record<UserStatus, { label: string; className: string }> = {
+  active: { label: 'Ativo', className: 'bg-chart-2/10 text-chart-2' },
+  inactive: { label: 'Inativo', className: 'bg-muted text-muted-foreground' },
+};
+
+function EmptyUsers({ hasSearch }: { hasSearch: boolean }) {
+  const Icon = hasSearch ? SearchX : UsersIcon;
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="size-6" />
+      </span>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">
+          {hasSearch
+            ? 'Nenhum usuário encontrado'
+            : 'Nenhum usuário cadastrado'}
+        </p>
+        <p className="mx-auto max-w-xs text-xs text-muted-foreground">
+          {hasSearch
+            ? 'Ajuste os termos da busca ou verifique a ortografia para encontrar quem você procura.'
+            : 'Os usuários do workspace aparecerão aqui assim que forem adicionados.'}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function UsersPage() {
   const [search, setSearch] = useState('');
@@ -45,39 +76,63 @@ export function UsersPage() {
     { label: 'Admins', value: stats?.admins ?? 0, icon: Shield },
   ];
 
+  const hasSearch = debounced.trim().length > 0;
+  const isEmpty = !isLoading && (data?.users.length ?? 0) === 0;
+
   return (
     <div className="flex flex-col gap-8">
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Section index={0}>
+        <SectionHeader
+          className="mb-0"
+          eyebrow="Gestão de pessoas"
+          title="Usuários"
+          description="Acompanhe o quadro de usuários, funções e status de acesso do workspace."
+        />
+      </Section>
+
+      <Section
+        index={1}
+        className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
+      >
         {kpis.map((k) => (
           <KpiCard key={k.label} label={k.label} value={k.value} icon={k.icon} />
         ))}
-      </section>
+      </Section>
 
-      <section className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold">Usuários</h2>
-            <p className="text-xs text-muted-foreground">
-              {data?.total ?? 0} usuários no total.
-            </p>
-          </div>
-          <div className="relative w-full sm:w-72">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome ou email…"
-              className="pl-8"
-            />
-          </div>
-        </div>
+      <Section
+        index={2}
+        className="rounded-xl border border-border/60 bg-card p-5 shadow-sm"
+      >
+        <SectionHeader
+          eyebrow="Diretório"
+          title="Lista de usuários"
+          description={
+            <>
+              <span className="tabular-nums">{data?.total ?? 0}</span> usuário
+              {(data?.total ?? 0) === 1 ? '' : 's'} no total.
+            </>
+          }
+          actions={
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por nome ou email…"
+                className="rounded-lg pl-8"
+              />
+            </div>
+          }
+        />
 
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
+              <Skeleton key={i} className="h-12 w-full rounded-lg" />
             ))}
           </div>
+        ) : isEmpty ? (
+          <EmptyUsers hasSearch={hasSearch} />
         ) : (
           <div className="overflow-x-auto">
             <TableFluid>
@@ -107,30 +162,38 @@ export function UsersPage() {
                       </div>
                     </TableFluidCell>
                     <TableFluidCell className="hidden sm:table-cell">
-                      <Badge variant={roleVariant(u.role)}>
-                        {roleLabel(u.role)}
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'rounded-full border-transparent',
+                          roleConfig[u.role].className,
+                        )}
+                      >
+                        {roleConfig[u.role].label}
                       </Badge>
                     </TableFluidCell>
                     <TableFluidCell>
-                      <Badge variant={statusVariant(u.status)}>
-                        {statusLabel(u.status)}
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'gap-1.5 rounded-full border-transparent',
+                          statusConfig[u.status].className,
+                        )}
+                      >
+                        <span className="size-1.5 rounded-full bg-current" />
+                        {statusConfig[u.status].label}
                       </Badge>
                     </TableFluidCell>
-                    <TableFluidCell className="hidden text-right text-xs md:table-cell">
+                    <TableFluidCell className="hidden text-right text-xs tabular-nums md:table-cell">
                       {formatDate(u.createdAt)}
                     </TableFluidCell>
                   </TableFluidRow>
                 ))}
               </TableFluidBody>
             </TableFluid>
-            {data?.users.length === 0 && (
-              <p className="py-10 text-center text-sm text-muted-foreground">
-                Nenhum usuário encontrado.
-              </p>
-            )}
           </div>
         )}
-      </section>
+      </Section>
     </div>
   );
 }

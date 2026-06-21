@@ -29,26 +29,29 @@ function getLevel(count: number, maxCount: number): number {
 }
 
 function getColorClass(level: number, colorScale: string): string {
-  if (level === 0) return "bg-muted-foreground/5"
+  // Nível vazio: tile neutro tonalizado pelo token de superfície.
+  if (level === 0) return "bg-muted"
 
   if (colorScale === "green") {
+    // "good" → token chart-2 com opacidades crescentes (acompanha o tema).
     const colors = [
       "",
-      "bg-green-200 dark:bg-green-900",
-      "bg-green-400 dark:bg-green-700",
-      "bg-green-500 dark:bg-green-600",
-      "bg-green-700 dark:bg-green-400",
+      "bg-chart-2/15",
+      "bg-chart-2/30",
+      "bg-chart-2/50",
+      "bg-chart-2/70",
     ]
     return colors[level]
   }
 
   if (colorScale === "blue") {
+    // "info" → token chart-1 com opacidades crescentes.
     const colors = [
       "",
-      "bg-blue-200 dark:bg-blue-900",
-      "bg-blue-400 dark:bg-blue-700",
-      "bg-blue-500 dark:bg-blue-600",
-      "bg-blue-700 dark:bg-blue-400",
+      "bg-chart-1/15",
+      "bg-chart-1/30",
+      "bg-chart-1/50",
+      "bg-chart-1/70",
     ]
     return colors[level]
   }

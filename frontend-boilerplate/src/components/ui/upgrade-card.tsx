@@ -37,7 +37,7 @@ function UpgradeCard({
     <div
       data-slot="upgrade-card"
       className={cn(
-        "rounded-lg border border-border bg-muted/40 p-3",
+        "rounded-lg border border-border/60 bg-muted/40 p-3",
         className
       )}
       {...props}

@@ -54,10 +54,10 @@ function ActivityFeed({ items, className, ...props }: ActivityFeedProps) {
             className={cn(
               "flex items-center gap-3 py-3",
               i === 0 ? "pt-0" : "",
-              i === items.length - 1 ? "pb-0" : "border-b border-border"
+              i === items.length - 1 ? "pb-0" : "border-b border-border/60"
             )}
           >
-            <Avatar className="size-9 border border-border">
+            <Avatar className="size-9 border border-border/60">
               {item.avatar ? (
                 <AvatarImage src={item.avatar} alt={item.name} />
               ) : null}

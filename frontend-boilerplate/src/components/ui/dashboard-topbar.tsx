@@ -56,7 +56,7 @@ function DashboardTopbar({
     <header
       data-slot="dashboard-topbar"
       className={cn(
-        "flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6",
+        "flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-6",
         className
       )}
       {...props}
@@ -74,7 +74,7 @@ function DashboardTopbar({
           </Button>
         ) : null}
         {title ? (
-          <h1 className="truncate text-base font-semibold">{title}</h1>
+          <h1 className="truncate text-base font-semibold tracking-tight">{title}</h1>
         ) : null}
         {titleAdornment}
       </div>

@@ -5,8 +5,8 @@ import { useLogin } from '../hooks/use-auth';
 import { Button, Input } from '@/components/ui';
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  email: z.string().email('Informe um email válido'),
+  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -32,10 +32,11 @@ export function LoginForm() {
           id="email"
           type="email"
           placeholder="seu@email.com"
+          className="rounded-lg"
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
+          <p className="text-xs text-destructive">{errors.email.message}</p>
         )}
       </div>
 
@@ -47,14 +48,15 @@ export function LoginForm() {
           id="password"
           type="password"
           placeholder="••••••••"
+          className="rounded-lg"
           {...register('password')}
         />
         {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p className="text-xs text-destructive">{errors.password.message}</p>
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button type="submit" className="w-full rounded-lg" disabled={isPending}>
         {isPending ? 'Entrando...' : 'Entrar'}
       </Button>
     </form>

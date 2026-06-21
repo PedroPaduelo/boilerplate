@@ -15,6 +15,7 @@ export * from './dropdown-menu';
 export * from './github-contributions';
 export * from './input';
 export * from './kpi-card';
+export * from './section';
 export * from './separator';
 export * from './skeleton';
 export * from './sonner';

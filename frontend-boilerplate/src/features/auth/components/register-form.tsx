@@ -5,9 +5,9 @@ import { useRegister } from '../hooks/use-auth';
 import { Button, Input } from '@/components/ui';
 
 const registerSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  name: z.string().min(2, 'O nome deve ter no mínimo 2 caracteres'),
+  email: z.string().email('Informe um email válido'),
+  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -32,11 +32,12 @@ export function RegisterForm() {
         <Input
           id="name"
           type="text"
-          placeholder="Seu nome"
+          placeholder="Seu nome completo"
+          className="rounded-lg"
           {...registerField('name')}
         />
         {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
+          <p className="text-xs text-destructive">{errors.name.message}</p>
         )}
       </div>
 
@@ -48,10 +49,11 @@ export function RegisterForm() {
           id="email"
           type="email"
           placeholder="seu@email.com"
+          className="rounded-lg"
           {...registerField('email')}
         />
         {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
+          <p className="text-xs text-destructive">{errors.email.message}</p>
         )}
       </div>
 
@@ -63,14 +65,15 @@ export function RegisterForm() {
           id="password"
           type="password"
           placeholder="••••••••"
+          className="rounded-lg"
           {...registerField('password')}
         />
         {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p className="text-xs text-destructive">{errors.password.message}</p>
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button type="submit" className="w-full rounded-lg" disabled={isPending}>
         {isPending ? 'Criando conta...' : 'Criar conta'}
       </Button>
     </form>

@@ -19,6 +19,11 @@ export interface StatTileProps
   delta?: number
   /** Força a direção da tendência. Default: derivado do sinal de `delta`. */
   trend?: "up" | "down"
+  /**
+   * Se subir é bom (default `true`). Quando `false`, inverte a cor do delta:
+   * uma variação positiva passa a ser sinalizada como negativa.
+   */
+  higherIsBetter?: boolean
   /** Texto auxiliar exibido ao lado do delta (ex.: "vs. ontem"). */
   hint?: string
 }
@@ -31,11 +36,13 @@ function StatTile({
   icon: Icon,
   delta,
   trend,
+  higherIsBetter = true,
   hint,
   className,
   ...props
 }: StatTileProps) {
   const positive = trend ? trend === "up" : (delta ?? 0) >= 0
+  const good = positive === higherIsBetter
   return (
     <div
       data-slot="stat-tile"
@@ -67,10 +74,10 @@ function StatTile({
           {delta !== undefined ? (
             <span
               className={cn(
-                "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-medium",
-                positive
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-medium tabular-nums",
+                good
+                  ? "bg-chart-2/10 text-chart-2"
+                  : "bg-destructive/10 text-destructive"
               )}
             >
               {positive ? "+" : ""}

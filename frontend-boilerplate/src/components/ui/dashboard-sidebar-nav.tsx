@@ -46,7 +46,7 @@ function DashboardSidebarNav({
     <aside
       data-slot="dashboard-sidebar-nav"
       className={cn(
-        "flex w-56 shrink-0 flex-col gap-1 border-r border-border bg-card/40 p-4",
+        "flex w-56 shrink-0 flex-col gap-1 border-r border-sidebar-border/60 bg-sidebar p-4 text-sidebar-foreground",
         className
       )}
       {...props}
@@ -66,8 +66,13 @@ function DashboardSidebarNav({
           return (
             <Button
               key={item.id}
-              variant={active ? "secondary" : "ghost"}
-              className="justify-start gap-2"
+              variant="ghost"
+              className={cn(
+                "justify-start gap-2",
+                active
+                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              )}
               aria-current={active ? "page" : undefined}
               onClick={() => onSelect?.(item.id)}
             >

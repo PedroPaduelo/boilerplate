@@ -39,6 +39,8 @@ import {
   DashboardSidebarNav,
   DashboardTopbar,
   UpgradeCard,
+  Section,
+  SectionHeader,
 } from "@/components/ui"
 import type { ContributionDay } from "@/components/ui/github-contributions"
 import type { AnimatedTooltipItem } from "@/components/ui/animated-tooltip-types"
@@ -256,7 +258,7 @@ const ACTIVITY_FEED: ActivityEvent[] = [
     id: "evt-2",
     name: "Dahlia Reyes",
     seed: "dahlia",
-    action: "fechou o ticket #1042",
+    action: "fechou o ticket nº 1042",
     kind: "ticket",
     time: "há 22 min",
   },
@@ -359,7 +361,7 @@ export function SaasDashboard() {
   const [activeNav, setActiveNav] = React.useState("overview")
 
   return (
-    <div className="flex min-h-[40vh] w-full overflow-hidden rounded-xl border border-border bg-background text-foreground">
+    <div className="flex min-h-[40vh] w-full overflow-hidden rounded-xl border border-border/60 bg-background text-foreground">
       {/* Sidebar */}
       <DashboardSidebarNav
         className="hidden lg:flex"
@@ -368,10 +370,10 @@ export function SaasDashboard() {
         onSelect={setActiveNav}
         brand={
           <>
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Activity className="size-4" />
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
+              W
             </span>
-            <span className="text-sm font-semibold">Nimbus</span>
+            <span className="text-sm font-semibold tracking-tight">Nimbus</span>
           </>
         }
         footer={
@@ -441,50 +443,56 @@ export function SaasDashboard() {
             items={TOC_ITEMS}
             orientation="horizontal"
             showProgress={false}
-            className="flex-wrap rounded-lg border border-border bg-card/40 px-3 py-2"
+            className="flex-wrap rounded-lg border border-border/60 bg-card/40 px-3 py-2"
           />
 
           {/* KPIs */}
-          <section
-            id="section-kpis"
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-          >
-            {KPIS.map((kpi) => (
-              <KpiCard
-                key={kpi.label}
-                label={kpi.label}
-                value={kpi.value}
-                prefix={kpi.prefix}
-                suffix={kpi.suffix}
-                delta={kpi.delta}
-                icon={kpi.icon}
-                hint="vs. mês anterior"
-              />
-            ))}
-          </section>
+          <Section index={0} id="section-kpis">
+            <SectionHeader
+              eyebrow="Desempenho"
+              title="Indicadores principais"
+              description="Métricas-chave do negócio comparadas ao mês anterior."
+            />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {KPIS.map((kpi) => (
+                <KpiCard
+                  key={kpi.label}
+                  label={kpi.label}
+                  value={kpi.value}
+                  prefix={kpi.prefix}
+                  suffix={kpi.suffix}
+                  delta={kpi.delta}
+                  icon={kpi.icon}
+                  hint="vs. mês anterior"
+                />
+              ))}
+            </div>
+          </Section>
 
           {/* Heatmap de atividade */}
-          <section
+          <Section
+            index={1}
             id="section-activity"
-            className="rounded-xl border border-border bg-card p-5 shadow-sm"
+            className="rounded-xl border border-border/60 bg-card p-5 shadow-sm"
           >
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold">Atividade da equipe</h2>
+            <SectionHeader
+              eyebrow="Engajamento"
+              title={
+                <span className="inline-flex items-center gap-2">
+                  Atividade da equipe
                   <Badge variant="outline">Heatmap</Badge>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Eventos de produto nas últimas 30 semanas.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="hidden text-xs text-muted-foreground sm:inline">
-                  Ativos agora
                 </span>
-                <AnimatedTooltip items={ACTIVE_MEMBERS} />
-              </div>
-            </div>
+              }
+              description="Eventos de produto nas últimas 30 semanas."
+              actions={
+                <div className="flex items-center gap-3">
+                  <span className="hidden text-xs text-muted-foreground sm:inline">
+                    Ativos agora
+                  </span>
+                  <AnimatedTooltip items={ACTIVE_MEMBERS} />
+                </div>
+              }
+            />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* Coluna principal — resumos + heatmap */}
@@ -502,7 +510,7 @@ export function SaasDashboard() {
                   ))}
                 </div>
 
-                <div className="rounded-lg border border-border bg-muted/20 p-4">
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
                   <GitHubContributions
                     data={CONTRIBUTIONS}
                     weeks={30}
@@ -512,9 +520,11 @@ export function SaasDashboard() {
               </div>
 
               {/* Coluna lateral — feed de atividade recente */}
-              <div className="flex flex-col rounded-lg border border-border bg-muted/20 p-4">
+              <div className="flex flex-col rounded-lg border border-border/60 bg-muted/20 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Atividade recente</h3>
+                  <h3 className="text-sm font-semibold tracking-tight">
+                    Atividade recente
+                  </h3>
                   <Badge variant="secondary" className="text-[10px]">
                     Ao vivo
                   </Badge>
@@ -541,26 +551,26 @@ export function SaasDashboard() {
                 </Button>
               </div>
             </div>
-          </section>
+          </Section>
 
           {/* Tabelas com abas */}
-          <section
+          <Section
+            index={2}
             id="section-breakdown"
-            className="rounded-xl border border-border bg-card p-5 shadow-sm"
+            className="rounded-xl border border-border/60 bg-card p-5 shadow-sm"
           >
             <Tabs defaultValue="customers">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold">Detalhamento</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Alterne entre clientes e canais de aquisição.
-                  </p>
-                </div>
-                <TabsList>
-                  <TabsTrigger value="customers">Clientes</TabsTrigger>
-                  <TabsTrigger value="channels">Canais</TabsTrigger>
-                </TabsList>
-              </div>
+              <SectionHeader
+                eyebrow="Relatórios"
+                title="Detalhamento"
+                description="Alterne entre clientes e canais de aquisição."
+                actions={
+                  <TabsList>
+                    <TabsTrigger value="customers">Clientes</TabsTrigger>
+                    <TabsTrigger value="channels">Canais</TabsTrigger>
+                  </TabsList>
+                }
+              />
 
               <TabsContent value="customers" className="mt-4">
                 <TableFluid>
@@ -605,7 +615,7 @@ export function SaasDashboard() {
                             {row.status}
                           </Badge>
                         </TableFluidCell>
-                        <TableFluidCell className="text-right font-medium text-foreground">
+                        <TableFluidCell className="text-right font-medium tabular-nums text-foreground">
                           ${row.mrr.toLocaleString()}
                         </TableFluidCell>
                       </TableFluidRow>
@@ -636,13 +646,13 @@ export function SaasDashboard() {
                         <TableFluidCell className="font-medium text-foreground">
                           {row.channel}
                         </TableFluidCell>
-                        <TableFluidCell className="text-right">
+                        <TableFluidCell className="text-right tabular-nums">
                           {row.visitors.toLocaleString()}
                         </TableFluidCell>
-                        <TableFluidCell className="text-right">
+                        <TableFluidCell className="text-right tabular-nums">
                           {row.signups.toLocaleString()}
                         </TableFluidCell>
-                        <TableFluidCell className="text-right font-medium text-foreground">
+                        <TableFluidCell className="text-right font-medium tabular-nums text-foreground">
                           {row.rate}
                         </TableFluidCell>
                       </TableFluidRow>
@@ -651,7 +661,7 @@ export function SaasDashboard() {
                 </TableFluid>
               </TabsContent>
             </Tabs>
-          </section>
+          </Section>
         </div>
       </div>
     </div>
