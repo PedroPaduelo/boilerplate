@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Users as UsersIcon,
   LogOut,
   PanelLeftClose,
@@ -16,10 +15,7 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { useAuthStore } from '@/features/auth/store';
 
-const NAV = [
-  { id: '/overview', label: 'Visão geral', icon: LayoutDashboard },
-  { id: '/users', label: 'Usuários', icon: UsersIcon },
-];
+const NAV = [{ id: '/users', label: 'Usuários', icon: UsersIcon }];
 
 interface AppSidebarProps {
   collapsed: boolean;

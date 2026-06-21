@@ -13,13 +13,6 @@ const UsersPage = lazy(() =>
   import('@/features/users').then((m) => ({ default: m.UsersPage })),
 );
 
-// Composicao da Vitrine UI (tela de visao geral)
-const OverviewPage = lazy(() =>
-  import('@/compositions/saas-dashboard').then((m) => ({
-    default: m.SaasDashboard,
-  })),
-);
-
 const PageLoader = () => (
   <div className="space-y-4">
     <Skeleton className="h-8 w-48" />
@@ -43,14 +36,6 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="/users" replace /> },
-      {
-        path: 'overview',
-        element: (
-          <Lazy>
-            <OverviewPage />
-          </Lazy>
-        ),
-      },
       {
         path: 'users',
         element: (

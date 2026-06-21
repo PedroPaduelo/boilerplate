@@ -6,7 +6,6 @@ import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { useAuthStore } from '@/features/auth/store';
 
 const TITLES: Record<string, string> = {
-  '/overview': 'Visão geral',
   '/users': 'Usuários',
 };
 
