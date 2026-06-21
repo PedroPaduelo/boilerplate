@@ -1,8 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
-import { AppLayout } from './app-layout';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { DashboardLayout } from './dashboard-layout';
 import { ProtectedRoute } from '@/features/auth/components/protected-route';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from '@/components/ui';
 
 // Auth - sem lazy (critico)
 import { LoginPage } from '@/features/auth/login';
@@ -13,15 +13,21 @@ const UsersPage = lazy(() =>
   import('@/features/users').then((m) => ({ default: m.UsersPage })),
 );
 
-// Loader
+// Composicao da Vitrine UI (tela de visao geral)
+const OverviewPage = lazy(() =>
+  import('@/compositions/saas-dashboard').then((m) => ({
+    default: m.SaasDashboard,
+  })),
+);
+
 const PageLoader = () => (
-  <div className="p-6">
-    <Skeleton className="h-8 w-48 mb-4" />
+  <div className="space-y-4">
+    <Skeleton className="h-8 w-48" />
     <Skeleton className="h-64 w-full" />
   </div>
 );
 
-const Lazy = ({ children }: { children: React.ReactNode }) => (
+const Lazy = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={<PageLoader />}>{children}</Suspense>
 );
 
@@ -32,11 +38,19 @@ export const router = createBrowserRouter([
     path: '/',
     element: (
       <ProtectedRoute>
-        <AppLayout />
+        <DashboardLayout />
       </ProtectedRoute>
     ),
     children: [
       { index: true, element: <Navigate to="/users" replace /> },
+      {
+        path: 'overview',
+        element: (
+          <Lazy>
+            <OverviewPage />
+          </Lazy>
+        ),
+      },
       {
         path: 'users',
         element: (
@@ -45,7 +59,6 @@ export const router = createBrowserRouter([
           </Lazy>
         ),
       },
-      // Adicionar outras rotas aqui
     ],
   },
   { path: '*', element: <Navigate to="/users" replace /> },

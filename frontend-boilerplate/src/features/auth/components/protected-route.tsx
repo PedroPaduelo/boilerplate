@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from '@/components/ui';
 
 type UserRole = 'ADMIN' | 'USER';
 
@@ -13,7 +13,6 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   const location = useLocation();
   const { user, token, isHydrated } = useAuthStore();
 
-  // Aguarda hidratacao do zustand
   if (!isHydrated) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -22,12 +21,10 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     );
   }
 
-  // Sem token ou sem usuario carregado - redireciona para login
   if (!token || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Checagem de role quando exigida
   if (requiredRole && user.role !== requiredRole) {
     return <Navigate to="/" replace />;
   }

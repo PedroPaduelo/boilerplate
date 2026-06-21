@@ -2,13 +2,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLogin } from '../hooks/use-auth';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
+import { Button, Input } from '@/components/ui';
 
 const loginSchema = z.object({
-  email: z.string().email('Email invalido'),
-  password: z.string().min(6, 'Minimo 6 caracteres'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -24,14 +22,12 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = (data: LoginFormData) => {
-    login(data);
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit((data) => login(data))} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <label htmlFor="email" className="text-sm font-medium">
+          Email
+        </label>
         <Input
           id="email"
           type="email"
@@ -44,7 +40,9 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
+        <label htmlFor="password" className="text-sm font-medium">
+          Senha
+        </label>
         <Input
           id="password"
           type="password"

@@ -2,14 +2,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRegister } from '../hooks/use-auth';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
+import { Button, Input } from '@/components/ui';
 
 const registerSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter no minimo 2 caracteres'),
-  email: z.string().email('Email invalido'),
-  password: z.string().min(6, 'Minimo 6 caracteres'),
+  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -25,20 +23,27 @@ export function RegisterForm() {
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = (data: RegisterFormData) => {
-    register(data);
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit((data) => register(data))} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Nome</Label>
-        <Input id="name" type="text" placeholder="Seu nome" {...registerField('name')} />
-        {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+        <label htmlFor="name" className="text-sm font-medium">
+          Nome
+        </label>
+        <Input
+          id="name"
+          type="text"
+          placeholder="Seu nome"
+          {...registerField('name')}
+        />
+        {errors.name && (
+          <p className="text-sm text-destructive">{errors.name.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <label htmlFor="email" className="text-sm font-medium">
+          Email
+        </label>
         <Input
           id="email"
           type="email"
@@ -51,7 +56,9 @@ export function RegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
+        <label htmlFor="password" className="text-sm font-medium">
+          Senha
+        </label>
         <Input
           id="password"
           type="password"
