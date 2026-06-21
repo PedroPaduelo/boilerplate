@@ -38,13 +38,16 @@ async function initRateLimiters() {
   try {
     const Redis = require('ioredis');
     const redisClient = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
+      host: process.env.REDIS_URL || process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD,
+      family: 4,
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
+      lazyConnect: true,
     });
 
+    await redisClient.connect();
     await redisClient.ping();
     rateLimiterRedis = new RateLimiterRedis({
       storeClient: redisClient,
