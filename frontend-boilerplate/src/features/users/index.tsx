@@ -46,14 +46,14 @@ export function UsersPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="flex flex-col gap-8">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
           <KpiCard key={k.label} label={k.label} value={k.value} icon={k.icon} />
         ))}
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold">Usuários</h2>

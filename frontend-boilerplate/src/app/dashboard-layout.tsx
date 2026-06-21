@@ -39,7 +39,7 @@ export function DashboardLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <DashboardSidebarNav
-        className="hidden h-full lg:flex"
+        className="hidden h-full w-[15.5rem] shrink-0 lg:flex"
         items={NAV}
         activeId={activeId}
         onSelect={(id) => navigate(id)}
@@ -48,7 +48,9 @@ export function DashboardLayout() {
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <LayoutDashboard className="size-4" />
             </span>
-            <span className="text-sm font-semibold">Boilerplate</span>
+            <span className="text-sm font-semibold tracking-tight">
+              Boilerplate
+            </span>
           </>
         }
         footer={
@@ -65,7 +67,12 @@ export function DashboardLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <DashboardTopbar
-          title={title}
+          className="sticky top-0 z-10 h-14 border-border/60 bg-background/80 backdrop-blur-md"
+          title={
+            <span className="text-base font-semibold tracking-tight sm:text-lg">
+              {title}
+            </span>
+          }
           actions={
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
@@ -76,14 +83,16 @@ export function DashboardLayout() {
                   {user?.email}
                 </p>
               </div>
-              <Avatar className="size-9">
+              <Avatar className="size-8">
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
             </div>
           }
         />
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          <Outlet />
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-[1760px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
