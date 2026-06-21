@@ -1,29 +1,29 @@
-export type UserRole = 'admin' | 'user' | 'editor';
-export type UserStatus = 'active' | 'inactive';
+export type UserRole = 'ADMIN' | 'USER';
 
 export interface User {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   role: UserRole;
-  status: UserStatus;
-  avatar?: string;
+  isActive: boolean;
+  lastLoginAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface UserFilters {
   search?: string;
-  role?: UserRole | 'all';
-  status?: UserStatus | 'all';
+  role?: UserRole;
+  isActive?: boolean;
   page?: number;
-  limit?: number;
+  pageSize?: number;
 }
 
 export interface UsersResponse {
   users: User[];
   total: number;
   page: number;
-  limit: number;
+  pageSize: number;
   totalPages: number;
 }
 
@@ -37,10 +37,15 @@ export interface UserStats {
 export interface CreateUserInput {
   name: string;
   email: string;
+  password: string;
   role: UserRole;
-  status: UserStatus;
 }
 
-export interface UpdateUserInput extends Partial<CreateUserInput> {
+export interface UpdateUserInput {
   id: string;
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: UserRole;
+  isActive?: boolean;
 }

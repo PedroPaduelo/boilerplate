@@ -6,12 +6,18 @@ import {
   Shield,
   Search,
   SearchX,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useUsers, useUserStats } from './hooks/use-users';
-import type { UserRole, UserStatus } from './types';
+import type { User, UserRole } from './types';
+import { UserFormDialog } from './components/user-form-dialog';
+import { DeleteUserDialog } from './components/delete-user-dialog';
 import {
   KpiCard,
   Badge,
+  Button,
   Input,
   Skeleton,
   Section,
@@ -25,20 +31,21 @@ import {
 } from '@/components/ui';
 import { cn, formatDate } from '@/shared/lib/utils';
 import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useAuthStore } from '@/features/auth/store';
 
 // Badges tonalizadas por token semântico do DS (sem paleta crua):
 // função e status mapeiam para chart-*/muted, mantendo legibilidade em
 // light e dark. Pills com rounded-full e borda transparente.
 const roleConfig: Record<UserRole, { label: string; className: string }> = {
-  admin: { label: 'Admin', className: 'bg-chart-1/10 text-chart-1' },
-  editor: { label: 'Editor', className: 'bg-chart-4/10 text-chart-4' },
-  user: { label: 'Usuário', className: 'bg-muted text-muted-foreground' },
+  ADMIN: { label: 'Admin', className: 'bg-chart-1/10 text-chart-1' },
+  USER: { label: 'Usuário', className: 'bg-muted text-muted-foreground' },
 };
 
-const statusConfig: Record<UserStatus, { label: string; className: string }> = {
-  active: { label: 'Ativo', className: 'bg-chart-2/10 text-chart-2' },
-  inactive: { label: 'Inativo', className: 'bg-muted text-muted-foreground' },
-};
+function statusConfig(isActive: boolean) {
+  return isActive
+    ? { label: 'Ativo', className: 'bg-chart-2/10 text-chart-2' }
+    : { label: 'Inativo', className: 'bg-muted text-muted-foreground' };
+}
 
 function EmptyUsers({ hasSearch }: { hasSearch: boolean }) {
   const Icon = hasSearch ? SearchX : UsersIcon;
@@ -64,10 +71,26 @@ function EmptyUsers({ hasSearch }: { hasSearch: boolean }) {
 }
 
 export function UsersPage() {
+  const currentUser = useAuthStore((s) => s.user);
   const [search, setSearch] = useState('');
   const debounced = useDebounce(search, 300);
   const { data: stats } = useUserStats();
-  const { data, isLoading } = useUsers({ search: debounced, limit: 50 });
+  const { data, isLoading } = useUsers({ search: debounced, pageSize: 50 });
+
+  // Estado dos modais de gestão (criar/editar/excluir).
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState<User | null>(null);
+
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (user: User) => {
+    setEditing(user);
+    setFormOpen(true);
+  };
 
   const kpis = [
     { label: 'Total de usuários', value: stats?.total ?? 0, icon: UsersIcon },
@@ -87,6 +110,12 @@ export function UsersPage() {
           eyebrow="Gestão de pessoas"
           title="Usuários"
           description="Acompanhe o quadro de usuários, funções e status de acesso do workspace."
+          actions={
+            <Button onClick={openCreate} className="gap-2">
+              <Plus className="size-4" />
+              Novo usuário
+            </Button>
+          }
         />
       </Section>
 
@@ -146,54 +175,99 @@ export function UsersPage() {
                   <TableFluidHead className="hidden text-right md:table-cell">
                     Criado em
                   </TableFluidHead>
+                  <TableFluidHead className="text-right">Ações</TableFluidHead>
                 </TableFluidRow>
               </TableFluidHeader>
               <TableFluidBody>
-                {data?.users.map((u, i) => (
-                  <TableFluidRow key={u.id} index={i}>
-                    <TableFluidCell>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">
-                          {u.name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {u.email}
-                        </p>
-                      </div>
-                    </TableFluidCell>
-                    <TableFluidCell className="hidden sm:table-cell">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'rounded-full border-transparent',
-                          roleConfig[u.role].className,
-                        )}
-                      >
-                        {roleConfig[u.role].label}
-                      </Badge>
-                    </TableFluidCell>
-                    <TableFluidCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'gap-1.5 rounded-full border-transparent',
-                          statusConfig[u.status].className,
-                        )}
-                      >
-                        <span className="size-1.5 rounded-full bg-current" />
-                        {statusConfig[u.status].label}
-                      </Badge>
-                    </TableFluidCell>
-                    <TableFluidCell className="hidden text-right text-xs tabular-nums md:table-cell">
-                      {formatDate(u.createdAt)}
-                    </TableFluidCell>
-                  </TableFluidRow>
-                ))}
+                {data?.users.map((u, i) => {
+                  const status = statusConfig(u.isActive);
+                  const isSelf = u.id === currentUser?.id;
+                  return (
+                    <TableFluidRow key={u.id} index={i}>
+                      <TableFluidCell>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">
+                            {u.name ?? '—'}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {u.email}
+                          </p>
+                        </div>
+                      </TableFluidCell>
+                      <TableFluidCell className="hidden sm:table-cell">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'rounded-full border-transparent',
+                            roleConfig[u.role].className,
+                          )}
+                        >
+                          {roleConfig[u.role].label}
+                        </Badge>
+                      </TableFluidCell>
+                      <TableFluidCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'gap-1.5 rounded-full border-transparent',
+                            status.className,
+                          )}
+                        >
+                          <span className="size-1.5 rounded-full bg-current" />
+                          {status.label}
+                        </Badge>
+                      </TableFluidCell>
+                      <TableFluidCell className="hidden text-right text-xs tabular-nums md:table-cell">
+                        {formatDate(u.createdAt)}
+                      </TableFluidCell>
+                      <TableFluidCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => openEdit(u)}
+                            aria-label={`Editar ${u.name ?? u.email}`}
+                          >
+                            <Pencil />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setDeleting(u)}
+                            disabled={isSelf}
+                            title={
+                              isSelf
+                                ? 'Você não pode excluir o próprio usuário'
+                                : undefined
+                            }
+                            aria-label={`Excluir ${u.name ?? u.email}`}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
+                      </TableFluidCell>
+                    </TableFluidRow>
+                  );
+                })}
               </TableFluidBody>
             </TableFluid>
           </div>
         )}
       </Section>
+
+      <UserFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        user={editing}
+      />
+      <DeleteUserDialog
+        user={deleting}
+        open={!!deleting}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+      />
     </div>
   );
 }

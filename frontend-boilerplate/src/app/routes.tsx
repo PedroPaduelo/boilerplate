@@ -39,9 +39,11 @@ export const router = createBrowserRouter([
       {
         path: 'users',
         element: (
-          <Lazy>
-            <UsersPage />
-          </Lazy>
+          <ProtectedRoute requiredRole="ADMIN">
+            <Lazy>
+              <UsersPage />
+            </Lazy>
+          </ProtectedRoute>
         ),
       },
     ],

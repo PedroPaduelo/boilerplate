@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { usersApi } from '../api';
+import { getApiErrorMessage } from '@/shared/lib/api-error';
 import type { UserFilters, CreateUserInput, UpdateUserInput } from '../types';
 
 // Query keys
@@ -45,8 +46,8 @@ export function useCreateUser() {
       toast.success('Usuário criado com sucesso!');
       queryClient.invalidateQueries({ queryKey: usersKeys.all });
     },
-    onError: () => {
-      toast.error('Erro ao criar usuário');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao criar usuário'));
     },
   });
 }
@@ -61,8 +62,8 @@ export function useUpdateUser() {
       queryClient.invalidateQueries({ queryKey: usersKeys.all });
       queryClient.invalidateQueries({ queryKey: usersKeys.detail(variables.id) });
     },
-    onError: () => {
-      toast.error('Erro ao atualizar usuário');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao atualizar usuário'));
     },
   });
 }
@@ -76,39 +77,8 @@ export function useDeleteUser() {
       toast.success('Usuário excluído com sucesso!');
       queryClient.invalidateQueries({ queryKey: usersKeys.all });
     },
-    onError: () => {
-      toast.error('Erro ao excluir usuário');
-    },
-  });
-}
-
-export function useBulkDeleteUsers() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: string[]) => usersApi.bulkDeleteUsers(ids),
-    onSuccess: () => {
-      toast.success('Usuários excluídos com sucesso!');
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
-    },
-    onError: () => {
-      toast.error('Erro ao excluir usuários');
-    },
-  });
-}
-
-export function useBulkUpdateStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ ids, status }: { ids: string[]; status: 'active' | 'inactive' }) =>
-      usersApi.bulkUpdateStatus(ids, status),
-    onSuccess: () => {
-      toast.success('Status atualizado com sucesso!');
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
-    },
-    onError: () => {
-      toast.error('Erro ao atualizar status');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao excluir usuário'));
     },
   });
 }

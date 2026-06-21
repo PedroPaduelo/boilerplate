@@ -56,6 +56,7 @@ export async function register(app: FastifyInstance) {
           name: true,
           email: true,
           role: true,
+          isActive: true,
         },
       });
 

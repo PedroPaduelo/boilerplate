@@ -24,6 +24,8 @@ export async function authenticate(app: FastifyInstance) {
               id: z.string(),
               name: z.string().nullable(),
               email: z.string(),
+              role: z.string(),
+              isActive: z.boolean(),
             }),
           }),
         },
@@ -75,6 +77,8 @@ export async function authenticate(app: FastifyInstance) {
           id: user.id,
           name: user.name,
           email: user.email,
+          role: user.role,
+          isActive: user.isActive,
         },
       });
     }

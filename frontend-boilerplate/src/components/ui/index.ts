@@ -1,5 +1,6 @@
 // Barrel dos componentes da Vitrine UI (re-exporta tudo para @/components/ui)
 export * from './activity-feed';
+export * from './alert-dialog';
 export * from './animated-number';
 export * from './animated-tooltip-types';
 export * from './animated-tooltip';
@@ -11,11 +12,14 @@ export * from './button';
 export * from './card';
 export * from './dashboard-sidebar-nav';
 export * from './dashboard-topbar';
+export * from './dialog';
 export * from './dropdown-menu';
 export * from './github-contributions';
 export * from './input';
 export * from './kpi-card';
+export * from './label';
 export * from './section';
+export * from './select';
 export * from './separator';
 export * from './skeleton';
 export * from './sonner';

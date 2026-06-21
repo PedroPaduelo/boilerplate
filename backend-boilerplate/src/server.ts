@@ -37,6 +37,7 @@ import { register } from './http/routes/auth/register';
 import { getMe } from './http/routes/auth/get-me';
 import { createUser } from './http/routes/user/create-user';
 import { listUsers } from './http/routes/user/list-users';
+import { getUserStats } from './http/routes/user/get-user-stats';
 import { getUser } from './http/routes/user/get-user';
 import { updateUser } from './http/routes/user/update-user';
 import { deleteUser } from './http/routes/user/delete-user';
@@ -287,6 +288,7 @@ async function start() {
   app.register(getMe);
   app.register(createUser);
   app.register(listUsers);
+  app.register(getUserStats);
   app.register(getUser);
   app.register(updateUser);
   app.register(deleteUser);
