@@ -114,9 +114,11 @@ Os arquivos foram conferidos contra o **código real** do módulo MCP
   (`__example`, não usar). Shapes e `propsSchema` batem com os manifests reais.
 - **Fluxo progressivo** do `get_connection_schema` (passo 1 = lista de tabelas;
   passo 2 = colunas só das pedidas) validado em execução.
-- **Gotcha do `CAST ::int`** validado ao vivo: `SELECT COUNT(*)` devolve `"6"`
-  (string) e `SELECT COUNT(*)::int` devolve `6` (number) — daí a regra de sempre
-  fazer cast em agregações.
+- **Tipos de agregação** validados ao vivo: `run_query` de `SELECT COUNT(*)`
+  devolve `"6"` (string) e `SELECT COUNT(*)::int` devolve `6` (number) — o Postgres
+  serializa `bigint`/`int8` como string. Por isso a doc recomenda **sempre** fazer
+  cast (`::int`/`::float`) em agregações: garante precisão e clareza, sem depender
+  da coerção automática de strings numéricas que a plataforma aplica no transform.
 
 Se a plataforma evoluir (novos blocos no catálogo, novas tools), o agente continua
 correto porque o playbook manda **sempre** consultar `list_catalog` e `tools/list`

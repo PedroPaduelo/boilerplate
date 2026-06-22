@@ -221,10 +221,13 @@ precisa** de `transform`. Alternativamente, passe um `transform` declarativo
 mapeando nomes: `{ value, label, unit, delta, format, x, y, series }` → nomes de
 coluna do resultado.
 
-> **GOTCHA universal:** o Postgres devolve `bigint`/`int8` (de `COUNT`, `SUM`) como
-> **string**. Os shapes `scalar`/`series`/`categorical` exigem **number**. Logo,
-> **sempre** faça `CAST ::int` (contagens) ou `::float`/`::numeric` (somas/médias).
-> Sem cast → `preview_chart_data` retorna `contract_violation`.
+> **GOTCHA universal:** o Postgres devolve inteiros grandes (`bigint`/`int8`, de
+> `COUNT`, `SUM`) como **string** — o `run_query` cru mostra `"6"`. Os shapes
+> `scalar`/`series`/`categorical` esperam **number**, mas a plataforma coage strings
+> numéricas para número no transform, então normalmente o gráfico ainda valida com
+> ou sem cast. Mesmo assim, **sempre** faça `CAST ::int` (contagens) ou
+> `::float`/`::numeric` (somas/médias): garante precisão (em valores muito grandes)
+> e clareza, sem depender da coerção automática.
 
 ### scalar (kpi) — coluna `value`
 ```sql
@@ -259,6 +262,8 @@ FROM divida_ativa
 GROUP BY situacao
 ORDER BY value DESC;
 ```
+> O shape `categorical` exige `label` como **string**. Se agrupar por uma coluna
+> numérica ou de data, faça `CAST ::text` no `label` (ex.: `ano::text AS label`).
 
 ### table — colunas livres
 ```sql

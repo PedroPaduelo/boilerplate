@@ -43,8 +43,11 @@
    - `table`: colunas livres (cada coluna vira uma coluna da tabela).
    Assim o `transform` identidade funciona sem mapeamento extra.
 10. **SEMPRE** aplique `CAST` em agregações numéricas: `COUNT(*)::int`,
-    `SUM(x)::float`, `AVG(x)::float`. O Postgres devolve `bigint` como **string**,
-    o que quebra os shapes `scalar`/`series`/`categorical` (exigem `number`).
+    `SUM(x)::float`, `AVG(x)::float`. O Postgres devolve inteiros grandes
+    (`bigint`/`int8`) como **string**; a plataforma coage strings numéricas para
+    `number` no transform, então o gráfico normalmente valida mesmo sem cast — mas
+    o cast garante precisão (em valores muito grandes) e clareza, sem depender da
+    coerção automática.
 11. Use **parâmetros posicionais** `$1, $2, ...` (via `params`) quando a query
     depende de filtros — não interpole valores na string SQL.
 12. Em `series`/`categorical`, ordene de forma previsível (`ORDER BY x` / por valor)

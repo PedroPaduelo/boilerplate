@@ -199,25 +199,29 @@ plataforma renderiza o gráfico inline e oferece o botão "adicionar ao dashboar
 
 ## 5. Gotcha crítico de query (decora isto)
 
-O driver Postgres devolve `bigint`/`int8` como **string**. Agregações como `COUNT(*)`
-e `SUM(...)` retornam `bigint`. Se você deixar a coluna sem cast, o valor chega como
-`"6"` (string) e **quebra** os shapes `scalar`/`series`/`categorical` (que exigem
-`number`) → `preview_chart_data` retorna `state: "error"` com `contract_violation`.
+O driver Postgres devolve tipos inteiros grandes (`bigint`/`int8`, de `COUNT`/`SUM`)
+como **string** — o `run_query` cru mostra `"6"`, não `6`. Os shapes
+`scalar`/`series`/`categorical` esperam `number`, mas a plataforma **coage strings
+numéricas para número** no transform antes de validar, então normalmente o gráfico
+ainda valida com ou sem cast. Mesmo assim, **faça sempre `CAST ::int` / `::float`**
+nas agregações: garante precisão (em valores muito grandes, onde a coerção
+automática pode perder dígitos) e clareza, sem depender da coerção implícita.
 
 **Sempre faça CAST** em agregações numéricas:
 
 ```sql
--- ❌ ERRADO: COUNT devolve "6" (string) → quebra o shape scalar
+-- ⚠️ Sem cast: COUNT devolve "6" (string); a plataforma coage para 6, mas não dependa disso
 SELECT COUNT(*) AS value FROM users;
 
--- ✅ CERTO: cast para int → 6 (number)
+-- ✅ CERTO: cast explícito para int → 6 (number)
 SELECT COUNT(*)::int AS value FROM users;
 
 -- ✅ CERTO: soma monetária para float
 SELECT mes AS x, SUM(valor)::float AS y FROM arrecadacao GROUP BY mes ORDER BY mes;
 ```
 
-(Verificado no MCP real: `COUNT(*)` → `"6"`; `COUNT(*)::int` → `6`.)
+(Verificado no MCP real: `run_query` de `COUNT(*)` devolve `"6"` (string);
+`COUNT(*)::int` devolve `6` (number).)
 
 ---
 
