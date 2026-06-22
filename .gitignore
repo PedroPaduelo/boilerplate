@@ -10,6 +10,12 @@ out/
 next/dist/
 .next/
 
+# Exceção: o pacote interno shared/contracts é consumido via `file:` pelo
+# backend/frontend e NÃO tem script `prepare` (não rebuilda no install) — então
+# seu `dist` é versionado para o `npm install` resolver sem build-step.
+!shared/contracts/dist/
+!shared/contracts/dist/**
+
 # Environment files
 .env
 .env.local

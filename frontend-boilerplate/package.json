@@ -17,6 +17,7 @@
     "prepare": "node scripts/setup-husky.mjs"
   },
   "dependencies": {
+    "@dashboards/contracts": "file:../shared/contracts",
     "@hookform/resolvers": "^5.2.2",
     "@pierre/trees": "^1.0.0-beta.4",
     "@radix-ui/react-accordion": "^1.2.12",

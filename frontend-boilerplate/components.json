@@ -17,5 +17,8 @@
     "ui": "@/components/ui",
     "lib": "@/shared/lib",
     "hooks": "@/shared/hooks"
+  },
+  "registries": {
+    "@vitrine": "https://ui-list-ui-componets-cmqcdlm7.cloud.serendiped.com/r/{name}.json"
   }
 }

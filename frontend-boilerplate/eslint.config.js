@@ -49,5 +49,18 @@ export default defineConfig([
     files: ['**/*.{ts,tsx}'],
     ...reactRefresh.configs.vite,
   },
+  {
+    /**
+     * Blocos do catálogo (render-engine): por convenção (doc 33), cada
+     * `catalog/<type>/component.tsx` co-exporta o `Component` E a `definition`
+     * (BlockDefinition) — o que o auto-registro via glob lê. Isso conflita com
+     * react-refresh (que exige só componentes no arquivo). Fast refresh não é
+     * relevante para esses módulos de catálogo, então desligamos a regra aqui.
+     */
+    files: ['src/shared/render-engine/catalog/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
   prettier,
 ]);

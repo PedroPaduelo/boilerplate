@@ -1,0 +1,27 @@
+{
+  "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
+  "catalogVersion": 1,
+  "count": 1,
+  "blocks": [
+    {
+      "type": "__example",
+      "kind": "title",
+      "name": "Bloco de exemplo",
+      "description": "Placeholder que valida o auto-registro do catálogo (F0.4). Não use em produção.",
+      "source": "custom",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "defaultProps": {
+        "label": "Auto-registrado ✔"
+      },
+      "version": "0.0.0"
+    }
+  ]
+}
