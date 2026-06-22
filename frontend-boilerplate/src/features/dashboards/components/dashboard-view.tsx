@@ -1,28 +1,16 @@
 /**
- * Tela de DASHBOARD em modo VIEW (T-G1, refatorado em T-G1 bugfix) — `/dashboards/:id`.
+ * Tela de DASHBOARD em modo VIEW (T-G1) — `/dashboards/:id`.
  *
- * Junta tudo: carrega o LAYOUT (T-B3, `GET /dashboards/:id?mode=draft`), desenha a
+ * Junta tudo: carrega o LAYOUT (T-B3, `GET /dashboards/:id?mode=`), desenha a
  * FilterBar (topo) + grid 12-col via `DashboardRenderer` (render-engine T-I) e
  * hidrata os blocos com o batch + socket (`useDashboardData`, T-C/T-E).
  *
- * Modo efetivo (decisão LOCAL a partir do `data.status`):
+ * Modo efetivo:
  *  - `?mode=draft|published` força explicitamente.
  *  - Sem override: usa `published` se o dashboard está PUBLISHED (o que um
- *    consumidor espera ver), senão `draft` (preview do dono/editor).
- *
- * CORREÇÃO DO BUGFIX T-G1 (ressalva low `cmqpfbd0600h3` + trava ao carregar
- * dashboard publicado): o backend AGORA devolve o `status` no detalhe do modo
- * draft (sempre válido). Removemos o probe extra que fazia 2 GETs (probe +
- * detail) e o `key={`${detail.id}:${effectiveMode}`}` que REMONTAVA o
- * `DashboardViewContent` quando o modo mudava. A remontagem executava o
- * `useDashboardRealtime` (join/leave dashboard room) + re-inicializava o
- * estado dos filtros a partir dos defaults, e havia risco de loop com o batch
- * do modo publicado. Agora:
- *  - UMA query (sempre `mode=draft`) que retorna `status` junto do `layout`;
- *  - decisão do `mode` efetiva é PURA a partir de `data.status`/`data.layout`;
- *  - `DashboardViewContent` permanece montado durante a vida útil do
- *    DashboardView (a `key` foi para o `<DashboardView>` em si, que muda
- *    quando o `id` muda — não quando o modo muda).
+ *    consumidor espera ver), senão `draft` (preview do dono/editor). O backend
+ *    rejeita (400) `published` em dashboard não-publicado, por isso só pedimos
+ *    `published` após confirmar o status via um probe em `draft`.
  *
  * Mudança de filtro → novo objeto de filtros → novo `filtersHash` → re-dispara o
  * batch; o backend recomputa SÓ os blocos que escutam aquele filtro (cacheKey
@@ -42,7 +30,6 @@ import { useDashboardData } from '../use-dashboard-data';
 import type { DashboardDetail } from '../types';
 import {
   initialFilterValues,
-  pickEffectiveLayout,
   type DashFilter,
   type FilterValues,
 } from '../lib/dashboard-filters';
@@ -57,18 +44,21 @@ export function DashboardView() {
   const override: ApiMode | null =
     modeParam === 'draft' || modeParam === 'published' ? modeParam : null;
 
-  // UMA ÚNICA query, sempre com mode=draft (sempre válido — backend não
-  // rejeita). O `status` vem junto: status='PUBLISHED' significa que o usuário
-  // provavelmente quer ver a versão publicada (override ?mode= continua
-  // tendo prioridade). Sem probe extra.
-  const detailQuery = useDashboard(id, 'draft');
+  // Probe em draft (sempre válido) para descobrir o status quando não há override.
+  const probe = useDashboard(id, 'draft');
+  const status = probe.data?.status;
+  const effectiveMode: ApiMode =
+    override ?? (status === 'PUBLISHED' ? 'published' : 'draft');
+
+  // Detalhe no modo efetivo (deduplica com o probe quando é 'draft').
+  const detailQuery = useDashboard(id, effectiveMode);
   const detail = detailQuery.data;
 
-  if (detailQuery.isLoading && !detail) {
+  if (probe.isLoading || (detailQuery.isLoading && !detail)) {
     return <DashboardViewSkeleton />;
   }
 
-  if (detailQuery.isError || !detail) {
+  if (probe.isError || detailQuery.isError || !detail) {
     return (
       <div className="flex flex-col gap-4">
         <BackButton onClick={() => navigate('/dashboards')} />
@@ -83,24 +73,10 @@ export function DashboardView() {
     );
   }
 
-  // Modo efetivo: override (?mode=) tem prioridade; senão, escolhe published
-  // quando o dashboard ESTÁ publicado (o que o consumidor espera ver).
-  const wantsPublished =
-    override === 'published' || (override == null && detail.status === 'PUBLISHED');
-  const { mode: effectiveMode, layout } = pickEffectiveLayout(
-    detail,
-    wantsPublished ? 'published' : 'draft',
-  );
-
   return (
     <DashboardViewContent
-      // Remontar SÓ quando o dashboard muda — NUNCA quando o modo muda.
-      // Antes havia `key={`${detail.id}:${effectiveMode}`}` aqui, que remontava
-      // o conteúdo a cada troca de modo e disparava o join/leave do socket +
-      // reinicialização dos filtros. Removido (ressalva `cmqpfbd0600h3`).
-      key={detail.id}
+      key={`${detail.id}:${effectiveMode}`}
       detail={detail}
-      layout={layout}
       mode={effectiveMode}
       onBack={() => navigate('/dashboards')}
     />
@@ -109,17 +85,17 @@ export function DashboardView() {
 
 interface ContentProps {
   detail: DashboardDetail;
-  layout: DashboardDetail['layout'];
   mode: ApiMode;
   onBack: () => void;
 }
 
-function DashboardViewContent({ detail, layout, mode, onBack }: ContentProps) {
+function DashboardViewContent({ detail, mode, onBack }: ContentProps) {
+  const layout = detail.layout;
   const filters = (layout?.filters ?? []) as DashFilter[];
 
   // Estado dos filtros, inicializado dos defaults do layout. O componente é
-  // remontado (via `key={detail.id}`) quando o dashboard muda, então o
-  // lazy-init pega os defaults certos — sem efeito de sincronização.
+  // remontado (via `key`) quando o dashboard/modo muda, então o lazy-init pega
+  // sempre os defaults certos — sem efeito de sincronização.
   const [values, setValues] = useState<FilterValues>(() => initialFilterValues(filters));
 
   const { payload, isFetching, refetch } = useDashboardData({

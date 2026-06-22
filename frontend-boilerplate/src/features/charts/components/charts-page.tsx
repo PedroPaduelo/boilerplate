@@ -4,6 +4,7 @@ import { BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAuthStore } from '@/features/auth/store';
+import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useDepartments } from '@/shared/hooks/use-departments';
 import {
@@ -60,7 +61,14 @@ export function ChartsPage() {
   const publish = usePublishChart();
 
   const [sharing, setSharing] = useState<Chart | null>(null);
-  const [deleting, setDeleting] = useState<Chart | null>(null);
+  const {
+    dialogProps: deleteDialog,
+    openDelete: openDeleteChart,
+  } = useConfirmDelete<Chart>({
+    mutation: remove,
+    getId: (c) => c.id,
+    getTitle: (c) => c.title,
+  });
 
   const departments = useMemo(
     () => deptData?.departments.map((d) => ({ id: d.id, name: d.name })) ?? [],
@@ -125,7 +133,7 @@ export function ChartsPage() {
             share: () => setSharing(c),
             export: () => toast.info('Exportação em PDF chega em breve (T-J).'),
             duplicate: () => handleDuplicate(c),
-            delete: () => setDeleting(c),
+            delete: () => openDeleteChart(c),
           });
           return (
             <ArtifactCard
@@ -154,15 +162,8 @@ export function ChartsPage() {
         targetTitle={sharing?.title}
       />
       <ConfirmDeleteDialog
-        open={!!deleting}
-        onOpenChange={(o) => !o && setDeleting(null)}
         title="Excluir gráfico?"
-        itemName={deleting?.title}
-        isPending={remove.isPending}
-        onConfirm={() => {
-          if (!deleting) return;
-          remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) });
-        }}
+        {...deleteDialog}
       />
     </>
   );

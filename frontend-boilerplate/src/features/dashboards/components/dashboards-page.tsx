@@ -4,6 +4,7 @@ import { LayoutDashboard } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAuthStore } from '@/features/auth/store';
+import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useDepartments } from '@/shared/hooks/use-departments';
 import {
@@ -62,7 +63,14 @@ export function DashboardsPage() {
   const publish = usePublishDashboard();
 
   const [sharing, setSharing] = useState<Dashboard | null>(null);
-  const [deleting, setDeleting] = useState<Dashboard | null>(null);
+  const {
+    dialogProps: deleteDialog,
+    openDelete: openDeleteDashboard,
+  } = useConfirmDelete<Dashboard>({
+    mutation: remove,
+    getId: (d) => d.id,
+    getTitle: (d) => d.title,
+  });
 
   const departments = useMemo(
     () => deptData?.departments.map((d) => ({ id: d.id, name: d.name })) ?? [],
@@ -127,7 +135,7 @@ export function DashboardsPage() {
             export: () =>
               toast.info('Exportação em PDF chega em breve (T-J).'),
             duplicate: () => handleDuplicate(d),
-            delete: () => setDeleting(d),
+            delete: () => openDeleteDashboard(d),
           });
           return (
             <ArtifactCard
@@ -156,15 +164,8 @@ export function DashboardsPage() {
         targetTitle={sharing?.title}
       />
       <ConfirmDeleteDialog
-        open={!!deleting}
-        onOpenChange={(o) => !o && setDeleting(null)}
         title="Excluir dashboard?"
-        itemName={deleting?.title}
-        isPending={remove.isPending}
-        onConfirm={() => {
-          if (!deleting) return;
-          remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) });
-        }}
+        {...deleteDialog}
       />
     </>
   );
