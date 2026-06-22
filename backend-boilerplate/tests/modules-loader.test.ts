@@ -13,13 +13,12 @@ import {
 import { registerModules } from '@/http/modules-loader';
 
 // NOTA: `connections` (T-A), `departments` (T-B1), `charts` (T-B2),
-// `dashboards` (T-B3), `share` (T-B4) e `data` (T-C) já foram IMPLEMENTADOS —
-// não têm mais `/_status`. Os demais módulos seguem como scaffold até suas
-// trilhas os implementarem.
+// `dashboards` (T-B3), `share` (T-B4), `data` (T-C) e `mcp` (T-D) já foram
+// IMPLEMENTADOS — não têm mais `/_status`. Os demais módulos seguem como
+// scaffold até suas trilhas os implementarem.
 const EXPECTED_MODULES = [
   'export',
   'catalog',
-  'mcp',
 ];
 
 describe('modules auto-discovery (F0.5)', () => {
