@@ -64,6 +64,7 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.22.0",
     "pg-cursor": "^2.21.0",
+    "playwright": "^1.58.2",
     "rate-limiter-flexible": "^9.1.1",
     "socket.io": "^4.8.1",
     "zod": "^3.25.76",
