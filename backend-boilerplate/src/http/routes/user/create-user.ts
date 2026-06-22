@@ -23,7 +23,9 @@ export async function createUser(app: FastifyInstance) {
             name: z.string().min(1),
             email: z.string().email(),
             password: passwordSchema,
-            role: z.enum(['ADMIN', 'USER']).default('USER'),
+            role: z
+              .enum(['ADMIN', 'ANALYST', 'CREATOR', 'VIEWER', 'USER'])
+              .default('USER'),
           }),
           response: {
             201: z.object({

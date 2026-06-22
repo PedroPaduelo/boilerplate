@@ -19,7 +19,9 @@ export async function listUsers(app: FastifyInstance) {
           querystring: z.object({
             page: z.coerce.number().min(1).default(1),
             pageSize: z.coerce.number().min(1).max(100).default(10),
-            role: z.enum(['ADMIN', 'USER']).optional(),
+            role: z
+              .enum(['ADMIN', 'ANALYST', 'CREATOR', 'VIEWER', 'USER'])
+              .optional(),
             isActive: z.coerce.boolean().optional(),
             search: z.string().optional(),
           }),

@@ -26,7 +26,9 @@ export async function updateUser(app: FastifyInstance) {
             name: z.string().min(1).optional(),
             email: z.string().email().optional(),
             password: passwordSchema.optional(),
-            role: z.enum(['ADMIN', 'USER']).optional(),
+            role: z
+              .enum(['ADMIN', 'ANALYST', 'CREATOR', 'VIEWER', 'USER'])
+              .optional(),
             isActive: z.boolean().optional(),
           }),
           response: {
