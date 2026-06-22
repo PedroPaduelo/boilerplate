@@ -53,4 +53,22 @@ describe('build:catalog', () => {
   it('coleta o bloco de exemplo (__example)', () => {
     expect(catalog.blocks.some((b) => b.type === '__example')).toBe(true);
   });
+
+  it('coleta os 7 blocos da base (T-I) e expõe seus shapes', () => {
+    const expected = ['kpi', 'bar_chart', 'line_chart', 'donut', 'table', 'title', 'rich_text'];
+    const types = catalog.blocks.map((b) => b.type);
+    for (const t of expected) {
+      expect(types).toContain(t);
+    }
+    const shapeOf = (type: string) =>
+      catalog.blocks.find((b) => b.type === type)?.dataContract?.shape;
+    expect(shapeOf('kpi')).toBe('scalar');
+    expect(shapeOf('bar_chart')).toBe('series');
+    expect(shapeOf('line_chart')).toBe('series');
+    expect(shapeOf('donut')).toBe('categorical');
+    expect(shapeOf('table')).toBe('table');
+    // blocos narrativos não declaram dataContract
+    expect(catalog.blocks.find((b) => b.type === 'title')?.dataContract).toBeUndefined();
+    expect(catalog.blocks.find((b) => b.type === 'rich_text')?.dataContract).toBeUndefined();
+  });
 });

@@ -24,10 +24,10 @@ describe('render-engine (DashboardRenderer + BlockRenderer)', () => {
     expect(container.querySelectorAll('[data-slot="dashboard-cell"]')).toHaveLength(
       totalBlocks,
     );
-    // blocos da base ainda não implementados (T-I) → placeholder, sem crash
-    expect(
-      container.querySelectorAll('[data-slot="block-unknown"]').length,
-    ).toBeGreaterThan(0);
+    // T-I implementou os 7 blocos da base → nenhum placeholder de tipo desconhecido
+    expect(container.querySelectorAll('[data-slot="block-unknown"]').length).toBe(0);
+    // um bloco narrativo (title) renderiza seu texto direto do layout
+    expect(screen.getByText('Dívida Ativa — 2026')).toBeInTheDocument();
     // filtros renderizados
     expect(container.querySelectorAll('[data-slot="dashboard-filter"]')).toHaveLength(
       dashboardLayoutFixture.filters.length,
