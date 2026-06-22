@@ -1,38 +1,44 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { z } from 'zod';
+import { auth } from '@/middlewares/auth';
+import { createConnectionRoute } from './routes/create-connection';
+import { deleteConnectionRoute } from './routes/delete-connection';
+import { getConnectionRoute } from './routes/get-connection';
+import { getConnectionSchemaRoute } from './routes/get-connection-schema';
+import { listConnectionsRoute } from './routes/list-connections';
+import { runConnectionQueryRoute } from './routes/run-connection-query';
+import { testConnectionRoute } from './routes/test-connection';
+import { updateConnectionRoute } from './routes/update-connection';
 
 /**
  * Módulo `connections` — TRILHA T-A.
  *
- * Plugin auto-descoberto por `@fastify/autoload` (ver `src/http/modules-loader.ts`).
- * Esta é a CASCA da Fase 0: a trilha T-A implementa o CRUD + test + schema +
- * query (preview) AQUI DENTRO, sem tocar em `server.ts`.
+ * Plugin auto-descoberto por `@fastify/autoload` (ver `src/http/modules-loader.ts`
+ * e `src/modules/README.md`). Implementa a superfície completa do doc 31:
  *
- * Como estender (convenção — ver `src/modules/README.md`):
- *  - Adicione handlers neste `index.ts`, OU crie `src/modules/connections/routes/*.ts`
- *    (cada um exportando uma função que recebe `app`) e registre-os a partir daqui.
- *  - Declare paths ABSOLUTOS (`/connections`, `/connections/:id`, ...).
- *  - Use sempre `app.withTypeProvider<ZodTypeProvider>()` + `schema.tags` p/ Swagger.
- *  - A rota `/_status` abaixo é só um marcador de scaffold — pode remover ao implementar.
+ *   POST   /connections            cria (senha cifrada AES-256-GCM at-rest)
+ *   GET    /connections            lista (filtra por RBAC/visibilidade)
+ *   GET    /connections/:id        detalha (sem senha)
+ *   PATCH  /connections/:id        atualiza (recifra senha se enviada)
+ *   DELETE /connections/:id        remove
+ *   POST   /connections/:id/test   testa conectividade (status/lastTestedAt)
+ *   GET    /connections/:id/schema introspecção (cache Redis conn:{id}:schema)
+ *   POST   /connections/:id/query  SELECT read-only via pg-runner (guardrails)
  *
- * Superfície prevista (doc 31): POST/GET/PATCH/DELETE /connections,
- * POST /connections/:id/test, GET /connections/:id/schema, POST /connections/:id/query.
+ * `auth` (JWT) é registrado uma vez no escopo do módulo — como é um
+ * `fastify-plugin` (não encapsulado), o preHandler vale para todas as rotas
+ * abaixo. Cada handler resolve papel + visibilidade via `rbac.ts`.
  */
 const connectionsModule: FastifyPluginAsync = async (app) => {
-  app.withTypeProvider<ZodTypeProvider>().get(
-    '/connections/_status',
-    {
-      schema: {
-        tags: ['Connections'],
-        summary: 'Scaffold marker (T-A) — substituir pela implementação real',
-        response: {
-          200: z.object({ module: z.string(), status: z.string() }),
-        },
-      },
-    },
-    async () => ({ module: 'connections', status: 'scaffolded' }),
-  );
+  await app.register(auth);
+
+  await createConnectionRoute(app);
+  await listConnectionsRoute(app);
+  await getConnectionRoute(app);
+  await updateConnectionRoute(app);
+  await deleteConnectionRoute(app);
+  await testConnectionRoute(app);
+  await getConnectionSchemaRoute(app);
+  await runConnectionQueryRoute(app);
 };
 
 export default connectionsModule;
