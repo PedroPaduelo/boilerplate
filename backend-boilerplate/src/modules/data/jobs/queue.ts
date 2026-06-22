@@ -42,14 +42,28 @@ export function getQueryExecQueue(): Queue<QueryExecJobData> | null {
 }
 
 /**
- * Enfileira a execução de um bloco. `jobId = cacheKey` → ANTI-STAMPEDE: chamadas
- * concorrentes com a mesma chave não duplicam o job. Retorna `true` se foi (ou já
- * estava) enfileirado, `false` se a fila está indisponível (Redis degradado).
+ * Deriva o `jobId` do BullMQ a partir do `cacheKey`.
+ *
+ * O `cacheKey` (`data:{sha256}`) usa `:` por convenção de chave Redis, mas o
+ * BullMQ PROÍBE `:` em custom jobId (`Error: Custom Id cannot contain :`). Como
+ * o `:` aparece apenas no prefixo fixo (`data:`) e o restante é um hash hex, a
+ * substituição `: → _` é DETERMINÍSTICA e livre de colisão — preservando o
+ * anti-stampede (mesma chave → mesmo jobId).
+ */
+export function jobIdFromCacheKey(cacheKey: string): string {
+  return cacheKey.replace(/:/g, '_');
+}
+
+/**
+ * Enfileira a execução de um bloco. `jobId = jobIdFromCacheKey(cacheKey)` →
+ * ANTI-STAMPEDE: chamadas concorrentes com a mesma chave não duplicam o job.
+ * Retorna `true` se foi (ou já estava) enfileirado, `false` se a fila está
+ * indisponível (Redis degradado).
  */
 export async function addQueryExecJob(data: QueryExecJobData): Promise<boolean> {
   const queue = getQueryExecQueue();
   if (!queue) return false;
-  await queue.add(QUERY_EXEC_JOB_NAME, data, { jobId: data.cacheKey });
+  await queue.add(QUERY_EXEC_JOB_NAME, data, { jobId: jobIdFromCacheKey(data.cacheKey) });
   return true;
 }
 

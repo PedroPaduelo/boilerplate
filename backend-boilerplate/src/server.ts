@@ -261,6 +261,22 @@ async function start() {
         })
         .filter(Boolean);
 
+      // Filas próprias dos módulos do fan-out (data: query-exec; export: export-pdf).
+      // Adicionadas aqui para observabilidade no Bull Board (task de integração).
+      // Em try/catch próprio para que uma falha de import NÃO derrube a UI das
+      // filas do boilerplate já registradas acima.
+      try {
+        const { getQueryExecQueue } = await import('./modules/data/jobs/queue.js');
+        const queryExecQueue = getQueryExecQueue();
+        if (queryExecQueue) queueAdapters.push(new BullMQAdapter(queryExecQueue));
+
+        const { getExportQueue } = await import('./modules/export/jobs/queue.js');
+        const exportQueue = getExportQueue();
+        if (exportQueue) queueAdapters.push(new BullMQAdapter(exportQueue));
+      } catch (err) {
+        console.warn('⚠️  Could not register module queues in Bull Board:', err);
+      }
+
       if (queueAdapters.length > 0) {
         const serverAdapter = new FastifyAdapter();
         createBullBoard({

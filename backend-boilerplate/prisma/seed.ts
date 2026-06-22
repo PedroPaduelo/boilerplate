@@ -147,173 +147,247 @@ async function main() {
   console.log('  ✓ Memberships criadas');
 
   // -------------------------------------------------------------------------
-  // Connection de exemplo (Postgres fictício, valor cifrado)
+  // Connection de exemplo — aponta para um Postgres REAL e acessível.
+  //
+  // Usamos o PRÓPRIO banco da aplicação (DATABASE_URL) como "banco externo" de
+  // demonstração: assim run_query / test / schema / o fluxo de dados (data ↔
+  // fila ↔ socket ↔ render) funcionam de verdade no e2e. As queries do seed são
+  // SELECTs read-only contra tabelas que sempre existem (users, dashboards,
+  // information_schema), passando pelos guardrails do pg-runner.
+  //
+  // A senha é cifrada via lib/crypto (AES-256-GCM) — fonte única do projeto.
   // -------------------------------------------------------------------------
   console.log('');
   console.log('🔌 Conexões:');
-  const conn = await findOrCreate(
-    async () =>
-      prisma.connection.findFirst({
-        where: { name: 'seed-exemplo-postgres', ownerId: admin.id },
-      }),
-    async () =>
-      prisma.connection.create({
-        data: {
-          name: 'seed-exemplo-postgres',
-          description: 'Conexão fictícia usada pelo seed (host inacessível).',
-          type: 'POSTGRES',
-          host: 'db-exemplo.prefeitura.local',
-          port: 5432,
-          database: 'dw_prefeitura',
-          username: 'reader',
-          passwordCipher: encrypt('placeholder-not-real'),
-          sslMode: 'require',
-          options: { schema: 'public' },
-          ownerId: admin.id,
-          departmentId: finance.id,
-          visibility: 'DEPARTMENT',
-          status: 'unknown',
-        },
-      }),
-    'Connection "seed-exemplo-postgres"'
+  const dbUrl = new URL(
+    process.env.DATABASE_URL ??
+      'postgres://postgres:postgres@localhost:5432/postgres'
+  );
+  const sslMode = dbUrl.searchParams.get('sslmode') ?? 'disable';
+  const connData = {
+    name: 'seed-exemplo-postgres',
+    description:
+      'Conexão de demonstração do seed — aponta para o próprio Postgres do app (read-only).',
+    type: 'POSTGRES' as const,
+    host: dbUrl.hostname,
+    port: Number(dbUrl.port || 5432),
+    database: dbUrl.pathname.replace(/^\//, '') || 'postgres',
+    username: decodeURIComponent(dbUrl.username || 'postgres'),
+    passwordCipher: encrypt(decodeURIComponent(dbUrl.password || '')),
+    sslMode,
+    options: { schema: 'public' } as Prisma.JsonObject,
+    ownerId: admin.id,
+    departmentId: null,
+    visibility: 'ORG' as const,
+    status: 'unknown',
+  };
+  const existingConn = await prisma.connection.findFirst({
+    where: { name: connData.name, ownerId: admin.id },
+  });
+  const conn = existingConn
+    ? await prisma.connection.update({
+        where: { id: existingConn.id },
+        data: connData,
+      })
+    : await prisma.connection.create({ data: connData });
+  console.log(
+    `  ${existingConn ? '↻ atualizada' : '✓ criada'} Connection "${conn.name}" → ${conn.host}:${conn.port}/${conn.database} (id=${conn.id})`
   );
 
   // -------------------------------------------------------------------------
-  // Chart exemplo (catalogType = "kpi" — placeholder do catálogo base
-  // que virá em F0.4). Como o catálogo vive em código, não há tabela
-  // BlockDefinition; garantimos a "linha de exemplo" via Chart publicado.
+  // Charts de exemplo — catalogType VÁLIDO do catálogo (kpi, bar_chart) e
+  // draft/published props + dataBinding CONFORMES ao contrato (doc 20). As
+  // queries são read-only e rodam de verdade no Postgres do seed.
   // -------------------------------------------------------------------------
   console.log('');
-  console.log('📊 Chart exemplo:');
-  const exampleChart = await findOrCreate(
-    async () =>
-      prisma.chart.findFirst({
-        where: {
-          title: 'Arrecadação total',
-          ownerId: admin.id,
-          catalogType: 'kpi',
-        },
-      }),
-    async () =>
-      prisma.chart.create({
-        data: {
-          title: 'Arrecadação total',
-          catalogType: 'kpi',
-          ownerId: admin.id,
-          departmentId: finance.id,
-          visibility: 'DEPARTMENT',
-          status: 'PUBLISHED',
-          draftProps: {
-            label: 'Arrecadação total (R$)',
-            valueFormat: 'BRL',
-            color: 'primary',
-          },
-          draftDataBinding: {
-            connectionId: conn.id,
-            query:
-              'SELECT COALESCE(SUM(valor), 0) AS total FROM arrecadacao WHERE data >= NOW() - INTERVAL \'30 days\'',
-            params: [],
-            transform: { kind: 'scalar' },
-            ttlSeconds: 300,
-          },
-          publishedProps: {
-            label: 'Arrecadação total (R$)',
-            valueFormat: 'BRL',
-            color: 'primary',
-          },
-          publishedDataBinding: {
-            connectionId: conn.id,
-            query:
-              'SELECT COALESCE(SUM(valor), 0) AS total FROM arrecadacao WHERE data >= NOW() - INTERVAL \'30 days\'',
-            params: [],
-            transform: { kind: 'scalar' },
-            ttlSeconds: 300,
-          },
-          publishedAt: new Date(),
-        },
-      }),
-    'Chart "Arrecadação total" (kpi)'
-  );
+  console.log('📊 Charts de exemplo:');
+
+  /** Cria ou ATUALIZA um chart (idempotente por title+ownerId+catalogType). */
+  async function upsertChart(opts: {
+    title: string;
+    catalogType: string;
+    props: Prisma.JsonObject;
+    dataBinding: Prisma.JsonObject;
+  }) {
+    const data = {
+      title: opts.title,
+      catalogType: opts.catalogType,
+      ownerId: admin.id,
+      departmentId: null,
+      visibility: 'ORG' as const,
+      status: 'PUBLISHED' as const,
+      draftProps: opts.props,
+      draftDataBinding: opts.dataBinding,
+      publishedProps: opts.props,
+      publishedDataBinding: opts.dataBinding,
+      publishedAt: new Date(),
+    };
+    const existing = await prisma.chart.findFirst({
+      where: { title: opts.title, ownerId: admin.id, catalogType: opts.catalogType },
+    });
+    const chart = existing
+      ? await prisma.chart.update({ where: { id: existing.id }, data })
+      : await prisma.chart.create({ data });
+    console.log(
+      `  ${existing ? '↻ atualizado' : '✓ criado'} Chart "${chart.title}" (${chart.catalogType}, id=${chart.id})`
+    );
+    return chart;
+  }
+
+  const kpiChart = await upsertChart({
+    title: 'Total de usuários',
+    catalogType: 'kpi',
+    props: { showDelta: false, accent: 'primary' },
+    dataBinding: {
+      connectionId: conn.id,
+      query: 'SELECT COUNT(*)::int AS value FROM users',
+      params: [],
+      ttlSeconds: 300,
+    },
+  });
+
+  const barChart = await upsertChart({
+    title: 'Usuários por papel',
+    catalogType: 'bar_chart',
+    props: { orientation: 'vertical', stacked: false },
+    dataBinding: {
+      connectionId: conn.id,
+      query:
+        'SELECT role::text AS x, COUNT(*)::int AS y FROM users GROUP BY role ORDER BY role',
+      params: [],
+      ttlSeconds: 300,
+    },
+  });
 
   // -------------------------------------------------------------------------
-  // Dashboard published de exemplo
-  // Estrutura do layout: { filters[], rows: [{ id, blocks: [{ blockId, chartId }] }] }
-  // Reflete o contrato de docs/plano/20-contrato-dashboard.md (alto nível).
-  // Blocos do catálogo base citados no escopo: kpi, bar, title.
+  // Dashboard published de exemplo — layout CONFORME ao contrato (doc 20):
+  //   { filters[{id,type,label,default}], rows[{id,title,blocks[{id,type,span,props,dataBinding?}]}] }
+  //
+  // Exercita o catálogo base inteiro: blocos narrativos (title/rich_text) SEM
+  // dados, blocos com dados via chart referenciado (props.chartId → kpi) e via
+  // dataBinding inline (bar_chart/donut/table). O filtro `f_role` é usado APENAS
+  // pelo bar_chart (params) → ao mudar o filtro só esse bloco recomputa.
   // -------------------------------------------------------------------------
   console.log('');
   console.log('📋 Dashboard exemplo:');
   const exampleDashboardLayout: Prisma.JsonObject = {
     filters: [
       {
-        id: 'periodo',
-        type: 'date-range',
-        label: 'Período',
-        defaultValue: { from: 'now-30d', to: 'now' },
+        id: 'f_role',
+        type: 'select',
+        label: 'Papel do usuário',
+        default: 'todos',
       },
     ],
     rows: [
       {
-        id: 'row-titulo',
+        id: 'row_intro',
+        title: 'Visão geral',
         blocks: [
           {
-            blockId: 'b-title-1',
+            id: 'blk_title',
             type: 'title',
-            props: { text: 'Painel de Arrecadação — últimos 30 dias' },
+            span: 12,
+            props: {
+              text: 'Painel de Demonstração — Prefeitura',
+              level: 1,
+              align: 'left',
+            },
+          },
+          {
+            id: 'blk_rich',
+            type: 'rich_text',
+            span: 12,
+            props: {
+              markdown:
+                '## Sobre este painel\nDashboard de **demonstração** gerado pelo seed. Os números abaixo vêm de queries _read-only_ contra o próprio banco da aplicação, exercitando o fluxo **dados → fila → socket → render**.',
+            },
           },
         ],
       },
       {
-        id: 'row-kpis',
+        id: 'row_kpis',
+        title: 'Indicadores',
         blocks: [
           {
-            blockId: 'b-kpi-1',
+            // bloco com dados via CHART referenciado (props.chartId → kpiChart)
+            id: 'blk_kpi_users',
             type: 'kpi',
-            chartId: exampleChart.id,
-            props: { columnSpan: 1 },
+            span: 4,
+            props: { chartId: kpiChart.id, showDelta: false },
           },
-        ],
-      },
-      {
-        id: 'row-grafico',
-        blocks: [
           {
-            blockId: 'b-bar-1',
-            type: 'bar',
+            // bloco com dados via dataBinding INLINE + filtro (param posicional $1)
+            id: 'blk_bar_roles',
+            type: 'bar_chart',
+            span: 8,
+            props: { orientation: 'vertical', stacked: false },
             dataBinding: {
               connectionId: conn.id,
               query:
-                'SELECT tipo, SUM(valor) AS total FROM arrecadacao WHERE data >= NOW() - INTERVAL \'30 days\' GROUP BY tipo ORDER BY total DESC',
-              params: [],
-              transform: { kind: 'category-value', x: 'tipo', y: 'total' },
-              ttlSeconds: 600,
+                "SELECT role::text AS x, COUNT(*)::int AS y FROM users WHERE ($1::text IS NULL OR $1 = 'todos' OR role::text = $1) GROUP BY role ORDER BY role",
+              params: [{ filterId: 'f_role', as: 'role' }],
+              ttlSeconds: 300,
             },
-            props: { title: 'Arrecadação por tipo', columnSpan: 2 },
+          },
+        ],
+      },
+      {
+        id: 'row_dist',
+        title: 'Distribuição e detalhamento',
+        blocks: [
+          {
+            id: 'blk_donut_vis',
+            type: 'donut',
+            span: 5,
+            props: { showLegend: true },
+            dataBinding: {
+              connectionId: conn.id,
+              query:
+                'SELECT visibility::text AS label, COUNT(*)::int AS value FROM dashboards GROUP BY visibility ORDER BY visibility',
+              ttlSeconds: 300,
+            },
+          },
+          {
+            id: 'blk_table_tables',
+            type: 'table',
+            span: 7,
+            props: { pageSize: 10, dense: false },
+            dataBinding: {
+              connectionId: conn.id,
+              query:
+                "SELECT table_name AS name, table_type AS type FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
+              ttlSeconds: 300,
+            },
           },
         ],
       },
     ],
   };
 
-  const exampleDashboard = await findOrCreate(
-    async () =>
-      prisma.dashboard.findFirst({
-        where: { title: 'Painel de Arrecadação', ownerId: admin.id },
-      }),
-    async () =>
-      prisma.dashboard.create({
-        data: {
-          title: 'Painel de Arrecadação',
-          ownerId: admin.id,
-          departmentId: finance.id,
-          visibility: 'DEPARTMENT',
-          status: 'PUBLISHED',
-          draftLayout: exampleDashboardLayout,
-          publishedLayout: exampleDashboardLayout,
-          publishedAt: new Date(),
-        },
-      }),
-    'Dashboard "Painel de Arrecadação" (published)'
+  const dashData = {
+    title: 'Painel de Demonstração',
+    ownerId: admin.id,
+    departmentId: null,
+    visibility: 'ORG' as const,
+    status: 'PUBLISHED' as const,
+    draftLayout: exampleDashboardLayout,
+    publishedLayout: exampleDashboardLayout,
+    publishedAt: new Date(),
+  };
+  const existingDash =
+    (await prisma.dashboard.findFirst({
+      where: { title: 'Painel de Demonstração', ownerId: admin.id },
+    })) ??
+    // compatibilidade: substitui o dashboard antigo do seed (layout não-conforme)
+    (await prisma.dashboard.findFirst({
+      where: { title: 'Painel de Arrecadação', ownerId: admin.id },
+    }));
+  const exampleDashboard = existingDash
+    ? await prisma.dashboard.update({ where: { id: existingDash.id }, data: dashData })
+    : await prisma.dashboard.create({ data: dashData });
+  console.log(
+    `  ${existingDash ? '↻ atualizado' : '✓ criado'} Dashboard "${exampleDashboard.title}" (status=${exampleDashboard.status}, id=${exampleDashboard.id})`
   );
 
   console.log('');
@@ -326,7 +400,9 @@ async function main() {
   console.log('     viewer@prefeitura.local  / user1234   (VIEWER)');
   console.log('     user@prefeitura.local    / user1234   (USER)');
   console.log('');
-  console.log(`   Dashboard exemplo: "${exampleDashboard.title}" (status=PUBLISHED)`);
+  console.log(`   Conexão exemplo: "${conn.name}" (id=${conn.id})`);
+  console.log(`   Charts: "${kpiChart.title}" (kpi), "${barChart.title}" (bar_chart)`);
+  console.log(`   Dashboard exemplo: "${exampleDashboard.title}" (status=${exampleDashboard.status})`);
 }
 
 main()
