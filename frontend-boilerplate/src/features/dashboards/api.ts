@@ -2,10 +2,12 @@ import type { DashboardDataPayload } from '@dashboards/contracts';
 import { apiClient } from '@/shared/lib/api-client';
 import type { ApiMode } from '@/shared/lib/query-keys';
 import type {
+  AddChartInput,
   CreateDashboardInput,
   Dashboard,
   DashboardDetail,
   DashboardsResponse,
+  UpdateDashboardInput,
 } from './types';
 
 /**
@@ -52,6 +54,22 @@ export const dashboardsApi = {
   // POST /dashboards — cria (manage). Usado para duplicar.
   create: async (input: CreateDashboardInput): Promise<Dashboard> => {
     const { data } = await apiClient.post<Dashboard>('/dashboards', input);
+    return data;
+  },
+
+  // PATCH /dashboards/:id — atualiza o DRAFT (title/draftLayout). Não afeta o
+  // publicado (isolamento draft↔published, doc 08). O backend re-valida o
+  // `draftLayout` contra o contrato (T-B3) — por isso validamos localmente antes.
+  update: async (id: string, input: UpdateDashboardInput): Promise<Dashboard> => {
+    const { data } = await apiClient.patch<Dashboard>(`/dashboards/${id}`, input);
+    return data;
+  },
+
+  // POST /dashboards/:id/blocks — add_chart_to_dashboard: insere um bloco que
+  // referencia um Chart existente no draftLayout. O backend monta o bloco
+  // (type = catalogType do chart, props.chartId) e devolve o dashboard atualizado.
+  addChart: async (id: string, input: AddChartInput): Promise<Dashboard> => {
+    const { data } = await apiClient.post<Dashboard>(`/dashboards/${id}/blocks`, input);
     return data;
   },
 

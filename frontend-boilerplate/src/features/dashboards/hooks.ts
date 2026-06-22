@@ -6,8 +6,26 @@ import {
   artifactQueryOptions,
   referenceQueryOptions,
 } from '@/shared/lib/query-policies';
+import type { QueryClient } from '@tanstack/react-query';
 import { dashboardsApi } from './api';
-import type { CreateDashboardInput } from './types';
+import type {
+  AddChartInput,
+  CreateDashboardInput,
+  UpdateDashboardInput,
+} from './types';
+
+/**
+ * Invalida TODAS as caches de um dashboard específico: o detalhe (draft +
+ * published) e o payload de DADOS batch (qualquer modo/filtro, por prefixo).
+ * Usado após salvar/publicar/despublicar para o editor e a view refletirem o
+ * novo estado (doc 32 §3 — invalidação no publish/edição).
+ */
+function invalidateDashboard(queryClient: QueryClient, id: string) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.detail(id, 'draft') });
+  queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.detail(id, 'published') });
+  // dashboardData(id, mode, hash) → invalida tudo do dashboard por prefixo.
+  queryClient.invalidateQueries({ queryKey: ['dashboard-data', id] });
+}
 
 /**
  * Hooks de dados da feature `dashboards`. Usam as query-keys CENTRALIZADAS
@@ -78,12 +96,53 @@ export function usePublishDashboard() {
   return useMutation({
     mutationFn: ({ id, publish }: { id: string; publish: boolean }) =>
       publish ? dashboardsApi.publish(id) : dashboardsApi.unpublish(id),
-    onSuccess: (_, { publish }) => {
+    onSuccess: (_, { id, publish }) => {
       toast.success(publish ? 'Dashboard publicado!' : 'Publicação removida.');
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.all });
+      invalidateDashboard(queryClient, id);
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error, 'Erro ao alterar publicação'));
+    },
+  });
+}
+
+/**
+ * Salva o DRAFT de um dashboard (PATCH /dashboards/:id) — usado pelo editor
+ * (T-G2). Invalida o detalhe/dados para a view e o próprio editor refletirem.
+ */
+export function useUpdateDashboard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateDashboardInput }) =>
+      dashboardsApi.update(id, input),
+    onSuccess: (_, { id }) => {
+      toast.success('Rascunho salvo!');
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.all });
+      invalidateDashboard(queryClient, id);
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao salvar o rascunho'));
+    },
+  });
+}
+
+/**
+ * add_chart_to_dashboard (POST /dashboards/:id/blocks) — insere um bloco que
+ * referencia um Chart existente no draftLayout. Retorna o dashboard atualizado
+ * (com o novo bloco montado pelo backend).
+ */
+export function useAddChartToDashboard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: AddChartInput }) =>
+      dashboardsApi.addChart(id, input),
+    onSuccess: (_, { id }) => {
+      toast.success('Gráfico adicionado ao rascunho!');
+      invalidateDashboard(queryClient, id);
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao adicionar o gráfico'));
     },
   });
 }

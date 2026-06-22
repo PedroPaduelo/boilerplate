@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import type { FeatureRoutes } from '@/shared/lib/feature-routes';
 import { PageLoader } from '@/shared/components/page-loader';
-import { PlaceholderPage } from '@/shared/components/placeholder-page';
 import { RequireRole } from '@/features/auth/components/require-role';
 
 /**
@@ -9,7 +8,8 @@ import { RequireRole } from '@/features/auth/components/require-role';
  * - `/dashboards` — LISTAGEM (T-F2): exige `artifacts:view`.
  * - `/dashboards/:id` — VIEW (T-G1): render por config + FilterBar + grid,
  *   hidratado via batch + socket. Exige `artifacts:view`.
- * - `/dashboards/:id/edit` — editor (T-G2), ainda placeholder.
+ * - `/dashboards/:id/edit` — EDITOR enxuto (T-G2): exige `artifacts:manage`
+ *   (e ownership, checada dentro do editor via `canModifyArtifact`).
  */
 const DashboardsPage = lazy(() =>
   import('./components/dashboards-page').then((m) => ({
@@ -20,6 +20,12 @@ const DashboardsPage = lazy(() =>
 const DashboardView = lazy(() =>
   import('./components/dashboard-view').then((m) => ({
     default: m.DashboardView,
+  })),
+);
+
+const DashboardEditor = lazy(() =>
+  import('./components/dashboard-editor').then((m) => ({
+    default: m.DashboardEditor,
   })),
 );
 
@@ -48,7 +54,11 @@ export const featureRoutes: FeatureRoutes = {
     {
       path: 'dashboards/:id/edit',
       element: (
-        <PlaceholderPage title="Editar dashboard" description="Editor enxuto (T-G2)." />
+        <RequireRole permission="artifacts:manage">
+          <Suspense fallback={<PageLoader />}>
+            <DashboardEditor />
+          </Suspense>
+        </RequireRole>
       ),
     },
   ],

@@ -58,4 +58,22 @@ export interface CreateDashboardInput {
   visibility?: ArtifactVisibility;
 }
 
+/** Body do PATCH /dashboards/:id (T-B3 `updateDashboardBodySchema`) — campos opcionais. */
+export interface UpdateDashboardInput {
+  title?: string;
+  draftLayout?: DashboardLayout;
+  departmentId?: string | null;
+  visibility?: ArtifactVisibility;
+}
+
+/** Body do POST /dashboards/:id/blocks (T-B3 `addChartBodySchema`). */
+export interface AddChartInput {
+  chartId: string;
+  rowId?: string;
+  span?: number;
+  position?: number;
+  blockId?: string;
+  props?: Record<string, unknown>;
+}
+
 export type { ApiMode };
