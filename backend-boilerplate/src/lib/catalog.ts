@@ -16,6 +16,16 @@
 import Ajv, { type ValidateFunction } from 'ajv';
 import catalogFile from '@/catalog/catalog.manifests.json';
 
+/** Shape de dados declarado por um bloco (espelha `dataContract.shape` do contrato). */
+export type CatalogDataShape = 'scalar' | 'series' | 'categorical' | 'table';
+
+/** Contrato de dados de um bloco (subset relevante ao backend). */
+export interface CatalogDataContract {
+  shape?: CatalogDataShape;
+  spec?: Record<string, unknown>;
+  example?: unknown;
+}
+
 /** Manifesto de um bloco do catálogo (subset relevante ao backend). */
 export interface CatalogBlockManifest {
   type: string;
@@ -25,6 +35,8 @@ export interface CatalogBlockManifest {
   source?: string;
   propsSchema?: Record<string, unknown>;
   defaultProps?: Record<string, unknown>;
+  /** Contrato de dados (presente em blocos do tipo chart; ausente em narrativos). */
+  dataContract?: CatalogDataContract;
   version?: string;
 }
 
@@ -54,6 +66,16 @@ export function hasCatalogType(type: string): boolean {
 /** Manifesto de um tipo (ou `undefined` se não existir). */
 export function getCatalogManifest(type: string): CatalogBlockManifest | undefined {
   return byType.get(type);
+}
+
+/**
+ * Shape de dados (`dataContract.shape`) declarado por um tipo de bloco no
+ * catálogo, ou `null` quando o tipo não existe ou é narrativo (sem dataContract).
+ * É o que o módulo `data` (T-C) usa para escolher o validador do RESULTADO
+ * (`validateBlockDataByShape`) antes de gravar cache/emitir socket.
+ */
+export function getCatalogDataShape(type: string): CatalogDataShape | null {
+  return byType.get(type)?.dataContract?.shape ?? null;
 }
 
 // --- Validação de props contra o propsSchema do manifesto (defensiva) ---
