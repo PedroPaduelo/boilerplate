@@ -26,7 +26,7 @@ const baseSchema = z.object({
   name: z.string().min(1, 'Informe o nome'),
   email: z.string().email('Email inválido'),
   password: z.string(),
-  role: z.enum(['ADMIN', 'USER']),
+  role: z.enum(['ADMIN', 'ANALYST', 'CREATOR', 'VIEWER', 'USER']),
   isActive: z.enum(['active', 'inactive']),
 });
 
@@ -205,8 +205,11 @@ export function UserFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USER">Usuário</SelectItem>
                       <SelectItem value="ADMIN">Admin</SelectItem>
+                      <SelectItem value="ANALYST">Analista</SelectItem>
+                      <SelectItem value="CREATOR">Criador</SelectItem>
+                      <SelectItem value="VIEWER">Visualizador</SelectItem>
+                      <SelectItem value="USER">Usuário</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

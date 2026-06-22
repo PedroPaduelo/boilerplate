@@ -1,4 +1,10 @@
-export type UserRole = 'ADMIN' | 'USER';
+/**
+ * Papéis do sistema — alinhados ao enum `UserRole` do Prisma e à matriz RBAC
+ * (`@/shared/lib/rbac`). O seed cria usuários nos 5 papéis; mapear só ADMIN/USER
+ * fazia a tela `/users` quebrar ao renderizar ANALYST/CREATOR/VIEWER
+ * (issue cmqpbl53v00etpi0i0cv5spwm).
+ */
+export type UserRole = 'ADMIN' | 'ANALYST' | 'CREATOR' | 'VIEWER' | 'USER';
 
 export interface User {
   id: string;

@@ -38,8 +38,15 @@ import { useAuthStore } from '@/features/auth/store';
 // light e dark. Pills com rounded-full e borda transparente.
 const roleConfig: Record<UserRole, { label: string; className: string }> = {
   ADMIN: { label: 'Admin', className: 'bg-chart-1/10 text-chart-1' },
+  ANALYST: { label: 'Analista', className: 'bg-chart-2/10 text-chart-2' },
+  CREATOR: { label: 'Criador', className: 'bg-chart-3/10 text-chart-3' },
+  VIEWER: { label: 'Visualizador', className: 'bg-chart-4/10 text-chart-4' },
   USER: { label: 'Usuário', className: 'bg-muted text-muted-foreground' },
 };
+
+/** Fallback defensivo: nunca quebra se o backend trouxer um papel desconhecido. */
+const FALLBACK_ROLE = { label: 'Desconhecido', className: 'bg-muted text-muted-foreground' };
+const roleOf = (role: UserRole) => roleConfig[role] ?? FALLBACK_ROLE;
 
 function statusConfig(isActive: boolean) {
   return isActive
@@ -199,10 +206,10 @@ export function UsersPage() {
                           variant="outline"
                           className={cn(
                             'rounded-full border-transparent',
-                            roleConfig[u.role].className,
+                            roleOf(u.role).className,
                           )}
                         >
-                          {roleConfig[u.role].label}
+                          {roleOf(u.role).label}
                         </Badge>
                       </TableFluidCell>
                       <TableFluidCell>

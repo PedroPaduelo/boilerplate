@@ -1,19 +1,31 @@
+import { lazy, Suspense } from 'react';
 import type { FeatureRoutes } from '@/shared/lib/feature-routes';
+import { PageLoader } from '@/shared/components/page-loader';
 import { PlaceholderPage } from '@/shared/components/placeholder-page';
+import { RequireRole } from '@/features/auth/components/require-role';
 
 /**
- * Rotas-esqueleto da feature `dashboards` (TRILHAS T-F lista / T-G render+editor).
- * Paths previstos (doc 32): /dashboards, /dashboards/:id, /dashboards/:id/edit.
+ * Rotas da feature `dashboards`.
+ * - `/dashboards` — LISTAGEM (T-F2): exige `artifacts:view`.
+ * - `/dashboards/:id` e `/dashboards/:id/edit` — render/editor (T-G), ainda
+ *   placeholders.
  */
+const DashboardsPage = lazy(() =>
+  import('./components/dashboards-page').then((m) => ({
+    default: m.DashboardsPage,
+  })),
+);
+
 export const featureRoutes: FeatureRoutes = {
   protected: [
     {
       path: 'dashboards',
       element: (
-        <PlaceholderPage
-          title="Dashboards"
-          description="Listagem de dashboards (T-F)."
-        />
+        <RequireRole permission="artifacts:view">
+          <Suspense fallback={<PageLoader />}>
+            <DashboardsPage />
+          </Suspense>
+        </RequireRole>
       ),
     },
     {
