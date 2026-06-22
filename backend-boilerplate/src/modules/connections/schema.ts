@@ -99,6 +99,9 @@ export const idParamSchema = z.object({ id: z.string().min(1) });
 export const runQueryBodySchema = z.object({
   sql: z.string().min(1),
   params: z.array(z.any()).optional(),
+  // Limite pedido pelo caller. O TETO ABSOLUTO de segurança é aplicado no
+  // pg-runner (clamp contra env.PG_RUNNER_MAX_ROWS): pedir mais que o cap nunca
+  // retorna mais que o cap, independentemente deste max do schema.
   maxRows: z.coerce.number().int().min(1).max(100000).optional(),
 });
 

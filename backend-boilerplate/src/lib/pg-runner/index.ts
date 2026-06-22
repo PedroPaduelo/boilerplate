@@ -24,6 +24,27 @@ import { assertReadOnlyQuery } from './sql-guard';
 
 export { assertReadOnlyQuery, SqlGuardError } from './sql-guard';
 
+/**
+ * Resolve o row cap EFETIVO de uma query.
+ *
+ * `env.PG_RUNNER_MAX_ROWS` é o TETO ABSOLUTO de segurança: o caller pode pedir
+ * MENOS linhas, NUNCA MAIS. Mesmo que um schema de rota aceite valores altos
+ * (ex.: connections aceita até 100000), o pg-runner — fonte única — aplica o
+ * clamp superior contra o cap configurado no env.
+ *
+ * @param requested valor pedido pelo caller (`options.maxRows`); se ausente,
+ *   usa o próprio cap do env.
+ * @param cap teto de segurança (default `env.PG_RUNNER_MAX_ROWS`).
+ */
+export function resolveMaxRows(
+  requested?: number,
+  cap: number = env.PG_RUNNER_MAX_ROWS
+): number {
+  const safeCap = Math.max(1, Math.floor(cap));
+  const desired = Math.max(1, Math.floor(requested ?? safeCap));
+  return Math.min(safeCap, desired);
+}
+
 /** Configuração de conexão (credenciais JÁ decifradas via lib/crypto). */
 export interface PgRunnerConnection {
   /** id da Connection — usado como chave de cache do pool (recomendado). */
@@ -182,7 +203,8 @@ export async function runQuery(
   const safeSql = assertReadOnlyQuery(sql);
 
   const params = options.params ?? [];
-  const maxRows = Math.max(1, Math.floor(options.maxRows ?? env.PG_RUNNER_MAX_ROWS));
+  // row cap com CLAMP SUPERIOR: nunca excede env.PG_RUNNER_MAX_ROWS (teto de segurança).
+  const maxRows = resolveMaxRows(options.maxRows);
   const stmtTimeout = Math.max(
     1,
     Math.floor(options.statementTimeoutMs ?? env.PG_RUNNER_STATEMENT_TIMEOUT_MS)

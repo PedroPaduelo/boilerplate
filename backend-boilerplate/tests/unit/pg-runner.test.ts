@@ -1,10 +1,12 @@
 import {
   closeAllPools,
   PgRunnerError,
+  resolveMaxRows,
   runQuery,
   SqlGuardError,
   type PgRunnerConnection,
 } from '@/lib/pg-runner';
+import { env } from '@/lib/env';
 
 const UNREACHABLE: PgRunnerConnection = {
   id: 'unreachable-test',
@@ -17,6 +19,37 @@ const UNREACHABLE: PgRunnerConnection = {
 
 afterAll(async () => {
   await closeAllPools();
+});
+
+describe('pg-runner — resolveMaxRows (clamp do row cap)', () => {
+  it('clampa para o cap de segurança quando o caller pede MAIS que o env', () => {
+    const cap = env.PG_RUNNER_MAX_ROWS;
+    // caller pede acima do teto → resultado é o teto, nunca mais.
+    expect(resolveMaxRows(cap + 1)).toBe(cap);
+    expect(resolveMaxRows(100000)).toBe(Math.min(100000, cap));
+    expect(resolveMaxRows(100000)).toBeLessThanOrEqual(cap);
+  });
+
+  it('respeita valores abaixo do cap (caller pode pedir MENOS)', () => {
+    expect(resolveMaxRows(10)).toBe(10);
+    expect(resolveMaxRows(1)).toBe(1);
+  });
+
+  it('usa o cap do env quando nenhum valor é pedido', () => {
+    expect(resolveMaxRows(undefined)).toBe(env.PG_RUNNER_MAX_ROWS);
+  });
+
+  it('garante piso de 1 linha e arredonda valores fracionários', () => {
+    expect(resolveMaxRows(0)).toBe(1);
+    expect(resolveMaxRows(-5)).toBe(1);
+    expect(resolveMaxRows(3.9)).toBe(3);
+  });
+
+  it('aplica o clamp superior contra um cap explícito menor', () => {
+    // cap explícito de 50: pedir 1000 nunca passa de 50.
+    expect(resolveMaxRows(1000, 50)).toBe(50);
+    expect(resolveMaxRows(20, 50)).toBe(20);
+  });
 });
 
 describe('pg-runner — guardrails (sem banco)', () => {
