@@ -18,16 +18,35 @@ import {
 } from '@/components/ui';
 import { cn } from '@/shared/lib/utils';
 import { useAuthStore } from '@/features/auth/store';
+import { hasAnyRole, hasPermission, type Permission, type Role } from '@/shared/lib/rbac';
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  /** Permissão exigida para o item aparecer (RBAC, espelha o backend). */
+  permission?: Permission;
+  /** Papéis exigidos (alternativa à permissão). */
+  roles?: Role[];
+}
 
 // Navegação base (shell da Fase 0). As trilhas FE ajustam rótulos/ícones/RBAC
 // conforme implementam cada tela; a rota em si vem de features/<x>/routes.tsx.
-const NAV = [
-  { id: '/dashboards', label: 'Dashboards', icon: LayoutDashboard },
-  { id: '/charts', label: 'Gráficos', icon: BarChart3 },
-  { id: '/connections', label: 'Conexões', icon: Database },
-  { id: '/chat', label: 'Chat', icon: MessageSquare },
-  { id: '/users', label: 'Usuários', icon: UsersIcon },
+// Cada item é filtrado por papel/permissão (defesa em profundidade — o backend
+// continua sendo a autoridade; as rotas também usam o guarda `RequireRole`).
+const NAV: NavItem[] = [
+  { id: '/dashboards', label: 'Dashboards', icon: LayoutDashboard, permission: 'artifacts:view' },
+  { id: '/charts', label: 'Gráficos', icon: BarChart3, permission: 'artifacts:view' },
+  { id: '/connections', label: 'Conexões', icon: Database, permission: 'connections:use' },
+  { id: '/chat', label: 'Chat', icon: MessageSquare, permission: 'artifacts:manage' },
+  { id: '/users', label: 'Usuários', icon: UsersIcon, roles: ['ADMIN'] },
 ];
+
+function canSeeNavItem(item: NavItem, role: Role | null | undefined): boolean {
+  if (item.roles && !hasAnyRole(role, item.roles)) return false;
+  if (item.permission && !hasPermission(role, item.permission)) return false;
+  return true;
+}
 
 interface AppSidebarProps {
   collapsed: boolean;
@@ -38,6 +57,8 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
+  const role = useAuthStore((s) => s.user?.role);
+  const navItems = NAV.filter((item) => canSeeNavItem(item, role));
 
   function handleLogout() {
     logout();
@@ -73,7 +94,7 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
           className="flex flex-1 flex-col gap-1 p-2"
           aria-label="Navegação principal"
         >
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = location.pathname.startsWith(item.id);
             const button = (

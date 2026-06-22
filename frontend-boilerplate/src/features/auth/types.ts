@@ -1,8 +1,11 @@
+import type { Role } from '@/shared/lib/rbac';
+
 export interface User {
   id: string;
   email: string;
   name: string | null;
-  role: 'ADMIN' | 'USER';
+  /** Papel do sistema (ADMIN | ANALYST | CREATOR | VIEWER | USER). */
+  role: Role;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
