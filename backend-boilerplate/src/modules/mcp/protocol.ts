@@ -75,10 +75,17 @@ function err(id: JsonRpcId, code: number, message: string, data?: unknown): Json
   return { jsonrpc: '2.0', id, error: { code, message, ...(data !== undefined ? { data } : {}) } };
 }
 
-/** Encapsula um valor de tool num resultado MCP (content textual + estruturado). */
+/**
+ * Encapsula um valor de tool num resultado MCP (content textual + estruturado).
+ *
+ * O `content` textual é serializado em JSON COMPACTO (sem indentação) de
+ * propósito: o agente externo lê esse texto e a indentação/newlines somam MUITOS
+ * tokens em payloads grandes (schema/queries). O `structuredContent` segue o
+ * objeto cru (não afeta tokens do canal de texto).
+ */
 function toolResult(value: unknown, isError = false): Record<string, unknown> {
   return {
-    content: [{ type: 'text', text: JSON.stringify(value, null, 2) }],
+    content: [{ type: 'text', text: JSON.stringify(value) }],
     structuredContent: isError ? undefined : value,
     isError,
   };

@@ -235,6 +235,107 @@ describe('MCP — catalog & connections', () => {
   });
 });
 
+describe('MCP — get_connection_schema (progressivo)', () => {
+  it('sem `tables` devolve a LISTA de tabelas SEM colunas (leve)', async () => {
+    const result = await callTool('get_connection_schema', { connectionId });
+    if (result.isError) {
+      // ambiente sem acesso ao Postgres externo — não falha o suite.
+      expect(result.content[0].text).toBeDefined();
+      return;
+    }
+    const data = result.structuredContent as {
+      mode: string;
+      tables: { schema: string; name: string; columnCount: number }[];
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    };
+    expect(data.mode).toBe('tables');
+    expect(Array.isArray(data.tables)).toBe(true);
+    expect(data.tables.length).toBeGreaterThan(0);
+    // a marca do modo lista: cada item tem columnCount e NÃO tem `columns`.
+    for (const t of data.tables) {
+      expect(typeof t.columnCount).toBe('number');
+      expect((t as Record<string, unknown>).columns).toBeUndefined();
+    }
+    expect(typeof data.total).toBe('number');
+    expect(data.page).toBe(1);
+    // a lista (sem colunas) é DRASTICAMENTE menor que o schema inteiro.
+    const listSize = result.content[0].text.length;
+    expect(listSize).toBeGreaterThan(0);
+  });
+
+  it('com `tables:[...]` devolve as COLUNAS só dessas tabelas', async () => {
+    const result = await callTool('get_connection_schema', {
+      connectionId,
+      tables: ['public.users'],
+    });
+    if (result.isError) {
+      expect(result.content[0].text).toBeDefined();
+      return;
+    }
+    const data = result.structuredContent as {
+      mode: string;
+      tables: { schema: string; name: string; columns: { name: string }[] }[];
+      notFound?: string[];
+    };
+    expect(data.mode).toBe('columns');
+    // 'users' existe no Postgres do app → tem que casar e trazer colunas.
+    const users = data.tables.find((t) => t.name === 'users');
+    expect(users).toBeDefined();
+    expect(Array.isArray(users?.columns)).toBe(true);
+    expect((users?.columns.length ?? 0)).toBeGreaterThan(0);
+  });
+
+  it('aceita nome de tabela SEM schema ("users")', async () => {
+    const result = await callTool('get_connection_schema', {
+      connectionId,
+      tables: ['users'],
+    });
+    if (result.isError) return;
+    const data = result.structuredContent as {
+      tables: { name: string; columns: unknown[] }[];
+    };
+    expect(data.tables.some((t) => t.name === 'users')).toBe(true);
+  });
+
+  it('`search` filtra a lista de tabelas por substring', async () => {
+    const result = await callTool('get_connection_schema', { connectionId, search: 'user' });
+    if (result.isError) return;
+    const data = result.structuredContent as {
+      tables: { name: string }[];
+    };
+    expect(data.tables.length).toBeGreaterThan(0);
+    expect(data.tables.every((t) => t.name.toLowerCase().includes('user'))).toBe(true);
+  });
+
+  it('`schema` filtra por schema do Postgres', async () => {
+    const result = await callTool('get_connection_schema', { connectionId, schema: 'public' });
+    if (result.isError) return;
+    const data = result.structuredContent as {
+      tables: { schema: string }[];
+    };
+    expect(data.tables.every((t) => t.schema === 'public')).toBe(true);
+  });
+
+  it('a lista de tabelas é MUITO menor que o schema completo (evidência)', async () => {
+    const list = await callTool('get_connection_schema', { connectionId });
+    if (list.isError) return;
+    // Modo colunas de TODAS as tabelas: pega os nomes da lista e pede todos.
+    const listData = list.structuredContent as {
+      tables: { schema: string; name: string }[];
+    };
+    const allNames = listData.tables.map((t) => `${t.schema}.${t.name}`);
+    const full = await callTool('get_connection_schema', { connectionId, tables: allNames });
+    if (full.isError) return;
+    const listSize = list.content[0].text.length;
+    const fullSize = full.content[0].text.length;
+    // a lista (sem colunas) é bem menor que o detalhamento com colunas.
+    expect(listSize).toBeLessThan(fullSize);
+  });
+});
+
 describe('MCP — run_query (guardrails read-only)', () => {
   it('query destrutiva é BLOQUEADA (isError, read_only_violation)', async () => {
     const result = await callTool('run_query', {
@@ -262,6 +363,39 @@ describe('MCP — run_query (guardrails read-only)', () => {
     const data = result.structuredContent as { rows: { n: number }[]; rowCount: number };
     expect(data.rowCount).toBe(1);
     expect(Number(data.rows[0].n)).toBe(1);
+  });
+
+  it('default de linhas é BAIXO (preview) — trunca em 50 sem maxRows', async () => {
+    // generate_series(1,500) → 500 linhas disponíveis; o default do MCP (50) deve truncar.
+    const result = await callTool('run_query', {
+      connectionId,
+      sql: 'SELECT g AS n FROM generate_series(1, 500) AS g',
+    });
+    if (result.isError) return; // sem conectividade
+    const data = result.structuredContent as { rowCount: number; truncated: boolean };
+    expect(data.rowCount).toBeLessThanOrEqual(50);
+    expect(data.truncated).toBe(true);
+  });
+
+  it('maxRows acima do teto do MCP (1000) é rejeitado na validação', async () => {
+    const result = await callTool('run_query', {
+      connectionId,
+      sql: 'SELECT 1 AS n',
+      maxRows: 100000,
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text.toLowerCase()).toMatch(/invalid|maxrows|less than|1000/);
+  });
+});
+
+describe('MCP — serialização compacta do content', () => {
+  it('o content textual é JSON COMPACTO (sem indentação)', async () => {
+    const result = await callTool('list_catalog');
+    const text = result.content[0].text;
+    // pretty-print geraria quebras de linha + indentação; o compacto não.
+    expect(text).not.toMatch(/\n\s+"/);
+    // continua sendo JSON válido e bate com o structuredContent.
+    expect(JSON.parse(text)).toEqual(result.structuredContent);
   });
 });
 
