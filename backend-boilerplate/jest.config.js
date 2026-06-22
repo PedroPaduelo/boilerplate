@@ -23,6 +23,7 @@ module.exports = {
           module: 'commonjs',
           moduleResolution: 'node',
           esModuleInterop: true,
+          resolveJsonModule: true,
           target: 'es2022',
           strict: true,
           skipLibCheck: true,
