@@ -99,6 +99,36 @@ export const dashboardResponseSchema = z.object({
 
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 
+/**
+ * Resposta do `GET /public/:token` (rota PÚBLICA). Inclui o layout publicado
+ * E o SNAPSHOT materializado de dados (`publishedDataPayload`, T-G1 bugfix do
+ * share público). NUNCA expõe `draftLayout`, `ownerId`, `visibility` ou
+ * credenciais.
+ */
+export const publicDashboardResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  publishedLayout: z.any(),
+  publishedDataPayload: z.any().nullable(),
+  publishedAt: z.date(),
+});
+
+export type PublicDashboardResponse = z.infer<typeof publicDashboardResponseSchema>;
+
+/**
+ * Resposta do `GET /public/:token/data` (rota PÚBLICA de dados). É o snapshot
+ * materializado em formato `DashboardDataPayload` do contrato (modo `published`,
+ * blocos com `state: 'success'|'error'` e `cached: true`). Sem dataBinding cru.
+ */
+export const publicDashboardDataResponseSchema = z.object({
+  dashboardId: z.string(),
+  mode: z.literal('published'),
+  generatedAt: z.string(),
+  blocks: z.record(z.any()),
+});
+
+export type PublicDashboardDataResponse = z.infer<typeof publicDashboardDataResponseSchema>;
+
 /** Resposta do GET por modo: metadados + o layout resolvido para o `mode`. */
 export const dashboardDetailResponseSchema = dashboardResponseSchema.extend({
   mode: layoutModeEnum,

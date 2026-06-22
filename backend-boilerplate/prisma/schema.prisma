@@ -213,6 +213,13 @@ model Dashboard {
 
   draftLayout     Json      @map("draft_layout")
   publishedLayout Json?     @map("published_layout")
+  /// Snapshot materializado dos blocos com dados, gerado no publish (T-G1
+  /// bugfix do share público). Mesmo shape do batch `POST /dashboards/:id/data`
+  /// (`{ dashboardId, mode, generatedAt, blocks }`). Permite que a página
+  /// pública anônima `/public/:token` mostre blocos de dados (KPI/gráfico/
+  /// tabela) sem precisar executar query ou ter usuário autenticado. Null
+  /// até o 1º publish, ou se o dashboard não tem blocos de dados.
+  publishedDataPayload Json? @map("published_data_payload")
   publishedAt     DateTime? @map("published_at")
 
   createdAt DateTime @default(now()) @map("created_at")

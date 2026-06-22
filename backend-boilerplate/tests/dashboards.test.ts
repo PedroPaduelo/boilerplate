@@ -404,6 +404,24 @@ describe('dashboards — publish/unpublish + invalidação de cache + GET por mo
     expect(await redisService.hasKey(key)).toBe(false);
   });
 
+  it('T-G1 bugfix: publish materializa snapshot em publishedDataPayload (T-C executeBlockData inline)', async () => {
+    // Dashboard do beforeAll deste describe tem blocos narrativos (title/rich_text)
+    // — sem dataBinding — então o snapshot é gerado com `blocks: {}` (sem
+    // erro, sem execução). O importante: o CAMPO existe no banco e tem o
+    // shape DashboardDataPayload (dashboardId, mode, generatedAt, blocks).
+    const row = await prisma.dashboard.findUnique({ where: { id: dashId } });
+    expect(row).not.toBeNull();
+    const payload = row!.publishedDataPayload as
+      | { dashboardId?: string; mode?: string; generatedAt?: string; blocks?: Record<string, unknown> }
+      | null;
+    expect(payload).not.toBeNull();
+    expect(payload!.dashboardId).toBe(dashId);
+    expect(payload!.mode).toBe('published');
+    expect(typeof payload!.generatedAt).toBe('string');
+    expect(typeof payload!.blocks).toBe('object');
+    expect(payload!.blocks).toEqual({}); // narrativos não produzem resultado de dados
+  });
+
   it('GET ?mode=published agora retorna o layout publicado (200)', async () => {
     const res = await app.inject({
       method: 'GET',

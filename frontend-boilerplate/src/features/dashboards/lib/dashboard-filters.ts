@@ -89,3 +89,31 @@ export function blocksAffectedByFilter(
 export function isFilterUsed(layout: LayoutLike | undefined, filterId: string): boolean {
   return blocksAffectedByFilter(layout, filterId).length > 0;
 }
+
+// =============================================================================
+// Resolução do LAYOUT EFETIVO por modo (T-G1 bugfix do DashboardView)
+// =============================================================================
+
+import type { ApiMode } from '@/shared/lib/query-keys';
+import type { DashboardDetail } from '../types';
+
+/**
+ * Extrai o layout efetivo de um `DashboardDetail` no modo pedido. Devolve o
+ * `layout` do modo (`draft` | `published`) ou cai pro `draftLayout` quando o
+ * modo pedido não tem conteúdo. Função PURA — útil pra testes e pra evitar
+ * acoplamento com o `resolveLayout` do backend.
+ *
+ * Usado pelo `DashboardView` após o bugfix T-G1 (single-query com `mode=draft`
+ * + decisão LOCAL via `data.status`). Sem remontar o componente (ver
+ * `DashboardView`).
+ */
+export function pickEffectiveLayout(
+  detail: DashboardDetail,
+  mode: ApiMode,
+): { mode: ApiMode; layout: DashboardDetail['layout'] } {
+  if (mode === 'published' && detail.publishedLayout) {
+    return { mode, layout: detail.publishedLayout };
+  }
+  // modo published sem publishedLayout OU mode=draft → usa o draft.
+  return { mode: 'draft', layout: detail.draftLayout };
+}

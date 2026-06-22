@@ -3,10 +3,13 @@
  *
  * Dashboard = artefato com LAYOUT (`{ filters, rows }`, doc 20) no modelo
  * draft/published SEM histórico (doc 08):
- *   - `publish`   copia `draftLayout` → `publishedLayout`, seta `publishedAt`,
- *     `status=PUBLISHED` e INVALIDA o cache de layout no Redis (`dash:{id}:published`).
- *   - `unpublish` zera `publishedLayout` (Prisma.DbNull), volta `status=DRAFT` e
- *     também invalida o cache.
+ *   - `publish`   copia `draftLayout` → `publishedLayout`, MATERIALIZA um
+ *     SNAPSHOT dos dados de cada bloco (executa o `dataBinding` via o core
+ *     `executeBlockData` do T-C, mesmo caminho inline do batch draft) e
+ *     armazena o resultado no campo `publishedDataPayload`. Seta
+ *     `publishedAt`+`status=PUBLISHED` e invalida o cache de layout.
+ *   - `unpublish` zera `publishedLayout` E `publishedDataPayload`
+ *     (Prisma.DbNull), volta `status=DRAFT` e invalida o cache.
  *
  * Validações de domínio:
  *   - TODO `draftLayout` (create/update/add-chart) é validado contra o CONTRATO
@@ -23,14 +26,21 @@
 import {
   formatErrors,
   validateDashboardLayout,
+  type BlockDataResult,
   type DashboardLayout,
 } from '@dashboards/contracts';
 import { Prisma, type Dashboard } from '@prisma/client';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/http/routes/_errors';
 import { prisma } from '@/lib/prisma';
+import { runQuery } from '@/lib/pg-runner';
 import type { ActorContext } from '@/lib/rbac';
 import { redisService } from '@/lib/redis';
 import { canModifyArtifact, canViewArtifact } from '@/lib/visibility';
+import { resolveBlocks } from '@/modules/data/block-resolver';
+import { resolveParamsValues } from '@/modules/data/cache';
+import { toPgRunnerConnection } from '@/modules/data/connection-loader';
+import { executeBlockData } from '@/modules/data/executor';
+import { getCatalogDataShape } from '@/lib/catalog';
 import type { AddChartInput, CreateDashboardInput, UpdateDashboardInput } from './schema';
 
 /**
@@ -312,14 +322,118 @@ export function resolveLayout(
   return { mode: 'draft', layout: dashboard.draftLayout as unknown };
 }
 
-/** Copia draftLayout→publishedLayout, seta publishedAt/status e invalida o cache. */
-export async function publishDashboard(dashboard: Dashboard): Promise<Dashboard> {
+/**
+ * Materializa um SNAPSHOT dos dados de todos os blocos com `dataBinding` de um
+ * layout (caminho INLINE — sem fila, sem cache, sem socket; reusa o core `executeBlockData`).
+ *
+ * Por que existe (T-G1 bugfix do share público): a página `/public/:token` é
+ * ANÔNIMA — não pode chamar o batch autenticado nem decifrar senha de conexão.
+ * Pra ela mostrar blocos com dados (KPI/gráfico/tabela), o publish precisa
+ * "cozinhar" o resultado de cada bloco AGORA e guardar no `publishedDataPayload`.
+ * Um novo publish regenera (substitui). Erro de execução num bloco vira
+ * `state: 'error'` no resultado (a página mostra a mensagem) — não falhamos o
+ * publish inteiro, porque o objetivo é manter o link público funcional mesmo
+ * se UMA query falhar (defensivo).
+ *
+ * `ctx` é o do DONO do dashboard (publish exige ownership/permission). A
+ * visibilidade de charts/connections referenciados é revalidada contra o dono
+ * (não há outro usuário no momento do publish) — quem abrir o link público
+ * depois herda esse snapshot já materializado.
+ */
+export async function materializePublishedDataPayload(
+  layout: DashboardLayout,
+  ctx: ActorContext,
+): Promise<{
+  dashboardId: string;
+  mode: 'published';
+  generatedAt: string;
+  blocks: Record<string, BlockDataResult>;
+}> {
+  const resolved = await resolveBlocks(layout, 'published', ctx, {
+    loadChart: (id) =>
+      prisma.chart.findUnique({
+        where: { id },
+        select: {
+          ownerId: true,
+          visibility: true,
+          departmentId: true,
+          catalogType: true,
+          publishedDataBinding: true,
+          draftDataBinding: true,
+        },
+      }),
+    loadConnection: (id) => prisma.connection.findUnique({ where: { id } }),
+    resolveShape: (type) => getCatalogDataShape(type),
+  });
+
+  const blocks: Record<string, BlockDataResult> = {};
+  for (const block of resolved) {
+    if (block.error || !block.binding) {
+      if (block.error) {
+        blocks[block.blockId] = {
+          blockId: block.blockId,
+          state: 'error',
+          error: block.error,
+        };
+      }
+      // bloco sem binding (narrativo) → omitido, render-engine renderiza direto
+      continue;
+    }
+    const conn = block.connectionRecord as
+      | Parameters<typeof toPgRunnerConnection>[0]
+      | undefined;
+    if (!conn) {
+      blocks[block.blockId] = {
+        blockId: block.blockId,
+        state: 'error',
+        error: { code: 'connection_not_found', message: 'connection not resolved' },
+      };
+      continue;
+    }
+    const paramsValues = resolveParamsValues(block.binding.params, undefined);
+    const result = await executeBlockData(
+      {
+        blockId: block.blockId,
+        connection: toPgRunnerConnection(conn),
+        sql: block.binding.query,
+        paramsValues,
+        transform: block.binding.transform,
+        shape: block.shape,
+        cached: false,
+      },
+      { runQuery },
+    );
+    blocks[block.blockId] = result;
+  }
+
+  return {
+    dashboardId: '',
+    mode: 'published',
+    generatedAt: new Date().toISOString(),
+    blocks,
+  };
+}
+
+/** Copia draftLayout→publishedLayout, MATERIALIZA snapshot de dados e invalida cache. */
+export async function publishDashboard(
+  dashboard: Dashboard,
+  ctx: ActorContext,
+): Promise<Dashboard> {
   // garante que o draft atual é um layout válido antes de promover.
   assertValidLayout(dashboard.draftLayout);
+  // materializa o snapshot de dados (executa todos os dataBinding inline).
+  // `dashboardId` é preenchido pelo update abaixo; usamos string vazia aqui.
+  const payloadDraft = await materializePublishedDataPayload(
+    dashboard.draftLayout as DashboardLayout,
+    ctx,
+  );
+  const payload: typeof payloadDraft = { ...payloadDraft, dashboardId: dashboard.id };
+
   const updated = await prisma.dashboard.update({
     where: { id: dashboard.id },
     data: {
       publishedLayout: dashboard.draftLayout as Prisma.InputJsonValue,
+      publishedDataPayload: payload as unknown as Prisma.InputJsonValue,
       publishedAt: new Date(),
       status: 'PUBLISHED',
     },
@@ -328,12 +442,13 @@ export async function publishDashboard(dashboard: Dashboard): Promise<Dashboard>
   return updated;
 }
 
-/** Zera publishedLayout (DbNull), volta status=DRAFT e invalida o cache. */
+/** Zera publishedLayout E publishedDataPayload (DbNull), volta status=DRAFT e invalida o cache. */
 export async function unpublishDashboard(id: string): Promise<Dashboard> {
   const updated = await prisma.dashboard.update({
     where: { id },
     data: {
       publishedLayout: Prisma.DbNull,
+      publishedDataPayload: Prisma.DbNull,
       publishedAt: null,
       status: 'DRAFT',
     },

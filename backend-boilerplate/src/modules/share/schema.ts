@@ -52,11 +52,15 @@ export type ShareLinkResponse = z.infer<typeof shareLinkResponseSchema>;
  * Resposta da rota PÚBLICA (GET /public/:token): SOMENTE o artefato em modo
  * published. Um dos dois (`dashboard` | `chart`) é preenchido conforme
  * `targetType`. NÃO inclui ownerId/visibility/departmentId nem campos draft*.
+ * Inclui `publishedDataPayload` (snapshot materializado, T-G1 bugfix do share
+ * público) para que a página renderize blocos de dados sem precisar de
+ * endpoint separado.
  */
 export const publicDashboardSchema = z.object({
   id: z.string(),
   title: z.string(),
   publishedLayout: z.any(),
+  publishedDataPayload: z.any().nullable(),
   publishedAt: z.date(),
 });
 
@@ -77,6 +81,21 @@ export const publicArtifactResponseSchema = z.object({
 });
 
 export type PublicArtifactResponse = z.infer<typeof publicArtifactResponseSchema>;
+
+/**
+ * Resposta do `GET /public/:token/data` (rota PÚBLICA de dados). É o snapshot
+ * materializado em formato `DashboardDataPayload` do contrato (modo `published`,
+ * blocos com `state: 'success'|'error'`). SEMPRE o resultado já no shape do
+ * bloco — NUNCA `dataBinding` cru (sem SQL/connectionId).
+ */
+export const publicDashboardDataResponseSchema = z.object({
+  dashboardId: z.string(),
+  mode: z.literal('published'),
+  generatedAt: z.string(),
+  blocks: z.record(z.any()),
+});
+
+export type PublicDashboardDataResponse = z.infer<typeof publicDashboardDataResponseSchema>;
 
 /** Serializa o ShareLink (resposta autenticada de criação). */
 export function serializeShareLink(link: ShareLink): ShareLinkResponse {

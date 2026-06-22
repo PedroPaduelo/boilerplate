@@ -167,7 +167,7 @@ const publishDashboardTool: ToolDefinition = {
     assertPermission(actor, 'artifacts:publish');
     const { dashboardId } = publishDashboardArgs.parse(rawArgs ?? {});
     const existing = await requireDashboardForModify(dashboardId, actor);
-    const dashboard = await publishDashboard(existing);
+    const dashboard = await publishDashboard(existing, actor);
     return serializeDashboard(dashboard);
   },
 };

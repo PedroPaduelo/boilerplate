@@ -1,0 +1,23 @@
+-- =============================================================================
+-- Snapshot público de dados do dashboard (T-G1 bugfix do share público).
+--
+-- Adiciona `published_data_payload` (JSONB nullable) à tabela `dashboards`.
+-- Esse campo guarda um SNAPSHOT materializado de TODOS os blocos com
+-- `dataBinding` do layout publicado, no mesmo shape que `POST /dashboards/:id/data`
+-- devolve (`{ dashboardId, mode, generatedAt, blocks: { [blockId]: BlockDataResult } }`).
+--
+-- Finalidade: a página pública `/public/:token` é ANÔNIMA (sem JWT) — não
+-- pode chamar o batch autenticado. Em vez disso, no publish (T-B3) o backend
+-- EXECUTA os blocos (caminho inline do T-C) e salva o resultado pronto
+-- junto do `publishedLayout`. A página pública consome o snapshot via
+-- `GET /public/:token/data` e renderiza os blocos com dados sem depender
+-- de conexão/usuário.
+--
+-- É um SNAPSHOT: gerado uma vez no publish, NÃO regenerado em cada request
+-- (consistente com "link público = versão congelada do relatório"). Um novo
+-- publish regenera. O campo pode ser null se o dashboard ainda não tem
+-- blocos de dados ou nunca foi publicado.
+-- =============================================================================
+
+-- AlterTable
+ALTER TABLE "dashboards" ADD COLUMN "published_data_payload" JSONB;

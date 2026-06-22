@@ -414,3 +414,102 @@ describe('share — expiração', () => {
     expect(res.statusCode).toBe(200);
   });
 });
+
+/**
+ * T-G1 bugfix do share público — `GET /public/:token/data`.
+ *
+ * Endpoint DEDICADO que devolve o snapshot materializado no publish (modo
+ * `published`, blocos já no shape). Sem auth; mesma validação de TTL/revogação
+ * do `GET /public/:token`. Erros 403/410/404 espelham o `GET /public/:token`.
+ */
+describe('share — GET /public/:token/data (T-G1 bugfix do share público)', () => {
+  let token = '';
+
+  beforeAll(async () => {
+    // Cria share dedicado; não conflita com os outros describes.
+    const { body } = await createShare(creatorToken, {
+      targetType: 'DASHBOARD',
+      targetId: publishedDashboardId,
+      durationSeconds: 3600,
+    });
+    token = body.token as string;
+  });
+
+  it('funciona SEM auth → 200 e devolve payload com mode=published + blocks', async () => {
+    const res = await app.inject({ method: 'GET', url: `/public/${token}/data` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.dashboardId).toBe(publishedDashboardId);
+    expect(body.mode).toBe('published');
+    expect(typeof body.blocks).toBe('object');
+    expect(body.blocks).not.toBeNull();
+  });
+
+  it('payload NÃO vaza dataBinding cru (connectionId/sql/query) — nota T-B4', async () => {
+    const res = await app.inject({ method: 'GET', url: `/public/${token}/data` });
+    const text = res.payload;
+    // o snapshot deste teste tem publishedDataPayload=null (publish manual
+    // sem snapshot) — neste caso o endpoint devolve blocks={}; o importante
+    // é que NUNCA apareçam campos sensíveis, mesmo se houvesse dados.
+    expect(text).not.toContain('passwordCipher');
+    expect(text).not.toContain('draftDataBinding');
+    expect(text).not.toContain('publishedDataBinding');
+  });
+
+  it('token inexistente → 404', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/public/ghost-${Date.now()}/data`,
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('token revogado → 403', async () => {
+    const { body } = await createShare(creatorToken, {
+      targetType: 'DASHBOARD',
+      targetId: publishedDashboardId,
+      durationSeconds: 3600,
+    });
+    await app.inject({
+      method: 'DELETE',
+      url: `/share/${body.id}`,
+      headers: authHeader(creatorToken),
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/public/${body.token}/data`,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('token que aponta para CHART → 400 (não há dados em formato DashboardDataPayload)', async () => {
+    const { body } = await createShare(creatorToken, {
+      targetType: 'CHART',
+      targetId: publishedChartId,
+      durationSeconds: 3600,
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/public/${body.token}/data`,
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('após expirar → 410', async () => {
+    const { body } = await createShare(creatorToken, {
+      targetType: 'DASHBOARD',
+      targetId: publishedDashboardId,
+      durationSeconds: 1,
+    });
+    const past = new Date(Date.now() - 10_000);
+    await prisma.shareLink.update({
+      where: { id: body.id as string },
+      data: { firstAccessedAt: past, expiresAt: new Date(past.getTime() + 1000) },
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/public/${body.token}/data`,
+    });
+    expect(res.statusCode).toBe(410);
+  });
+});

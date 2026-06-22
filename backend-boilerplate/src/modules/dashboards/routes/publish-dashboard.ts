@@ -21,7 +21,7 @@ export async function publishDashboardRoute(app: FastifyInstance) {
     async (request, reply) => {
       const ctx = await loadActorContext(request);
       const existing = await requireDashboardForModify(request.params.id, ctx);
-      const dashboard = await publishDashboard(existing);
+      const dashboard = await publishDashboard(existing, ctx);
       return reply.send(serializeDashboard(dashboard));
     },
   );

@@ -256,6 +256,41 @@ async function main() {
     const r = await api('GET', `/public/${token2}`, { auth: false });
     assert(r.status === 200 && r.json?.targetType === 'DASHBOARD' && r.json?.dashboard?.id === dashId, 'GET /public/:token retorna dashboard published', r.json);
     assert(r.json?.expiresAt != null, 'TTL iniciou na 1ª abertura (expiresAt setado)');
+    // T-G1 bugfix do share público: payload embutido no GET /public/:token.
+    assert(r.json?.dashboard?.publishedDataPayload != null, 'GET /public/:token inclui publishedDataPayload (T-G1)');
+  }
+  {
+    // Endpoint DEDICADO de dados do share público (T-G1). Sem auth; retorna
+    // o snapshot materializado no publish, no shape do DashboardDataPayload
+    // (modo 'published'), com blocos já no shape — sem dataBinding cru.
+    const r = await api('GET', `/public/${token2}/data`, { auth: false });
+    assert(r.status === 200, 'GET /public/:token/data responde 200 (T-G1)', r.json);
+    assert(r.json?.mode === 'published' && typeof r.json?.blocks === 'object', 'payload tem mode=published e blocks', r.json);
+    const sample = Object.values(r.json?.blocks ?? {})[0];
+    assert(sample && sample.state === 'success' && sample.data != null, 'pelo menos 1 bloco hidrata com state=success', sample);
+    // checagem de segurança (review T-B4): NUNCA vaza dataBinding cru.
+    const flat = JSON.stringify(r.json);
+    assert(!flat.includes('connectionId') && !flat.includes('publishedDataBinding') && !flat.includes('"query"'), 'NÃO vaza connectionId/dataBinding/query', flat.slice(0, 200));
+  }
+  {
+    // Bloqueios: token inexistente → 404 em AMBAS as rotas públicas.
+    const r1 = await api('GET', `/public/zzz_404_${Date.now()}`, { auth: false });
+    assert(r1.status === 404, 'GET /public/<inexistente> → 404');
+    const r2 = await api('GET', `/public/zzz_404_${Date.now()}/data`, { auth: false });
+    assert(r2.status === 404, 'GET /public/<inexistente>/data → 404 (T-G1)');
+  }
+  {
+    // Bloqueio: token revogado → 403 em AMBAS as rotas públicas.
+    const created = await api('POST', '/share', { body: { targetType: 'DASHBOARD', targetId: dashId, durationSeconds: 3600 } });
+    const revTok = created.json?.token;
+    const revId = created.json?.id;
+    if (revTok && revId) {
+      await api('DELETE', `/share/${revId}`);
+      const r1 = await api('GET', `/public/${revTok}`, { auth: false });
+      assert(r1.status === 403, 'GET /public/<revoked> → 403');
+      const r2 = await api('GET', `/public/${revTok}/data`, { auth: false });
+      assert(r2.status === 403, 'GET /public/<revoked>/data → 403 (T-G1)');
+    }
   }
 
   // 10) EXPORT PDF (sync, %PDF) ---------------------------------------------

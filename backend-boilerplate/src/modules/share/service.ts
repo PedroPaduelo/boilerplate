@@ -99,6 +99,13 @@ export interface PublishedArtifact {
     id: string;
     title: string;
     publishedLayout: unknown;
+    /**
+     * Snapshot materializado de dados (T-G1 bugfix do share público). Mesmo
+     * shape que `POST /dashboards/:id/data` (modo `published`); null se o
+     * dashboard ainda não foi publicado com este mecanismo (legado) ou não
+     * tem blocos de dados.
+     */
+    publishedDataPayload: unknown;
     publishedAt: Date;
   };
   chart?: {
@@ -128,7 +135,13 @@ async function loadPublishedArtifact(
   if (targetType === 'DASHBOARD') {
     const dashboard = await prisma.dashboard.findUnique({
       where: { id: targetId },
-      select: { id: true, title: true, publishedLayout: true, publishedAt: true },
+      select: {
+        id: true,
+        title: true,
+        publishedLayout: true,
+        publishedDataPayload: true,
+        publishedAt: true,
+      },
     });
     if (!dashboard || dashboard.publishedLayout == null || dashboard.publishedAt == null) {
       return null;
@@ -140,6 +153,7 @@ async function loadPublishedArtifact(
         id: dashboard.id,
         title: dashboard.title,
         publishedLayout: dashboard.publishedLayout,
+        publishedDataPayload: dashboard.publishedDataPayload ?? null,
         publishedAt: dashboard.publishedAt,
       },
     };
@@ -218,4 +232,92 @@ export async function openShareLink(token: string): Promise<OpenShareResult> {
   const artifact = await loadPublishedArtifact(link.targetType, link.targetId, expiresAt);
   if (!artifact) return { ok: false, reason: 'not_published' };
   return { ok: true, artifact };
+}
+
+/**
+ * Resolve o token público e devolve o SNAPSHOT de dados materializado do
+ * dashboard (T-G1 bugfix do share público). Mesma validação de TTL/revogação
+ * do `openShareLink`; só funciona para `targetType === 'DASHBOARD'`.
+ *
+ * IMPORTANTE: NUNCA devolve `dataBinding` (SQL/connectionId) — só o resultado
+ * já no shape do bloco (T-C satisfaz a nota de segurança de T-B4). Se o
+ * snapshot ainda não foi materializado (legado / publish pré-bugfix), o
+ * `blocks` vem `{}` — a página trata cada bloco com `state: 'skeleton'`.
+ */
+export interface PublicDashboardDataResult {
+  dashboardId: string;
+  mode: 'published';
+  generatedAt: string;
+  blocks: Record<string, unknown>;
+}
+
+export type OpenPublicDataResult =
+  | { ok: true; data: PublicDashboardDataResult }
+  | { ok: false; reason: 'not_found' | 'revoked' | 'expired' | 'not_published' | 'wrong_type' };
+
+export async function openShareLinkData(token: string): Promise<OpenPublicDataResult> {
+  const link = await prisma.shareLink.findUnique({ where: { token } });
+  if (!link) return { ok: false, reason: 'not_found' };
+  if (link.revokedAt) return { ok: false, reason: 'revoked' };
+
+  if (link.targetType !== 'DASHBOARD') {
+    return { ok: false, reason: 'wrong_type' };
+  }
+
+  const now = new Date();
+  let expiresAt = link.expiresAt;
+
+  if (!link.firstAccessedAt) {
+    const computedExpiry = new Date(now.getTime() + link.durationSeconds * 1000);
+    const claim = await prisma.shareLink.updateMany({
+      where: { id: link.id, firstAccessedAt: null },
+      data: { firstAccessedAt: now, expiresAt: computedExpiry },
+    });
+    if (claim.count === 1) {
+      expiresAt = computedExpiry;
+    } else {
+      const fresh = await prisma.shareLink.findUnique({
+        where: { id: link.id },
+        select: { expiresAt: true },
+      });
+      expiresAt = fresh?.expiresAt ?? computedExpiry;
+    }
+  }
+
+  if (expiresAt && now.getTime() > expiresAt.getTime()) {
+    return { ok: false, reason: 'expired' };
+  }
+
+  const dashboard = await prisma.dashboard.findUnique({
+    where: { id: link.targetId },
+    select: {
+      id: true,
+      publishedLayout: true,
+      publishedDataPayload: true,
+      publishedAt: true,
+    },
+  });
+  if (!dashboard || dashboard.publishedLayout == null || dashboard.publishedAt == null) {
+    return { ok: false, reason: 'not_published' };
+  }
+
+  // O snapshot pode ser null (legado pré-bugfix OU dashboard sem blocos de dados).
+  // Quando presente, é o `{ dashboardId, mode, generatedAt, blocks }` que o
+  // publishDashboard materializou. Quando ausente, devolvemos `blocks: {}` e a
+  // UI mostra skeleton para blocos de dados — narrativos renderizam normal
+  // porque o layout é independente.
+  const snapshot = (dashboard.publishedDataPayload ?? null) as
+    | { dashboardId?: string; mode?: string; generatedAt?: string; blocks?: Record<string, unknown> }
+    | null;
+  const blocks = (snapshot && typeof snapshot === 'object' && snapshot.blocks) || {};
+  const generatedAt = (snapshot && typeof snapshot === 'object' && snapshot.generatedAt) || '';
+  return {
+    ok: true,
+    data: {
+      dashboardId: dashboard.id,
+      mode: 'published',
+      generatedAt,
+      blocks,
+    },
+  };
 }
