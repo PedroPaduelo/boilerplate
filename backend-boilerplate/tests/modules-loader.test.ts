@@ -12,10 +12,10 @@ import {
 } from 'fastify-type-provider-zod';
 import { registerModules } from '@/http/modules-loader';
 
-// NOTA: `connections` (T-A) já foi IMPLEMENTADO — não tem mais `/_status`.
-// Os demais módulos seguem como scaffold até suas trilhas os implementarem.
+// NOTA: `connections` (T-A) e `departments` (T-B1) já foram IMPLEMENTADOS —
+// não têm mais `/_status`. Os demais módulos seguem como scaffold até suas
+// trilhas os implementarem.
 const EXPECTED_MODULES = [
-  'departments',
   'charts',
   'dashboards',
   'data',
