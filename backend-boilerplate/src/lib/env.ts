@@ -3,7 +3,40 @@ dotenv.config({ override: true });
 
 import z from 'zod';
 
-const envSchema = z.object({
+/**
+ * Aceita a chave de cifragem em base64 ou hex e exige que decodifique para
+ * exatamente 32 bytes (AES-256). Exportada para reuso por `lib/crypto`.
+ */
+export function decodeEncryptionKey(raw: string): Buffer {
+  const trimmed = raw.trim();
+
+  // hex: 64 chars [0-9a-f]
+  if (/^[0-9a-fA-F]{64}$/.test(trimmed)) {
+    return Buffer.from(trimmed, 'hex');
+  }
+
+  // base64 / base64url
+  const normalized = trimmed.replace(/-/g, '+').replace(/_/g, '/');
+  const buf = Buffer.from(normalized, 'base64');
+  if (buf.length === 32) {
+    return buf;
+  }
+
+  throw new Error(
+    'CONNECTION_ENC_KEY must decode to 32 bytes (use 32-byte base64 or 64-char hex)'
+  );
+}
+
+function isValidEncryptionKey(raw: string): boolean {
+  try {
+    decodeEncryptionKey(raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const envSchema = z.object({
   // Application
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().default(4000),
@@ -32,6 +65,27 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().optional(),
   SWAGGER_USER: z.string().optional(),
   SWAGGER_PASSWORD: z.string().optional(),
+
+  // Connections — chave de cifragem das credenciais (AES-256-GCM).
+  // 32 bytes em base64 (ex.: `openssl rand -base64 32`) ou 64 chars hex.
+  CONNECTION_ENC_KEY: z
+    .string({ required_error: 'CONNECTION_ENC_KEY is required' })
+    .refine(isValidEncryptionKey, {
+      message:
+        'CONNECTION_ENC_KEY must decode to 32 bytes (use 32-byte base64 or 64-char hex)',
+    }),
+
+  // pg-runner — guardrails de execução de query contra bancos externos.
+  // Timeout (ms) aplicado no Postgres remoto via `SET LOCAL statement_timeout`.
+  PG_RUNNER_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  // Limite máximo de linhas retornadas (row cap) — o runner para de buscar após isto.
+  PG_RUNNER_MAX_ROWS: z.coerce.number().int().positive().default(50000),
+  // Tamanho máximo do pool por conexão externa.
+  PG_RUNNER_POOL_MAX: z.coerce.number().int().positive().default(3),
+  // Tempo (ms) que uma conexão ociosa do pool externo é mantida antes de fechar.
+  PG_RUNNER_IDLE_TIMEOUT_MS: z.coerce.number().int().nonnegative().default(30000),
+  // Timeout (ms) para estabelecer a conexão TCP com o Postgres externo.
+  PG_RUNNER_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
 });
 
 export type Env = z.infer<typeof envSchema>;

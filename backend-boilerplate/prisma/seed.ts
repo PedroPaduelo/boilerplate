@@ -12,33 +12,16 @@
 //   - findFirst + create (skip) nas demais (Connection, Chart, Dashboard
 //     exemplo) — sem @unique natural além do id.
 //
-// A cifra de `passwordCipher` é AES-256-GCM com a chave de dev abaixo. Na F2
-// a cifra real virá em src/lib/crypto.ts usando `CONNECTION_ENC_KEY` do .env
-// — o seed será atualizado para usá-la. Por ora basta estar cifrado de verdade
-// (não em plaintext) para validar o shape do campo.
+// A cifra de `passwordCipher` é AES-256-GCM via `src/lib/crypto` (F0.2), usando
+// a chave `CONNECTION_ENC_KEY` do .env. A lib é a fonte única do formato de
+// ciphertext do projeto — o seed apenas a consome.
 // =============================================================================
 
 import { PrismaClient, type Prisma } from '@prisma/client';
-import { createCipheriv, randomBytes, scryptSync } from 'node:crypto';
 import { hash as bcryptHash } from 'bcryptjs';
+import { encrypt } from '../src/lib/crypto';
 
 const prisma = new PrismaClient();
-
-// Chave de dev — 32 bytes derivados de um passphrase fixo. Na F2 a cifra real
-// usará CONNECTION_ENC_KEY do .env; este seed não é seguro, é apenas um
-// placeholder determinístico.
-function devKey(): Buffer {
-  return scryptSync('dev-connection-enc-key-do-not-use-in-prod', 'salt', 32);
-}
-
-function encryptPassword(plain: string): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', devKey(), iv);
-  const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  // formato: base64(iv | tag | ciphertext)
-  return Buffer.concat([iv, tag, enc]).toString('base64');
-}
 
 async function upsertUser(opts: {
   email: string;
@@ -183,7 +166,7 @@ async function main() {
           port: 5432,
           database: 'dw_prefeitura',
           username: 'reader',
-          passwordCipher: encryptPassword('placeholder-not-real'),
+          passwordCipher: encrypt('placeholder-not-real'),
           sslMode: 'require',
           options: { schema: 'public' },
           ownerId: admin.id,
