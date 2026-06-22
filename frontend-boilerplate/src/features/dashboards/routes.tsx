@@ -7,12 +7,19 @@ import { RequireRole } from '@/features/auth/components/require-role';
 /**
  * Rotas da feature `dashboards`.
  * - `/dashboards` — LISTAGEM (T-F2): exige `artifacts:view`.
- * - `/dashboards/:id` e `/dashboards/:id/edit` — render/editor (T-G), ainda
- *   placeholders.
+ * - `/dashboards/:id` — VIEW (T-G1): render por config + FilterBar + grid,
+ *   hidratado via batch + socket. Exige `artifacts:view`.
+ * - `/dashboards/:id/edit` — editor (T-G2), ainda placeholder.
  */
 const DashboardsPage = lazy(() =>
   import('./components/dashboards-page').then((m) => ({
     default: m.DashboardsPage,
+  })),
+);
+
+const DashboardView = lazy(() =>
+  import('./components/dashboard-view').then((m) => ({
+    default: m.DashboardView,
   })),
 );
 
@@ -31,16 +38,17 @@ export const featureRoutes: FeatureRoutes = {
     {
       path: 'dashboards/:id',
       element: (
-        <PlaceholderPage
-          title="Dashboard"
-          description="Render por config + filtros + grid (T-G)."
-        />
+        <RequireRole permission="artifacts:view">
+          <Suspense fallback={<PageLoader />}>
+            <DashboardView />
+          </Suspense>
+        </RequireRole>
       ),
     },
     {
       path: 'dashboards/:id/edit',
       element: (
-        <PlaceholderPage title="Editar dashboard" description="Editor enxuto (T-G)." />
+        <PlaceholderPage title="Editar dashboard" description="Editor enxuto (T-G2)." />
       ),
     },
   ],

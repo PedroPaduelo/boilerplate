@@ -1,20 +1,26 @@
+import { lazy, Suspense } from 'react';
 import type { FeatureRoutes } from '@/shared/lib/feature-routes';
-import { PlaceholderPage } from '@/shared/components/placeholder-page';
+import { PageLoader } from '@/shared/components/page-loader';
 
 /**
- * Rota-esqueleto da feature `share` (TRILHA T-B/T-E). A rota PÚBLICA
- * `/public/:token` renderiza o dashboard read-only SEM auth (fica no nível
- * raiz, fora do DashboardLayout). Trata expirado/revogado.
+ * Rotas da feature `share`. A rota PÚBLICA `/public/:token` (T-G1) renderiza o
+ * dashboard/chart published read-only SEM auth (nível raiz, fora do
+ * DashboardLayout). Trata revogado/expirado/inexistente com telas claras.
  */
+const PublicDashboardView = lazy(() =>
+  import('./components/public-dashboard-view').then((m) => ({
+    default: m.PublicDashboardView,
+  })),
+);
+
 export const featureRoutes: FeatureRoutes = {
   public: [
     {
       path: '/public/:token',
       element: (
-        <PlaceholderPage
-          title="Compartilhamento público"
-          description="Dashboard read-only via token (T-B/T-E)."
-        />
+        <Suspense fallback={<PageLoader />}>
+          <PublicDashboardView />
+        </Suspense>
       ),
     },
   ],

@@ -1,3 +1,4 @@
+import type { DashboardDataPayload } from '@dashboards/contracts';
 import { apiClient } from '@/shared/lib/api-client';
 import type { ApiMode } from '@/shared/lib/query-keys';
 import type {
@@ -29,6 +30,22 @@ export const dashboardsApi = {
     const { data } = await apiClient.get<DashboardDetail>(`/dashboards/${id}`, {
       params: { mode },
     });
+    return data;
+  },
+
+  // POST /dashboards/:id/data — hidratação batch dos blocos (T-C).
+  // Body: { mode, filters }. Resposta = DashboardDataPayload (mapa blockId →
+  // resultado já no shape do bloco). `draft` retorna inline (sem cache);
+  // `published` pode devolver blocos `queued` e completar via Socket.IO.
+  fetchData: async (
+    id: string,
+    mode: ApiMode,
+    filters: Record<string, unknown>,
+  ): Promise<DashboardDataPayload> => {
+    const { data } = await apiClient.post<DashboardDataPayload>(
+      `/dashboards/${id}/data`,
+      { mode, filters },
+    );
     return data;
   },
 
