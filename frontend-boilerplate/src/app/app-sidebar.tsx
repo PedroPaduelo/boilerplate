@@ -1,6 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Users as UsersIcon,
+  LayoutDashboard,
+  BarChart3,
+  Database,
+  MessageSquare,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -15,7 +19,15 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { useAuthStore } from '@/features/auth/store';
 
-const NAV = [{ id: '/users', label: 'Usuários', icon: UsersIcon }];
+// Navegação base (shell da Fase 0). As trilhas FE ajustam rótulos/ícones/RBAC
+// conforme implementam cada tela; a rota em si vem de features/<x>/routes.tsx.
+const NAV = [
+  { id: '/dashboards', label: 'Dashboards', icon: LayoutDashboard },
+  { id: '/charts', label: 'Gráficos', icon: BarChart3 },
+  { id: '/connections', label: 'Conexões', icon: Database },
+  { id: '/chat', label: 'Chat', icon: MessageSquare },
+  { id: '/users', label: 'Usuários', icon: UsersIcon },
+];
 
 interface AppSidebarProps {
   collapsed: boolean;

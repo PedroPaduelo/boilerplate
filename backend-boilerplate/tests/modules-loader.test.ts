@@ -1,0 +1,48 @@
+/**
+ * Smoke test do AUTO-DISCOVERY de módulos (F0.5).
+ *
+ * Prova que `registerModules` (@fastify/autoload) descobre e registra TODOS os
+ * módulos de domínio em `src/modules/<modulo>/index.ts` SEM que eles estejam
+ * listados em `server.ts`. Esta é a fronteira anti-colisão das trilhas T-A..T-J.
+ */
+import Fastify from 'fastify';
+import {
+  serializerCompiler,
+  validatorCompiler,
+} from 'fastify-type-provider-zod';
+import { registerModules } from '@/http/modules-loader';
+
+const EXPECTED_MODULES = [
+  'connections',
+  'departments',
+  'charts',
+  'dashboards',
+  'data',
+  'share',
+  'export',
+  'catalog',
+  'mcp',
+];
+
+describe('modules auto-discovery (F0.5)', () => {
+  it('registra todos os módulos de domínio via autoload, sem tocar server.ts', async () => {
+    const app = Fastify();
+    app.setValidatorCompiler(validatorCompiler);
+    app.setSerializerCompiler(serializerCompiler);
+
+    await app.register(registerModules);
+    await app.ready();
+
+    for (const moduleName of EXPECTED_MODULES) {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/${moduleName}/_status`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ module: moduleName, status: 'scaffolded' });
+    }
+
+    await app.close();
+  });
+});

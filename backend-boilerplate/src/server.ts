@@ -26,6 +26,7 @@ import { errorHandler } from '@/http/error-handler';
 import { env } from '@/lib/env';
 import { redisInstance } from '@/lib/redis';
 import { setupSocketIO } from './socket';
+import { registerModules } from '@/http/modules-loader';
 import { prisma } from '@/lib/prisma';
 import { startAllWorkers, closeAllWorkers } from './services/jobs/worker/worker-manager';
 import { closeAllQueues } from './services/jobs/queue/queue-manager';
@@ -281,7 +282,7 @@ async function start() {
     console.warn('⚠️ Redis offline - modo degradado (sem cache e filas)');
   }
 
-  // Routes
+  // Routes (boilerplate base — auth/users/health)
   app.register(healthCheck);
   app.register(authenticate);
   app.register(register);
@@ -292,6 +293,10 @@ async function start() {
   app.register(getUser);
   app.register(updateUser);
   app.register(deleteUser);
+
+  // Domain modules (AUTO-DISCOVERY) — cada trilha do fan-out pluga suas rotas em
+  // src/modules/<modulo>/index.ts SEM editar este arquivo. Ver src/modules/README.md.
+  await app.register(registerModules);
 
   // Start
   const address = await app.listen({ port: env.PORT, host: '0.0.0.0' });

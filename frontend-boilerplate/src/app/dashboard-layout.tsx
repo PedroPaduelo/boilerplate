@@ -6,6 +6,10 @@ import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { useAuthStore } from '@/features/auth/store';
 
 const TITLES: Record<string, string> = {
+  '/dashboards': 'Dashboards',
+  '/charts': 'Gráficos',
+  '/connections': 'Conexões',
+  '/chat': 'Chat',
   '/users': 'Usuários',
 };
 
