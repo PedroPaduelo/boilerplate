@@ -7,6 +7,7 @@ import {
   ScatterChartTremor,
   type ScatterChartTremorDatum,
 } from '@/components/ui/scatter-chart-tremor';
+import { formatNumberBR, formatCompactNumberBR } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -34,6 +35,8 @@ export const Component: BlockComponent<ScatterProps, SeriesData> = ({ props, dat
       category="category"
       showLegend={props.showLegend !== false}
       showGridLines={props.showGridLines !== false}
+      valueFormatter={(v) => formatNumberBR(v)}
+      axisValueFormatter={(v) => formatCompactNumberBR(v)}
       height="h-64"
     />
   );

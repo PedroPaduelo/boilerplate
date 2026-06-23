@@ -197,6 +197,10 @@ export function BlockRenderer({
 
   if (shouldFrame) {
     const loading = state === 'skeleton' || state === 'loading';
+    // Takeaway (insight de rodapé): cada bloco decide como derivá-lo a partir
+    // dos seus dados (opt-in). Só calcula no sucesso, com dado presente.
+    const takeaway =
+      state === 'success' && dataVal != null ? def.deriveTakeaway?.(dataVal) : undefined;
     return (
       <div
         data-slot="block"
@@ -210,6 +214,7 @@ export function BlockRenderer({
           query={block.dataBinding?.query}
           durationMs={durationOf(ownResult)}
           loading={loading}
+          takeaway={takeaway}
         >
           {loading ? null : body}
         </ChartWidget>

@@ -3,43 +3,42 @@
  * render-engine, cada um renderizado AO VIVO com dados mockados. Serve para
  * inspecionar o que existe (os mesmos blocos que o MCP oferece à IA) e o
  * potencial visual de cada um. Read-only, client-side.
+ *
+ * Organização: 7 categorias semânticas em ABAS (Tabs) + busca textual. A
+ * taxonomia vive em `../lib/categories` (camada de UI, isolada do
+ * `BlockManifest`/`kind` técnico do render-engine).
  */
 import { useMemo, useState } from 'react';
 import { Blocks, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
-import {
-  getCatalogEntries,
-  KIND_LABEL,
-  type CatalogEntry,
-  type CatalogKind,
-} from '../lib/catalog-entries';
+import { getCatalogEntries, type CatalogEntry } from '../lib/catalog-entries';
+import { CATEGORIES, CATEGORY_LABEL, type Category } from '../lib/categories';
 import { BlockPreviewCard } from './block-preview-card';
 import { BlockDetailDialog } from './block-detail-dialog';
 
-type KindFilter = CatalogKind | 'all';
+type CategoryFilter = Category | 'all';
 
 export function CatalogPage() {
   const entries = useMemo(() => getCatalogEntries(), []);
 
   const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<KindFilter>('all');
+  const [category, setCategory] = useState<CategoryFilter>('all');
   const [detail, setDetail] = useState<CatalogEntry | null>(null);
 
-  // Filtros por kind (apenas os que existem no catálogo), com contagem.
-  const kindFilters = useMemo(() => {
-    const counts = new Map<CatalogKind, number>();
-    for (const e of entries) counts.set(e.kind, (counts.get(e.kind) ?? 0) + 1);
-    const ordered: CatalogKind[] = ['chart', 'title', 'text', 'layout'];
-    const present = ordered.filter((k) => counts.has(k));
+  // Abas por categoria (apenas as que têm ao menos 1 bloco), com contagem.
+  const categoryFilters = useMemo(() => {
+    const counts = new Map<Category, number>();
+    for (const e of entries) counts.set(e.category, (counts.get(e.category) ?? 0) + 1);
+    const present = CATEGORIES.filter((c) => (counts.get(c) ?? 0) > 0);
     return [
-      { id: 'all' as KindFilter, label: 'Todos', count: entries.length },
-      ...present.map((k) => ({
-        id: k as KindFilter,
-        label: `${KIND_LABEL[k]}s`,
-        count: counts.get(k) ?? 0,
+      { id: 'all' as CategoryFilter, label: 'Todas', count: entries.length },
+      ...present.map((c) => ({
+        id: c as CategoryFilter,
+        label: CATEGORY_LABEL[c],
+        count: counts.get(c) ?? 0,
       })),
     ];
   }, [entries]);
@@ -47,7 +46,7 @@ export function CatalogPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return entries.filter((e) => {
-      if (kind !== 'all' && e.kind !== kind) return false;
+      if (category !== 'all' && e.category !== category) return false;
       if (!q) return true;
       const m = e.definition.manifest;
       return (
@@ -56,7 +55,7 @@ export function CatalogPage() {
         (m.description ?? '').toLowerCase().includes(q)
       );
     });
-  }, [entries, kind, search]);
+  }, [entries, category, search]);
 
   return (
     <div className="space-y-6">
@@ -83,7 +82,7 @@ export function CatalogPage() {
         </div>
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-3">
         <div className="relative w-full sm:max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -93,26 +92,27 @@ export function CatalogPage() {
             className="pl-8"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {kindFilters.map((f) => (
-            <Button
-              key={f.id}
-              variant={kind === f.id ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setKind(f.id)}
-            >
-              {f.label}
-              <span
-                className={cn(
-                  'tabular-nums',
-                  kind === f.id ? 'opacity-70' : 'text-muted-foreground',
-                )}
-              >
-                {f.count}
-              </span>
-            </Button>
-          ))}
-        </div>
+        <Tabs
+          value={category}
+          onValueChange={(v) => setCategory(v as CategoryFilter)}
+          className="w-full"
+        >
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
+            {categoryFilters.map((f) => (
+              <TabsTrigger key={f.id} value={f.id} className="flex-none">
+                {f.label}
+                <span
+                  className={cn(
+                    'tabular-nums',
+                    category === f.id ? 'opacity-70' : 'text-muted-foreground',
+                  )}
+                >
+                  {f.count}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {filtered.length > 0 ? (

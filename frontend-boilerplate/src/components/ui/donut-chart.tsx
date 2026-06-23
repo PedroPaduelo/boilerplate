@@ -39,6 +39,11 @@ export interface DonutChartProps
   onSegmentHover?: (index: number | null) => void
 }
 
+/** Px a mais na espessura do arco em destaque (hover). */
+const ACTIVE_GROWTH = 5
+/** Folga de respiro (px) entre o anel e a borda do viewBox. */
+const ARC_MARGIN = 2
+
 function DonutChart({
   segments,
   size = 168,
@@ -50,7 +55,11 @@ function DonutChart({
   ...props
 }: DonutChartProps) {
   const total = segments.reduce((acc, s) => acc + s.value, 0) || 1
-  const radius = (size - thickness) / 2
+  // O arco ativo (hover) engrossa em ACTIVE_GROWTH px. Reservamos essa folga
+  // (mais ARC_MARGIN de respiro) no raio para que o realce NÃO estoure o
+  // viewBox e seja clipado pelo overflow do <svg>. O SVG continua size×size
+  // (footprint/API inalterados) — só o anel desenhado fica um pouco menor.
+  const radius = (size - (thickness + ACTIVE_GROWTH)) / 2 - ARC_MARGIN
   const circumference = 2 * Math.PI * radius
   const arcs = segments.map((seg, i) => {
     const dash = (seg.value / total) * circumference
@@ -94,7 +103,7 @@ function DonutChart({
                 "cursor-pointer transition-[stroke-width,opacity] duration-200",
                 dim && "opacity-40",
               )}
-              strokeWidth={isActive ? thickness + 5 : thickness}
+              strokeWidth={isActive ? thickness + ACTIVE_GROWTH : thickness}
               strokeDasharray={`${dash.toFixed(2)} ${(circumference - dash).toFixed(2)}`}
               strokeDashoffset={(-offset).toFixed(2)}
               strokeLinecap="butt"

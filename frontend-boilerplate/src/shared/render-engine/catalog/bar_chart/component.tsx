@@ -1,6 +1,7 @@
 /**
  * Bloco `bar_chart` (shape 'series') — usa o Vitrine `BarChart`.
- * Mapeia cada ponto {x,y} da série para {label,value} do gráfico.
+ * Mapeia cada ponto {x,y} da série para {label,value} do gráfico e expõe um
+ * `deriveTakeaway` (insight de rodapé exibido pelo ChartWidget).
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart } from '@/components/ui/bar-chart';
@@ -38,10 +39,24 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
   );
 };
 
+/**
+ * Insight de rodapé (takeaway): aponta a categoria de MAIOR valor da série
+ * (ex.: "Maior valor: Mai (R$ 110)"). Valor formatado em PT-BR via format.ts —
+ * mesmo formatter (`formatCompactBRL`) usado nas barras, p/ consistência.
+ */
+function deriveTakeaway(data: SeriesData): string | undefined {
+  const points = (data ?? []) as SeriesPoint[];
+  if (points.length === 0) return undefined;
+  const top = points.reduce((best, p) => ((p.y ?? 0) > (best.y ?? 0) ? p : best));
+  if ((top.y ?? 0) <= 0) return undefined;
+  return `Maior valor: ${String(top.x)} (${formatCompactBRL(top.y ?? 0)})`;
+}
+
 export const definition = defineBlock<BarProps, SeriesData>({
   type: manifest.type,
   manifest,
   Component,
   fixture,
+  deriveTakeaway,
 });
 export default definition;

@@ -2,7 +2,7 @@
  * Catálogo (galeria) — deriva as ENTRADAS de preview a partir do registry VIVO
  * do render-engine (`listBlocks()`). Cada entrada já vem com o `block` + o
  * `result` (dados MOCKADOS da fixture do bloco) prontos para o `BlockRenderer`,
- * além dos metadados de exibição (kind, shape, nº de props configuráveis).
+ * além dos metadados de exibição (kind, category, shape, nº de props configuráveis).
  *
  * É 100% client-side e read-only: a página de catálogo serve para VISUALIZAR o
  * potencial de cada componente disponível (os mesmos que o MCP oferece à IA),
@@ -10,6 +10,7 @@
  */
 import type { Block, BlockDataResult, DataShape } from '@dashboards/contracts';
 import { listBlocks, type BlockDefinition } from '@/shared/render-engine';
+import { categoryOf, CATEGORY_ORDER, type Category } from './categories';
 
 /** Tipos internos/placeholder que NÃO aparecem na galeria. */
 const HIDDEN_TYPES = new Set<string>(['__example']);
@@ -52,19 +53,13 @@ export const SHAPE_LABEL: Record<DataShape, string> = {
   table: 'Tabela',
 };
 
-/** Ordem de exibição por kind (gráficos primeiro, narrativos depois). */
-const KIND_ORDER: Record<CatalogKind, number> = {
-  chart: 0,
-  title: 1,
-  text: 2,
-  layout: 3,
-};
-
 export interface CatalogEntry {
   /** catalogType (ex.: `bar_chart`). */
   type: string;
   definition: BlockDefinition;
   kind: CatalogKind;
+  /** Categoria semântica de UI (abas da galeria). */
+  category: Category;
   /** Shape do dado (apenas blocos com `dataContract`). */
   shape?: DataShape;
   /** Bloco pronto p/ o `BlockRenderer` (props mescladas com preview). */
@@ -114,6 +109,7 @@ function toEntry(definition: BlockDefinition): CatalogEntry {
     type: manifest.type,
     definition,
     kind: manifest.kind as CatalogKind,
+    category: categoryOf(manifest.type),
     shape,
     block,
     result,
@@ -122,14 +118,14 @@ function toEntry(definition: BlockDefinition): CatalogEntry {
   };
 }
 
-/** Lista as entradas do catálogo, ordenadas (kind → nome). */
+/** Lista as entradas do catálogo, ordenadas (categoria → nome). */
 export function getCatalogEntries(): CatalogEntry[] {
   return listBlocks()
     .filter((def) => !HIDDEN_TYPES.has(def.type))
     .map(toEntry)
     .sort((a, b) => {
-      const byKind = KIND_ORDER[a.kind] - KIND_ORDER[b.kind];
-      if (byKind !== 0) return byKind;
+      const byCat = CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];
+      if (byCat !== 0) return byCat;
       return a.definition.manifest.name.localeCompare(b.definition.manifest.name, 'pt-BR');
     });
 }

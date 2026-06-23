@@ -22,6 +22,10 @@ export type ProgressCircleTremorProps = Omit<
     radius?: number
     /** Espessura do traço em px. Default: 6. */
     strokeWidth?: number
+    /** Rótulo acessível do progressbar. Default: "Progress circle". */
+    ariaLabel?: string
+    /** Texto acessível do valor (aria-valuetext), ex.: "73,4% (734 de 1.000)". */
+    ariaValuetext?: string
     /** Conteúdo exibido no centro (ex.: "75%"). */
     children?: React.ReactNode
   }
@@ -39,6 +43,8 @@ const ProgressCircleTremor = React.forwardRef<
       showAnimation = true,
       variant,
       className,
+      ariaLabel,
+      ariaValuetext,
       children,
       ...props
     }: ProgressCircleTremorProps,
@@ -54,10 +60,11 @@ const ProgressCircleTremor = React.forwardRef<
       <div
         className={cn("relative")}
         role="progressbar"
-        aria-label="Progress circle"
+        aria-label={ariaLabel ?? "Progress circle"}
         aria-valuenow={value}
         aria-valuemin={0}
         aria-valuemax={max}
+        aria-valuetext={ariaValuetext}
         data-max={max}
         data-value={safeValue ?? null}
         data-slot="progress-circle-tremor"

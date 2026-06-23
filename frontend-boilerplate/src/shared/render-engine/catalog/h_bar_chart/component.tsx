@@ -4,6 +4,7 @@
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { HBarChart } from '@/components/ui/h-bar-chart';
+import { formatCompactNumberBR } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -14,7 +15,7 @@ type SeriesPoint = { x: string | number; y: number | null; series?: string };
 export const Component: BlockComponent<Record<string, never>, SeriesData> = ({ data }) => {
   const points = (data ?? []) as SeriesPoint[];
   const series = points.map((p) => ({ label: String(p.x), value: p.y ?? 0 }));
-  return <HBarChart series={series} />;
+  return <HBarChart series={series} valueFormatter={(v) => formatCompactNumberBR(v)} />;
 };
 
 export const definition = defineBlock<Record<string, never>, SeriesData>({

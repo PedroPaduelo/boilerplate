@@ -61,6 +61,13 @@ export interface BlockDefinition<P = Record<string, unknown>, D = BlockData> {
   Component: BlockComponent<P, D>;
   /** Dado de exemplo que casa com o `dataContract` (preview/dev/testes). */
   fixture?: D | null;
+  /**
+   * (Opcional) Deriva uma frase curta de INSIGHT de negócio ("takeaway") a
+   * partir dos dados já resolvidos no shape do bloco — exibida no rodapé do
+   * `ChartWidget`. Retorne `undefined` para não exibir nada. Mantém o cálculo
+   * do insight no PRÓPRIO bloco (padrão escalável p/ todo o catálogo, opt-in).
+   */
+  deriveTakeaway?: (data: D) => string | undefined;
 }
 
 /**
