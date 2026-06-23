@@ -18,10 +18,10 @@ export const manifest = {
     type: 'object',
     additionalProperties: false,
     properties: {
-      // Suaviza a curva entre pontos (cosmético — sem efeito na versão SVG atual).
+      // Suaviza a curva entre pontos (Catmull-Rom → cubic Bézier via <path>).
       smooth: {
         type: 'boolean',
-        description: 'Suaviza a curva entre pontos (placeholder cosmético; a versão SVG atual usa polylines retas).',
+        description: 'Se true, desenha as linhas como curvas suaves (Catmull-Rom). Se false, segmentos retos (polyline).',
       },
       // Preenche área abaixo de cada linha (além do traço).
       area: {

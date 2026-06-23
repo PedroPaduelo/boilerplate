@@ -53,6 +53,12 @@ export interface LineChartProps {
   heightPx?: number
   /** Se true, preenche área abaixo de cada linha. Default: true. */
   showArea?: boolean
+  /**
+   * Se true, desenha as linhas como CURVAS suaves (Catmull-Rom → cubic
+   * Bézier via `<path>`), em vez de segmentos retos (`<polyline>`). A área
+   * também acompanha a curva. Default: false (retas).
+   */
+  smooth?: boolean
   /** Se true, desenha linhas de grid tracejadas. Default: true. */
   showGrid?: boolean
   /** Se true, renderiza bloco de legenda abaixo do SVG. Default: true. */
@@ -74,11 +80,40 @@ function niceTicks(min: number, max: number, count = 4): number[] {
   )
 }
 
+/**
+ * Gera o atributo `d` de um `<path>` que passa por todos os `points`
+ * usando spline Catmull-Rom convertida para curvas cubic Bézier — produz
+ * uma linha suave (smooth) sem overshoot agressivo. Com menos de 3 pontos
+ * cai para segmentos retos (M/L). Cada ponto é `[x, y]` em px.
+ */
+function buildSmoothPath(points: ReadonlyArray<readonly [number, number]>): string {
+  if (points.length === 0) return ""
+  if (points.length < 3) {
+    return points
+      .map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`)
+      .join(" ")
+  }
+  const d: string[] = [`M${points[0][0]},${points[0][1]}`]
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] ?? p2
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6
+    d.push(`C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`)
+  }
+  return d.join(" ")
+}
+
 function LineChart({
   series,
   xLabels,
   heightPx = 280,
   showArea = true,
+  smooth = false,
   showGrid = true,
   showLegend = true,
   yValueFormatter,
@@ -213,28 +248,58 @@ function LineChart({
           {series.map((s, si) => {
             const strokeCls = strokeClassOf(s)
             const fillCls = fillClassOf(s)
-            const linePts = s.data.map((v, i) => `${xAt(i)},${yAt(v)}`).join(" ")
-            const areaPts = `${xAt(0)},${PAD.top + innerH} ${linePts} ${xAt(
+            const pts = s.data.map(
+              (v, i) => [xAt(i), yAt(v)] as [number, number],
+            )
+            const baseY = PAD.top + innerH
+            const linePts = pts.map((p) => `${p[0]},${p[1]}`).join(" ")
+            const areaPts = `${xAt(0)},${baseY} ${linePts} ${xAt(
               s.data.length - 1,
-            )},${PAD.top + innerH}`
+            )},${baseY}`
+            // smooth: `<path>` com curva Catmull-Rom; reto: `<polyline>`/`<polygon>`.
+            const linePath = smooth ? buildSmoothPath(pts) : ""
+            const areaPath =
+              smooth && pts.length > 0
+                ? `${linePath} L${pts[pts.length - 1][0]},${baseY} L${pts[0][0]},${baseY} Z`
+                : ""
             return (
               <g key={`series-${si}`}>
-                {showArea && (
-                  <polygon
-                    points={areaPts}
-                    className={cn(fillCls, "opacity-10")}
-                    style={areaStyleOf(s)}
+                {showArea &&
+                  pts.length > 0 &&
+                  (smooth ? (
+                    <path
+                      d={areaPath}
+                      className={cn(fillCls, "opacity-10")}
+                      style={areaStyleOf(s)}
+                    />
+                  ) : (
+                    <polygon
+                      points={areaPts}
+                      className={cn(fillCls, "opacity-10")}
+                      style={areaStyleOf(s)}
+                    />
+                  ))}
+                {smooth ? (
+                  <path
+                    d={linePath}
+                    fill="none"
+                    className={strokeCls}
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={s.style}
+                  />
+                ) : (
+                  <polyline
+                    points={linePts}
+                    fill="none"
+                    className={strokeCls}
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={s.style}
                   />
                 )}
-                <polyline
-                  points={linePts}
-                  fill="none"
-                  className={strokeCls}
-                  strokeWidth={2.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={s.style}
-                />
                 {s.data.map((v, i) => (
                   <circle
                     key={i}
@@ -305,7 +370,7 @@ function LineChart({
 
       {/* Legenda */}
       {showLegend && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-1">
           {series.map((s, i) => (
             <div key={`legend-${i}`} className="flex items-center gap-1.5">
               <span

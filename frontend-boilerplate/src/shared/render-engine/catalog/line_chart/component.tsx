@@ -11,11 +11,16 @@
  *   - cor CSS crua (#40E0D0, rgb(), linear-gradient(), var(--chart-1))
  *     → `style.stroke` inline no polyline (atributo de apresentação SVG
  *     vence a classe CSS).
- * Modo de aplicação:
- *   - `palette: 'multi'` (default) → cicla STROKE_PALETTE por série, ignorando
- *     `accent` (vira fallback se houver 1 série só).
- *   - `palette: 'single'` → TODAS as séries com `accent` (1 cor).
+ * Modo de aplicação (ENTREGA 1 — espelha o `h_bar_chart`):
+ *   - `palette: 'multi'` (default) → cada linha cicla `paletteStrokeClass(i)`
+ *     (chart-1..5). O `accent` custom é IGNORADO neste modo (a paleta cíclica
+ *     do DS vence); custom só vale em `single`.
+ *   - `palette: 'single'` → TODAS as linhas com `accent` (1 cor — style se for
+ *     cor CSS custom, className se for enum/classe DS).
  *   - `palette: 'none'` → sem distinção de cor (default `stroke-primary`).
+ *
+ * Prop `smooth` (ENTREGA 3): repassada ao UI base; `true` desenha curvas
+ * suaves (Catmull-Rom via `<path>`), `false` mantém retas (`<polyline>`).
  *
  * Prop `valueFormatter` (opcional, novo Turno 5): permite trocar o formatador
  * do valor exibido no tooltip (default interno `formatBRL`). O bloco normaliza
@@ -31,7 +36,6 @@ import type { SeriesData } from '@dashboards/contracts';
 import { LineChart, type LineSeries } from '@/components/ui/line-chart';
 import { formatCompactNumberBR, formatBRL } from '@/shared/lib/format';
 import {
-  resolveAccent,
   resolveAccentForStroke,
   paletteStrokeClass,
 } from '../../lib/accent';
@@ -64,14 +68,10 @@ type LineProps = {
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
-/** Converte SeriesData (lista de {x,y,series?}) em séries + rótulos do eixo X. */
-export function toLineSeries(
-  data: SeriesData,
-  options?: {
-    /** Quando setado, força TODAS as séries a usarem essa cor (single-palette). */
-    seriesStyle?: CSSProperties;
-  },
-): {
+/** Converte SeriesData (lista de {x,y,series?}) em séries + rótulos do eixo X.
+ *  NÃO aplica cor — a coloração (single/multi/none) é feita no Component,
+ *  espelhando a lógica do `h_bar_chart`. */
+export function toLineSeries(data: SeriesData): {
   series: LineSeries[];
   xLabels: string[];
 } {
@@ -84,14 +84,9 @@ export function toLineSeries(
     if (!groups.has(seriesName)) groups.set(seriesName, new Map());
     groups.get(seriesName)!.set(x, point.y ?? 0);
   }
-  const series: LineSeries[] = [...groups.entries()].map(([label, byX], i) => ({
+  const series: LineSeries[] = [...groups.entries()].map(([label, byX]) => ({
     label,
     data: xOrder.map((x) => byX.get(x) ?? 0),
-    // Modo SINGLE: força a cor em todas. Modo MULTI: cicla palette.
-    // Modo NONE: sem distinção (default stroke-primary).
-    ...(options?.seriesStyle
-      ? { style: options.seriesStyle, className: undefined }
-      : { className: paletteStrokeClass(i) }),
   }));
   return { series, xLabels: xOrder };
 }
@@ -101,48 +96,44 @@ export const Component: BlockComponent<LineProps, SeriesData> = ({ props, data }
   // { style: { stroke } } (CSS). VENCE a classe `className` da série quando
   // `style` está presente (atributos de apresentação SVG).
   const resolvedAccent = resolveAccentForStroke(props.accent);
+  const accentClassName: string | undefined =
+    resolvedAccent.kind === 'class' ? resolvedAccent.className : undefined;
   const accentStyle: CSSProperties | undefined =
     resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
 
   // valueFormatter flexível: usa a prop se passada, senão default BRL.
   const valueFormatter = props.valueFormatter ?? formatBRL;
 
-  // Modo de aplicação do accent:
-  //  - palette='single' → TODAS as séries com a cor (via style ou className).
-  //  - palette='multi' (default) → cicla STROKE_PALETTE por série; accent
-  //    vira fallback (1 série só OU series='multi' com 1 grupo).
-  //  - palette='none' → sem distinção de cor (deixa a palette cíclica padrão).
+  // Modo de aplicação do accent (ENTREGA 1 — espelha o `h_bar_chart`):
+  //  - palette='single' → TODAS as linhas com o accent (style se cor CSS
+  //    custom, className se enum/classe DS). 1 cor só.
+  //  - palette='multi' (default) → cada linha cicla `paletteStrokeClass(i)`
+  //    (chart-1..5); o accent custom é IGNORADO (a paleta cíclica vence).
+  //    Antes, o accent custom quebrava o ciclo (só a 1ª linha colorida).
+  //  - palette='none' → sem distinção de cor (deixa o default
+  //    `stroke-primary` do UI base — nenhuma className/style por série).
   const palette = props.palette ?? 'multi';
-  const singleSeriesStyle: CSSProperties | undefined =
-    palette === 'single' ? accentStyle : undefined;
 
-  // Para `palette='multi'` com accent custom (classe Tailwind), prefira
-  // aplicar via style por série (mais consistente). Senão, mantém a
-  // classe Tailwind na 1ª série se accent for classe DS.
-  const series = toLineSeries(data ?? [], {
-    seriesStyle: singleSeriesStyle,
-  }).series;
+  const { series, xLabels } = toLineSeries(data ?? []);
 
-  // Se `palette='multi'` MAS accent é classe Tailwind (enum DS), aplica
-  // na 1ª série; o resto cicla. Se accent é CSS, deixa para o single
-  // mode apenas (multi+CSS = comportamento idêntico ao single, por
-  // simplicidade — fica visível que o accent venceu).
-  let finalSeries = series;
-  if (palette === 'multi' && accentStyle) {
-    finalSeries = series.map((s, i) =>
-      i === 0 ? { ...s, style: accentStyle, className: undefined } : s,
-    );
-  } else if (palette === 'multi' && resolvedAccent.kind === 'class') {
-    const accentCls = resolvedAccent.className;
-    finalSeries = series.map((s, i) =>
-      i === 0 ? { ...s, className: accentCls } : s,
-    );
-  }
+  const finalSeries: LineSeries[] = series.map((s, i) => {
+    if (palette === 'multi') {
+      return { ...s, className: paletteStrokeClass(i), style: undefined };
+    }
+    if (palette === 'single') {
+      return accentStyle
+        ? { ...s, style: accentStyle, className: undefined }
+        : { ...s, className: accentClassName, style: undefined };
+    }
+    // palette === 'none'
+    return { ...s, className: undefined, style: undefined };
+  });
 
   return (
     <LineChart
       series={finalSeries}
-      xLabels={toLineSeries(data ?? []).xLabels}
+      xLabels={xLabels}
+      smooth={props.smooth === true}
       showArea={props.area !== false}
       yValueFormatter={(v) => formatCompactNumberBR(v)}
       valueFormatter={valueFormatter}
@@ -183,12 +174,6 @@ function deriveTakeaway(data: SeriesData): string[] | undefined {
 
   return insights;
 }
-
-// `resolveAccent` (background) é importado para garantir a arvore de
-// exports do helper; mantém simetria com o `bar_chart` (que importa
-// `resolveAccent` no topo). O `line_chart` usa `resolveAccentForStroke` por
-// padrão (stroke vence fill em SVG).
-void resolveAccent;
 
 export const definition = defineBlock<LineProps, SeriesData>({
   type: manifest.type,
