@@ -148,17 +148,42 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
+  html,
+  body,
+  #root {
+    height: 100%;
   }
   html {
     @apply font-sans;
   }
-  :root {
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Sem scroll no documento: cada área (sidebar/main) tem o seu próprio. */
+    overflow: hidden;
   }
 
   code,
   pre {
     font-family: var(--font-mono);
+  }
+  /* Estiliza a scrollbar das áreas roláveis (main, sidebar nav, etc.) no tema dark. */
+  .dark ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .dark ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    border-radius: 6px;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  }
+  .dark {
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent)
+      var(--background);
+    scrollbar-width: thin;
   }
 }

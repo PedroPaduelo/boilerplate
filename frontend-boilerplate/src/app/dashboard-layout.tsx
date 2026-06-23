@@ -37,12 +37,12 @@ export function DashboardLayout() {
   const fullBleed = location.pathname.startsWith('/connections/');
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen min-h-0 overflow-hidden bg-background text-foreground">
       <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <DashboardTopbar
-          className="sticky top-0 z-30 h-14 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md sm:px-6"
+          className="sticky top-0 z-30 h-14 shrink-0 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md sm:px-6"
           title={
             <span className="text-base font-semibold tracking-tight sm:text-lg">
               {title}
@@ -50,12 +50,12 @@ export function DashboardLayout() {
           }
           actions={<ThemeToggle />}
         />
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div
             className={
               fullBleed
                 ? 'min-h-0 w-full'
-                : 'mx-auto w-full min-h-0 max-w-[1760px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8'
+                : 'mx-auto w-full max-w-[1760px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8'
             }
           >
             <Outlet />

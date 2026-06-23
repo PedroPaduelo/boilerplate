@@ -145,7 +145,7 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
         </div>
 
         <nav
-          className="flex flex-1 flex-col gap-1 p-2"
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2"
           aria-label="Navegação principal"
         >
           {navItems.map((item) => {
