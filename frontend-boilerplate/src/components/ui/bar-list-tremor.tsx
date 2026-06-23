@@ -93,11 +93,11 @@ function BarListTremor<T = unknown>({
             }}
             className={cn(
               "group w-full rounded-sm",
-              "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-blue-700 dark:focus-visible:ring-offset-gray-950",
+              "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               onValueChange
                 ? [
                     "m-0! cursor-pointer",
-                    "hover:bg-gray-50 dark:hover:bg-gray-900",
+                    "hover:bg-muted",
                   ]
                 : "",
             )}
@@ -106,9 +106,11 @@ function BarListTremor<T = unknown>({
               className={cn(
                 "flex items-center rounded-sm transition-all",
                 rowHeight,
-                "bg-blue-200 dark:bg-blue-900",
+                // Barra: paleta de chart do DS (mesma de line/area/donut/scatter).
+                // Antes era `bg-blue-200/dark:bg-blue-900` (Tremor hardcoded).
+                "bg-chart-1",
                 onValueChange
-                  ? "group-hover:bg-blue-300 dark:group-hover:bg-blue-800"
+                  ? "group-hover:opacity-90"
                   : "",
                 index === sortedData.length - 1 ? "mb-0" : "",
                 showAnimation ? "duration-800" : "",
@@ -121,9 +123,9 @@ function BarListTremor<T = unknown>({
                     href={item.href}
                     className={cn(
                       "truncate whitespace-nowrap rounded-sm text-sm",
-                      "text-gray-900 dark:text-gray-50",
+                      "text-foreground",
                       "hover:underline hover:underline-offset-2",
-                      "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-blue-700 dark:focus-visible:ring-offset-gray-950",
+                      "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     )}
                     target="_blank"
                     rel="noreferrer"
@@ -135,7 +137,7 @@ function BarListTremor<T = unknown>({
                   <p
                     className={cn(
                       "truncate whitespace-nowrap text-sm",
-                      "text-gray-900 dark:text-gray-50",
+                      "text-foreground",
                     )}
                   >
                     {item.name}
@@ -159,7 +161,7 @@ function BarListTremor<T = unknown>({
             <p
               className={cn(
                 "truncate whitespace-nowrap text-sm leading-none",
-                "text-gray-900 dark:text-gray-50",
+                "text-foreground",
               )}
             >
               {valueFormatter(item.value)}
