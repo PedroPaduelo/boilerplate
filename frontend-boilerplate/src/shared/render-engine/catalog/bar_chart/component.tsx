@@ -4,8 +4,11 @@
  * `deriveTakeaway` (insights de rodapé exibidos pelo ChartWidget).
  *
  * Prop de COR: `accent` é enum fechado (`chart-1..5 | 'primary'`), validado
- * pelo schema. Tradução enum → classe Tailwind via `accentClass()` em
- * `lib/accent.ts`. Default: `'chart-1'`.
+ * pelo schema. Mas o input livre do playground permite string custom —
+ * `resolveAccent()` em `lib/accent.ts` traduz 1:1 para a classe Tailwind
+ * (`bg-chart-N` / `bg-primary`) OU aplica via `style.background` quando é
+ * cor CSS crua (`#40E0D0`, `rgb(0,255,0)`, `oklch(...)`, `linear-gradient(...)`).
+ * Default: `'chart-1'`.
  *
  * Prop `palette` (ENTREGA 3 — Turno 2 do playground): aceita 3 valores
  *  - `'single'` (default): toda a série usa `accent` (1 cor).
@@ -34,11 +37,12 @@
  * passar um formatter via prop (sem mexer no componente).
  */
 import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart } from '@/components/ui/bar-chart';
 import { HBarChart } from '@/components/ui/h-bar-chart';
 import { formatCompactBRL } from '@/shared/lib/format';
-import { accentClass, type AccentColor } from '../../lib/accent';
+import { resolveAccent } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -47,7 +51,16 @@ import { fixture } from './fixture';
 type BarProps = {
   stacked?: boolean;
   orientation?: 'vertical' | 'horizontal';
-  accent?: AccentColor;
+  /**
+   * Cor da barra. Aceita:
+   *  - enum DS: 'chart-1'..'chart-5' | 'primary' (validado pelo schema)
+   *  - classe Tailwind: 'bg-purple-500' (custom)
+   *  - cor CSS: '#40E0D0', 'rgb(0,255,0)', 'oklch(...)', 'linear-gradient(...)'
+   *  - bare color: 'purple-500' (vira 'bg-purple-500' por conveniência)
+   * Resolvido por `resolveAccent()` em `lib/accent.ts` — devolve
+   * `{ className }` (Tailwind) ou `{ style: { background } }` (CSS).
+   */
+  accent?: string;
   palette?: 'single' | 'multi' | 'none';
   /**
    * Formatter do valor exibido no topo da barra / tooltip / valor lateral
@@ -106,16 +119,22 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
     label: String(d.x),
     value: d.y ?? 0,
   }));
-  // `accentClass()` traduz enum (chart-N | primary) em classe Tailwind
-  // (`bg-chart-N` / `bg-primary`) que o UI base já consome nativamente.
-  const accent = accentClass(props.accent);
+  // `resolveAccent()` decide se a cor é enum (classe Tailwind) ou cor CSS
+  // (style.background). Cobre o playground (que aceita `#40E0D0`,
+  // `linear-gradient(...)`, etc.) sem quebrar a paleta do DS.
+  const resolvedAccent = resolveAccent(props.accent);
+  const chartAccent =
+    resolvedAccent.kind === 'class' ? resolvedAccent.className : '';
+  const chartStyle: CSSProperties | undefined =
+    resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
   // `orientation: "horizontal"` re-aproveita o `HBarChart` (mesma "família" do
   // DS, mesmo accent e mesmo formatter). Vertical é o default.
   if (props.orientation === 'horizontal') {
     return (
       <HBarChart
         series={series}
-        accent={accent}
+        accent={chartAccent}
+        style={chartStyle}
         valueFormatter={valueFormatter}
       />
     );
@@ -123,7 +142,8 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
   return (
     <BarChart
       series={series}
-      accent={accent}
+      accent={chartAccent}
+      style={chartStyle}
       valueFormatter={valueFormatter}
     />
   );

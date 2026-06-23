@@ -26,8 +26,12 @@ export interface HBarChartDatum {
 export interface HBarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Série de barras (rótulo + valor). O maior valor define a barra cheia (100%). */
   series: HBarChartDatum[]
-  /** Classe Tailwind de cor de preenchimento das barras. Default: "bg-primary". */
+  /** Classe Tailwind de cor de preenchimento das barras. Default: "bg-primary".
+   *  IGNORADO se `style` for passado. */
   accent?: string
+  /** Estilo inline aplicado à barra. Use para cores CSS custom (hex/rgb/hsl/
+   *  gradient) que NÃO existem no enum do DS. VENCE `accent` quando setado. */
+  style?: React.CSSProperties
   /** Formata o valor (rótulo lateral + tooltip + aria-label). Sem ele, usa o número cru. */
   valueFormatter?: (value: number) => string
 }
@@ -35,6 +39,7 @@ export interface HBarChartProps extends React.HTMLAttributes<HTMLDivElement> {
 function HBarChart({
   series,
   accent = "bg-primary",
+  style: barStyle,
   valueFormatter,
   className,
   ...props
@@ -73,10 +78,12 @@ function HBarChart({
                   aria-label={`${s.label}: ${formatted}`}
                   className={cn(
                     "h-full rounded-full transition-[width,box-shadow] duration-300",
-                    accent,
+                    // Se `barStyle` foi passado (cor CSS custom), NÃO aplica
+                    // a classe `accent` (que viraria `bg-#40E0D0` etc.).
+                    barStyle ? '' : accent,
                     active && "shadow-sm",
                   )}
-                  style={{ width: `${pct}%` }}
+                  style={{ width: `${pct}%`, ...barStyle }}
                 />
               </div>
               {/* Tooltip-card no hover */}

@@ -14,7 +14,14 @@
  *
  * Quando precisarmos de um palette (múltiplas séries), cada série vai
  * ciclar pelos `chart-1..5` na ordem — função `paletteClass(idx)` abaixo.
+ *
+ * Para o PLAYGROUND (`#40E0D0`, `bg-purple-500`, `linear-gradient(...)`):
+ * o schema aceita enum, mas o input livre do ColorFieldEditor permite
+ * string custom. `resolveAccent()` detecta o tipo de string e retorna
+ * `{ className }` (Tailwind) ou `{ style }` (CSS color/gradient).
  */
+
+import type { CSSProperties } from 'react';
 
 /** Acento de cor aceito pelos blocos single-série. */
 export type AccentColor =
@@ -49,6 +56,61 @@ export function accentClass(color: AccentColor | undefined): string {
 export function isAccentColor(value: unknown): value is AccentColor {
   return typeof value === 'string'
     && (ACCENT_COLORS as readonly string[]).includes(value);
+}
+
+/** Heurística: a string é uma COR CSS (hex / rgb / hsl / oklch / color() /
+ *  linear-gradient / radial-gradient / conic-gradient)? Se sim, vai via
+ *  `style.background` (mais flexível que classe Tailwind). Caso contrário,
+ *  é classe Tailwind (`bg-purple-500`, `bg-chart-1` etc.) — vai via
+ *  `className`. */
+export function looksLikeCssColor(v: string): boolean {
+  const s = v.trim();
+  if (!s) return false;
+  return (
+    /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(s) ||
+    /^(rgb|rgba|hsl|hsla|oklch|oklab|color)\(/i.test(s) ||
+    /^(linear|radial|conic)-gradient\(/i.test(s)
+  );
+}
+
+/** Resultado de `resolveAccent`: a cor a aplicar vem OU como classe Tailwind
+ *  (`className`) OU como estilo inline (`style`). Nunca ambos. A UI base
+ *  decide qual usar (BarChart/HBarChart: se `style` vier, ignora `accent`). */
+export type ResolvedAccent =
+  | { kind: 'class'; className: string }
+  | { kind: 'style'; style: CSSProperties };
+
+/** Resolve um valor de `accent` (string livre) em:
+ *   - `{ kind: 'class', className: 'bg-chart-1' }` se for um AccentColor do enum
+ *     (mantém a paleta do DS, autocontida);
+ *   - `{ kind: 'style', style: { background: '#40E0D0' } }` se for cor CSS
+ *     crua (hex/rgb/hsl/oklch/gradient);
+ *   - `{ kind: 'class', className: 'bg-purple-500' }` se for classe Tailwind
+ *     (fallback — `bg-chart-1` bare vira `bg-chart-1`, `bg-purple-500` vira
+ *     `bg-purple-500`); */
+export function resolveAccent(value: string | undefined | null): ResolvedAccent {
+  if (value == null || value === '') {
+    return { kind: 'class', className: accentClass(undefined) };
+  }
+  const s = String(value).trim();
+  if (!s) {
+    return { kind: 'class', className: accentClass(undefined) };
+  }
+  // 1) enum AccentColor (bare, ex.: "chart-2")
+  if (isAccentColor(s)) {
+    return { kind: 'class', className: accentClass(s) };
+  }
+  // 2) "bg-chart-1" / "bg-purple-500" — já é classe Tailwind; usa direto.
+  if (s.startsWith('bg-') || s.startsWith('text-') || s.includes(' ')) {
+    return { kind: 'class', className: s };
+  }
+  // 3) cor CSS crua (hex/rgb/hsl/oklch/gradient) → style inline.
+  if (looksLikeCssColor(s)) {
+    return { kind: 'style', style: { background: s } };
+  }
+  // 4) fallback: tenta como classe Tailwind (ex.: usuário digitou
+  // "purple-500" sem prefixo — prefixamos "bg-" pra ajudar).
+  return { kind: 'class', className: `bg-${s}` };
 }
 
 /** Palette cíclica (5 cores do DS) — p/ multi-série. */

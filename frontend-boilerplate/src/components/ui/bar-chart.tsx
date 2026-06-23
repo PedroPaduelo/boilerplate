@@ -23,8 +23,12 @@ export interface BarChartDatum {
 export interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Série de barras (rótulo + valor). O maior valor define o topo (100%). */
   series: BarChartDatum[]
-  /** Classe Tailwind de cor de preenchimento das barras. Default: "bg-primary". */
+  /** Classe Tailwind de cor de preenchimento das barras. Default: "bg-primary".
+   *  IGNORADO se `style` for passado. */
   accent?: string
+  /** Estilo inline aplicado à barra. Use para cores CSS custom (hex/rgb/hsl/
+   *  gradient) que NÃO existem no enum do DS. VENCE `accent` quando setado. */
+  style?: React.CSSProperties
   /** Formata o valor exibido no topo da barra + tooltip. Sem ele, oculta o valor. */
   valueFormatter?: (value: number) => string
   /** Mostra o valor no topo de cada barra (requer `valueFormatter`). Default: true. */
@@ -34,6 +38,7 @@ export interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
 function BarChart({
   series,
   accent = "bg-primary",
+  style: barStyle,
   valueFormatter,
   showValues = true,
   className,
@@ -68,10 +73,12 @@ function BarChart({
               <div
                 className={cn(
                   "absolute bottom-0 w-full rounded-t-md transition-[height,opacity] duration-500",
-                  accent,
+                  // Se `barStyle` foi passado (cor CSS custom), NÃO aplica a
+                  // classe `accent` (que vira `bg-#40E0D0` etc., inválida).
+                  barStyle ? '' : accent,
                   active ? "opacity-100" : "opacity-85",
                 )}
-                style={{ height: `${pct}%` }}
+                style={{ height: `${pct}%`, ...barStyle }}
               />
               {/* Tooltip-card no hover */}
               {active && formatted ? (
