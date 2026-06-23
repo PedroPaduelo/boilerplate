@@ -1,7 +1,7 @@
 {
   "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
   "catalogVersion": 1,
-  "count": 14,
+  "count": 19,
   "blocks": [
     {
       "type": "__example",
@@ -391,6 +391,139 @@
       "version": "1.0.0"
     },
     {
+      "type": "metric_glow",
+      "kind": "chart",
+      "name": "Métrica (glow)",
+      "description": "Card de métrica única em destaque, com variação e efeito de brilho.",
+      "source": "vitrine:metric-glow-card",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "dataContract": {
+        "shape": "scalar",
+        "spec": {
+          "value": {
+            "type": "number",
+            "required": true
+          },
+          "label": {
+            "type": "string",
+            "required": false
+          },
+          "delta": {
+            "type": "number",
+            "required": false
+          }
+        },
+        "example": {
+          "value": 124500,
+          "label": "Receita do mês",
+          "unit": "BRL",
+          "delta": 0.125
+        }
+      },
+      "defaultProps": {},
+      "version": "1.0.0"
+    },
+    {
+      "type": "progress_bar",
+      "kind": "chart",
+      "name": "Barra de Progresso",
+      "description": "Progresso de um valor sobre uma escala (ex.: 68 de 100). Ótimo para metas.",
+      "source": "vitrine:progress-bar-tremor",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "max": {
+            "type": "number"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "default",
+              "neutral",
+              "warning",
+              "error",
+              "success"
+            ]
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "scalar",
+        "spec": {
+          "value": {
+            "type": "number",
+            "required": true
+          },
+          "label": {
+            "type": "string",
+            "required": false
+          }
+        },
+        "example": {
+          "value": 68,
+          "label": "Uso da cota"
+        }
+      },
+      "defaultProps": {
+        "max": 100,
+        "variant": "default"
+      },
+      "version": "1.0.0"
+    },
+    {
+      "type": "progress_circle",
+      "kind": "chart",
+      "name": "Anel de Progresso",
+      "description": "Progresso circular de um valor sobre uma escala (percentual no centro).",
+      "source": "vitrine:progress-circle-tremor",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "max": {
+            "type": "number"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "default",
+              "neutral",
+              "warning",
+              "error",
+              "success"
+            ]
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "scalar",
+        "spec": {
+          "value": {
+            "type": "number",
+            "required": true
+          },
+          "label": {
+            "type": "string",
+            "required": false
+          }
+        },
+        "example": {
+          "value": 75,
+          "label": "Conclusão"
+        }
+      },
+      "defaultProps": {
+        "max": 100,
+        "variant": "default"
+      },
+      "version": "1.0.0"
+    },
+    {
       "type": "radial_gauge",
       "kind": "chart",
       "name": "Medidor Radial",
@@ -517,6 +650,61 @@
       "version": "1.0.0"
     },
     {
+      "type": "signal_card",
+      "kind": "chart",
+      "name": "Signal Card",
+      "description": "KPI com mini-sparkline e tendência. Recebe uma série; destaca o último valor.",
+      "source": "vitrine:signal-card",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "trendPolarity": {
+            "type": "string",
+            "enum": [
+              "up-good",
+              "up-bad"
+            ]
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "series",
+        "spec": {
+          "x": {
+            "type": "category",
+            "required": false
+          },
+          "y": {
+            "type": "number",
+            "required": true
+          }
+        },
+        "example": [
+          {
+            "x": "1",
+            "y": 48
+          },
+          {
+            "x": "2",
+            "y": 62
+          }
+        ]
+      },
+      "defaultProps": {
+        "label": "Sinal",
+        "trendPolarity": "up-good"
+      },
+      "maxRows": 1000,
+      "version": "1.0.0"
+    },
+    {
       "type": "spark_chart",
       "kind": "chart",
       "name": "Sparkline",
@@ -572,6 +760,46 @@
         "curveType": "monotone"
       },
       "maxRows": 5000,
+      "version": "1.0.0"
+    },
+    {
+      "type": "stat_tile",
+      "kind": "chart",
+      "name": "Stat Tile",
+      "description": "Ladrilho compacto de estatística (valor + variação) para grades de KPIs.",
+      "source": "vitrine:stat-tile",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "hint": {
+            "type": "string"
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "scalar",
+        "spec": {
+          "value": {
+            "type": "number",
+            "required": true
+          },
+          "label": {
+            "type": "string",
+            "required": false
+          },
+          "delta": {
+            "type": "number",
+            "required": false
+          }
+        },
+        "example": {
+          "value": 8420,
+          "label": "Eventos hoje",
+          "delta": 0.06
+        }
+      },
+      "defaultProps": {},
       "version": "1.0.0"
     },
     {
