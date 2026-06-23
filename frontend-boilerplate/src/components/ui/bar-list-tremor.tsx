@@ -123,7 +123,13 @@ function BarListTremor<T = unknown>({
                     href={item.href}
                     className={cn(
                       "truncate whitespace-nowrap rounded-sm text-sm",
-                      "text-foreground",
+                      // Texto SOBRE a barra colorida (`bg-chart-1`): usa o
+                      // "foreground do primário" do DS (`primary-foreground`),
+                      // que é branco-quase-puro no light e azul-escuro no
+                      // dark — ambos com contraste alto contra `--chart-1`.
+                      // O valor numérico à direita (fora da barra) continua
+                      // `text-foreground` por estar no fundo da página.
+                      "text-primary-foreground",
                       "hover:underline hover:underline-offset-2",
                       "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     )}
@@ -137,7 +143,8 @@ function BarListTremor<T = unknown>({
                   <p
                     className={cn(
                       "truncate whitespace-nowrap text-sm",
-                      "text-foreground",
+                      // Mesma justificativa do <a> acima — ver bloco vizinho.
+                      "text-primary-foreground",
                     )}
                   >
                     {item.name}
