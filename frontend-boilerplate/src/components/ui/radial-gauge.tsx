@@ -36,6 +36,17 @@ export interface RadialGaugeProps
   thresholds?: RadialGaugeThreshold[]
   /** Cor da trilha de fundo (CSS). Default: var(--muted). */
   trackColor?: string
+  /**
+   * Classe(s) Tailwind aplicada(s) ao arco de valor (ex.: `stroke-chart-1`).
+   * Resolvido pelo bloco do catálogo a partir do `accent` (enum DS).
+   */
+  arcClassName?: string
+  /**
+   * Estilo inline aplicado ao arco de valor (ex.: `{ stroke: '#40E0D0' }`).
+   * Resolvido pelo bloco do catálogo a partir do `accent` (cor CSS crua).
+   * Mesclado por cima da `transition`/`filter` internos.
+   */
+  arcStyle?: React.CSSProperties
   /** Conteúdo central custom (sobrepõe value/unit/label). */
   children?: React.ReactNode
 }
@@ -66,6 +77,8 @@ function RadialGauge({
   color,
   thresholds,
   trackColor = "var(--muted)",
+  arcClassName,
+  arcStyle,
   className,
   children,
   ...props
@@ -106,9 +119,11 @@ function RadialGauge({
             strokeWidth={thickness}
             strokeDasharray={dashVal}
             strokeLinecap="round"
+            className={arcClassName}
             style={{
               transition: "stroke-dasharray 0.6s ease",
               filter: `drop-shadow(0 0 5px ${stroke})`,
+              ...arcStyle,
             }}
           />
         </g>

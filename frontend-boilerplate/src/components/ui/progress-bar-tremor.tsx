@@ -46,6 +46,21 @@ export interface ProgressBarTremorProps
   showAnimation?: boolean
   /** Rótulo opcional exibido à direita da barra. */
   label?: string
+  /**
+   * Classe Tailwind aplicada ao PREENCHIMENTO (bar). Quando definida (ou
+   * `barStyle`), SOBRESCREVE a cor do `variant` no preenchimento — usado
+   * pelo bloco do catálogo para aplicar um `accent` custom resolvido por
+   * `resolveAccent()` (ex.: `bg-chart-3`, `bg-purple-500`). O trilho
+   * (background) continua usando a cor do `variant`.
+   */
+  barClassName?: string
+  /**
+   * Estilo inline aplicado ao PREENCHIMENTO (bar). Usado quando o `accent`
+   * é uma cor CSS crua (`#40E0D0`, `rgb()`, `linear-gradient()`) que não
+   * cabe numa classe Tailwind. Quando presente, NÃO aplica a cor do
+   * `variant` no preenchimento. Mesclado com `{ width }`.
+   */
+  barStyle?: React.CSSProperties
 }
 
 function ProgressBarTremor({
@@ -55,10 +70,15 @@ function ProgressBarTremor({
   showAnimation = false,
   variant,
   className,
+  barClassName,
+  barStyle,
   ...props
 }: ProgressBarTremorProps) {
   const safeValue = Math.min(max, Math.max(value, 0))
   const width = max ? `${(safeValue / max) * 100}%` : `${safeValue}%`
+  // accent custom (classe OU style) SOBRESCREVE a cor do `variant` no
+  // preenchimento. Quando presente, não aplicamos `progressBarTremorBarVariants`.
+  const hasCustomBar = Boolean(barClassName || barStyle)
 
   return (
     <div
@@ -80,11 +100,11 @@ function ProgressBarTremor({
         <div
           className={cn(
             "h-full flex-col rounded-full",
-            progressBarTremorBarVariants({ variant }),
+            hasCustomBar ? barClassName : progressBarTremorBarVariants({ variant }),
             showAnimation &&
               "transform-gpu transition-all duration-300 ease-in-out",
           )}
-          style={{ width }}
+          style={{ width, ...barStyle }}
         />
       </div>
       {label ? (

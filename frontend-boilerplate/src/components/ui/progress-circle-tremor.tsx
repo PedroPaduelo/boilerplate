@@ -26,6 +26,21 @@ export type ProgressCircleTremorProps = Omit<
     ariaLabel?: string
     /** Texto acessível do valor (aria-valuetext), ex.: "73,4% (734 de 1.000)". */
     ariaValuetext?: string
+    /**
+     * Classe Tailwind de COR do arco de progresso (ex.: `stroke-chart-1`,
+     * `stroke-purple-500`). Quando presente, SOBRESCREVE a cor do `variant`
+     * no arco — usado pelo `accent` custom do bloco (resolvido por
+     * `resolveAccentForStroke`). O trilho de fundo continua seguindo o
+     * `variant`.
+     */
+    circleClassName?: string
+    /**
+     * Estilo inline de COR do arco (ex.: `{ stroke: '#40E0D0' }`). Para cor
+     * CSS crua (hex/rgb/hsl/oklch/gradient) — atributo de apresentação que
+     * vence a classe `stroke-…`. Quando presente, SOBRESCREVE a cor do
+     * `variant` no arco.
+     */
+    circleStyle?: React.CSSProperties
     /** Conteúdo exibido no centro (ex.: "75%"). */
     children?: React.ReactNode
   }
@@ -45,6 +60,8 @@ const ProgressCircleTremor = React.forwardRef<
       className,
       ariaLabel,
       ariaValuetext,
+      circleClassName,
+      circleStyle,
       children,
       ...props
     }: ProgressCircleTremorProps,
@@ -99,9 +116,12 @@ const ProgressCircleTremor = React.forwardRef<
               fill="transparent"
               stroke=""
               strokeLinecap="round"
+              style={circleStyle}
               className={cx(
                 "transition-colors ease-linear",
-                circle,
+                // `accent` custom (circleClassName) SOBRESCREVE a cor do
+                // `variant`; sem ele, usa a cor do variant (`circle`).
+                circleClassName ?? circle,
                 showAnimation &&
                   "transform-gpu transition-all duration-300 ease-in-out",
               )}
