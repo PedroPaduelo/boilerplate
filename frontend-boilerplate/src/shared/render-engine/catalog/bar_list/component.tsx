@@ -45,6 +45,15 @@ type BarListProps = {
    * (CSS). VENCE `className` quando setado.
    */
   accent?: string;
+  /**
+   * (ENTREGA 2) Override MANUAL da cor do texto que fica DENTRO da barra.
+   * Por padrão (ausente) a cor do texto é calculada AUTOMATICAMENTE por
+   * contraste (luminância WCAG da cor da barra → texto escuro ou claro),
+   * garantindo legibilidade em qualquer cor de barra. Use esta prop só p/
+   * forçar uma cor: aceita cor CSS (`#000`, `rgb(...)`, `white`) ou classe
+   * utilitária (`text-white`, `text-black`).
+   */
+  textColor?: string;
 };
 
 type CategoryPoint = { label: string; value: number | null };
@@ -88,6 +97,10 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({ props
       // Em `none`, não passamos nada — UI base usa o `bg-chart-1` default.
       barStyle={palette === 'single' ? globalBarStyle : undefined}
       barClassName={palette === 'single' ? globalBarClassName : undefined}
+      // (ENTREGA 2) Cor do texto dentro da barra. Quando ausente, a UI base
+      // calcula por contraste (luminância WCAG da cor da barra). Quando
+      // setado, força a cor (cor CSS → style.color; classe → className).
+      textColor={props.textColor}
     />
   );
 };

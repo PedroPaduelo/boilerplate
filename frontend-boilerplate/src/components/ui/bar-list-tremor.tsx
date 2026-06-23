@@ -2,6 +2,129 @@ import * as React from "react"
 
 import { cn } from "@/shared/lib/utils"
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * ENTREGA 2 — Cor do TEXTO dentro da barra (contraste automático).
+ *
+ * O rótulo (`item.name`) fica DENTRO da barra colorida. Texto branco some em
+ * barra clara (ex.: `#40E0D0`) e texto preto some em barra escura. Resolvemos
+ * de forma AUTOMÁTICA: calculamos a luminância relativa (WCAG) da cor da barra
+ * e escolhemos texto escuro (fundo claro) ou claro (fundo escuro).
+ *
+ * Abrangência:
+ *  - Cor CSS SÓLIDA (hex / rgb / rgba) → parse → luminância → preto/branco.
+ *  - Cor NÃO-sólida (gradient / var(--x) / oklch / hsl) → não dá pra decidir
+ *    sem computed style → fallback: mantém o texto do DS (`primary-foreground`)
+ *    + `text-shadow` (contorno) que garante legibilidade em QUALQUER fundo.
+ *  - Barra com classe Tailwind do DS (`bg-chart-N`) → mantém o
+ *    `primary-foreground` (já contrasta com a paleta de azuis do tema).
+ *  - OVERRIDE MANUAL: a prop `textColor` (global ou por item) vence o auto —
+ *    aceita cor CSS (`#fff`, `rgb(...)`) ou classe utilitária (`text-white`).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Converte uma cor CSS SÓLIDA (`#rgb`/`#rgba`/`#rrggbb`/`#rrggbbaa`,
+ * `rgb()`/`rgba()`) em `[r,g,b]` (0-255). Retorna `null` quando a string NÃO
+ * é uma cor sólida parseável (gradient, `var(--x)`, `oklch()`, `hsl()`,
+ * keyword) — nesses casos o caller cai no fallback de `text-shadow`.
+ */
+function parseSolidColor(input: string): [number, number, number] | null {
+  const s = input.trim()
+  if (s.startsWith("#")) {
+    const hex = s.slice(1)
+    const expand = (h: string) =>
+      h
+        .split("")
+        .map((c) => c + c)
+        .join("")
+    let full: string | null = null
+    if (/^[0-9a-f]{3}$/i.test(hex)) full = expand(hex)
+    else if (/^[0-9a-f]{4}$/i.test(hex)) full = expand(hex.slice(0, 3))
+    else if (/^[0-9a-f]{6}$/i.test(hex)) full = hex
+    else if (/^[0-9a-f]{8}$/i.test(hex)) full = hex.slice(0, 6)
+    if (!full) return null
+    return [
+      parseInt(full.slice(0, 2), 16),
+      parseInt(full.slice(2, 4), 16),
+      parseInt(full.slice(4, 6), 16),
+    ]
+  }
+  const m = s.match(/^rgba?\(\s*([0-9.]+)[\s,]+([0-9.]+)[\s,]+([0-9.]+)/i)
+  if (m) {
+    const rgb: [number, number, number] = [Number(m[1]), Number(m[2]), Number(m[3])]
+    return rgb.some((v) => Number.isNaN(v)) ? null : rgb
+  }
+  return null
+}
+
+/** Luminância relativa WCAG (0 = preto, 1 = branco). */
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const lin = (c: number) => {
+    const v = c / 255
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+/** Texto escuro/claro do auto-contraste (tons neutros do tema). */
+const AUTO_TEXT_DARK = "#0a0a0a"
+const AUTO_TEXT_LIGHT = "#fafafa"
+
+/**
+ * Cor de texto AUTOMÁTICA p/ uma cor de fundo CSS sólida. WCAG: luminância
+ * > 0.5 → fundo claro → texto escuro; senão → texto claro. Retorna `null`
+ * quando `bg` não é sólida (gradient/var/oklch) — caller usa o fallback.
+ */
+function autoContrastText(bg: string | undefined): string | null {
+  if (!bg) return null
+  const rgb = parseSolidColor(bg)
+  if (!rgb) return null
+  return relativeLuminance(rgb) > 0.5 ? AUTO_TEXT_DARK : AUTO_TEXT_LIGHT
+}
+
+/** Heurística: a string é uma cor CSS (→ `style.color`) ou uma classe
+ * utilitária Tailwind (→ `className`)? Usada no override manual `textColor`. */
+function looksLikeColorString(v: string): boolean {
+  const s = v.trim()
+  return (
+    s.startsWith("#") ||
+    /^(rgb|rgba|hsl|hsla|oklch|oklab|color)\(/i.test(s) ||
+    // keyword CSS simples (ex.: "white") — sem espaços e sem prefixo de classe.
+    (/^[a-z]+$/i.test(s) && !s.startsWith("text-"))
+  )
+}
+
+/** `text-shadow` de contorno — garante legibilidade sobre gradients/cores
+ * indecidíveis (fallback do auto-contraste). */
+const TEXT_OUTLINE_SHADOW =
+  "0 1px 2px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.5)"
+
+/**
+ * Resolve cor do texto de UMA linha: override manual vence; senão auto-contraste
+ * pela cor sólida da barra; senão fallback (`primary-foreground` + shadow quando
+ * a barra tem cor custom não-sólida).
+ */
+function resolveBarTextColor(
+  barBg: string | undefined,
+  manualTextColor: string | undefined,
+): { className: string; style?: React.CSSProperties } {
+  if (manualTextColor) {
+    return looksLikeColorString(manualTextColor)
+      ? { className: "", style: { color: manualTextColor } }
+      : { className: manualTextColor }
+  }
+  const auto = autoContrastText(barBg)
+  if (auto) return { className: "", style: { color: auto } }
+  // Barra com cor custom NÃO-sólida (gradient/var) → mantém o texto do DS
+  // com contorno p/ não sumir. Barra de classe do DS (sem `barBg`) → só o DS.
+  if (barBg) {
+    return {
+      className: "text-primary-foreground",
+      style: { textShadow: TEXT_OUTLINE_SHADOW },
+    }
+  }
+  return { className: "text-primary-foreground" }
+}
+
 /**
  * BarListTremor — lista horizontal de barras ordenadas (estilo "Top 10").
  *
@@ -70,6 +193,14 @@ export type BarListTremorItem<T> = T & {
    * inline > classes CSS. Use para cor CSS custom por linha.
    */
   barStyle?: React.CSSProperties
+  /**
+   * (ENTREGA 2) Override MANUAL da cor do texto DESTA linha. VENCE o
+   * auto-contraste e o `textColor` global. Aceita cor CSS (`#fff`,
+   * `rgb(...)`, `white`) → `style.color`, ou classe utilitária
+   * (`text-white`, `text-black`) → `className`. Opcional — quando ausente,
+   * a cor é calculada automaticamente pela luminância da barra.
+   */
+  textColor?: string
 }
 
 export interface BarListTremorProps<T = unknown>
@@ -98,6 +229,13 @@ export interface BarListTremorProps<T = unknown>
    * `barStyle` (atributo de apresentação inline > classes CSS).
    */
   barClassName?: string
+  /**
+   * (ENTREGA 2) Override MANUAL GLOBAL da cor do texto de todas as linhas.
+   * VENCE o auto-contraste, mas é VENCIDO por `item.textColor`. Aceita cor
+   * CSS (→ `style.color`) ou classe utilitária Tailwind (→ `className`).
+   * Ausente = cor do texto calculada automaticamente (contraste WCAG).
+   */
+  textColor?: string
 }
 
 function BarListTremor<T = unknown>({
@@ -108,6 +246,7 @@ function BarListTremor<T = unknown>({
   sortOrder = "descending",
   barStyle,
   barClassName,
+  textColor,
   className,
   ...props
 }: BarListTremorProps<T>) {
@@ -149,6 +288,17 @@ function BarListTremor<T = unknown>({
           const itemBarStyle = item.barStyle ?? barStyle
           const itemBarClassName =
             item.barClassName ?? barClassName ?? "bg-chart-1"
+          // (ENTREGA 2) Cor do texto por contraste: a cor SÓLIDA da barra vem
+          // do `background` do estilo inline (cor CSS custom). Para barras de
+          // classe Tailwind (bg-chart-N) `barBg` é undefined → mantém o texto
+          // do DS. Override manual (item.textColor → textColor global) vence.
+          const barBg =
+            typeof itemBarStyle?.background === "string"
+              ? itemBarStyle.background
+              : typeof itemBarStyle?.backgroundColor === "string"
+                ? itemBarStyle.backgroundColor
+                : undefined
+          const text = resolveBarTextColor(barBg, item.textColor ?? textColor)
           return (
             <Component
               key={item.key ?? item.name}
@@ -187,16 +337,15 @@ function BarListTremor<T = unknown>({
                       href={item.href}
                       className={cn(
                         "truncate whitespace-nowrap rounded-sm text-sm",
-                        // Texto SOBRE a barra colorida (`bg-chart-1`): usa o
-                        // "foreground do primário" do DS (`primary-foreground`),
-                        // que é branco-quase-puro no light e azul-escuro no
-                        // dark — ambos com contraste alto contra `--chart-1`.
+                        // (ENTREGA 2) Cor do texto resolvida por contraste
+                        // (auto WCAG pela cor da barra) ou override manual.
                         // O valor numérico à direita (fora da barra) continua
                         // `text-foreground` por estar no fundo da página.
-                        "text-primary-foreground",
+                        text.className,
                         "hover:underline hover:underline-offset-2",
                         "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       )}
+                      style={text.style}
                       target="_blank"
                       rel="noreferrer"
                       onClick={(event) => event.stopPropagation()}
@@ -207,9 +356,10 @@ function BarListTremor<T = unknown>({
                     <p
                       className={cn(
                         "truncate whitespace-nowrap text-sm",
-                        // Mesma justificativa do <a> acima — ver bloco vizinho.
-                        "text-primary-foreground",
+                        // (ENTREGA 2) Mesma resolução de contraste do <a>.
+                        text.className,
                       )}
+                      style={text.style}
                     >
                       {item.name}
                     </p>

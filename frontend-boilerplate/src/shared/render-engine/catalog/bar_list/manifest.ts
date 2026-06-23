@@ -41,6 +41,14 @@ export const manifest = {
         default: 'chart-1',
         description: 'Cor base da barra (só usado em palette="single"). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)).',
       },
+      // COR DO TEXTO dentro da barra (ENTREGA 2). Opcional — sem valor, a cor
+      // é calculada AUTOMATICAMENTE por contraste (luminância WCAG da cor da
+      // barra → texto escuro em barra clara / claro em barra escura). String
+      // livre só para FORÇAR a cor.
+      textColor: {
+        type: 'string',
+        description: 'Cor do texto que fica DENTRO da barra. Por padrão (vazio) é AUTOMÁTICA por contraste (luminância WCAG da cor da barra → preto em barra clara, branco em barra escura) — sempre legível. Informe só para forçar: cor CSS (#000, rgb(255,255,255), white) ou classe Tailwind (text-white, text-black).',
+      },
     },
   },
   dataContract: {
