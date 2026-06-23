@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memórias do projeto · dashboards</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --bg-elev: #ffffff;
+    --bg-code: #f0f2f5;
+    --text: #1b1f24;
+    --text-dim: #57606a;
+    --text-faint: #8b949e;
+    --border: #d8dee4;
+    --border-soft: #e7ebef;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --b-regra: #7c3aed;     --b-regra-bg: #ede9fe;
+    --b-gotcha: #c2410c;    --b-gotcha-bg: #ffedd5;
+    --b-entrega: #047857;   --b-entrega-bg: #d1fae5;
+    --b-pend: #b45309;      --b-pend-bg: #fef3c7;
+    --b-ok: #047857;        --b-ok-bg: #d1fae5;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --bg-elev: #161b22;
+      --bg-code: #0b0f14;
+      --text: #e6edf3;
+      --text-dim: #9da7b3;
+      --text-faint: #6e7781;
+      --border: #30363d;
+      --border-soft: #21262d;
+      --accent: #58a6ff;
+      --accent-soft: #132e54;
+      --b-regra: #c4b5fd;     --b-regra-bg: #2c2150;
+      --b-gotcha: #fdba74;    --b-gotcha-bg: #43240f;
+      --b-entrega: #6ee7b7;   --b-entrega-bg: #0c2e22;
+      --b-pend: #fcd34d;      --b-pend-bg: #3a2c08;
+      --b-ok: #6ee7b7;        --b-ok-bg: #0c2e22;
+      --shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--mono); font-size: .85em; }
+
+  /* sticky topo: nav de categorias */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 10px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .topbar-brand { font-weight: 700; font-size: 14px; margin-right: 6px; white-space: nowrap; }
+  .catnav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    background: var(--bg-elev);
+  }
+  .catnav-link:hover { text-decoration: none; border-color: var(--accent); color: var(--accent); }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+  header.hero { padding: 40px 0 8px; }
+  h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .sub { color: var(--text-dim); font-size: 15px; margin: 0 0 24px; }
+
+  /* index / cards de resumo */
+  .index-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 0 0 18px;
+  }
+  .stat {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .stat .n { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat .l { color: var(--text-dim); font-size: 12.5px; margin-top: 6px; }
+  .stat.big .n { color: var(--accent); }
+
+  .meta-row { display: flex; flex-wrap: wrap; gap: 18px; color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+  .meta-row strong { color: var(--text); }
+
+  /* TOC */
+  .toc {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 8px;
+    margin: 0 0 36px;
+    box-shadow: var(--shadow);
+  }
+  .toc > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .toc > summary::-webkit-details-marker { display: none; }
+  .toc > summary::after { content: "▾"; color: var(--text-faint); }
+  .toc[open] > summary::after { content: "▴"; }
+  .toc ol {
+    margin: 4px 0 6px;
+    padding: 0 8px 0 8px;
+    columns: 2;
+    column-gap: 28px;
+    list-style: none;
+  }
+  .toc li { margin: 0 0 4px; break-inside: avoid; font-size: 13px; line-height: 1.45; }
+  .toc-cat {
+    display: inline-block;
+    min-width: 16px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--accent);
+    margin-right: 4px;
+  }
+  @media (max-width: 720px) { .toc ol { columns: 1; } }
+
+  /* categorias */
+  .cat { margin: 0 0 12px; padding-top: 18px; }
+  .cat-head { margin: 18px 0 18px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .cat-head h2 {
+    font-size: 21px;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    letter-spacing: -0.01em;
+  }
+  .cat-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .cat-letter.sm { width: 18px; height: 18px; font-size: 11px; border-radius: 5px; }
+  .cat-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    background: var(--bg-code);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 1px 9px;
+  }
+  .cat-desc { color: var(--text-dim); font-size: 13.5px; margin: 0; }
+
+  /* memória */
+  .mem {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin: 0 0 16px;
+    box-shadow: var(--shadow);
+    scroll-margin-top: 70px;
+  }
+  .mem-head-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .b-regra { color: var(--b-regra); background: var(--b-regra-bg); }
+  .b-gotcha { color: var(--b-gotcha); background: var(--b-gotcha-bg); }
+  .b-entrega { color: var(--b-entrega); background: var(--b-entrega-bg); }
+  .b-pend { color: var(--b-pend); background: var(--b-pend-bg); }
+  .b-ok { color: var(--b-ok); background: var(--b-ok-bg); }
+  .cat-ref {
+    font-size: 11px; font-weight: 700; color: var(--text-faint);
+    border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
+  }
+  .mem-id { margin-left: auto; color: var(--text-faint); font-size: 11.5px; background: var(--bg-code); padding: 2px 7px; border-radius: 5px; }
+  .mem-title { font-size: 16.5px; margin: 2px 0 8px; line-height: 1.35; letter-spacing: -0.01em; }
+  .mem-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tag {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--bg-code);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 1px 9px;
+  }
+  .tag-sec { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); }
+  .mem-meta {
+    display: flex; flex-wrap: wrap; gap: 6px 22px;
+    margin: 0 0 12px; padding: 10px 0 0; border-top: 1px dashed var(--border-soft);
+  }
+  .mem-meta > div { display: flex; gap: 6px; align-items: baseline; }
+  .mem-meta dt { color: var(--text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+  .mem-meta dd { margin: 0; font-size: 12.5px; color: var(--text); font-weight: 500; }
+  .mem-summary { margin: 0 0 14px; color: var(--text); font-size: 14px; }
+  .mem-full > summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent);
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .mem-full > summary::-webkit-details-marker { display: none; }
+  .mem-full > summary::before { content: "▸"; font-size: 11px; }
+  .mem-full[open] > summary::before { content: "▾"; }
+  .mem-full pre {
+    margin: 12px 0 0;
+    background: var(--bg-code);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+  }
+
+  /* sumário final */
+  .summary-sec {
+    margin-top: 40px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .summary-sec h2 { margin: 0 0 14px; font-size: 19px; }
+  .summary-sec h3 { margin: 18px 0 8px; font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; }
+  .sum-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .sum-table th, .sum-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border-soft); }
+  .sum-table th { color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .sum-table td.num { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .obs { margin: 8px 0 0; padding-left: 20px; }
+  .obs li { margin: 0 0 7px; font-size: 13.5px; }
+  .pill { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+  .pill.ok { color: var(--b-ok); background: var(--b-ok-bg); }
+  .pill.block { color: var(--b-gotcha); background: var(--b-gotcha-bg); }
+
+  footer.foot { margin-top: 36px; color: var(--text-faint); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+  <nav class="topbar" aria-label="Navegação por categoria">
+    <div class="topbar-inner">
+      <span class="topbar-brand">Memórias</span>
+      <a class="catnav-link" href="#cat-A"><span class="cat-letter sm">A</span> Regras de processo <span class="cat-count">3</span></a>
+<a class="catnav-link" href="#cat-B"><span class="cat-letter sm">B</span> Gotchas críticos &amp; cross-cutting <span class="cat-count">3</span></a>
+<a class="catnav-link" href="#cat-C"><span class="cat-letter sm">C</span> Fases de fundação (F0.1–F0.5) <span class="cat-count">2</span></a>
+<a class="catnav-link" href="#cat-D"><span class="cat-letter sm">D</span> Trilhas do fan-out (T-A → T-J + INT) <span class="cat-count">13</span></a>
+<a class="catnav-link" href="#cat-E"><span class="cat-letter sm">E</span> Pendências &amp; dívida técnica <span class="cat-count">2</span></a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="hero">
+      <h1>Memórias do projeto · dashboards</h1>
+      <p class="sub">Documentação categorizada das 23 memórias <code>long_term</code> (escopo global) registradas durante o desenvolvimento do MVP da plataforma de dashboards/relatórios gerados por agente de IA via MCP.</p>
+
+      <div class="index-grid">
+        <div class="stat big"><div class="n">23</div><div class="l">memórias long_term</div></div>
+        <div class="stat"><div class="n">3</div><div class="l">A · Regras de processo</div></div>
+        <div class="stat"><div class="n">3</div><div class="l">B · Gotchas cross-cutting</div></div>
+        <div class="stat"><div class="n">2</div><div class="l">C · Fundação F0.1–F0.5</div></div>
+        <div class="stat"><div class="n">13</div><div class="l">D · Trilhas do fan-out</div></div>
+        <div class="stat"><div class="n">2</div><div class="l">E · Pendências &amp; dívida</div></div>
+      </div>
+
+      <div class="meta-row">
+        <span>Gerado em <strong>2026-06-23 03:23 UTC</strong></span>
+        <span>Autores: <strong>orchestrator, subagent, task-executor, task-planner, task-reviewer</strong></span>
+        <span>Stack: <strong>Fastify + Prisma/Postgres + Redis + BullMQ + Socket.IO</strong> (BE) · <strong>Vite + React 19 + shadcn + TanStack Query + Zustand</strong> (FE)</span>
+      </div>
+
+      <details class="toc" open>
+        <summary>Índice — 23 memórias</summary>
+        <ol>
+          <li><a href="#cmqpr6c2300n1pi0i5e8g3ugc"><span class="toc-cat">A</span> Regra: AlertDialog + useMutation usa onSettled, nunca onSuccess</a></li>
+<li><a href="#cmqoewgi10039pi0iei73rt3q"><span class="toc-cat">A</span> Processo de planejamento: docs/plano antes de tasks</a></li>
+<li><a href="#cmqomphym00anpi0icbimclhz"><span class="toc-cat">A</span> Regra operacional: restaurar @dashboards/contracts após npm install + fs_edit sequencial</a></li>
+<li><a href="#cmqoizcvd007rpi0iywggta2x"><span class="toc-cat">B</span> Gotchas DB/Prisma (F0.1): enum migration 55P04, drift fantasma, EACCES root:root</a></li>
+<li><a href="#cmqoli4rl00a1pi0il4a77ik2"><span class="toc-cat">B</span> F0.4 render-engine + catálogo vivo + wiring de contratos (gotchas Vitrine/glob/sandbox)</a></li>
+<li><a href="#cmqomp6jy00alpi0iohmlblw3"><span class="toc-cat">B</span> F0.5 esqueleto de integração (auto-discovery BE + providers/rotas FE + react-hooks)</a></li>
+<li><a href="#cmqojjn8y008dpi0isbfizwnh"><span class="toc-cat">C</span> F0.2: lib/crypto (AES-256-GCM) + pg-runner read-only</a></li>
+<li><a href="#cmqok74z7008zpi0iljze2v3u"><span class="toc-cat">C</span> F0.3: contratos compartilhados @dashboards/contracts (JSON Schema + ajv)</a></li>
+<li><a href="#cmqp7pyv000brpi0i81sga711"><span class="toc-cat">D</span> T-B1: módulo departments + RBAC/visibilidade compartilhados</a></li>
+<li><a href="#cmqp882gs00c5pi0ihc9lrw4i"><span class="toc-cat">D</span> T-B2: módulo charts (CRUD draft/published)</a></li>
+<li><a href="#cmqpa3fia00dnpi0ipudjssfs"><span class="toc-cat">D</span> T-C: módulo data (hidratação de blocos, cache 2 níveis, fila/worker)</a></li>
+<li><a href="#cmqpawge900e5pi0iot3rk2ws"><span class="toc-cat">D</span> T-D: servidor MCP (12 tools) para o agente de IA externo</a></li>
+<li><a href="#cmqpbme0f00evpi0ivdyz747s"><span class="toc-cat">D</span> T-E: app shell FE + data layer (query-keys, staletime, socket→cache, RBAC FE)</a></li>
+<li><a href="#cmqpcevsz00ffpi0in8aig1cw"><span class="toc-cat">D</span> T-F1: feature connections (/connections)</a></li>
+<li><a href="#cmqpdh0rb00g3pi0insdkqbis"><span class="toc-cat">D</span> T-F2: listagens /dashboards e /charts + fix /users</a></li>
+<li><a href="#cmqpe9dai00gjpi0i7fh4sf57"><span class="toc-cat">D</span> T-I: 7 blocos vivos do catálogo (kpi/bar/line/donut/table/title/rich_text)</a></li>
+<li><a href="#cmqpf6j0500gxpi0iui6l3h4a"><span class="toc-cat">D</span> T-G1: tela dashboard VIEW + share público</a></li>
+<li><a href="#cmqpgbdzt00hppi0i99nnywks"><span class="toc-cat">D</span> T-G2: editor enxuto de dashboard (/dashboards/:id/edit)</a></li>
+<li><a href="#cmqpjiz4g00jkpi0i5eloy7du"><span class="toc-cat">D</span> T-H: chat embutido MOCKADO (/chat) com transporte plugável</a></li>
+<li><a href="#cmqphjge700ijpi0i9qtkkbnh"><span class="toc-cat">D</span> T-J: export PDF (Playwright headless) — BE módulo export + FE feature print</a></li>
+<li><a href="#cmqpibgjc00j4pi0ivppm2s27"><span class="toc-cat">D</span> INT: integração e2e (bug fila query-exec jobId, seed conforme, smoke)</a></li>
+<li><a href="#cmqokeh340099pi0i6ajjvnhp"><span class="toc-cat">E</span> Pendência F0.3: wiring de contratos pendente (resolvida em F0.4/T-A/T-E)</a></li>
+<li><a href="#cmqpjoqlr00jspi0immk8fe43"><span class="toc-cat">E</span> Follow-ups / dívida técnica do MVP (issues low/medium; T-H2 bloqueada)</a></li>
+        </ol>
+      </details>
+    </header>
+
+    <main>
+
+      <section class="cat" id="cat-A" aria-labelledby="cat-A-h">
+        <div class="cat-head">
+          <h2 id="cat-A-h"><span class="cat-letter">A</span> Regras de processo <span class="cat-count">3</span></h2>
+          <p class="cat-desc">Regras e padrões que devem ser seguidos no desenvolvimento.</p>
+        </div>
+        
+        <article class="mem" id="cmqpr6c2300n1pi0i5e8g3ugc">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-regra">regra</span>
+              <span class="cat-ref">A</span>
+              
+              <code class="mem-id">cmqpr6c2300n1pi0i5e8g3ugc</code>
+            </div>
+            <h3 class="mem-title">Regra: AlertDialog + useMutation usa onSettled, nunca onSuccess</h3>
+            <div class="mem-tags"><span class="tag">FE</span><span class="tag">DX</span><span class="tag">regra</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-reviewer</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 21:54:10 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Em fluxos de exclusão/destruição com AlertDialog (Radix) + useMutation, FECHAR o diálogo sempre via onSettled — onSuccess deixa o overlay travado em falhas (rede/500/404). Use o hook compartilhado useConfirmDelete&lt;T&gt;. Anti-padrão ainda vivo em delete-connection-dialog e delete-user-dialog (issue aberta).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>**REGRA do projeto (frontend-boilerplate):** SEMPRE que uma `useMutation` do React Query for chamada dentro de um `AlertDialog` (Radix) e o resultado precisar FECHAR o diálogo, use `onSettled` — NUNCA `onSuccess`. O `onSuccess` só fecha em caso de sucesso, e qualquer falha (rede, 500, 404) deixa o `open` travado em `true`, bloqueando cliques no body (overlay Radix).
+
+**Anti-padrão PROIBIDO (causa bug "UI trava após ação"):**
+```tsx
+mutation.mutate(id, { onSuccess: () =&gt; onOpenChange(false) });
+// ou
+mutation.mutate(id, { onSuccess: () =&gt; setDeleting(null) });
+```
+
+**Padrão correto (via `useConfirmDelete&lt;T&gt;` em `src/shared/hooks/use-confirm-delete.ts`):**
+```tsx
+const { dialogProps, openDelete } = useConfirmDelete&lt;MyItem&gt;({
+  mutation: useDeleteMyItem(),
+  getId: (item) =&gt; item.id,
+  getTitle: (item) =&gt; item.title,
+});
+
+&lt;ConfirmDeleteDialog title="Excluir?" {...dialogProps} /&gt;
+```
+O hook centraliza o state e fecha SEMPRE via `onSettled` da mutação.
+
+**Onde o anti-padrão AINDA existe (issue cmqpr62ac00mvpi0ifi4504n6):**
+- `src/features/connections/components/delete-connection-dialog.tsx` (linhas 24-28)
+- `src/features/users/components/delete-user-dialog.tsx` (linhas 24-28)
+
+Ambos montam `AlertDialog` diretamente (não usam `ConfirmDeleteDialog` compartilhado) e replicam o anti-padrão. Quando criar/modificar fluxos de exclusão, SEMPRE preferir o hook compartilhado. Follow-up: unificar esses 2 com `ConfirmDeleteDialog` + `useConfirmDelete`.
+
+**Aplicável a:** qualquer nova feature que adicionar exclusão/destruição (departments, shares, MCP tools destrutivas no FE, etc.).</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqoewgi10039pi0iei73rt3q">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-regra">regra</span>
+              <span class="cat-ref">A</span>
+              
+              <code class="mem-id">cmqoewgi10039pi0iei73rt3q</code>
+            </div>
+            <h3 class="mem-title">Processo de planejamento: docs/plano antes de tasks</h3>
+            <div class="mem-tags"><span class="tag">processo</span><span class="tag">planning</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-planner</dd></div>
+              <div><dt>Data</dt><dd>2026-06-21 23:22:48 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Antes de criar tasks, o plano vai em docs/plano/ (um .md por etapa; 00-visao-geral.md é o índice). Planos fechados conversando com o usuário; só viram requisito+tasks depois de fechados. Define o sistema: plataforma de dashboards narrativos por agente de IA via MCP.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>Processo de planejamento deste projeto (definido pelo usuário): antes de criar tasks, o plano é registrado em arquivos .md sob `docs/plano/`, UM arquivo por etapa/módulo. `docs/plano/00-visao-geral.md` é o índice mestre. Os planos são fechados conversando/questionando o usuário (ele acompanha cada rodada). Só transformar em requisito+tasks DEPOIS que os .md de módulo estiverem fechados. O sistema sendo planejado: plataforma de dashboards/relatórios narrativos gerados por agente de IA via MCP, que consulta bancos externos (conexões cadastradas), salva tudo como config JSON no banco; front hidrata a tela (filtros + seções/linhas + gráficos). Stack: boilerplate Fastify+Prisma/Postgres+Redis+BullMQ+Socket.IO (BE) e Vite+React19+shadcn+TanStack Query+Zustand (FE).</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqomphym00anpi0icbimclhz">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-regra">regra</span>
+              <span class="cat-ref">A</span>
+              
+              <code class="mem-id">cmqomphym00anpi0icbimclhz</code>
+            </div>
+            <h3 class="mem-title">Regra operacional: restaurar @dashboards/contracts após npm install + fs_edit sequencial</h3>
+            <div class="mem-tags"><span class="tag">infra</span><span class="tag">DX</span><span class="tag">regra</span><span class="tag tag-sec" title="Categoria secundária">também: B · Gotchas críticos &amp; cross-cutting</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 03:01:20 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Qualquer `npm install &lt;pkg&gt;` reverte @dashboards/contracts de cópia para symlink e quebra ajv → SEMPRE rodar `npm install ../shared/contracts --install-links` depois. package.json é root:root (EACCES ao salvar) → adicionar deps via fs_edit. NUNCA emitir dois fs_edit paralelos no mesmo arquivo.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>GOTCHA crítico (backend-boilerplate, contratos): rodar QUALQUER `npm install &lt;pkg&gt;` em backend-boilerplate (ou frontend-boilerplate) REVERTE o pacote @dashboards/contracts de cópia (--install-links) para SYMLINK → quebra a resolução de `ajv`/`ajv-formats` (erro "Cannot find module 'ajv'" no require do dist do contracts; falha em tests como tests/catalog.test.ts). FIX: depois de qualquer npm install, rode `npm install ../shared/contracts --install-links` p/ restaurar a cópia real. Sintoma: `ls -ld node_modules/@dashboards/contracts` mostrando lrwxrwxrwx (symlink) em vez de drwxr-xr-x (dir real).
+Adicional: package.json de backend-boilerplate é root:root (criado por fs-tools), então `npm install &lt;pkg&gt;` falha com EACCES ao SALVAR o package.json — MAS o node_modules JÁ foi reificado (o pacote é instalado). Workaround: deixe o npm instalar o node_modules e adicione a entrada de dependência manualmente via fs-tools (fs_edit no package.json). Foi assim que @fastify/autoload ^6.3.1 entrou.
+
+GOTCHA de tooling (fs_edit): NUNCA emitir dois sandbox_fs_edit para o MESMO arquivo no mesmo bloco de tool calls paralelas — eles correm e um sobrescreve o outro (perdi imports de socket.ts e app-sidebar.tsx assim, gerando TS2304/ReferenceError). Edits no mesmo arquivo devem ser SEQUENCIAIS (esperar o anterior).</pre>
+          </details>
+        </article>
+      </section>
+
+      <section class="cat" id="cat-B" aria-labelledby="cat-B-h">
+        <div class="cat-head">
+          <h2 id="cat-B-h"><span class="cat-letter">B</span> Gotchas críticos &amp; cross-cutting <span class="cat-count">3</span></h2>
+          <p class="cat-desc">Armadilhas que valem para várias trilhas — afetam BE e FE.</p>
+        </div>
+        
+        <article class="mem" id="cmqoizcvd007rpi0iywggta2x">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-gotcha">gotcha</span>
+              <span class="cat-ref">B</span>
+              
+              <code class="mem-id">cmqoizcvd007rpi0iywggta2x</code>
+            </div>
+            <h3 class="mem-title">Gotchas DB/Prisma (F0.1): enum migration 55P04, drift fantasma, EACCES root:root</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">infra</span><span class="tag">gotcha</span><span class="tag tag-sec" title="Categoria secundária">também: C · Fases de fundação (F0.1–F0.5)</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 01:17:01 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Estender enum Postgres + usar o valor na mesma migration falha (55P04) → separar em 2 migrations. Drift fantasma resolvido com `migrate resolve --applied`. Arquivos de fs-tools ficam root:root → `prisma format` dá EACCES. Seed idempotente com credenciais determinísticas.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>DB/Prisma (backend-boilerplate): gotchas confirmados na F0.1.
+1) Estender um enum Postgres (ex.: UserRole) E usar o novo valor (ex.: SET DEFAULT) na MESMA migration falha com `unsafe use of new value ... must be committed before they can be used` (55P04). Solução: separar em DUAS migrations — uma só com os `ALTER TYPE ... ADD VALUE`, outra com o resto. As migrations init_dashboards_mvp já seguem esse padrão.
+2) O banco de dev (cloud.serendiped.com:54321/boiler, no .env) tinha a tabela `users` mas SEM `_prisma_migrations` registrada — `migrate dev` acusava drift. Resolvido com `prisma migrate resolve --applied 0_init`. Se reencontrar drift fantasma, cheque se `_prisma_migrations` existe e bate com prisma/migrations/.
+3) Arquivos escritos pelas tools de fs do agente ficam como root:root; `prisma format` (rodado como sandbox) não consegue sobrescrever o schema → erro EACCES. Workaround: rodar format numa cópia em /tmp para checar diffs; o schema commitado já está formatado.
+Seed: idempotente via upsert (email/slug) + findFirst-or-create (Connection/Chart/Dashboard, que não têm @unique natural). Credenciais determinísticas: admin@prefeitura.local/admin1234 e {analyst,creator,viewer,user}@prefeitura.local/user1234.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqoli4rl00a1pi0il4a77ik2">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-gotcha">gotcha</span>
+              <span class="cat-ref">B</span>
+              
+              <code class="mem-id">cmqoli4rl00a1pi0il4a77ik2</code>
+            </div>
+            <h3 class="mem-title">F0.4 render-engine + catálogo vivo + wiring de contratos (gotchas Vitrine/glob/sandbox)</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">FE</span><span class="tag">gotcha</span><span class="tag tag-sec" title="Categoria secundária">também: C · Fases de fundação (F0.1–F0.5)</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 02:27:36 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Wiring @dashboards/contracts aplicado (file: + --install-links); dist/ versionado. Render-engine FE com auto-registro via import.meta.glob e convenção catalog/&lt;type&gt;/. build:catalog gera catalog.manifests.json no BE. Gotchas: glob literal em comentário quebra TS; ownership root:root vs Prettier sandbox.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>F0.4 (render-engine + catálogo VIVO) implementada. WIRING dos contratos APLICADO (resolve a pendência da issue low cmqokcoy20095pi0i3fidhtvk para FE e BE):
+- `@dashboards/contracts` agora é dependência `file:../shared/contracts` em frontend-boilerplate E backend-boilerplate.
+- GOTCHA crítico: instale com `npm install ../shared/contracts --install-links` (NÃO o symlink padrão). Com symlink o Node resolve as deps do pacote (ajv/ajv-formats) a partir do path REAL (shared/contracts/node_modules, que não existe) → "Cannot find module 'ajv'". `--install-links` faz cópia real e as deps resolvem do node_modules do consumidor.
+- O `dist/` de shared/contracts foi VERSIONADO (commitado) porque o pacote não tem script `prepare` (não rebuilda no install) e o dir shared/contracts é root-owned no sandbox (não dá pra criar node_modules/dist lá via npm). Exceções no .gitignore raiz (`!shared/contracts/dist/`, `!shared/contracts/dist/**`) e removido `dist` do shared/contracts/.gitignore. Ao alterar contratos: rode `npm run build` no pacote e commite o dist atualizado.
+- Consumo é só types (erased) + fixtures + validateBlockManifest; .d.ts (62KB) é pulado por skipLibCheck → não polui typecheck do consumidor.
+
+CATÁLOGO / RENDER-ENGINE (frontend-boilerplate/src/shared/render-engine/):
+- Convenção de pasta para T-I (CRÍTICA, documentada em catalog/README.md): `catalog/&lt;type&gt;/` com manifest.ts (PURO, exporta `manifest` satisfies BlockManifest), component.tsx (exporta `definition`/default via defineBlock + `Component`), fixture.ts. Nome da pasta == manifest.type.
+- Auto-registro FE: registry.ts usa import.meta.glob('./catalog/*/component.tsx',{eager:true}) lendo `definition`. SEM índice central. getBlock/listBlocks/hasBlock/listBlockTypes + buildRegistry (testável).
+- BlockRenderer + DashboardRenderer: estados skeleton|loading|success|error|empty; tipo desconhecido → placeholder (renderiza dashboardLayoutFixture inteiro sem crashar enquanto T-I não implementa os 7 blocos).
+- GOTCHA: NÃO escreva o padrão de glob literal `catalog/*/component.tsx` dentro de comentário de bloco — o fecha-comentário quebra o TS.
+- ESLint: override em eslint.config.js desliga `react-refresh/only-export-components` para src/shared/render-engine/catalog/** (blocos co-exportam Component + definition por convenção).
+
+build:catalog (BE): backend-boilerplate/scripts/build-catalog.ts (scripts `build:catalog` e `build:catalog:watch`). Varre os manifest.ts do catálogo do FE (env CATALOG_DIR, default ../frontend-boilerplate/src/shared/render-engine/catalog), valida cada um com validateBlockManifest, gera backend-boilerplate/src/catalog/catalog.manifests.json (determinístico, sem timestamp; tracked) p/ o BE servir /catalog e o MCP expor list_catalog. Saída atual: 1 bloco (__example).
+
+Vitrine UI: components.json ganhou registries `@vitrine` → registry remoto (npx shadcn add @vitrine/&lt;slug&gt;). shadcn/Tailwind v4/cn já estavam prontos no boilerplate.
+
+GOTCHA sandbox: arquivos criados por fs-tools ficam root:root. Para o Prettier (rodando como sandbox) reescrevê-los, recriei a pasta como sandbox-owned via stage: cp -r dir .stage (sandbox copia) → fs_delete do dir root → mv .stage dir. Não há pre-commit hook ativo neste ambiente (core.hooksPath aponta p/ backend .husky-run sem arquivo pre-commit), então ownership não bloqueia commit.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqomp6jy00alpi0iohmlblw3">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-gotcha">gotcha</span>
+              <span class="cat-ref">B</span>
+              
+              <code class="mem-id">cmqomp6jy00alpi0iohmlblw3</code>
+            </div>
+            <h3 class="mem-title">F0.5 esqueleto de integração (auto-discovery BE + providers/rotas FE + react-hooks)</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">FE</span><span class="tag">gotcha</span><span class="tag tag-sec" title="Categoria secundária">também: C · Fases de fundação (F0.1–F0.5)</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 03:01:05 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Fronteiras de plug-in do fan-out. BE: rotas por @fastify/autoload (server.ts fechado; cada módulo = index.ts plugin). FE: providers.tsx e routes.tsx fechados, features registram routes.tsx via glob. Gotchas eslint react-hooks (set-state-in-effect, refs); AppSocket precisa do 2º generic para emitir.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>F0.5 (esqueleto de integração) ENTREGUE — fronteiras de plug-in do fan-out. READMEs vivos: backend-boilerplate/src/modules/README.md, frontend-boilerplate/src/app/README.md, docs/plano/22-esqueleto-integracao-f05.md.
+
+BACKEND — rotas por AUTO-DISCOVERY (@fastify/autoload ^6.3.1):
+- server.ts é FECHADO: só faz `await app.register(registerModules)` (src/http/modules-loader.ts). NÃO adicionar register de rota lá.
+- Cada módulo do fan-out = src/modules/&lt;modulo&gt;/index.ts com `export default` de um FastifyPluginAsync. Autoload registra sozinho. Config: indexPattern só index.* é plugin; routes/*.ts, service.ts são importados pelo index, dirNameRoutePrefix:false (paths absolutos), ignorePattern p/ testes.
+- MODULES_DIR = path.join(__dirname,'..','modules') — funciona em dev (tsx, CJS, __dirname ok) e build. tsup.config.ts: entry inclui glob 'src/modules/**/*.ts' p/ emitir dist/modules/*/index.js (senão autoload não acha no artefato buildado).
+- Módulos criados (esqueleto, cada um com rota marcador GET /&lt;modulo&gt;/_status + tag Swagger; trilha remove ao implementar): connections(T-A), departments/charts/dashboards/share(T-B), data(T-C), export(T-J), catalog(T-I/T-D), mcp(T-D).
+- Socket: handshake já autentica JWT (middlewares/auth-socket.ts). src/socket/events/dashboard-room.ts adiciona dashboard:join/leave → sala dashboardRoom(id) dos contratos; registrado em socket.ts. T-C emite com socketManager.sendToRoom(dashboardRoom(id), SOCKET_EVENTS.X, payload).
+- tests/modules-loader.test.ts prova o auto-discovery via Fastify inject (precisa setar serializer/validatorCompiler do fastify-type-provider-zod, senão FST_ERR_SCH_SERIALIZATION_BUILD).
+
+FRONTEND:
+- app/providers.tsx (AppProviders) é o ÚNICO ponto de composição: ErrorBoundary&gt;Theme&gt;QueryClient&gt;Auth&gt;Socket&gt;children+Toaster. FECHADO. Consumir via hooks.
+- app/routes.tsx FECHADO: casca (auth + DashboardLayout protegido + fallback) + agregação automática via collectFeatureRoutes() (shared/lib/feature-routes.ts) usando import.meta.glob('../../features/*/routes.tsx'). Cada feature cria src/features/&lt;x&gt;/routes.tsx exportando `export const featureRoutes: FeatureRoutes = { protected?, public? }` (protected: path relativo, filho de DashboardLayout; public: path absoluto, nível raiz sem auth). users migrado p/ essa convenção (exemplo lazy+Suspense+role). Placeholders navegáveis: connections, dashboards(+/:id,/:id/edit), charts(+/:id), chat, share(/public/:token).
+- Socket: shared/socket — SocketProvider conecta quando autenticado (token no handshake auth(cb)), useSocket() expõe {connected, getSocket(), joinDashboard, leaveDashboard}. AppSocket = Socket&lt;ServerToClientEvents, ClientToServerEvents&gt; (EmitEvents default = ListenEvents no socket.io-client, então PRECISA do 2º generic p/ emitir dashboard:join/leave). NUNCA ler getSocket()/ref.current durante render (regra eslint react-hooks/refs) — só em effects/handlers.
+- queryClient único em shared/lib/query-client.ts. AuthProvider (features/auth/auth-provider.tsx) re-hidrata user via GET /auth/me (store só persiste token). ProtectedRoute alterado: com token mas user ainda null → mostra loading em vez de redirecionar p/ /login (senão reload direto em rota protegida cai em /login).
+
+GOTCHA eslint react-hooks novo (FE): `react-hooks/set-state-in-effect` proíbe setState SÍNCRONO no corpo de useEffect (ok em callbacks/cleanup); `react-hooks/refs` proíbe ler ref.current durante render. `npm run lint` (FE) tem 2 erros PRÉ-EXISTENTES em src/components/ui/table-fluid.tsx (Vitrine) — não são regressão. O gate real é `npm run build` (tsc+vite), verde.</pre>
+          </details>
+        </article>
+      </section>
+
+      <section class="cat" id="cat-C" aria-labelledby="cat-C-h">
+        <div class="cat-head">
+          <h2 id="cat-C-h"><span class="cat-letter">C</span> Fases de fundação (F0.1–F0.5) <span class="cat-count">2</span></h2>
+          <p class="cat-desc">Entregas que constroem a base do monorepo.</p>
+        </div>
+        
+        <article class="mem" id="cmqojjn8y008dpi0isbfizwnh">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">C</span>
+              
+              <code class="mem-id">cmqojjn8y008dpi0isbfizwnh</code>
+            </div>
+            <h3 class="mem-title">F0.2: lib/crypto (AES-256-GCM) + pg-runner read-only</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">infra</span><span class="tag">segurança</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 01:32:48 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">lib/crypto.ts: fonte única de cifragem de credenciais (AES-256-GCM, IV por encrypt). pg-runner executa SELECT/WITH read-only contra Postgres externos com guardrails (sql-guard bloqueia DDL/DML/multi-statement), transação READ ONLY + statement_timeout + row cap + pool por conexão.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>Backend (backend-boilerplate) libs base da F0.2:
+- `src/lib/crypto.ts` é a FONTE ÚNICA de cifragem de credenciais. Formato do ciphertext: base64(iv[12] | authTag[16] | ciphertext), AES-256-GCM, IV aleatório por encrypt. API: encrypt/decrypt (chave do env) e encryptWithKey/decryptWithKey (chave explícita, útil em testes). Erros lançam CryptoError sem vazar detalhe. O seed (prisma/seed.ts) importa `../src/lib/crypto` e usa a MESMA lib (não duplica formato).
+- Chave: env `CONNECTION_ENC_KEY` (32 bytes em base64 OU 64-char hex), validada no boot por `src/lib/env.ts` via `decodeEncryptionKey` (também exportada p/ reuso).
+- `src/lib/pg-runner/` executa SELECT/WITH read-only contra Postgres EXTERNOS. Guardrails: sql-guard.ts (assertReadOnlyQuery) bloqueia não-SELECT, multi-statement e DDL/DML (inclusive CTEs data-modifying), ignorando comentários e strings; runQuery roda em transação `BEGIN; SET TRANSACTION READ ONLY` + `SET LOCAL statement_timeout` + row cap via pg-cursor (lê maxRows+1 e corta, flag `truncated`) + ROLLBACK. Saída: { columns, rows, rowCount, truncated, durationMs }. Pool por Connection (cache em Map, key=connection.id), `closeAllPools()` p/ shutdown/tests.
+- Deps adicionadas: `pg`, `pg-cursor` (sem tipos → ambient decl em src/@types/pg-cursor.d.ts), `@types/pg`.
+- Envs novas (em .env e .env.example): CONNECTION_ENC_KEY, PG_RUNNER_STATEMENT_TIMEOUT_MS(15000), PG_RUNNER_MAX_ROWS(50000), PG_RUNNER_POOL_MAX(3), PG_RUNNER_IDLE_TIMEOUT_MS(30000), PG_RUNNER_CONNECT_TIMEOUT_MS(10000).
+- GOTCHA: o boilerplate tem erros de typecheck PRÉ-EXISTENTES (src/http/error-handler.ts, src/http/routes/user/delete-user.ts, src/server.ts) — `npm run typecheck` não fica verde, mas `npm run build` (tsup) fica. Não são da F0.2.
+- Testes de integração do pg-runner são gated por env `PG_RUNNER_TEST_URL` (describe.skip sem ela); rodam SELECT/row-cap/statement_timeout contra um Postgres real.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqok74z7008zpi0iljze2v3u">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">C</span>
+              
+              <code class="mem-id">cmqok74z7008zpi0iljze2v3u</code>
+            </div>
+            <h3 class="mem-title">F0.3: contratos compartilhados @dashboards/contracts (JSON Schema + ajv)</h3>
+            <div class="mem-tags"><span class="tag">contratos</span><span class="tag">BE</span><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 01:51:04 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Pacote @dashboards/contracts na raiz do monorepo — fonte da verdade dos contratos (LAYOUT × DADOS × CONTRATO-DE-BLOCO). SEM Zod (conflito v3×v4): JSON Schema neutro + tipos via json-schema-to-ts + validação ajv. Exporta schemas, tipos, validadores, helpers de socket e fixtures (7 manifests base).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>Contratos compartilhados (F0.3) vivem em `shared/contracts/` (pacote `@dashboards/contracts`), na RAIZ do monorepo (irmão de backend-boilerplate/ e frontend-boilerplate/). É a FONTE DA VERDADE única dos contratos do doc 20 (LAYOUT × DADOS × CONTRATO-DE-BLOCO). Regra travada: SEM Zod (conflito Zod v3 BE × v4 FE) — contratos são JSON Schema NEUTRO `as const` + tipos TS derivados via json-schema-to-ts + validação runtime via ajv.
+Exporta (de src/index.ts): schemas (DashboardLayoutSchema, DashboardConfigSchema, BlockManifestSchema, Scalar/Series/Categorical/TableDataSchema, DashboardDataPayloadSchema, BlockDataResultSchema, eventos socket, DTOs); tipos (DashboardLayout, DashboardConfig, Block, DataBinding, BlockManifest, BlockDataResult, DashboardDataPayload, ServerToClientEvents, DTOs); validadores ajv pré-compilados (validateDashboardLayout/Config/BlockManifest/DashboardDataPayload..., validateBlockDataByShape, assertValid, formatErrors, ContractValidationError); helpers socket (SOCKET_EVENTS = block:queued|running|data|error, dashboardRoom(id)); e FIXTURES (dashboardConfigFixture, dashboardLayoutFixture, dashboardDataPayloadFixture, baseManifests[7]: kpi/bar_chart/line_chart/donut/table/title/rich_text). FE deve trabalhar contra essas fixtures enquanto T-C (execução real) não existe.
+DashboardLayout = { filters, rows } (o que é salvo em Dashboard.draftLayout/publishedLayout). DashboardConfig = layout + metadados (id/version/status/title/ownerId/departmentId/visibility). Block.type e BlockManifest.type são strings ABERTAS (catálogo vivo) — adicionar bloco novo NÃO muda os contratos.
+Build: tsup dual ESM+CJS + dts/d.cts (`npm run build`). Testes: `npm test` (node --import tsx --test, 14/14). Consumo por BE/FE: dependência local `"@dashboards/contracts": "file:../shared/contracts"` + npm install; runtime validation precisa de ajv (vem transitivo). Alternativa dev type-only: alias de path para `../shared/contracts/src/index.ts` (exposto via export "./src"). Provado importável sob node16/CJS (estilo BE) e bundler/ESM (estilo FE).
+GOTCHA: arquivos criados pelas fs-tools do agente ficam root:root; o usuário `sandbox` (sem sudo) NÃO consegue criar node_modules dentro de shared/contracts → para rodar npm install/test/build, copiar para /tmp e rodar lá (node_modules e dist são gitignored). Cada processo do sandbox tem /tmp isolado: faça install+test+build no MESMO processo.</pre>
+          </details>
+        </article>
+      </section>
+
+      <section class="cat" id="cat-D" aria-labelledby="cat-D-h">
+        <div class="cat-head">
+          <h2 id="cat-D-h"><span class="cat-letter">D</span> Trilhas do fan-out (T-A → T-J + INT) <span class="cat-count">13</span></h2>
+          <p class="cat-desc">Entregas funcionais do sistema.</p>
+        </div>
+        
+        <article class="mem" id="cmqp7pyv000brpi0i81sga711">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqp7pyv000brpi0i81sga711</code>
+            </div>
+            <h3 class="mem-title">T-B1: módulo departments + RBAC/visibilidade compartilhados</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">RBAC</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>subagent</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 12:49:34 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Módulo departments + a base de RBAC/visibilidade que as demais trilhas consomem: src/lib/rbac (matriz pura, ActorContext), src/lib/visibility (canView/canModify/buildVisibilityWhere) e middlewares/rbac (requireAuth/requireRole/requirePermission). 404 (não 403) para artefato invisível.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-B1 ENTREGUE (backend-boilerplate): módulo departments + RBAC/visibilidade COMPARTILHADOS. Os próximos módulos (T-B2 charts, T-B3 dashboards, T-B4 share, export, data) DEVEM consumir daqui — não reimplementar (connections/T-A tem rbac.ts LOCAL só por ter chegado antes).
+
+ONDE VIVE O COMPARTILHADO:
+- src/lib/rbac/permissions.ts — matriz PURA do doc 01: tipos Permission/Role, ROLE_PERMISSIONS, hasPermission(role, perm), permissionsForRole. Permissões: 'departments:manage' (ADMIN), 'connections:manage' (ADMIN,ANALYST), 'connections:use' (ADMIN,ANALYST,CREATOR), 'artifacts:manage' (idem use), 'artifacts:publish' (idem), 'artifacts:view' (+VIEWER), 'artifacts:export' (+VIEWER), 'share:create' (ADMIN,ANALYST,CREATOR). USER nenhuma. ADMIN todas.
+- src/lib/rbac/context.ts — ActorContext {userId, role, departmentIds} + loadActorContext(request).
+- src/lib/rbac/index.ts — barrel '@/lib/rbac'. src/lib/rbac/README.md — guia de consumo.
+- src/lib/visibility.ts — canViewArtifact/canModifyArtifact/buildVisibilityWhere para {ownerId, visibility, departmentId} (PRIVATE/DEPARTMENT/ORG; ADMIN tudo; dono sempre; ORG todos; DEPARTMENT só membros).
+- src/middlewares/rbac.ts — preHandlers Fastify PLUGÁVEIS: requireAuth, requireRole(...roles), requirePermission(perm); re-exporta `auth`. Exportados em src/middlewares/index.ts.
+
+USO (charts/dashboards/share): no index.ts `await app.register(auth)` 1x; nas rotas `{ preHandler: requirePermission('artifacts:manage') }`. No handler p/ ownership/visibilidade: loadActorContext + canViewArtifact/canModifyArtifact + buildVisibilityWhere (combine via { AND: [where, filtros] }). Use 404 (não 403) p/ artefato invisível.
+
+GOTCHA Fastify: plugin `auth` decora getCurrentUserId/Role num hook preHandler que roda ANTES do preHandler de rota — por isso requirePermission lê getCurrentUserRole(). Sem token → 401.
+
+departments surface: POST/GET/PATCH/DELETE /departments, GET/POST /departments/:id/members, DELETE /departments/:id/members/:userId. Mutations=requirePermission('departments:manage') (ADMIN); GETs=requireAuth (qualquer autenticado) — DESVIO consciente do doc 01 (só especifica gestão p/ ADMIN; leitura liberada pq outros módulos precisam listar deptos p/ visibilidade).
+
+Testes: tests/rbac.test.ts (matriz papel×ação + middleware em mini-app + visibilidade, sem DB) e tests/departments.test.ts (CRUD+membership Postgres real DATABASE_URL). modules-loader.test.ts: ao implementar módulo REMOVA o nome de EXPECTED_MODULES (some o /_status). npm test 183 pass/4 skip; npm run build verde; typecheck mantém só os 3 erros pré-existentes (error-handler.ts, delete-user.ts, server.ts). Commit local na main: 11ff370.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqp882gs00c5pi0ihc9lrw4i">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqp882gs00c5pi0ihc9lrw4i</code>
+            </div>
+            <h3 class="mem-title">T-B2: módulo charts (CRUD draft/published)</h3>
+            <div class="mem-tags"><span class="tag">BE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 13:03:38 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Módulo charts com CRUD draft + publish/unpublish (modelo draft/published sem histórico). Consome o RBAC/visibilidade compartilhados. Isolamento draft↔published. Novo lib/catalog.ts valida catalogType e props contra catalog.manifests.json. dataBinding validado em forma (Zod) e existência do connectionId.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-B2 ENTREGUE (backend-boilerplate): módulo `charts` (CRUD draft + publish/unpublish, modelo draft/published SEM histórico). Commit local main f021ab3. Dashboards (T-B3) deve ESPELHAR este padrão.
+
+ESTRUTURA: src/modules/charts/{index.ts, schema.ts, service.ts, routes/*.ts}. Rotas: POST/GET/GET:id/PATCH/DELETE /charts + POST /charts/:id/{publish,unpublish}. index.ts registra `auth` 1x e cada route usa requirePermission: criar/editar/deletar=artifacts:manage; publish/unpublish=artifacts:publish; listar/ler=artifacts:view.
+
+RBAC COMPARTILHADO CONSUMIDO (NÃO reimplementou): @/lib/rbac (loadActorContext), @/lib/visibility (canViewArtifact/canModifyArtifact/buildVisibilityWhere), @/middlewares/rbac (requirePermission). Padrão handler: ctx=loadActorContext(request); para modify/publish use requireChartForModify (404 se inexistente, 403 se não-dono via canModifyArtifact); para view use requireChartForView (404 se invisível); para lista use { AND:[buildVisibilityWhere(ctx), filtros] }.
+
+publish: copia draftProps→publishedProps, draftDataBinding→publishedDataBinding, publishedAt=new Date(), status='PUBLISHED'. unpublish: publishedProps/publishedDataBinding = Prisma.DbNull (NÃO JsonNull — queremos NULL na coluna nullable), publishedAt=null, status='DRAFT'. ISOLAMENTO draft&lt;-&gt;published: update só toca campos draft*, nunca published* — editar draft de chart publicado não muda o publicado até novo publish (testado).
+
+CATÁLOGO (novo lib reusável src/lib/catalog.ts): importa src/catalog/catalog.manifests.json (gerado por build:catalog F0.4) via import inlined no bundle pelo tsup/esbuild (funciona em dev/build/jest, sem fs read em runtime). Expõe hasCatalogType/getCatalogManifest/listCatalogTypes/listCatalogManifests + validatePropsAgainstCatalog(type,props) (ajv 8, strict:false, defensivo: sem propsSchema → ok). GOTCHA: precisei habilitar `resolveJsonModule:true` em tsconfig.json E no tsconfig inline do jest.config.js (ts-jest usa o inline, não herda o principal). `ajv` (já transitivo via @dashboards/contracts) foi adicionado a dependencies do package.json (entrada manual, sem npm install). catalogType de chart É validado contra esse catálogo; draftProps validado contra propsSchema do manifest (catálogo atual só tem `__example` com {label:string, additionalProperties:false}).
+
+dataBinding (draftDataBinding): Zod valida FORMA {connectionId, query(min1), params?[], transform?, ttlSeconds?(0..86400)}; service valida EXISTÊNCIA do connectionId (prisma.connection.findUnique). NÃO valida visibilidade da connection nem executa query (T-C). Visibilidade DEPARTMENT exige departmentId + membership do ator (salvo ADMIN), igual connections.
+
+Testes: tests/charts.test.ts (Postgres real DATABASE_URL, 25 testes). npm test full: 208 pass/4 skip/11 suites. build (tsup) verde. typecheck mantém só os 3 erros pré-existentes (error-handler.ts, delete-user.ts, server.ts) — nada novo.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpa3fia00dnpi0ipudjssfs">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpa3fia00dnpi0ipudjssfs</code>
+            </div>
+            <h3 class="mem-title">T-C: módulo data (hidratação de blocos, cache 2 níveis, fila/worker)</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">infra</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 13:56:01 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Coração do render: POST /dashboards/:id/data hidrata blocos. Cache Redis 2 níveis (dados anti-stampede + layout publicado), fila própria query-exec (BullMQ, worker no mesmo processo). draft=inline fresco; published=cache+fila+socket. Validação por shape do dataContract; visibilidade revalidada por chart/connection.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-C ENTREGUE (backend-boilerplate, módulo `data`, commit main 1ff4ca7) — hidratação dos blocos. Coração do render.
+
+SUPERFÍCIE: POST /dashboards/:id/data (auth artifacts:view), body {mode:'draft'|'published', filters:Record&lt;filterId,valor&gt;}. Resposta = DashboardDataPayload-compatível: {dashboardId, mode:'dev'|'published', generatedAt, blocks:{[blockId]:BlockDataResult}}. NUNCA expõe dataBinding cru (só resultado no shape) — satisfaz nota segurança T-B4.
+
+FE (T-G) deve: POST /dashboards/:id/data → render inline os state='success' (com data+shape) e state='error'; para state='queued' mostrar skeleton e ESCUTAR socket. Socket: entrar na sala via emit 'dashboard:join' com o id (handler já existe), e ouvir SOCKET_EVENTS block:running|data|error. Payload block:data = {dashboardId, blockId, result:BlockDataResult}; block:error = {dashboardId, blockId, error:{code,message}}; block:running = {dashboardId,blockId,state:'running'}. mode='draft' (dev/edição) volta tudo inline e SEM cache (sempre fresco); mode='published' usa cache+fila.
+
+CACHE 2 níveis (Redis): (1) DADOS chave `data:{sha256(connId|sql|JSON(paramsValues))}` = jobId BullMQ (anti-stampede); paramsValues posicional (ordem de dataBinding.params), TTL = dataBinding.ttlSeconds (fallback env DATA_CACHE_DEFAULT_TTL=300); ttlSeconds&lt;=0 = bloco tempo-real (não cacheia, sempre enfileira). (2) LAYOUT publicado `dash:{id}:published` (TTL env DATA_LAYOUT_CACHE_TTL=3600) — T-B3 INVALIDA essa chave no publish/unpublish; o módulo data LÊ dela (string compartilhada, sem acoplar módulos). Cache de dados COMPARTILHADO entre usuários; visibilidade checada no acesso ao dashboard.
+
+FILA/WORKER: fila própria `query-exec` (src/modules/data/jobs/queue.ts) reusando connectionRedisConfigQueue do boilerplate; worker (jobs/worker.ts) roda NO MESMO PROCESSO da API, iniciado via hook app.addHook('onReady') no index.ts (guard: redisInstance.isInitialized() &amp;&amp; !isDegraded()) — NÃO editei server.ts (arquivo FECHADO Fase 0). Worker: load conexão (decifra senha só no worker, connectionId no job — senha NUNCA no payload Redis) → pg-runner → applyTransform → validateBlockDataByShape → grava cache → socketManager.sendToRoom. DESVIO consciente: fila query-exec NÃO aparece no Bull Board /queues (configurado em server.ts fechado); funcional, só sem UI — incluir = 1 linha em server.ts.
+
+VALIDAÇÃO dataContract: shape vem do catálogo via NOVA função getCatalogDataShape(type) em src/lib/catalog.ts (lê manifest.dataContract.shape; catálogo atual só tem __example sem dataContract → retorna null → bloco devolvido como 'table' sem validar até T-I popular dataContract). Resultado fora do contrato → block:error code 'contract_violation'.
+
+TRANSFORM (MVP, src/modules/data/transform.ts): identidade por convenção de coluna (scalar:value; series:x,y,series; categorical:label,value; table:columns+rows) OU objeto declarativo {x,y,series,label,value,...}. transform string (ref nomeada) = identidade (evolução futura).
+
+VISIBILIDADE (nota review T-B3): block-resolver.ts revalida canViewArtifact (de @/lib/visibility) p/ todo chartId E connectionId referenciado; sem acesso → bloco vira error (forbidden_chart/forbidden_connection), não hidrata. Bloco pega binding de block.dataBinding direto OU de chart.publishedDataBinding/draftDataBinding (via props.chartId, conforme mode).
+
+DESIGN testável: lógica núcleo é PURA com infra injetada (executor.executeBlockData{runQuery}, worker-handler.processQueryExecJob{deps}, service.assembleBatch{runtime}, block-resolver.resolveBlocks{loaders}) → 35 testes sem Redis/DB/socket reais (mocks). Não há teste de integração BullMQ real (determinismo). npm test 18 suites/293 pass/4 skip; build tsup verde; typecheck mantém só os 3 erros pré-existentes.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpawge900e5pi0iot3rk2ws">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpawge900e5pi0iot3rk2ws</code>
+            </div>
+            <h3 class="mem-title">T-D: servidor MCP (12 tools) para o agente de IA externo</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">MCP</span><span class="tag">segurança</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 14:18:35 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Servidor MCP (JSON-RPC 2.0 sobre HTTP, stateless) com 12 tools que reusam os services existentes (zero regra reimplementada). Auth bearer/API-key (timingSafeEqual, fail-closed). Atua em nome de um service account; gate de papel espelhado em tools/guard.ts (services não checam papel). Implementação no fio (sem SDK oficial).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-D ENTREGUE (backend-boilerplate, módulo `mcp`, commit main 376e291) — servidor MCP para o agente de IA EXTERNO. Última trilha do backend.
+
+SUPERFÍCIE/TRANSPORTE: POST /mcp (JSON-RPC 2.0 sobre HTTP, "Streamable HTTP", stateless — cada request autenticada e atendida isolada). GET /mcp → 405 (sem canal SSE server-initiated no MVP). Métodos: initialize, ping, tools/list, tools/call, notifications/* (notificação sem id → 202 sem corpo). DESVIO CONSCIENTE do doc 05: NÃO usei o SDK oficial @modelcontextprotocol/sdk (ESM-only → fricção com jest CJS + risco de reverter o wiring de @dashboards/contracts no npm install). Implementei o protocolo no fio (MCP-compliant) em src/modules/mcp/protocol.ts; o registro de tools (tools/) é portável p/ o SDK depois. Transporte/auth ficam parametrizáveis em config.ts/index.ts.
+
+AUTH: bearer/API-key. Authorization: Bearer &lt;MCP_API_KEY&gt; comparado em tempo CONSTANTE (timingSafeEqual). Sem MCP_API_KEY → endpoint DESABILITADO (503, fail-closed). Envs novas (lidas DIRETO de process.env em src/modules/mcp/config.ts, NÃO somadas ao @/lib/env central p/ manter o módulo autossuficiente e não mexer no boot compartilhado): MCP_API_KEY, MCP_SERVICE_USER_ID, MCP_SERVICE_USER_EMAIL. Adicionadas a .env.example (e .env dev).
+
+ATOR/RBAC: o MCP atua EM NOME de um usuário real (service account) resolvido de MCP_SERVICE_USER_ID ou _EMAIL → ActorContext {userId, role, departmentIds} lido do banco (src/modules/mcp/actor.ts, McpConfigError → 503). ownerId dos artefatos = esse usuário. CRÍTICO de segurança: os SERVICES (createChart etc.) NÃO checam papel — só ownership/visibilidade; o gate de PAPEL fica no requirePermission do preHandler das rotas REST. Como as tools chamam os services DIRETO (sem preHandler), criei src/modules/mcp/tools/guard.ts assertPermission(actor, perm) que ESPELHA os requirePermission: create/update chart+dashboard+add_chart → artifacts:manage; publish_* → artifacts:publish; preview_chart_data → artifacts:view. Tools de conexão já gateiam via canUseConnections/requireConnectionForUse. run_query mantém guardrails read-only do pg-runner (DROP/INSERT/etc. → SqlGuardError → isError code read_only_violation).
+
+12 TOOLS (reuso de service, ZERO regra reimplementada): list_connections/get_connection_schema/run_query → modules/connections (service+rbac); list_catalog → @/lib/catalog (manifests com dataContract da F0.4); create/update/publish_chart → modules/charts/service; preview_chart_data → modules/data/executor.executeBlockData + connections.toPgRunnerConnection + getCatalogDataShape (executa o dataBinding e devolve BlockDataResult no shape); create/update_dashboard, add_chart_to_dashboard, publish_dashboard → modules/dashboards/service. Validação de args reusa os MESMOS zod body-schemas das rotas REST (createChartBodySchema, updateDashboardBodySchema, addChartBodySchema, etc.). NÃO precisei exportar nada novo de outros módulos (tudo já era exportado). Descrições das tools escritas PRA IA (em tools/*.ts) referenciando o dataContract do catálogo.
+
+CONVENÇÃO DE ERROS MCP (em protocol.ts): erro de PROTOCOLO (método inexistente, params inválidos) → erro JSON-RPC (-32601/-32602); erro de EXECUÇÃO de tool (regra/validação/RBAC: ZodError, BadRequest/Forbidden/NotFound, McpToolError) → RESULTADO normal com isError:true e {error:{code,message}} no content/structuredContent (o agente lê e corrige). Resultado de tool: content:[{type:'text',text:JSON}] + structuredContent (valor) quando sucesso.
+
+TESTES: tests/mcp.test.ts (Postgres real DATABASE_URL; cria Connection apontando p/ o próprio Postgres do teste p/ exercitar pg-runner real em run_query/preview). Cobre auth (401 sem/errada key, 503 sem key), 405 GET, initialize, notifications→202, método inexistente→-32601, tools/list (12 tools), list_catalog, list_connections, run_query guardrail (DROP bloqueado) + happy SELECT, charts CRUD/publish/preview, dashboards create/add/publish, RBAC (ator VIEWER não cria chart). modules-loader.test.ts: removido 'mcp' de EXPECTED_MODULES. npm test: 19 suites/314 pass/4 skip; build tsup verde; typecheck mantém só os erros pré-existentes (error-handler.ts, delete-user.ts, server.ts) — nada novo. Wiring de contracts intacto (não rodei npm install).</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpbme0f00evpi0ivdyz747s">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpbme0f00evpi0ivdyz747s</code>
+            </div>
+            <h3 class="mem-title">T-E: app shell FE + data layer (query-keys, staletime, socket→cache, RBAC FE)</h3>
+            <div class="mem-tags"><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 14:38:45 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Base que T-F/T-G/T-I/T-J consomem: query-keys centralizadas, política de staletime (draft=0 fresco, published cacheável), hook useDashboardRealtime (socket→cache), api-client único com interceptors testáveis e RBAC FE (RequireRole, ForbiddenPage, sidebar filtrada por papel).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-E ENTREGUE (frontend-boilerplate, commit main 2dc98e6) — App shell + data layer. BASE que T-F/T-G/T-I/T-J consomem. Tudo em src/shared/lib, src/shared/hooks, src/features/auth/components. NÃO mexi em providers.tsx/routes.tsx/shared/socket/query-client.ts/auth-provider.tsx (F0.5 fechado).
+
+QUERY-KEYS (src/shared/lib/query-keys.ts) — import { queryKeys, hashFilters, type ApiMode } from '@/shared/lib/query-keys'. ApiMode='draft'|'published'. Chaves (siga, NÃO crie strings soltas):
+- queryKeys.auth.me = ['auth','me']
+- queryKeys.catalog() = ['catalog']
+- queryKeys.departments.all/list()
+- queryKeys.connections.all=['connections'] | .list(filters?) | .detail(id) | .schema(id)
+- queryKeys.charts.all | .list(filters?) | .detail(id,mode)
+- queryKeys.dashboards.all | .list(filters?) | .detail(id,mode)=['dashboard',id,mode] (doc 32)
+- queryKeys.dashboardData(id,mode,filtersHash)=['dashboard-data',id,mode,filtersHash] (payload batch do POST /dashboards/:id/data)
+- queryKeys.blockData(blockId,filtersHash)=['block-data',blockId,filtersHash] (bloco isolado)
+- queryKeys.share(token)
+hashFilters(filters?) → hash determinístico (ordena chaves; vazio/null='∅'). SEMPRE derive filtersHash dele.
+
+STALETIME (src/shared/lib/query-policies.ts): STALE_TIME.draft=0, published=5min, reference=10min, realtime=0. Helpers: staleTimeFor(mode), artifactQueryOptions(mode) (spread em useQuery: staleTime+refetchOnWindowFocus só em draft), referenceQueryOptions() (catálogo/conexões/deptos). REGRA: draft/dev SEMPRE fresco (0); published cacheável.
+
+SOCKET→CACHE: hook useDashboardRealtime({dashboardId, mode, filtersHash, enabled?}) de '@/shared/hooks/use-dashboard-realtime'. Entra/sai da sala dashboard:{id} (joinDashboard/leaveDashboard do useSocket) e mapeia block:queued|running|data|error → cache via funções puras de src/shared/lib/dashboard-cache.ts (writeBlockResult grava em DOIS lugares: queryKeys.blockData(blockId,filtersHash) E mescla no blocks[blockId] do queryKeys.dashboardData(...)). draft→'dev' no campo mode do DashboardDataPayload. Uso em T-G: chamar useDashboardRealtime + ler via useQuery(queryKeys.dashboardData(...)) ou blockData. Ignora eventos de outro dashboardId. getSocket() só em effects (regra eslint react-hooks/refs).
+
+API-CLIENT (src/shared/lib/api-client.ts): MESMA instância apiClient (axios) — REUSE, não crie outra. Interceptors refatorados em funções exportadas testáveis: attachAuthToken (anexa Bearer do useAuthStore) e handleResponseError (401→logout; redirect /login só se NÃO estiver em rota pública /login|/register|/public/). Sem endpoint de refresh (JWT stateless) — 401 = reautenticar.
+
+RBAC FE (src/shared/lib/rbac.ts): espelha matriz do backend (doc 01). Role='ADMIN'|'ANALYST'|'CREATOR'|'VIEWER'|'USER'; Permission (8: departments:manage, connections:manage/use, artifacts:manage/publish/view/export, share:create); ROLE_PERMISSIONS; hasPermission(role,perm), hasAnyRole(role,roles[]). User.role (features/auth/types.ts) agora é Role (union completo) — antes era só ADMIN|USER.
+GUARDA POR PAPEL: &lt;RequireRole roles?={Role|Role[]} permission?={Permission} fallback?='forbidden'|'redirect' redirectTo?&gt;...&lt;/RequireRole&gt; de '@/features/auth/components/require-role'. Default fallback='forbidden' → renderiza ForbiddenPage (403, src/shared/components/forbidden-page.tsx). Aninhe DENTRO do ProtectedRoute. ProtectedRoute (ADMIN|USER) mantido intacto; RequireRole é o guard rico. app-sidebar.tsx filtra NAV por papel/permissão (Dashboards/Gráficos=artifacts:view, Conexões=connections:use, Chat=artifacts:manage, Usuários=ADMIN).
+
+VALIDAÇÃO: npm test 12 suites/42 pass (18 novos). npm run build (tsc+vite) VERDE. npm run lint: só os 2 erros PRÉ-EXISTENTES (Vitrine: animated-number.tsx, table-fluid.tsx) — nenhum meu. Smoke browser: app sobe, login (admin@prefeitura.local/admin1234) OK, /dashboards renderiza layout+sidebar RBAC. Wiring @dashboards/contracts intacto (não rodei npm install).
+
+GOTCHA descoberto (issue cmqpbl53v00etpi0i0cv5spwm, pré-existente, NÃO é T-E): /users (features/users/index.tsx) tem roleConfig: Record&lt;UserRole,...&gt; com UserRole LOCAL='ADMIN'|'USER' → crasha (reading 'className') ao listar usuários com papéis ANALYST/CREATOR/VIEWER do seed. Corrigir em T-F (telas users) alinhando ao enum completo.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpcevsz00ffpi0in8aig1cw">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpcevsz00ffpi0in8aig1cw</code>
+            </div>
+            <h3 class="mem-title">T-F1: feature connections (/connections)</h3>
+            <div class="mem-tags"><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 15:00:55 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Tela /connections (CRUD + test + schema), padrão de referência para as demais telas FE. RBAC de UI espelha backend; senha nunca pré-preenchida no reset. Usa db-schema-explorer da Vitrine (gotchas de EACCES e alias @/lib/utils). Confirma issue do /users (corrigida em T-F2).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-F1 ENTREGUE (frontend-boilerplate, commit main f32177a) — feature `connections` (tela /connections). Padrão de referência p/ as outras telas FE de CRUD (T-F2 charts/dashboards).
+
+ESTRUTURA src/features/connections/: types.ts (Connection sem senha, *Input, ConnectionSchema, Department), api.ts (connectionsApi + departmentsApi usando apiClient único), hooks.ts (useConnections/useConnection/useConnectionSchema/useDepartments + mutations create/update/delete/test — usam queryKeys.connections.* CENTRALIZADAS da T-E + referenceQueryOptions()), lib/schema-mapper.ts (toDatabaseSchema: PURO, backend ConnectionSchema {tables[{schema,name,columns[{name,dataType,nullable}]}]} → shape DatabaseSchema do db-schema-explorer agrupando por schema), components/ (connections-page, connection-form-dialog, delete-connection-dialog, connection-schema-explorer), routes.tsx, __tests__/.
+
+API backend consumida (T-A): GET/POST/PATCH/DELETE /connections, POST /connections/:id/test (→ {ok,status,lastTestedAt,message}), GET /connections/:id/schema (→ {connectionId,cached,tableCount,fetchedAt,tables}). GET /departments (qualquer autenticado) p/ select de visibilidade. Datas chegam como ISO string. Backend NUNCA devolve senha.
+
+RBAC de UI (espelha backend): rota /connections gateada por &lt;RequireRole permission="connections:use"&gt; (VIEWER/USER → 403). Ações de manage (Nova conexão/editar/excluir) só renderizam se hasPermission(role,'connections:manage') (ADMIN/ANALYST). Botões testar/schema disponíveis a quem usa. role lido de useAuthStore((s)=&gt;s.user?.role).
+
+SEGURANÇA SENHA: campo type="password" sempre; NUNCA pré-preenchido no reset (mesmo em edição). Em edição, senha em branco → payload omite `password` (não troca); preenchida → troca. Form não loga payload.
+
+FORM (rhf + zod v4 + @hookform/resolvers): baseSchema + .superRefine (senha obrigatória só no create; departmentId obrigatório quando visibility==='DEPARTMENT'). port via register('port',{valueAsNumber:true}) + z.number(). Selects (sslMode/visibility/departmentId/isActive) via Controller + componente Select (Radix). useWatch({control,name:'visibility'}) p/ render condicional do departamento — NÃO usar watch() (dispara lint react-hooks/incompatible-library, é WARNING mas evitável).
+
+VITRINE: instalei via `npx shadcn add @vitrine/db-schema-explorer @vitrine/database-tab-bar @vitrine/db-overview-grid`. GOTCHAS: (1) shadcn FALHA com EACCES ao tentar SOBRESCREVER arquivos ui/ existentes root-owned (dialog.tsx etc.) — ele só escreveu os NOVOS (database-tab-bar, scroll-area, table) sandbox-owned e abortou antes de db-schema-explorer/db-overview-grid. Workaround: baixei os faltantes via node (https get do registry JSON, fs.writeFileSync) → sandbox-owned. (2) Os componentes db-* importam `cn` de `@/lib/utils` mas o alias do projeto é `@/shared/lib/utils` → corrigir com sed. (3) db-overview-grid.tsx tem erro de lint react-hooks/purity (React.useRef(Date.now()) no render) e database-tab-bar eu NÃO uso → REMOVI ambos (+types) p/ não adicionar erro de lint novo. USEI só db-schema-explorer (+ deps shadcn scroll-area/table). DESVIO consciente do escopo (que sugeria os 3): db-schema-explorer cobre 100% "mostra tabelas/colunas"; tab-bar/overview-grid são p/ multi-DB, desnecessários no CRUD+schema de 1 conexão. (4) npx shadcn roda npm install → REVERTE wiring @dashboards/contracts p/ symlink → restaurei com `npm install ../shared/contracts --install-links` (confirmado dir real no fim). package.json teve bump de ranges @radix-ui/react-dialog/scroll-area/select (deps dos componentes) — incluído no commit.
+
+GATES: npm run build (tsc+vite) VERDE. npm run lint: só os 2 erros PRÉ-EXISTENTES Vitrine (animated-number.tsx, table-fluid.tsx) — zero novos. npm test: 15 suites/49 pass (7 novos: form 3, schema-explorer 2, schema-mapper 2). Smoke browser OK (admin@prefeitura.local/admin1234 → /connections lista a conexão do seed; form abre com depts da API). queryKeys.connections.list espera Record&lt;string,unknown&gt; → passar filters com cast `as Record&lt;string,unknown&gt;`.
+
+Issue pré-existente cmqpbl53v00etpi0i0cv5spwm CONFIRMADA viva: /users crasha (features/users/index.tsx:315 roleConfig[u.role].className undefined) com papéis ANALYST/CREATOR/VIEWER. NÃO é T-F1 (é T-F2). Login redireciona p/ /users e quebra a tela de users, mas /connections funciona.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpdh0rb00g3pi0insdkqbis">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpdh0rb00g3pi0insdkqbis</code>
+            </div>
+            <h3 class="mem-title">T-F2: listagens /dashboards e /charts + fix /users</h3>
+            <div class="mem-tags"><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 15:30:34 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Telas de listagem em cards de /dashboards e /charts + lógica pura compartilhada (artifact-rbac, artifact-filters) e componentes genéricos (artifact-card, list-view, share-dialog). Resolve a issue do /users (roleConfig com 5 papéis). Filtro de departamento/owner é refino client-side (limitação documentada).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-F2 ENTREGUE (frontend-boilerplate) — telas de LISTAGEM /dashboards e /charts (cards) + fix do /users. Padrão T-F1 seguido; consome T-E (data layer) e T-B (charts/dashboards/share).
+
+LÓGICA PURA COMPARTILHADA (src/shared/lib, reusar em T-G):
+- artifact-rbac.ts: availableArtifactActions(ctx)/canModifyArtifact/canPublishArtifact. ctx={role,currentUserId,ownerId,status}. Regras: open sempre; edit/delete = ADMIN ou (artifacts:manage + dono); publish/unpublish = ADMIN ou (artifacts:publish + dono), alterna por status; share = status PUBLISHED + share:create (sem exigir dono — espelha backend que só checa canViewArtifact); export = artifacts:export (VIEWER tem); duplicate = artifacts:manage (cria NOVO artefato do user, sem exigir dono). VIEWER → só ['open','export'].
+- artifact-filters.ts: ArtifactFilterState {search,status,visibility,owner('ALL'|'MINE'),departmentId}; filterArtifacts(items,state,currentUserId) PURA; toServerFilters(state,page,pageSize) → só search/status/visibility vão ao backend. DESVIO CONSCIENTE: backend listDashboards/listChartsQuerySchema só aceita page/pageSize/search/status/visibility — departamento+owner NÃO existem na query, então são refino CLIENTE sobre a página corrente (paginação é server-side dos 3 suportados). Documentado.
+
+COMPONENTES GENÉRICOS (src/shared/components): artifact-card.tsx (Card Vitrine + DropdownMenu de ações), artifact-list-view.tsx (header+barra busca/filtros Select+grid responsivo+estados loading/erro/vazio+paginação prev/next), artifact-action-builder.ts (.ts SEM JSX p/ evitar react-refresh; buildArtifactCardActions liga keys RBAC→handlers+ícones+labels), share-artifact-dialog.tsx (POST /share via useCreateShare, escolhe duração, mostra URL pública c/ copiar — RESET via key no pai, NÃO useEffect, p/ evitar react-hooks/set-state-in-effect), confirm-delete-dialog.tsx. Hooks shared: use-departments.ts (GET /departments p/ filtro), use-share.ts.
+
+FEATURES src/features/dashboards e src/features/charts: types/api/hooks/components/&lt;x&gt;-page/routes/__tests__. api.list aceita Record&lt;string,unknown&gt; (params já normalizados por toServerFilters, repassados direto ao axios — evita TS2322). hooks usam queryKeys.dashboards.*/charts.* (T-E). PREFETCH no hover: usePrefetchDashboard/usePrefetchChart → queryClient.prefetchQuery(detail(id,mode)) com mode=status==='PUBLISHED'?'published':'draft'. Ações: duplicar (POST create copiando draftLayout/draftProps+draftDataBinding, title '(cópia)', visibility PRIVATE), publish/unpublish, delete, share, export (stub toast 'em breve T-J'). routes.tsx exporta featureRoutes; /dashboards e /charts gateados por &lt;RequireRole permission="artifacts:view"&gt;; detail/edit seguem PlaceholderPage (T-G). NÃO editei routes.tsx/providers.tsx central.
+
+FIX ISSUE cmqpbl53v00etpi0i0cv5spwm (RESOLVIDA): /users crashava com papéis ANALYST/CREATOR/VIEWER. Corrigido: features/users/types.ts UserRole→5 papéis; index.tsx roleConfig mapeia os 5 + helper defensivo roleOf() com FALLBACK_ROLE; user-form-dialog.tsx enum+SelectItems c/ os 5 papéis. Smoke OK: /users lista os 5 usuários do seed sem crash.
+
+GATES: npm run build (tsc+vite) VERDE; npm test 19 suites/76 pass (27 novos: artifact-filters 12, artifact-rbac 9, dashboards-page 4, charts-page 2); lint só os 2 erros PRÉ-EXISTENTES Vitrine (animated-number.tsx, table-fluid.tsx), zero novos. Smoke browser (admin@prefeitura.local): login→/users(5 papéis ok), /dashboards e /charts listam artefato do seed com filtros/badges/Abrir, busca sem match→estado vazio. Wiring @dashboards/contracts intacto (dir real, não rodei npm install).
+GOTCHA testes: páginas montam ShareArtifactDialog (useMutation) → testes precisam de QueryClientProvider no wrapper. DropdownMenu Radix no jsdom precisa polyfills hasPointerCapture/setPointerCapture/releasePointerCapture/scrollIntoView (adicionados no beforeAll do teste). O menu Radix NÃO abre via click simples do browser-MCP (mas unit test cobre o RBAC do menu).</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpe9dai00gjpi0i7fh4sf57">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpe9dai00gjpi0i7fh4sf57</code>
+            </div>
+            <h3 class="mem-title">T-I: 7 blocos vivos do catálogo (kpi/bar/line/donut/table/title/rich_text)</h3>
+            <div class="mem-tags"><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 15:52:37 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">7 blocos vivos do catálogo (manifest+component+fixture, auto-registrados). Charts Vitrine SVG puros (sem recharts); rich_text via marked + DOMPurify (XSS testado). catalog.manifests.json regenerado (8 blocos). Gotcha: tipos de dados do contrato resolvem para any no FE.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-I ENTREGUE (commit main 63c71b5) — BASE do catálogo: 7 blocos VIVOS em frontend-boilerplate/src/shared/render-engine/catalog/&lt;type&gt;/ (manifest.ts + component.tsx + fixture.ts), auto-registrados via glob. catalog.manifests.json (BE) regenerado → 8 blocos (7 base + __example). Os 7 dataContracts agora existem, então T-C getCatalogDataShape passa a validar por shape (antes retornava null) e MCP list_catalog (T-D) expõe os 7.
+
+MAPEAMENTO/LIBS usados:
+- kpi (shape scalar) → reusa @/components/ui/kpi-card.tsx (KpiCard já existia). delta do dataContract é FRAÇÃO (0.12=+12%); converto p/ % (×100).
+- bar_chart (series) → Vitrine slug bar-chart; line_chart (series) → line-chart; donut (categorical) → donut-chart. Os 3 charts Vitrine são SVG/divs PUROS, SEM deps novas (não usam recharts). Baixei via node/fs em components/ui (NÃO via npx shadcn, p/ evitar EACCES + revert do symlink de contracts) e corrigi import `@/lib/utils`→`@/shared/lib/utils`.
+- table (table) → primitivos shadcn @/components/ui/table.tsx (NÃO instalei Vitrine data-table: exige @tanstack/react-table; primitivos bastam p/ "tabular cru"). DESVIO consciente do doc 33.
+- title (narrativo) → heading tipográfico próprio. rich_text (narrativo) → markdown via `marked` + sanitização `DOMPurify` (instalei marked@18 + dompurify@3). Helper PURO rich_text/markdown.ts renderMarkdown() (marked.parse {async:false} → DOMPurify.sanitize com FORBID_TAGS script/style/iframe/object/embed + FORBID_ATTR style). XSS testado (script/onerror/javascript: removidos).
+
+GOTCHAS desta trilha:
+1. `npm install marked dompurify` reverteu @dashboards/contracts p/ symlink → restaurei com `npm install ../shared/contracts --install-links` (confirmar dir real no fim, FE e BE).
+2. TIPOS DE DADOS DO CONTRATO RESOLVEM PARA `any` NO FE: ScalarData/SeriesData/CategoricalData/TableData = FromSchema&lt;...&gt; e `json-schema-to-ts` NÃO é dependência do FE → FromSchema vira `any`. Logo `.map((d)=&gt;...)` sobre esses tipos dá TS7006 (implicit any) no `tsc -b`. FIX usado nos blocos: anotar o ELEMENTO localmente (ex.: `type SeriesPoint={x:string|number;y:number|null;series?:string}` e `(data ?? []) as SeriesPoint[]`). Alternativa global (não feita p/ não arriscar quebrar outros consumidores): adicionar json-schema-to-ts como devDep do FE. T-G provavelmente vai esbarrar nisso também.
+3. Lint react-hooks/immutability: o donut-chart Vitrine fazia `let cursor; cursor+=dash` dentro do map de render → erro NOVO. Refatorei p/ pré-computar arcs (dash+offset) de forma pura (offset = soma dos anteriores via slice/reduce). Lint FE volta aos 2 erros PRÉ-EXISTENTES (animated-number.tsx, table-fluid.tsx).
+4. Atualizei o teste F0.4 dashboard-renderer.test.tsx: a fixture dashboardLayoutFixture usa os 7 tipos; agora que estão implementados, NÃO há mais [data-slot="block-unknown"] (era &gt;0, virou ===0) — passa a assertar que o bloco title renderiza o texto.
+
+GATES: FE npm run build (tsc+vite) VERDE; FE vitest 20 suites/103 pass (catalog.test.tsx: 27 — render dos 7, validação manifest+fixture por shape, auto-registro, sanitização XSS). BE npm run build VERDE; tests/catalog.test.ts 4 pass (inclui novo: 7 tipos no JSON + shapes corretos). Convenção de pasta da F0.4 seguida à risca (manifest puro `satisfies BlockManifest`, component co-exporta `definition` via defineBlock, eslint override catalog/** já existia).</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpf6j0500gxpi0iui6l3h4a">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpf6j0500gxpi0iui6l3h4a</code>
+            </div>
+            <h3 class="mem-title">T-G1: tela dashboard VIEW + share público</h3>
+            <div class="mem-tags"><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 16:18:24 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Tela /dashboards/:id (VIEW) que junta render-engine + data layer + socket + batch, e a página pública /public/:token (axios dedicado sem auth). Filtro recomputa só blocos afetados. Limitação MVP: página pública não tem endpoint de dados → blocos de dados em skeleton (só narrativos renderizam).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-G1 ENTREGUE (frontend-boilerplate, commit main 43cd774) — tela de dashboard VIEW + share público. Consome T-I (render-engine), T-E (data layer/socket), T-C (batch), T-B4 (public). Junta tudo.
+
+ARQUIVOS (features/dashboards e features/share):
+- features/dashboards/components/dashboard-view.tsx → rota /dashboards/:id (VIEW). features/dashboards/components/filter-bar.tsx → FilterBar interativa. features/dashboards/use-dashboard-data.ts → hook batch+realtime. features/dashboards/lib/dashboard-filters.ts → helpers puros (initialFilterValues, blocksAffectedByFilter, isFilterUsed). api.ts ganhou dashboardsApi.fetchData (POST /dashboards/:id/data {mode,filters}).
+- features/share/{api.ts,hooks.ts,types.ts,components/public-dashboard-view.tsx,routes.tsx} → /public/:token.
+
+COMO O RENDER LIGA (layout→render→batch→socket→cache):
+- DashboardView: probe useDashboard(id,'draft') p/ descobrir status (GET ?mode=published dá 400 se NÃO publicado — backend resolveLayout rejeita), modo efetivo = ?mode override OU (status PUBLISHED ? published : draft). Conteúdo remontado via key={id:mode} → useState dos filtros inicializa lazy dos defaults (SEM useEffect, evita react-hooks/set-state-in-effect).
+- Passa {filters:[], rows: layout.rows} ao DashboardRenderer (ele só desenha o grid; FilterBar interativa fica ACIMA — evita barra de filtro duplicada já que DashboardRenderer renderiza chips estáticos quando filters.length&gt;0). NÃO reimplementa render de bloco.
+- useDashboardData: useDashboardRealtime (entra na sala, socket→cache) + useQuery na chave queryKeys.dashboardData(id,mode,filtersHash) com queryFn=fetchData. Socket e batch escrevem na MESMA chave (dashboard-cache.writeBlockResult mescla por bloco). refetchOnWindowFocus:false (não clobberar socket). placeholderData:keepPreviousData → ao trocar filtro (novo filtersHash=nova chave) os blocos não-afetados não piscam enquanto o novo batch chega.
+- FILTRO recomputa só afetados: filtro muda → novo objeto filters → novo filtersHash → novo batch com TODOS os valores; backend recomputa só os blocos cuja dataBinding.params referencia o filtro (cacheKey por bloco T-C); socket re-hidrata. blocksAffectedByFilter(layout,filterId) deriva a relação (testado contra fixtures: f_periodo→[blk_kpi_total,blk_bar_mes], f_situacao→[blk_donut]).
+
+PÁGINA PÚBLICA (não vaza auth): features/share/api.ts cria instância axios DEDICADA (publicClient) SEM os interceptors do apiClient (que anexam JWT e fazem logout em 401). GET /public/:token (T-B4) → mapeia status p/ ShareLinkError.reason: 403=revoked, 410=expired, 404=not_found, else=error. usePublicArtifact (retry:false). PublicDashboardView renderiza DashboardRenderer(publishedLayout) read-only (chips de filtro estáticos, SEM FilterBar interativa, sem ações autenticadas). LIMITAÇÃO MVP consciente: não há endpoint público de DADOS (o batch é autenticado), então blocos de dados ficam em skeleton; o conteúdo narrativo (title/rich_text) renderiza — a página é o relatório read-only. Suporta targetType CHART via BlockRenderer single-block.
+
+GOTCHA contrato no FE: filtros do contrato só têm {id,type,label,default} — SEM lista de options. FilterBar usa input texto p/ select/multiselect/search e dois inputs p/ date_range(from/to)/number_range(min/max). Tipos do contrato resolvem p/ any no FE → tipei DashFilter/BlockLike localmente; interfaces estruturais com SÓ props opcionais disparam "weak type" no tsc (TS2345) ao receber a fixture — resolvi com index signature [key:string]:unknown em BindingLike/RowLike/LayoutLike.
+
+GATES: npm run build (tsc -b — checa testes também — + vite) VERDE; npm test 23 suites/116 pass (13 novos: dashboard-filters 5, dashboard-view 4 [fixtures render, socket block:data hidrata queued, block:error mostra erro, filtro re-dispara batch], public-dashboard-view 4); lint só os 2 erros PRÉ-EXISTENTES Vitrine (animated-number.tsx, table-fluid.tsx). Wiring @dashboards/contracts intacto (dir real, não rodei npm install). Smoke browser (admin@prefeitura.local): /dashboards/:id do seed monta (header+badge Publicado, FilterBar Período, title block; bloco seed type "bar" cai no placeholder do render-engine pois catálogo tem "bar_chart" — quirk do SEED, não bug); /public/&lt;token-inválido&gt;→"Link não encontrado"; share real criado via API → /public/:token mostra read-only + "Somente leitura" + "Acesso disponível até..." (TTL inicia na 1ª abertura). DESVIO: editor /dashboards/:id/edit segue placeholder (T-G2). gotcha teste: socket só persiste se disparado APÓS o batch resolver na cache (senão a resolução do fetch clobbera o merge do socket) — no teste, await o kpi visível antes de emitir o evento.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpgbdzt00hppi0i99nnywks">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpgbdzt00hppi0i99nnywks</code>
+            </div>
+            <h3 class="mem-title">T-G2: editor enxuto de dashboard (/dashboards/:id/edit)</h3>
+            <div class="mem-tags"><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 16:50:10 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Editor enxuto (sem drag-and-drop) com layout-editor.ts puro/imutável e validação contra o contrato (ajv). Estado working/baseline com dirty-state; preview reusa DashboardRenderer. Gotcha do seed legado (forma não-conforme) que o editor corretamente bloqueia no salvar.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-G2 ENTREGUE (frontend-boilerplate, commit main b30633b) — EDITOR enxuto de dashboard em /dashboards/:id/edit (SEM drag-and-drop, decisão MVP). Consome T-G1 (DashboardRenderer), T-B3 (PATCH/publish/unpublish/blocks), T-E (data layer/RBAC), contratos.
+
+ARQUIVOS: features/dashboards/lib/layout-editor.ts (lógica PURA), components/dashboard-editor.tsx (tela), components/editor/{block-editor-card,filters-editor,data-binding-form,add-chart-form,textarea}.tsx. api.ts ganhou update(PATCH)/addChart(POST /blocks); hooks.ts ganhou useUpdateDashboard/useAddChartToDashboard + helper invalidateDashboard (invalida detail draft+published + ['dashboard-data',id] por prefixo + dashboards.all); usePublishDashboard agora também chama invalidateDashboard (recebe {id,publish}).
+
+layout-editor.ts (PURO, imutável, testável): EditorLayout {filters:DashFilter[], rows:EditorRow[{id,title?,blocks:EditorBlock[{id,type,span,props?,dataBinding?}]}]}. Funções: moveBlockWithinRow, moveBlockToAdjacentRow/moveBlockToRow, removeBlock, setBlockSpan(clamp 1..12), updateBlockProps/setBlockProps, setBlockDataBinding, addRow/removeRow/setRowTitle, addFilter/removeFilter/updateFilter, sanitizeLayoutForSave (objeto LIMPO fiel ao contrato additionalProperties:false — só inclui chaves opcionais com valor; mantém connectionId/query vazios p/ a validação APONTAR), validateLayoutForSave (usa validateDashboardLayout de @dashboards/contracts + formatErrors → {valid,payload,error}), layoutsEqual (dirty-state via JSON da forma sanitizada), normalizeLayout.
+
+GOTCHA SEED LEGADO (importante): o seed (prisma/seed.ts) salva blocos numa forma NÃO-conforme ao contrato doc 20: usa `blockId` (não `id`), `chartId` no TOPO do bloco (contrato espera props.chartId — é onde collectChartRefs do backend lê), `type:'bar'` (catálogo tem 'bar_chart'), sem `span` (usa props.columnSpan), e ALGUNS dataBinding SEM connectionId, e filtros com `type` fora do enum. normalizeLayout é RESILIENTE: id = raw.id ?? raw.blockId ?? genId; move raw.chartId→props.chartId; span default 12. MAS layouts do seed continuam inválidos pelo contrato (filtro type inválido, connectionId vazio) → o editor corretamente BLOQUEIA o salvar com erro do ajv (comportamento desejado). Para smoke positivo de save/publish, crie um dashboard novo conforme o contrato (POST /dashboards com filtros type em {date_range,select,multiselect,search,number_range} e blocos id/type/span). BlockEditorCard mostra o DataBindingForm quando getBlock(type).manifest.dataContract OU quando block.dataBinding existe (assim blocos de tipo fora do catálogo, ex.: 'bar', têm o binding editável/corrigível).
+
+RBAC: rota /edit gateada por &lt;RequireRole permission="artifacts:manage"&gt;; DENTRO do editor, ownership via canModifyArtifact (@/shared/lib/artifact-rbac) → ForbiddenPage se não-dono (VIEWER e não-owner barrados). Publicar/Despublicar gateados por canPublishArtifact.
+
+ESTADO: EditorContent mantém working {title,layout} + baseline (último salvo) + status + publishedLayout locais (lazy-init, remontado por key={detail.id}, SEM useEffect de sync). dirty = working≠baseline; "Há alterações não publicadas" = status≠PUBLISHED || baseline≠publishedLayout. Preview reusa DashboardRenderer + useDashboardData(mode); toggle dev(draft)/published — draft SEMPRE fresco (staleTime 0). add_chart desabilitado quando dirty (aplica no draft do servidor; salvar antes); onSuccess substitui working+baseline pelo dashboard.draftLayout retornado.
+
+SMOKE OK (admin@prefeitura.local): criar dashboard conforme via API → /edit → editar título → Salvar (PATCH 200 com layout saneado; re-GET draft + re-POST /data confirmam invalidação e modo dev fresco) → Publicar (POST /publish 200; badge/hint "Publicado e atualizado"). GATES: build (tsc -b + vite) VERDE; vitest 26 suites/146 pass (T-G2 add: layout-editor 19, dashboard-editor 7, hooks 4); lint só os 2 erros PRÉ-EXISTENTES Vitrine (animated-number.tsx, table-fluid.tsx). Wiring @dashboards/contracts intacto (dir real, não rodei npm install). GOTCHA tsc: `tsc -b` checa os .test.tsx → tipar params de mocks vi.fn (evitar tuplas vazias/implicit any).</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpjiz4g00jkpi0i5eloy7du">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpjiz4g00jkpi0i5eloy7du</code>
+            </div>
+            <h3 class="mem-title">T-H: chat embutido MOCKADO (/chat) com transporte plugável</h3>
+            <div class="mem-tags"><span class="tag">FE</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 18:20:03 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Chat embutido MOCKADO (/chat), único componente com mock; isola o transporte atrás da interface ChatTransport (streaming AsyncIterable&lt;ChatEvent&gt;) para a T-H2 só trocar a implementação. Gráfico inline reusa BlockRenderer; add-to-dashboard materializa Chart real (API validada).</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-H ENTREGUE (frontend-boilerplate, commit main 724070c) — Chat embutido MOCKADO (/chat). ÚLTIMA task de desenvolvimento. Único componente com mock; isola o transporte atrás de uma INTERFACE para a T-H2 só trocar a implementação.
+
+ARQUIVOS (src/features/chat/):
+- transport/types.ts → O CONTRATO (o que a T-H2 implementa contra a API externa): ChatMessage{id,role,content,chart?,createdAt}; ChatChartPayload{chartId?,title,catalogType,props?,result:BlockDataResult,dataBinding?}; ChatEvent (streaming): message_start|text_delta|chart|message_end|error; interface ChatTransport{ sendMessage(history, {signal?}): AsyncIterable&lt;ChatEvent&gt; }.
+- transport/mock-transport.ts → MockChatTransport implements ChatTransport (delayMs interno, default 18; testes usam 0). async*sendMessage: yield message_start → tokeniza narrativa e yield text_delta (efeito digitando) → se a msg pede dados (wantsChart) yield chart → message_end. Respeita AbortSignal. defaultMockTransport = instância default.
+- transport/mock-data.ts → buildMockChart(kind)/pickChartKind(text)/wantsChart(text). 5 tipos (kpi/bar_chart/line_chart/donut/table) com dados nos shapes do contrato + dataBinding (connectionId placeholder '__mock_connection__').
+- transport/transport-context.ts (createContext) + context.tsx (ChatTransportProvider) + use-chat-transport.ts (useChatTransport). SEPARADOS em 3 arquivos para respeitar react-refresh/only-export-components (mesmo padrão de shared/socket). A UI consome SÓ via useChatTransport — nunca importa o mock direto.
+- use-chat.ts → estado da sessão (sem persistência nossa) + consome transport.sendMessage aplicando deltas. Expõe {messages,isStreaming,error,send,stop,reset}.
+- hooks.ts → useAddGeneratedChartToDashboard: materializa Chart REAL (POST /charts com dataBinding apontando p/ conexão escolhida) e adiciona ao dashboard (POST /dashboards/:id/blocks {chartId}). Reusa chartsApi/dashboardsApi.
+- components/: chat-page (ChatTransportProvider+useChat), chat-message-list, chat-message-bubble (InlineChart + ThinkingIndicator), chat-input, inline-chart (BlockRenderer + botão add), add-to-dashboard-dialog, thinking-indicator.
+- routes.tsx → /chat gateado por RequireRole permission="artifacts:manage" (espelha sidebar).
+
+COMO O T-H2 INTEGRA A API REAL: escrever um HttpChatTransport que implemente ChatTransport (mesma assinatura sendMessage→AsyncIterable&lt;ChatEvent&gt;) consumindo a spec externa (endpoints/auth/streaming SSE/WS), e passar essa instância ao ChatTransportProvider (ou trocar o default em transport-context.ts). A UI, o render inline e o add-to-dashboard NÃO mudam. A API real deve devolver ChatChartPayload com chartId (criado via MCP) — quando chartId presente, o add-to-dashboard pula a criação do Chart e só faz POST /dashboards/:id/blocks.
+
+GRÁFICO INLINE: InlineChart monta um Block sintético {id:result.blockId, type:catalogType, span:12, props} e chama &lt;BlockRenderer block result={chart.result}/&gt; — mesmo render-engine do dashboard. Smoke validou bar_chart renderizando (data-block-state=success).
+
+ADD-TO-DASHBOARD (API REAL, validado no browser): dialog lista dashboards (useDashboards, filtrados por canModifyArtifact — owner/ADMIN) + conexões (useConnections); defaults efetivos = primeiro item (SEM useEffect, evita set-state-in-effect). Smoke e2e: POST /charts 201 {title,catalogType,draftDataBinding:{connectionId real,query,ttlSeconds}} → POST /dashboards/:id/blocks 200 {chartId}.
+
+GOTCHAS desta trilha:
+1. jsdom NÃO tem element.scrollIntoView → guardar com typeof check no useEffect de auto-scroll (chat-message-list).
+2. NÃO morphe o botão "Enviar"→"Parar" no mesmo lugar: o harness do browser-MCP (e double-clicks reais) podem disparar um clique residual no novo botão e ABORTAR o stream. Solução: manter "Enviar" sempre presente (disabled durante streaming) e "Parar" como botão SEPARADO. Sintoma do bug: stream parava após ~2 tokens, isStreaming=false, sem erro (caminho signal.aborted).
+3. tsc -b checa os .test → tipar vi.fn com assinatura (ex.: vi.fn&lt;(input:unknown)=&gt;Promise&lt;{id:string}&gt;&gt;()) senão "Expected 0 arguments".
+
+GATES: FE build (tsc -b + vite) VERDE; vitest 31 suites/164 pass (7 novos do chat: mock-transport 5, chat-page 1, add-to-dashboard 1); lint só os 2 erros PRÉ-EXISTENTES Vitrine (animated-number, table-fluid), zero no chat. Wiring @dashboards/contracts intacto (dir real, não rodei npm install). Smoke browser (admin@prefeitura.local): login→/chat→enviar "mostre arrecadação por mês em barras"→streaming de texto→gráfico bar_chart inline→"Adicionar a um dashboard"→POST /charts + POST /blocks OK. FORA DE ESCOPO (T-H2, bloqueada até spec): integração real, loop do agente/LLM, persistência de histórico.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqphjge700ijpi0i9qtkkbnh">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqphjge700ijpi0i9qtkkbnh</code>
+            </div>
+            <h3 class="mem-title">T-J: export PDF (Playwright headless) — BE módulo export + FE feature print</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">FE</span><span class="tag">infra</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 17:24:26 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Export PDF: BE assina token de serviço curto (JWT) e renderiza a rota pública FE /print via Playwright/Chromium headless. Fila própria export-pdf, resultado em Redis. Gotchas: instalar playwright antes do install-links; libs de SO do Chromium; Buffer vs zod serializer.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>T-J ENTREGUE (Export PDF, commit main b263021) — ÚLTIMA trilha do fan-out. Toca BE (módulo `export`) + FE (feature `print`). Pipeline headless funcional e validado no sandbox.
+
+PIPELINE (como autentica e gera): POST /export/dashboards/:id/pdf (RBAC artifacts:export) → loadDashboardForExport (visibilidade+título) → assina TOKEN DE SERVIÇO curto (JWT HS256 com o MESMO env.JWT_SECRET via `jsonwebtoken`, claims sub+role+purpose='export-print', TTL EXPORT_TOKEN_TTL_SECONDS=300s) → buildPrintUrl(&lt;FE&gt;/print/dashboards/:id?token=..&amp;mode=published&amp;filters=&lt;JSON&gt;) → playwrightRenderer.render: chromium.launch(headless,--no-sandbox,--disable-dev-shm-usage) → page.goto(networkidle) → page.waitForSelector('[data-print-ready="true"]') → page.pdf(A4, printBackground, displayHeaderFooter, header=título+marca, footer=data+pageNumber/totalPages, margens top90/bottom70). O token de serviço é aceito pelo @fastify/jwt (mesmo secret/HS256) nas rotas que o FE /print chama (GET /dashboards/:id, POST /dashboards/:id/data) → RBAC/visibilidade do solicitante respeitados.
+
+FILA: fila PRÓPRIA `export-pdf` (BullMQ, src/modules/export/jobs/, jobId=uuid do export, concurrency 2), worker no MESMO processo via hook onReady no index.ts (padrão T-C, SEM tocar server.ts). async=true (default)→202 {jobId,statusUrl,downloadUrl}; async=false→gera sync e stream do PDF. Resultado em Redis: export:status:{jobId} (JSON) + export:pdf:{jobId} (base64), TTL EXPORT_RESULT_TTL_SECONDS=600s (cross-process p/ o download). GET /export/jobs/:jobId (status, polling) e /export/jobs/:jobId/pdf (download), gate dono/ADMIN. Notificação socket export:ready/export:failed via socketManager.sendToUser. Worker no-op sem Redis → rota cai no sync.
+
+FE feature print (frontend-boilerplate/src/features/print/): rota PÚBLICA /print/dashboards/:id (featureRoutes.public, fora do DashboardLayout). Cliente axios DEDICADO (createPrintClient) com Authorization=Bearer &lt;token da query&gt;, SEM interceptor de 401 (não redireciona). usePrintDashboard: GET layout + POST batch em loop (re-POST até allBlocksSettled ou maxPolls — published cache frio completa via cache HIT no worker, SEM depender de socket no headless). ROBUSTEZ: se o layout carrega mas os DADOS falham (ex.: layout legado do SEED é não-conforme → POST /dashboards/:id/data 400), a página AINDA marca [data-print-ready="true"] (status 'ready') — um PDF sempre é produzido quando o dashboard é visível; só vira 'error' se nem o layout carrega; sem token → [data-print-error="unauthorized"]. PrintDashboardView: layout limpo (header título+marca Prefeitura+data, resumo dos filtros aplicados, DashboardRenderer). Marcador [data-print-ready] é o seletor que o Playwright aguarda.
+
+GOTCHAS: (1) BE NÃO tinha playwright (FE tem @playwright/test). Instalei `playwright` no BE — adicione a dep ao package.json via fs_edit ANTES, senão `npm install ../shared/contracts --install-links` (restauro do symlink de contracts) PODA o playwright. Sequência: fs_edit package.json add playwright → npm install ../shared/contracts --install-links (instala playwright E mantém contracts dir real). (2) Chromium precisa de libs de SO (sandbox_sys_install: libglib2.0-0 libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libdbus-1-3 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2 libxcb1 libexpat1 libx11-6 libxext6) + `npx playwright install chromium`. RODA no sandbox (smoke: PDF ~67KB, sync e fila). Browser/libs NÃO versionados → issue low (deploy: rodar playwright install + install-deps no CI/prod). (3) Import dinâmico `await import('playwright')` dentro de render() → build tsup (playwright externalizado por estar em deps) e typecheck OK sem o browser; testes mockam o renderer. (4) Rota sync envia Buffer: o schema response 202 (zod) estreita reply.send → usei `reply.send(pdf as unknown as never)` (Fastify não serializa Buffer via zod serializer). (5) FE: tipos do contrato resolvem p/ any → tipar elemento em allBlocksSettled (Object.values as Array&lt;{state?:string}&gt;); evitar setState síncrono no corpo do useEffect (regra react-hooks/set-state-in-effect).
+
+GATES: BE build tsup VERDE; BE npm test 20 suites/324 pass/5 skip (tests/export.test.ts: token/url/templates/renderDashboardPdf/processExportJob + e2e gated EXPORT_E2E_CHROMIUM=1 do Chromium real); typecheck mantém só os 3 erros pré-existentes (error-handler, delete-user, server.ts). FE build (tsc -b+vite) VERDE; FE vitest 28 suites/157 pass (print: print-params 8, print-dashboard-view 3); lint print limpo (0 erros). Contracts dir real em BE e FE. Envs novas (config.ts lê de process.env, defaults): EXPORT_PRINT_BASE_URL(http://localhost:5173), EXPORT_BRAND(Prefeitura), EXPORT_TOKEN_TTL_SECONDS(300), EXPORT_NAV_TIMEOUT_MS(30000), EXPORT_READY_TIMEOUT_MS(30000), EXPORT_RESULT_TTL_SECONDS(600). FORA DO ESCOPO (doc 10): template avançado de marca (logo/cores).</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpibgjc00j4pi0ivppm2s27">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-entrega">entrega</span>
+              <span class="cat-ref">D</span>
+              
+              <code class="mem-id">cmqpibgjc00j4pi0ivppm2s27</code>
+            </div>
+            <h3 class="mem-title">INT: integração e2e (bug fila query-exec jobId, seed conforme, smoke)</h3>
+            <div class="mem-tags"><span class="tag">BE</span><span class="tag">FE</span><span class="tag">integração</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>task-executor</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 17:46:12 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Validação ponta a ponta. Corrigiu bug do BullMQ (':' proibido em custom jobId → jobIdFromCacheKey). Documentou gotcha seed×cache de layout. Seed agora conforme ao contrato (resolve a issue type:bar). Smoke e2e (29 asserts) cobre login→conexão→chart→dashboard→data→share→export.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>[INT] Integração e2e ENTREGUE (commit main f4d7f09). Sistema validado ponta a ponta SEM o chat. Bugs/gotchas de integração descobertos e resolvidos:
+
+1) BUG DE INTEGRAÇÃO (corrigido) — fila query-exec quebrava o modo PUBLISHED no enqueue: `Error: Custom Id cannot contain :`. O `cacheKey` (`data:{sha256}`) era usado direto como `jobId` do BullMQ (anti-stampede), mas o BullMQ PROÍBE `:` em custom jobId. T-C não pegou porque os testes mockavam a fila. FIX: `jobIdFromCacheKey(cacheKey)` em src/modules/data/jobs/queue.ts troca `:`→`_` (determinístico, anti-stampede preservado; cacheKey continua com `:` como chave Redis). Teste de regressão em tests/unit/data-queue-jobid.test.ts.
+
+2) GOTCHA SEED × CACHE DE LAYOUT — alterar `publishedLayout` DIRETO no banco (seed/SQL) NÃO invalida o cache de layout Redis `dash:{id}:published` (a invalidação só acontece via POST /dashboards/:id/publish — T-B3). Sintoma: após re-seed, o batch published lê o layout ANTIGO do cache → 400 "Invalid dashboard layout". REMÉDIO no e2e: re-publicar via API (POST /publish) depois de seedar, OU flush da chave. Em uso normal (publish via API) não ocorre.
+
+3) SEED agora CONFORME (resolve issue low cmqpfbkzu): prisma/seed.ts cria 1 Connection apontando pro PRÓPRIO Postgres do app (DATABASE_URL, senha cifrada via lib/crypto, visibility ORG), 2 charts (kpi `SELECT COUNT(*)::int AS value FROM users`; bar_chart por papel) e 1 Dashboard PUBLISHED "Painel de Demonstração" com layout {filters:[{id:f_role,type:select,...}], rows} conforme ao contrato (doc 20): blocos {id,type,span,props,dataBinding}, catalogTypes canônicos (kpi/bar_chart/donut/table/title/rich_text), queries read-only reais (users, dashboards, information_schema). O filtro f_role é usado só pelo bar_chart (param posicional $1) → demonstra recompute só-afetado. Seed é update-or-create (substitui o antigo "Painel de Arrecadação" não-conforme). IMPORTANTE: cast `::int` nas agregações (COUNT/SUM) porque pg devolve int8/bigint como STRING — scalar/series exigem number.
+
+FLUXO data&lt;-&gt;fila&lt;-&gt;socket&lt;-&gt;render validado (browser + script): PUBLISHED cache miss→queued (BullMQ)→worker(pg-runner real)→grava cache→emite socket block:running/block:data→FE hidrata skeleton→dados. 2ª leitura = success cached=true. DEV (draft) = inline fresco, meta.cached=false sempre. FILTRO: muda f_role → só blk_bar_roles emite block:running/block:data (cacheKey muda só dele); kpi/donut/table seguem cached. Socket.IO autentica via JWT no handshake (auth(cb)), dashboard:join→joined na sala dashboard:{id}.
+
+SMOKE e2e: `npm run e2e:smoke` (backend-boilerplate/scripts/e2e-smoke.mjs, BASE=http://localhost:4000, precisa DATABASE_URL no env) — 29 asserts: login→conexão(create/test/schema)→chart(create/publish)→dashboard(create/add_chart via POST /dashboards/:id/blocks/publish)→data published(fila→cache→success)→dev fresco→filtro só-afetado→carga leve(10 batches concorrentes ~54ms, não trava)→share(POST /share, GET /public/:token inicia TTL)→export PDF(async:false → %PDF, ~53KB via Playwright/Chromium headless contra FE /print em EXPORT_PRINT_BASE_URL=localhost:5173).
+
+OBSERVABILIDADE: registrei query-exec e export-pdf no Bull Board (/queues) em server.ts (try/catch isolado das filas do boilerplate). /queues/api/queues lista as 8 filas.
+
+GATES: BE npm test 21 suites/327 pass/5 skip; BE build tsup verde; FE build (tsc -b+vite) verde. Wiring @dashboards/contracts intacto (dir real, não rodei npm install).
+
+PENDÊNCIA arquitetural (NÃO resolvida, fora de escopo, issue medium cmqpfbd0500h1 em T-G1): página pública /public/:token não tem endpoint público de DADOS (o batch é autenticado) → blocos de dados ficam em skeleton; só narrativos (title/rich_text) renderizam. Requer trilha nova (POST /public/:token/data com snapshot materializado no publish). Avisar orchestrator/produto.</pre>
+          </details>
+        </article>
+      </section>
+
+      <section class="cat" id="cat-E" aria-labelledby="cat-E-h">
+        <div class="cat-head">
+          <h2 id="cat-E-h"><span class="cat-letter">E</span> Pendências &amp; dívida técnica <span class="cat-count">2</span></h2>
+          <p class="cat-desc">Issues abertas e follow-ups.</p>
+        </div>
+        
+        <article class="mem" id="cmqokeh340099pi0i6ajjvnhp">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-pend">pendência</span>
+              <span class="cat-ref">E</span>
+              <span class="badge b-ok" title="status">RESOLVIDA</span>
+              <code class="mem-id">cmqokeh340099pi0i6ajjvnhp</code>
+            </div>
+            <h3 class="mem-title">Pendência F0.3: wiring de contratos pendente (resolvida em F0.4/T-A/T-E)</h3>
+            <div class="mem-tags"><span class="tag">pendência</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>orchestrator</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 01:56:46 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Pendência da F0.3: o wiring file:../shared/contracts não tinha sido aplicado nos package.json reais (só documentado). RESOLVIDA na F0.4 (file: + --install-links em BE e FE) e confirmada por T-A e T-E. Issue fechada.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>PENDÊNCIA F0.3 (issue low cmqokcoy20095pi0i3fidhtvk): o pacote shared/contracts (@dashboards/contracts) existe e foi validado, mas o wiring "@dashboards/contracts": "file:../shared/contracts" NÃO foi aplicado nos package.json/tsconfig reais de backend-boilerplate e frontend-boilerplate (só documentado no README). A PRIMEIRA trilha do fan-out que consumir os contratos deve fechar esse wiring: T-A (primeiro consumidor backend) faz no backend-boilerplate; T-E (primeiro consumidor frontend, FE shell) faz no frontend-boilerplate. Depois disso resolver a issue.
+
+[STATUS: RESOLVIDA] O wiring foi aplicado na F0.4 (file:../shared/contracts + npm install --install-links em BE e FE) e confirmado intacto por T-A e T-E. A issue foi fechada.</pre>
+          </details>
+        </article>
+
+        <article class="mem" id="cmqpjoqlr00jspi0immk8fe43">
+          <header class="mem-head">
+            <div class="mem-head-top">
+              <span class="badge b-pend">pendência</span>
+              <span class="cat-ref">E</span>
+              
+              <code class="mem-id">cmqpjoqlr00jspi0immk8fe43</code>
+            </div>
+            <h3 class="mem-title">Follow-ups / dívida técnica do MVP (issues low/medium; T-H2 bloqueada)</h3>
+            <div class="mem-tags"><span class="tag">pendência</span></div>
+            <dl class="mem-meta">
+              <div><dt>Tipo</dt><dd>long_term</dd></div>
+              <div><dt>Escopo</dt><dd>global</dd></div>
+              <div><dt>Autor</dt><dd>orchestrator</dd></div>
+              <div><dt>Data</dt><dd>2026-06-22 18:24:32 UTC</dd></div>
+            </dl>
+          </header>
+          <p class="mem-summary">Inventário de dívida técnica não-bloqueante: medium (página pública sem endpoint de dados; filtro client-side de dept/owner) e low (rbac.ts local em connections; defense-in-depth no service; probe extra de status; Playwright no deploy; token de serviço do print). T-H2 bloqueada aguardando spec da API externa.</p>
+          <details class="mem-full">
+            <summary>conteúdo completo</summary>
+            <pre>FOLLOW-UPS / DÍVIDA TÉCNICA acumulada do MVP dashboards (todas issues low/medium, NÃO bloqueantes — registradas durante o fan-out, decisão de quando endereçar fica com o usuário/orchestrator):
+
+MEDIUM:
+- cmqpfbd0500h1 (T-G1): página pública /public/:token NÃO tem endpoint público de dados (batch é autenticado) → blocos de dados ficam em skeleton; só narrativos (title/rich_text) renderizam. DECISÃO DE PRODUTO: se relatório público com dados ao vivo for requisito, criar task nova (ex.: POST /public/:token/data com snapshot de dados materializado no publish). Aceitável shippar MVP só-narrativos se produto aceitar.
+- cmqpdmoo900g9pi0ijtpvd9dx (T-F2): filtro client-side de departamento/owner nas listagens /dashboards e /charts roda só sobre a página corrente (paginação é server-side) → resultado enganoso com paginação. Fix ideal: adicionar departmentId/owner às queries de list no backend (charts/dashboards) e mover filtro p/ server-side.
+
+LOW:
+- cmqp7ue3400bxpi0ivve64l4r (T-B1): connections (T-A) ainda tem rbac.ts LOCAL; migrar para o RBAC compartilhado (@/lib/rbac + @/lib/visibility) p/ evitar drift da matriz.
+- Defense-in-depth (recomendação T-D, sem issue id): gate de PAPEL hoje vive só nas rotas REST (requirePermission) e no tools/guard.ts do MCP; os services não checam papel. Considerar mover o gate de papel p/ a camada de service (vale REST+MCP).
+- cmqpfbd0600h3pi0icwip1agi (T-G1): /dashboards/:id faz probe extra em draft p/ descobrir status de dashboard publicado (1 GET a mais + draft trafega). Fix: backend retornar status no GET sem mode.
+- cmqphjgea00ilpi0i181t416p (T-J): Chromium/libs do Playwright não são versionados → CI/prod precisa rodar `npx playwright install --with-deps chromium` no deploy (documentado no README do export).
+- cmqphobx600irpi0i404j8u5o (T-J): token de serviço do print usa o MESMO JWT_SECRET do app e o claim purpose=export-print NÃO é verificado → token é sessão completa do user por 300s (cai em access logs via ?token=). Hardening pós-MVP: verificar purpose/barrar mutação, secret dedicado, token fora da query string.
+- Bull Board: resolvido no INT (query-exec e export-pdf registrados no /queues com try/catch isolado).
+- cmqpfbkzu (T-G1 seed type:bar) e cmqpbl53v (/users roleConfig): JÁ RESOLVIDAS (INT corrigiu o seed conforme contrato; T-F2 corrigiu o roleConfig dos 5 papéis).
+
+T-H2 (integração real do chat) está BLOQUEADA aguardando a spec da API externa do agente. Quando o usuário entregar: implementar HttpChatTransport contra a interface ChatTransport (features/chat/transport) e trocar o default no transport-context.ts; estender ChatEvent (tool_step) e SendMessageOptions (auth/session/conversationId). UI/render inline/add-to-dashboard não mudam.</pre>
+          </details>
+        </article>
+      </section>
+
+      <section class="summary-sec" id="sumario" aria-labelledby="sumario-h">
+        <h2 id="sumario-h">Sumário</h2>
+        <table class="sum-table">
+          <thead>
+            <tr><th>Categoria</th><th>Descrição</th><th>Qtd</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>A</strong> · Regras de processo</td><td>Regras e padrões que devem ser seguidos no desenvolvimento.</td><td class="num">3</td></tr>
+            <tr><td><strong>B</strong> · Gotchas críticos &amp; cross-cutting</td><td>Armadilhas que valem para várias trilhas — afetam BE e FE.</td><td class="num">3</td></tr>
+            <tr><td><strong>C</strong> · Fases de fundação (F0.1–F0.5)</td><td>Entregas que constroem a base do monorepo.</td><td class="num">2</td></tr>
+            <tr><td><strong>D</strong> · Trilhas do fan-out (T-A → T-J + INT)</td><td>Entregas funcionais do sistema.</td><td class="num">13</td></tr>
+            <tr><td><strong>E</strong> · Pendências &amp; dívida técnica</td><td>Issues abertas e follow-ups.</td><td class="num">2</td></tr>
+            <tr><td colspan="2"><strong>Total</strong></td><td class="num">23</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Observações úteis</h3>
+        <ul class="obs">
+          <li><span class="pill ok">resolvida</span> A <strong>pendência F0.3</strong> (wiring de <code>@dashboards/contracts</code>) foi resolvida na F0.4 (<code>file:../shared/contracts</code> + <code>--install-links</code>) e confirmada por T-A e T-E.</li>
+          <li><span class="pill ok">resolvida</span> <strong>2 issues</strong> já foram corrigidas durante o fan-out: o <code>seed type:bar</code> não-conforme (corrigido em <strong>INT</strong>) e o <code>roleConfig</code> do <code>/users</code> que crashava com os 5 papéis (corrigido em <strong>T-F2</strong>).</li>
+          <li><span class="pill block">bloqueada</span> A trilha <strong>T-H2</strong> (integração real do chat) está bloqueada aguardando a spec da API externa do agente — o transporte já está isolado atrás da interface <code>ChatTransport</code> (T-H) para troca direta.</li>
+          <li>Regra operacional recorrente: após <em>qualquer</em> <code>npm install</code>, restaurar o pacote de contratos com <code>npm install ../shared/contracts --install-links</code> (categoria A) — gotcha que reaparece em T-F1, T-I e T-J.</li>
+          <li>Dívida técnica não-bloqueante em aberto: página pública <code>/public/:token</code> sem endpoint de dados (blocos de dados em skeleton), filtro client-side de departamento/owner nas listagens, e hardening do token de serviço do export PDF.</li>
+          <li>Várias memórias são <em>cross-cutting</em>: F0.1 (DB/Prisma), F0.4 e F0.5 documentam tanto a entrega (C) quanto gotchas que valem para todas as trilhas (B) — marcadas com tag de categoria secundária.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="foot">
+      Documento gerado a partir das memórias <code>long_term</code> do projeto · 2026-06-23 03:23 UTC · página autocontida, sem dependências externas.
+    </footer>
+  </div>
+</body>
+</html>
