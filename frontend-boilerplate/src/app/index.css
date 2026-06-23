@@ -153,12 +153,14 @@
   #root {
     height: 100%;
   }
+  /* Trava scroll no documento: o shell cuida do scroll interno (main/sidebar).
+     Sem isso, html fica com overflow:visible e o scroll "vaza" para o viewport,
+     mesmo com body { overflow:hidden }, fazendo a sidebar inteira descer. */
   html {
-    @apply font-sans;
+    @apply font-sans overflow-hidden;
   }
   body {
     @apply bg-background text-foreground antialiased;
-    /* Sem scroll no documento: cada área (sidebar/main) tem o seu próprio. */
     overflow: hidden;
   }
 
