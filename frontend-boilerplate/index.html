@@ -5,6 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>App</title>
+    <script type="module">
+      // React Grab — ferramenta de DEV (selecionar elementos e copiar o
+      // contexto do componente React pra colar em IA). Só carrega em dev.
+      //   instalado via: npm i -D react-grab
+      // Atalho padrão mantido: segure Ctrl/⌘+C e solte sobre o elemento.
+      if (import.meta.env.DEV) {
+        import('react-grab').then(({ registerPlugin }) => {
+          // Injeta a URL da página atual no início de TODO conteúdo copiado.
+          registerPlugin({
+            name: 'page-url',
+            hooks: {
+              transformCopyContent: async (content) =>
+                `URL: ${window.location.href}\n\n${content}`,
+            },
+          });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
