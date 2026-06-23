@@ -1,7 +1,7 @@
 {
   "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
   "catalogVersion": 1,
-  "count": 22,
+  "count": 26,
   "blocks": [
     {
       "type": "__example",
@@ -22,6 +22,41 @@
         "label": "Auto-registrado ✔"
       },
       "version": "0.0.0"
+    },
+    {
+      "type": "alert",
+      "kind": "text",
+      "name": "Alerta",
+      "description": "Aviso/observação em destaque (título + descrição), com variante de cor.",
+      "source": "vitrine:alert",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "variant": {
+            "type": "string",
+            "enum": [
+              "default",
+              "destructive"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "defaultProps": {
+        "variant": "default",
+        "title": "Atenção",
+        "description": "A inadimplência da zona Leste ultrapassou 30% no período."
+      },
+      "version": "1.0.0"
     },
     {
       "type": "area_chart",
@@ -205,6 +240,44 @@
       "version": "1.0.0"
     },
     {
+      "type": "callout",
+      "kind": "text",
+      "name": "Callout",
+      "description": "Banner de destaque semântico (info/sucesso/aviso/erro) com título e texto.",
+      "source": "vitrine:callout-tremor",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "variant": {
+            "type": "string",
+            "enum": [
+              "default",
+              "info",
+              "success",
+              "warning",
+              "error"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "defaultProps": {
+        "variant": "success",
+        "title": "Meta atingida",
+        "description": "A arrecadação do trimestre superou a meta em 8%."
+      },
+      "version": "1.0.0"
+    },
+    {
       "type": "data_table",
       "kind": "chart",
       "name": "Tabela Rica",
@@ -305,6 +378,45 @@
       },
       "defaultProps": {
         "showLegend": true
+      },
+      "version": "1.0.0"
+    },
+    {
+      "type": "flip_words",
+      "kind": "title",
+      "name": "Flip Words",
+      "description": "Título com palavra que troca animadamente — ótimo para capas/headers de relatório.",
+      "source": "vitrine:flip-words",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "words"
+        ],
+        "properties": {
+          "prefix": {
+            "type": "string"
+          },
+          "words": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": 500
+          }
+        }
+      },
+      "defaultProps": {
+        "prefix": "Dados que são",
+        "words": [
+          "claros",
+          "rápidos",
+          "acionáveis"
+        ],
+        "duration": 2200
       },
       "version": "1.0.0"
     },
@@ -585,6 +697,37 @@
         }
       },
       "defaultProps": {},
+      "version": "1.0.0"
+    },
+    {
+      "type": "mobius_loop",
+      "kind": "layout",
+      "name": "Möbius Loop",
+      "description": "Ícone animado (loop infinito) — ótimo como indicador de carregamento/processamento.",
+      "source": "vitrine:mobius-loop-icon",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "size": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 240
+          },
+          "speed": {
+            "type": "string",
+            "enum": [
+              "slow",
+              "normal",
+              "fast"
+            ]
+          }
+        }
+      },
+      "defaultProps": {
+        "size": 64,
+        "speed": "normal"
+      },
       "version": "1.0.0"
     },
     {
