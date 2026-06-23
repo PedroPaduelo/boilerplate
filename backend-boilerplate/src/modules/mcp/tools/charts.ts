@@ -23,9 +23,11 @@ import {
 } from '@/modules/charts/schema';
 import {
   createChart,
+  deleteChart,
   publishChart,
   requireChartForModify,
   requireChartForView,
+  unpublishChart,
   updateChart,
 } from '@/modules/charts/service';
 import { requireConnectionForUse } from '@/modules/connections/rbac';
@@ -218,9 +220,62 @@ const previewChartDataTool: ToolDefinition = {
   },
 };
 
+// --- delete_chart ----------------------------------------------------------
+
+const deleteChartArgs = z.object({ chartId: z.string().min(1) });
+
+const deleteChartTool: ToolDefinition = {
+  name: 'delete_chart',
+  description:
+    'Remove um gráfico (deleta do banco). Só o dono (ou ADMIN) pode deletar. ' +
+    'Idempotente quanto a RBAC: chama `requireChartForModify` (verifica visibilidade + ownership). ' +
+    'Retorna `{ id, deleted: true }`. Cuidado: dashboards que referenciam este chartId ' +
+    'ficam com bloco órfão até você atualizar/remover o bloco via `update_dashboard`.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['chartId'],
+    properties: { chartId: { type: 'string', description: 'Id do chart a deletar.' } },
+  },
+  handler: async (rawArgs, { actor }) => {
+    assertPermission(actor, 'artifacts:manage');
+    const { chartId } = deleteChartArgs.parse(rawArgs ?? {});
+    const existing = await requireChartForModify(chartId, actor);
+    await deleteChart(existing.id);
+    return { id: existing.id, deleted: true };
+  },
+};
+
+// --- unpublish_chart -------------------------------------------------------
+
+const unpublishChartArgs = z.object({ chartId: z.string().min(1) });
+
+const unpublishChartTool: ToolDefinition = {
+  name: 'unpublish_chart',
+  description:
+    'Despublica um gráfico: zera `publishedProps`/`publishedDataBinding`/`publishedAt` e ' +
+    'volta o status para DRAFT. Só o dono (ou ADMIN). O chart continua existindo como ' +
+    'rascunho. Retorna o chart despublicado.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['chartId'],
+    properties: { chartId: { type: 'string', description: 'Id do chart a despublicar.' } },
+  },
+  handler: async (rawArgs, { actor }) => {
+    assertPermission(actor, 'artifacts:publish');
+    const { chartId } = unpublishChartArgs.parse(rawArgs ?? {});
+    const existing = await requireChartForModify(chartId, actor);
+    const chart = await unpublishChart(existing.id);
+    return serializeChart(chart);
+  },
+};
+
 export const chartTools: ToolDefinition[] = [
   createChartTool,
   updateChartTool,
   publishChartTool,
   previewChartDataTool,
+  deleteChartTool,
+  unpublishChartTool,
 ];

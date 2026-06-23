@@ -21,8 +21,10 @@ import {
 import {
   addChartToDashboard,
   createDashboard,
+  deleteDashboard,
   publishDashboard,
   requireDashboardForModify,
+  unpublishDashboard,
   updateDashboard,
 } from '@/modules/dashboards/service';
 import { assertPermission } from './guard';
@@ -172,9 +174,65 @@ const publishDashboardTool: ToolDefinition = {
   },
 };
 
+// --- delete_dashboard ------------------------------------------------------
+
+const deleteDashboardArgs = z.object({ dashboardId: z.string().min(1) });
+
+const deleteDashboardTool: ToolDefinition = {
+  name: 'delete_dashboard',
+  description:
+    'Remove um dashboard (deleta do banco). Só o dono (ou ADMIN) pode deletar. ' +
+    'Idempotente quanto a RBAC: chama `requireDashboardForModify` (verifica visibilidade + ownership). ' +
+    'Retorna `{ id, deleted: true }`. Cuidado: invalida também o cache de layout publicado.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['dashboardId'],
+    properties: {
+      dashboardId: { type: 'string', description: 'Id do dashboard a deletar.' },
+    },
+  },
+  handler: async (rawArgs, { actor }) => {
+    assertPermission(actor, 'artifacts:manage');
+    const { dashboardId } = deleteDashboardArgs.parse(rawArgs ?? {});
+    const existing = await requireDashboardForModify(dashboardId, actor);
+    await deleteDashboard(existing.id);
+    return { id: existing.id, deleted: true };
+  },
+};
+
+// --- unpublish_dashboard ---------------------------------------------------
+
+const unpublishDashboardArgs = z.object({ dashboardId: z.string().min(1) });
+
+const unpublishDashboardTool: ToolDefinition = {
+  name: 'unpublish_dashboard',
+  description:
+    'Despublica um dashboard: zera `publishedLayout`/`publishedAt` e volta o status ' +
+    'para DRAFT. Só o dono (ou ADMIN). O dashboard continua existindo como rascunho. ' +
+    'Retorna o dashboard despublicado.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['dashboardId'],
+    properties: {
+      dashboardId: { type: 'string', description: 'Id do dashboard a despublicar.' },
+    },
+  },
+  handler: async (rawArgs, { actor }) => {
+    assertPermission(actor, 'artifacts:publish');
+    const { dashboardId } = unpublishDashboardArgs.parse(rawArgs ?? {});
+    const existing = await requireDashboardForModify(dashboardId, actor);
+    const dashboard = await unpublishDashboard(existing.id);
+    return serializeDashboard(dashboard);
+  },
+};
+
 export const dashboardTools: ToolDefinition[] = [
   createDashboardTool,
   updateDashboardTool,
   addChartToDashboardTool,
   publishDashboardTool,
+  deleteDashboardTool,
+  unpublishDashboardTool,
 ];

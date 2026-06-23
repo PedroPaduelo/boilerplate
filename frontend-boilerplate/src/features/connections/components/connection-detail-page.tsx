@@ -32,10 +32,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { ConnectionList } from '@/components/ui/connection-list';
-import { DatabaseTabBar } from '@/components/ui/database-tab-bar';
 import { FavoritesList } from '@/components/ui/favorites-list';
 import { QueryHistoryList } from '@/components/ui/query-history-list';
 import { TableInfoPanel } from '@/components/ui/table-info-panel';
@@ -264,15 +262,6 @@ export function ConnectionDetailPage() {
     [allConnections],
   );
 
-  // Tabs: conexão atual primeiro, demais em seguida (até 8).
-  const tabs = useMemo(() => {
-    const list = allConnections?.connections ?? [];
-    const ordered = connection
-      ? [connection, ...list.filter((c) => c.id !== connection.id)]
-      : list;
-    return ordered.slice(0, 8).map((c) => ({ id: c.id, label: c.name, icon: DatabaseIcon }));
-  }, [allConnections, connection]);
-
   const goToConnection = (cid: string) => {
     if (cid !== id) navigate(`/connections/${cid}`);
   };
@@ -358,7 +347,7 @@ export function ConnectionDetailPage() {
     : 0;
 
   return (
-    <div className="flex h-[calc(100vh-7.5rem)] min-h-[600px] flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
+    <div className="flex h-full min-h-[600px] flex-col overflow-hidden bg-background text-foreground">
       {/* ===================== TOPBAR ===================== */}
       <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2 lg:gap-3">
         <Button
@@ -462,16 +451,6 @@ export function ConnectionDetailPage() {
         </div>
       </header>
 
-      {/* ===================== TABS ===================== */}
-      <div className="overflow-x-auto">
-        <DatabaseTabBar
-          tabs={tabs}
-          activeId={id}
-          onSelect={goToConnection}
-          newLabel="Conexões"
-        />
-      </div>
-
       {/* aviso de truncamento */}
       {schema?.truncated ? (
         <div className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
@@ -485,7 +464,7 @@ export function ConnectionDetailPage() {
       <div className="flex min-h-0 min-w-0 flex-1">
         {/* sidebar */}
         <aside className="hidden w-[220px] shrink-0 flex-col border-r border-border bg-card/40 md:flex lg:w-[240px] xl:w-[260px]">
-          <ScrollArea className="flex-1">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <CollapsibleSection
               title="Conexões"
               icon={<Wifi className="size-3.5" />}
@@ -565,7 +544,7 @@ export function ConnectionDetailPage() {
                 />
               )}
             </CollapsibleSection>
-          </ScrollArea>
+          </div>
         </aside>
 
         {/* centro: explorer */}

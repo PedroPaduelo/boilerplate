@@ -56,10 +56,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  ScrollArea,
-  ScrollAreaScrollbar,
-} from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { MiddleTruncation } from "@/components/ui/middle-truncation"
 import type {
   DbEngine,
   DbSchemaExplorerProps,
@@ -845,9 +843,11 @@ function DbSchemaExplorer({
                                   />
                                 }
                                 label={
-                                  <span className="font-mono text-xs">
-                                    {t.name}
-                                  </span>
+                                  <MiddleTruncation
+                                    text={t.name}
+                                    maxLength={18}
+                                    className="font-mono text-xs"
+                                  />
                                 }
                                 trailing={
                                   <span className="font-mono">
@@ -870,7 +870,6 @@ function DbSchemaExplorer({
               </div>
             ) : null}
           </div>
-          <ScrollAreaScrollbar />
         </ScrollArea>
 
         {/* Detail pane */}
@@ -984,7 +983,6 @@ function DbSchemaExplorer({
               ) : null}
             </div>
           )}
-          <ScrollAreaScrollbar />
         </ScrollArea>
       </div>
     </div>

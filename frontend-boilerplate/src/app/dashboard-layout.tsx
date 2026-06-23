@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { DashboardTopbar, Avatar, AvatarFallback } from '@/components/ui';
+import { DashboardTopbar } from '@/components/ui';
 import { AppSidebar } from './app-sidebar';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
-import { useAuthStore } from '@/features/auth/store';
 
 const TITLES: Record<string, string> = {
   '/dashboards': 'Dashboards',
@@ -16,7 +15,6 @@ const TITLES: Record<string, string> = {
 
 export function DashboardLayout() {
   const location = useLocation();
-  const user = useAuthStore((s) => s.user);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('sidebar:collapsed') === '1',
   );
@@ -38,13 +36,6 @@ export function DashboardLayout() {
   // O detalhe da conexão é um workbench e aproveita melhor a tela cheia.
   const fullBleed = location.pathname.startsWith('/connections/');
 
-  const initials = (user?.name ?? user?.email ?? 'U')
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
@@ -57,22 +48,7 @@ export function DashboardLayout() {
               {title}
             </span>
           }
-          actions={
-            <div className="flex items-center gap-3">
-              <ThemeToggle />
-              <div className="hidden text-right sm:block">
-                <p className="text-sm font-medium leading-none">
-                  {user?.name ?? 'Usuário'}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {user?.email}
-                </p>
-              </div>
-              <Avatar className="size-8">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-            </div>
-          }
+          actions={<ThemeToggle />}
         />
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div

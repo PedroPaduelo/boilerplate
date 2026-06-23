@@ -8,10 +8,18 @@ import {
   MessageSquare,
   LogOut,
   PanelLeftClose,
-  PanelLeftOpen,
+  ChevronsUpDown,
 } from 'lucide-react';
 import {
   Button,
+  Avatar,
+  AvatarFallback,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   Tooltip,
   TooltipTrigger,
   TooltipContent,
@@ -59,8 +67,17 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
-  const role = useAuthStore((s) => s.user?.role);
+  const user = useAuthStore((s) => s.user);
+  const role = user?.role;
   const navItems = NAV.filter((item) => canSeeNavItem(item, role));
+
+  const displayName = user?.name ?? user?.email ?? 'Usuário';
+  const initials = (user?.name ?? user?.email ?? 'U')
+    .split(' ')
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   function handleLogout() {
     logout();
@@ -78,18 +95,53 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
       >
         <div
           className={cn(
-            'flex h-14 items-center gap-2 border-b border-sidebar-border/60 px-3',
-            collapsed && 'justify-center px-0',
+            'flex h-14 items-center border-b border-sidebar-border/60',
+            collapsed ? 'justify-center px-2' : 'justify-between gap-2 px-3',
           )}
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-            W
-          </span>
-          {!collapsed ? (
-            <span className="text-sm font-semibold tracking-tight">
-              WFM
-            </span>
-          ) : null}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onToggleCollapsed}
+                  aria-label="Expandir menu"
+                  className="flex size-9 items-center justify-center rounded-lg transition hover:bg-sidebar-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                >
+                  <img
+                    src="/auditoria-icon.png"
+                    alt="auditorIA"
+                    className="size-7 select-none"
+                    draggable={false}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Expandir menu</TooltipContent>
+            </Tooltip>
+          ) : (
+            <>
+              <img
+                src="/auditoria-logo.png"
+                alt="auditorIA"
+                className="h-6 w-auto shrink-0 select-none"
+                draggable={false}
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="shrink-0 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                    onClick={onToggleCollapsed}
+                    aria-label="Recolher menu"
+                  >
+                    <PanelLeftClose className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Recolher menu</TooltipContent>
+              </Tooltip>
+            </>
+          )}
         </div>
 
         <nav
@@ -129,49 +181,68 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
         </nav>
 
         <div className="flex flex-col gap-1 border-t border-sidebar-border/60 p-2">
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center px-0 text-muted-foreground"
-                  onClick={handleLogout}
-                  aria-label="Sair"
-                >
-                  <LogOut className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Sair</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-muted-foreground"
-              onClick={handleLogout}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  'h-auto w-full py-1.5 text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+                  collapsed ? 'justify-center px-0' : 'justify-start gap-2',
+                )}
+                aria-label="Abrir menu da conta"
+              >
+                <Avatar className="size-7 shrink-0">
+                  <AvatarFallback className="bg-sidebar-accent text-[0.7rem] font-semibold text-sidebar-accent-foreground">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed ? (
+                  <>
+                    <span className="flex min-w-0 flex-1 flex-col text-left">
+                      <span className="truncate text-sm font-medium leading-tight">
+                        {displayName}
+                      </span>
+                      {user?.email ? (
+                        <span className="truncate text-xs leading-tight text-sidebar-foreground/60">
+                          {user.email}
+                        </span>
+                      ) : null}
+                    </span>
+                    <ChevronsUpDown className="size-4 shrink-0 text-sidebar-foreground/50" />
+                  </>
+                ) : null}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="right"
+              align="end"
+              sideOffset={8}
+              className="min-w-56"
             >
-              <LogOut className="size-4" />
-              Sair
-            </Button>
-          )}
-
-          <Button
-            variant="ghost"
-            className={cn(
-              'w-full gap-2 text-muted-foreground',
-              collapsed ? 'justify-center px-0' : 'justify-start',
-            )}
-            onClick={onToggleCollapsed}
-            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-4" />
-            ) : (
-              <>
-                <PanelLeftClose className="size-4" />
-                Recolher
-              </>
-            )}
-          </Button>
+              <DropdownMenuLabel className="flex items-center gap-2 p-2 font-normal">
+                <Avatar className="size-8 shrink-0">
+                  <AvatarFallback className="bg-muted text-[0.7rem] font-semibold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium leading-tight">
+                    {displayName}
+                  </span>
+                  {user?.email ? (
+                    <span className="truncate text-xs leading-tight text-muted-foreground">
+                      {user.email}
+                    </span>
+                  ) : null}
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={handleLogout}>
+                <LogOut className="size-4" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </TooltipProvider>
