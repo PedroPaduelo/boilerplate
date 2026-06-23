@@ -223,9 +223,6 @@ const SELF_CONTAINED_TYPES = new Set<string>([
   'metric_glow',
   'stat_tile',
   'signal_card',
-  'progress_bar',
-  'progress_circle',
-  'radial_gauge',
 ]);
 
 function isFramedChart(entry: CatalogEntry): boolean {

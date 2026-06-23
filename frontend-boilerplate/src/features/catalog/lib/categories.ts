@@ -57,15 +57,16 @@ export const CATEGORY_BY_TYPE: Record<string, Category> = {
   scatter_chart: 'graficos',
   spark_chart: 'graficos',
   bar_list: 'graficos',
+  // 📊 Medidores (valor sobre escala) — também são gráficos.
+  radial_gauge: 'graficos',
+  progress_circle: 'graficos',
+  progress_bar: 'graficos',
 
   // 🔔 Cards, Métricas & Indicadores — valor único (escalar) + alertas
   kpi: 'indicadores',
   stat_tile: 'indicadores',
   metric_glow: 'indicadores',
   signal_card: 'indicadores',
-  radial_gauge: 'indicadores',
-  progress_circle: 'indicadores',
-  progress_bar: 'indicadores',
   alert: 'indicadores',
   callout: 'indicadores',
 
