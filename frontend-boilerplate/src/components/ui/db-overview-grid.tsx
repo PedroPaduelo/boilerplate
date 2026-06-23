@@ -568,7 +568,9 @@ function DbOverviewGrid({
   const handleTileClick = React.useCallback(
     (db: DatabaseInstance) => {
       onDatabaseClick?.(db.id)
-      setSelected(db)
+      // Só abre o dialog de detalhe quando NÃO há navegação externa
+      // (`onDatabaseClick`). Assim, quem usa o grid para navegar não vê o modal.
+      if (!onDatabaseClick) setSelected(db)
     },
     [onDatabaseClick]
   )
@@ -673,7 +675,7 @@ function DbOverviewGrid({
       ) : (
         <div
           data-slot="db-overview-grid-list"
-          className="grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]"
+          className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
         >
           {filtered.map((db) => (
             <DatabaseTile

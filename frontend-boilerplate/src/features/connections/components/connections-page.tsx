@@ -89,8 +89,8 @@ export function ConnectionsPage() {
 
       <Section index={1}>
         {isLoading ? (
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-64 w-full rounded-xl" />
             ))}
           </div>
