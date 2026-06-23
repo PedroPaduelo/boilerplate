@@ -11,6 +11,8 @@
  *   │   com state local)  │   - COR → enum + input livre +     │
  *   │                     │          preview (ColorFieldEditor) │
  *   │                     │  DADOS (dataContract.example)      │
+ *   │                     │   - seletor "Dados:" → variantes   │
+ *   │                     │     (3-5 fixtures pré-prontas)     │
  *   │                     │   - <textarea> JSON                │
  *   │                     │   - valida com validateBlockData.. │
  *   │                     │   - verde/vermelho                 │
@@ -24,6 +26,13 @@
  * livre: o preview É o feedback — se a classe/cor não existir, simplesmente
  * não vai renderizar.
  *
+ * Seletor de variantes (ENTREGA 3 — Turno 2): acima do textarea, exibe botões
+ * "Dados: [Padrão] [Multi-série] [Valores grandes] …" que carregam fixtures
+ * pré-prontas vindas de `lib/block-fixtures.ts` (3-5 variações por bloco, 8
+ * blocos da aba "Gráficos"). Editar o textarea manualmente desativa a seleção
+ * de variantes (entra em modo "custom") até clicar em alguma variante ou em
+ * "Reset". Blocos narrativos (sem `dataContract`) NÃO mostram seletor.
+ *
  * Read-only do disco (não persiste nada). Estado 100% local — ao fechar e
  * reabrir, reseta para `defaultProps` + `dataContract.example` (ou
  * `definition.fixture` como fallback).
@@ -35,7 +44,7 @@ import {
   type BlockManifest,
   type DataShape,
 } from '@dashboards/contracts';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Sparkles } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,6 +74,10 @@ import {
   SHAPE_LABEL,
   type CatalogEntry,
 } from '../lib/catalog-entries';
+import {
+  getFixtureVariants,
+  type FixtureVariant,
+} from '../lib/block-fixtures';
 
 /* -------------------------------------------------------------------------- */
 /*  Tipos                                                                     */
@@ -456,6 +469,73 @@ function PropFieldEditor({
 }
 
 /* -------------------------------------------------------------------------- */
+/*  FixtureVariantPicker — seletor "Dados:" com chips                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Barra de chips com as variações de fixture disponíveis para o bloco.
+ * Renderizada ACIMA do textarea JSON no painel "Dados".
+ *
+ * Comportamento:
+ * - `variantId === null` → modo "custom" (usuário editou o textarea). Chips
+ *   ficam desabilitados visualmente (estilo muted) e a tooltip avisa.
+ * - `variantId !== null` → chip correspondente fica destacado (estilo solid).
+ * - Click num chip → `onApplyVariant(v)` (carrega + re-valida).
+ *
+ * Não renderiza nada se `variants.length === 0` — comportamento padrão para
+ * blocos sem variações (kpi, stat_tile, etc.).
+ */
+function FixtureVariantPicker({
+  variants,
+  activeVariantId,
+  disabled,
+  onApply,
+}: {
+  variants: FixtureVariant[];
+  activeVariantId: string | null;
+  /** Quando true (modo custom), os chips ficam desabilitados mas visíveis. */
+  disabled: boolean;
+  onApply: (v: FixtureVariant) => void;
+}) {
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-1.5"
+      data-slot="fixture-variant-picker"
+    >
+      <span className="flex items-center gap-1 px-1 text-[11px] font-medium text-muted-foreground">
+        <Sparkles className="size-3" />
+        Dados:
+      </span>
+      {variants.map((v) => {
+        const isActive = activeVariantId === v.id;
+        return (
+          <button
+            key={v.id}
+            type="button"
+            disabled={disabled}
+            onClick={() => onApply(v)}
+            title={v.description ?? v.label}
+            aria-pressed={isActive}
+            className={cn(
+              'h-6 rounded-md border px-2 text-[11px] transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              isActive
+                ? 'border-primary/60 bg-primary text-primary-foreground shadow-sm'
+                : 'border-border/60 bg-card text-foreground hover:border-primary/40 hover:bg-primary/5',
+              disabled &&
+                !isActive &&
+                'pointer-events-none opacity-50',
+            )}
+          >
+            {v.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Componente principal                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -489,6 +569,10 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
     [propsSchema],
   );
 
+  // Variantes disponíveis para este bloco (catálogo em `lib/block-fixtures.ts`).
+  // Vazio para blocos sem variações (kpi, stat_tile) ou blocos narrativos.
+  const variants = useMemo(() => getFixtureVariants(manifest.type), [manifest.type]);
+
   // PREVIEW_PROPS vem do `catalog-entries` (título p/ `title`, markdown p/
   // `rich_text` etc.). Reaproveitado para o estado inicial.
   const previewProps = useMemo(() => {
@@ -505,13 +589,19 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   const [propsDraft, setPropsDraft] = useState<Record<string, unknown>>(() =>
     initialPropsFor(manifest, previewProps),
   );
-  const [dataText, setDataText] = useState<string>(() =>
-    JSON.stringify(initialDataFor(entry), null, 2),
-  );
+  const [dataText, setDataText] = useState<string>(() => {
+    // Se o bloco tem variantes, o estado inicial é a variante `default` (que
+    // por convenção é uma cópia literal da fixture oficial — paridade visual).
+    const def = variants.find((v) => v.id === 'default');
+    const init = def ? def.data : initialDataFor(entry);
+    return JSON.stringify(init, null, 2);
+  });
   // Erro de parse/validação do JSON; null = OK (parsedAndValid).
   const [dataError, setDataError] = useState<string | null>(() => {
     try {
-      const parsed = JSON.parse(JSON.stringify(initialDataFor(entry)));
+      const def = variants.find((v) => v.id === 'default');
+      const init = def ? def.data : initialDataFor(entry);
+      const parsed = JSON.parse(JSON.stringify(init));
       if (entry.shape) {
         const { valid, errors } = validateBlockDataByShape(
           entry.shape as DataShape,
@@ -524,12 +614,20 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
       return e instanceof Error ? e.message : 'JSON inválido';
     }
   });
+  // ID da variante atualmente aplicada. `null` = modo custom (usuário editou o
+  // textarea). Usado pra destacar o chip selecionado e desabilitar outros
+  // enquanto o user está editando livremente.
+  const [variantId, setVariantId] = useState<string | null>(
+    variants.length ? 'default' : null,
+  );
 
   // Reset ao trocar de bloco (o `key` no pai já desmonta, mas fica explícito).
   useEffect(() => {
     setPropsDraft(initialPropsFor(manifest, previewProps));
-    const init = initialDataFor(entry);
+    const def = variants.find((v) => v.id === 'default');
+    const init = def ? def.data : initialDataFor(entry);
     setDataText(JSON.stringify(init, null, 2));
+    setVariantId(def ? 'default' : null);
     try {
       const parsed = JSON.parse(JSON.stringify(init));
       if (entry.shape) {
@@ -554,6 +652,9 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
 
   const onDataChange = (text: string) => {
     setDataText(text);
+    // Qualquer edição manual → marca como custom (variantId = null). Os chips
+    // ficam visualmente desabilitados até o user clicar em alguma variante.
+    setVariantId(null);
     try {
       const parsed = JSON.parse(text);
       if (entry.shape) {
@@ -577,9 +678,39 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   };
 
   const resetData = () => {
+    // Reset = volta pra variante `default` se existir; senão, comportamento
+    // legado (initialDataFor). É o atalho pra "sair do modo custom".
+    const def = variants.find((v) => v.id === 'default');
+    if (def) {
+      applyVariant(def);
+      return;
+    }
     const init = initialDataFor(entry);
     setDataText(JSON.stringify(init, null, 2));
     setDataError(null);
+  };
+
+  /** Aplica uma variante: popula o textarea e re-valida. */
+  const applyVariant = (v: FixtureVariant) => {
+    setVariantId(v.id);
+    const text = JSON.stringify(v.data, null, 2);
+    setDataText(text);
+    try {
+      // Faz um round-trip pra garantir que o JSON é parseável (no caso de uma
+      // variante malformada por descuido — cai no fallback do erro).
+      const parsed = JSON.parse(JSON.stringify(v.data));
+      if (entry.shape) {
+        const { valid, errors } = validateBlockDataByShape(
+          entry.shape as DataShape,
+          parsed,
+        );
+        setDataError(valid ? null : formatErrors(errors));
+        return;
+      }
+      setDataError(null);
+    } catch (e) {
+      setDataError(e instanceof Error ? e.message : 'JSON inválido');
+    }
   };
 
   // ---------- preview ----------
@@ -707,6 +838,17 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
 
             {entry.shape ? (
               <>
+                {/* Seletor de variantes — só renderiza se o bloco tem
+                    variações cadastradas (atualmente: 8 da aba "Gráficos"). */}
+                {variants.length > 0 ? (
+                  <FixtureVariantPicker
+                    variants={variants}
+                    activeVariantId={variantId}
+                    disabled={variantId === null}
+                    onApply={applyVariant}
+                  />
+                ) : null}
+
                 <textarea
                   value={dataText}
                   onChange={(e) => onDataChange(e.target.value)}
@@ -731,7 +873,9 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
                     <>
                       <span className="inline-block size-1.5 shrink-0 rounded-full bg-emerald-500" />
                       <span className="text-muted-foreground">
-                        Válido — preview ao vivo com este dado.
+                        {variantId === null && variants.length > 0
+                          ? 'Custom — editando o JSON manualmente. Clique numa variante acima ou em Reset para trocar.'
+                          : 'Válido — preview ao vivo com este dado.'}
                       </span>
                     </>
                   )}
