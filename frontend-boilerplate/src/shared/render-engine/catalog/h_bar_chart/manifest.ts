@@ -14,7 +14,12 @@ export const manifest = {
   propsSchema: {
     type: 'object',
     additionalProperties: false,
-    properties: {},
+    properties: {
+      // ENTREGA 3: prop de palette — prepara o terreno para multi-série
+      // (dataContract atual não tem `series`, mas se o usuário setar `multi`
+      // e a query entregar, o componente pode ciclar a PALETTE depois).
+      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'single' },
+    },
   },
   dataContract: {
     shape: 'series',
@@ -27,7 +32,7 @@ export const manifest = {
       { x: 'Norte', y: 980 },
     ],
   },
-  defaultProps: {},
+  defaultProps: { palette: 'single' },
   minColumns: 1,
   maxRows: 5000,
   version: '1.0.0',

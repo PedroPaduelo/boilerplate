@@ -7,6 +7,9 @@
  * hardcoded fora do design system; agora a grade, eixos, tooltip e a paleta das
  * séries seguem os tokens do tema (`var(--chart-1..5)`, `border`, `popover`,
  * `muted-foreground`) e funcionam em light/dark.
+ *
+ * Prop `palette` (ENTREGA 3): aceita o valor; hoje o render agrupa por
+ * `series` (já é multi). Override do palette entra em turno futuro.
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { AreaChart, type AreaSeries, type AreaChartMode } from '@/components/ui/area-chart';
@@ -25,6 +28,7 @@ type AreaProps = {
   fill?: 'gradient' | 'solid' | 'none';
   showLegend?: boolean;
   showGridLines?: boolean;
+  palette?: 'single' | 'multi' | 'none';
 };
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
@@ -52,6 +56,7 @@ export function toAreaSeries(data: SeriesData): {
 }
 
 export const Component: BlockComponent<AreaProps, SeriesData> = ({ props, data }) => {
+  // `palette` aceito no schema; render atual agrupa por `series` (multi).
   const { series, xLabels } = toAreaSeries(data ?? []);
   const mode = (props.type ?? 'default') as AreaChartMode;
   const isPercent = mode === 'percent';

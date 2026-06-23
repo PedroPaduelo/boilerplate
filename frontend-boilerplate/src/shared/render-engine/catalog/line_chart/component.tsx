@@ -1,6 +1,10 @@
 /**
  * Bloco `line_chart` (shape 'series', x temporal) — usa o Vitrine `LineChart`.
  * Agrupa os pontos por `series` (multi-linha) preservando a ordem do eixo X.
+ *
+ * Prop `palette` (ENTREGA 3): aceita o valor; o render já agrupa por
+ * `series` e cicla `STROKE_PALETTE`. Override futuro pode mudar isso
+ * (ex.: 'none' = cor única forçada).
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { LineChart, type LineSeries } from '@/components/ui/line-chart';
@@ -13,6 +17,7 @@ import { fixture } from './fixture';
 type LineProps = {
   smooth?: boolean;
   area?: boolean;
+  palette?: 'single' | 'multi' | 'none';
 };
 
 const STROKE_PALETTE = [
@@ -46,6 +51,7 @@ export function toLineSeries(data: SeriesData): {
 }
 
 export const Component: BlockComponent<LineProps, SeriesData> = ({ props, data }) => {
+  // `palette` aceito no schema; render atual já agrupa por `series` (multi).
   const { series, xLabels } = toLineSeries(data ?? []);
   return (
     <LineChart

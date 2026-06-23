@@ -23,6 +23,10 @@ export const manifest = {
       orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
       // COR — enum fechado da paleta do DS (ver `lib/accent.ts`).
       accent: { type: 'string', enum: [...ACCENT_COLORS], default: 'chart-1' },
+      // ENTREGA 3: prop de palette — bar_chart atual só renderiza single
+      // (dataContract tem `series` opcional mas o componente não cicla cores
+      // ainda). A prop fica no schema para preparar o override futuro.
+      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'single' },
     },
   },
   dataContract: {
@@ -37,7 +41,7 @@ export const manifest = {
       { x: 'Fev', y: 90 },
     ],
   },
-  defaultProps: { orientation: 'vertical', stacked: false, accent: 'chart-1' },
+  defaultProps: { orientation: 'vertical', stacked: false, accent: 'chart-1', palette: 'single' },
   minColumns: 1,
   maxRows: 5000,
   version: '1.0.0',

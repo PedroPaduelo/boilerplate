@@ -6,6 +6,9 @@
  * Prop de COR: `accent` é enum fechado (`chart-1..5 | 'primary'`), validado
  * pelo schema. Tradução enum → classe Tailwind via `accentClass()` em
  * `lib/accent.ts`. Default: `'chart-1'`.
+ *
+ * Prop `palette` (ENTREGA 3): aceita o valor; o render atual é single-série
+ * (não cicla cores), então o valor não tem efeito ainda — entra em turno futuro.
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart } from '@/components/ui/bar-chart';
@@ -21,6 +24,7 @@ type BarProps = {
   stacked?: boolean;
   orientation?: 'vertical' | 'horizontal';
   accent?: AccentColor;
+  palette?: 'single' | 'multi' | 'none';
 };
 
 /**
@@ -31,6 +35,7 @@ type BarProps = {
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
 export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data }) => {
+  // `palette` aceito no schema; render atual é single (não cicla cores).
   const points = (data ?? []) as SeriesPoint[];
   const series = points.map((d) => ({
     label: String(d.x),

@@ -1,6 +1,10 @@
 /**
  * Bloco `scatter_chart` (shape 'series', x/y numéricos) — usa o Vitrine
  * `ScatterChartTremor`. Cada ponto {x,y,series?} vira {x,y,category}.
+ *
+ * Prop `palette` (ENTREGA 3): aceita o valor; hoje o render agrupa por
+ * `series` (já é multi por natureza do dataContract). Turno futuro conecta
+ * essa prop no mapeamento de cores.
  */
 import type { SeriesData } from '@dashboards/contracts';
 import {
@@ -16,11 +20,13 @@ import { fixture } from './fixture';
 type ScatterProps = {
   showLegend?: boolean;
   showGridLines?: boolean;
+  palette?: 'single' | 'multi' | 'none';
 };
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
 export const Component: BlockComponent<ScatterProps, SeriesData> = ({ props, data }) => {
+  // `palette` aceito no schema; render atual agrupa por `series` (multi).
   const points = (data ?? []) as SeriesPoint[];
   const rows: ScatterChartTremorDatum[] = points.map((p) => ({
     x: Number(p.x),

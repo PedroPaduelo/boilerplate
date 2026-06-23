@@ -16,6 +16,9 @@ export const manifest = {
     properties: {
       type: { type: 'string', enum: ['area', 'bar', 'line'] },
       curveType: { type: 'string', enum: ['linear', 'monotone', 'step'] },
+      // ENTREGA 3: prop de palette — sparkline é single-série por natureza
+      // (um único valor de tendência); multi/none ficam disponíveis pro schema.
+      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'single' },
     },
   },
   dataContract: {
@@ -29,7 +32,7 @@ export const manifest = {
       { x: '2', y: 8 },
     ],
   },
-  defaultProps: { type: 'area', curveType: 'monotone' },
+  defaultProps: { type: 'area', curveType: 'monotone', palette: 'single' },
   maxRows: 5000,
   version: '1.0.0',
 } satisfies BlockManifest;

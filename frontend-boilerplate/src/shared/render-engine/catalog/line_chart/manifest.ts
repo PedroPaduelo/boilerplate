@@ -16,6 +16,9 @@ export const manifest = {
     properties: {
       smooth: { type: 'boolean' },
       area: { type: 'boolean' },
+      // ENTREGA 3: prop de palette — line chart já aceita multi-série
+      // (campo `series` no dataContract); `multi` é o default natural.
+      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'multi' },
     },
   },
   dataContract: {
@@ -30,7 +33,7 @@ export const manifest = {
       { x: '2026-02', y: 18 },
     ],
   },
-  defaultProps: { smooth: true, area: true },
+  defaultProps: { smooth: true, area: true, palette: 'multi' },
   maxRows: 5000,
   version: '1.0.0',
 } satisfies BlockManifest;

@@ -43,6 +43,14 @@ export function accentClass(color: AccentColor | undefined): string {
   return `bg-${color ?? ACCENT_DEFAULT}`;
 }
 
+/** Type guard: checa se `value` é um AccentColor válido. Útil p/ detectores
+ *  de "enum de cor" e pra normalização de input livre em editores (ex.: o
+ *  playground do catálogo). */
+export function isAccentColor(value: unknown): value is AccentColor {
+  return typeof value === 'string'
+    && (ACCENT_COLORS as readonly string[]).includes(value);
+}
+
 /** Palette cíclica (5 cores do DS) — p/ multi-série. */
 export const PALETTE: readonly AccentColor[] = [
   'chart-1',

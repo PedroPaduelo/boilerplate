@@ -15,6 +15,8 @@ export const manifest = {
     additionalProperties: false,
     properties: {
       sortOrder: { type: 'string', enum: ['ascending', 'descending', 'none'] },
+      // ENTREGA 3: prop de palette — default single (lista categórica simples).
+      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'single' },
     },
   },
   dataContract: {
@@ -28,7 +30,7 @@ export const manifest = {
       { label: 'ISS', value: 3100 },
     ],
   },
-  defaultProps: { sortOrder: 'descending' },
+  defaultProps: { sortOrder: 'descending', palette: 'single' },
   maxRows: 5000,
   version: '1.0.0',
 } satisfies BlockManifest;

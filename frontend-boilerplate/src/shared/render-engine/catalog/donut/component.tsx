@@ -1,6 +1,10 @@
 /**
  * Bloco `donut` (shape 'categorical') — usa o Vitrine `DonutChart` + legenda.
  * Mapeia {label,value} para segmentos com cores do palette de charts do DS.
+ *
+ * Prop `palette` (ENTREGA 3): aceita o valor; hoje o donut sempre cicla
+ * chart-1..5 por categoria (single-categorical). O override entra em turno
+ * futuro.
  */
 import { useState } from 'react';
 import type { CategoricalData } from '@dashboards/contracts';
@@ -15,6 +19,7 @@ import { fixture } from './fixture';
 type DonutProps = {
   showLegend?: boolean;
   centerLabel?: string;
+  palette?: 'single' | 'multi' | 'none';
 };
 
 const STROKE_PALETTE = [
@@ -30,6 +35,7 @@ const BG_PALETTE = ['bg-chart-1', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-
 type CategoryPoint = { label: string; value: number | null };
 
 export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, data }) => {
+  // `palette` aceito no schema; render atual cicla chart-1..5 por categoria.
   const items = (data ?? []) as CategoryPoint[];
   const [hovered, setHovered] = useState<number | null>(null);
   const segments = items.map((d, i) => ({

@@ -17,6 +17,10 @@ export const manifest = {
     properties: {
       showLegend: { type: 'boolean' },
       showGridLines: { type: 'boolean' },
+      // ENTREGA 3: prop de palette — scatter já suporta `series` no dataContract;
+      // `multi` é o default natural (cor por categoria), `single` colapsa tudo
+      // numa cor só, `none` desativa a cor.
+      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'multi' },
     },
   },
   dataContract: {
@@ -31,7 +35,7 @@ export const manifest = {
       { x: 28, y: 55, series: 'Zona B' },
     ],
   },
-  defaultProps: { showLegend: true, showGridLines: true },
+  defaultProps: { showLegend: true, showGridLines: true, palette: 'multi' },
   maxRows: 5000,
   version: '1.0.0',
 } satisfies BlockManifest;

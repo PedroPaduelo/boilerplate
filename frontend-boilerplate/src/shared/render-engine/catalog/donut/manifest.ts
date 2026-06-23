@@ -16,6 +16,10 @@ export const manifest = {
     properties: {
       showLegend: { type: 'boolean' },
       centerLabel: { type: 'string' },
+      // ENTREGA 3: prop de palette — donut usa palette cíclica nativamente
+      // (chart-1..5 por categoria), mas a prop fica no schema pra preparar
+      // override (ex.: 'none' = sem cor, usar a default do UI base).
+      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'single' },
     },
   },
   dataContract: {
@@ -29,6 +33,6 @@ export const manifest = {
       { label: 'Em aberto', value: 38 },
     ],
   },
-  defaultProps: { showLegend: true },
+  defaultProps: { showLegend: true, palette: 'single' },
   version: '1.0.0',
 } satisfies BlockManifest;
