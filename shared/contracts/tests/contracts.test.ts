@@ -81,7 +81,7 @@ test('payload de evento block:data valida (result = BlockDataResult)', () => {
 test('CreateDashboardRequest valida com layout embutido', () => {
   const ok = validateCreateDashboardRequest({
     title: 'Novo dashboard',
-    visibility: 'private',
+    visibility: 'PRIVATE',
     layout: dashboardLayoutFixture,
   });
   assert.ok(ok, formatErrors(validateCreateDashboardRequest.errors));

@@ -65,6 +65,11 @@ export interface Block {
   type: string;
   /** largura no grid de 12 colunas do container pai (row ou bloco-container). */
   span: number;
+  /**
+   * altura no mosaico — quantas linhas o bloco ocupa em containers que usam
+   * grid (ex.: bento_grid). Opcional; default 1. Lido pelo render-engine.
+   */
+  rowSpan?: number;
   /** título do card (header do frame). Se ausente, o render usa o `manifest.name`. */
   title?: string;
   /** subtítulo do header. */
@@ -87,7 +92,7 @@ export interface DashboardLayout {
 }
 
 export type ArtifactStatus = 'draft' | 'published';
-export type Visibility = 'private' | 'department' | 'org';
+export type Visibility = 'PRIVATE' | 'DEPARTMENT' | 'ORG';
 
 /** DashboardConfig completo (metadados + layout inline), como no doc 20. */
 export type DashboardConfig = {

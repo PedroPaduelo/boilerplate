@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/shared/*": ["../frontend-boilerplate/src/shared/*"],
+      "@/*": ["./src/*"]
+    }
+  }
+}

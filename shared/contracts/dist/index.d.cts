@@ -116,6 +116,10 @@ declare const DashboardLayoutSchema: {
                     readonly minimum: 1;
                     readonly maximum: 12;
                 };
+                readonly rowSpan: {
+                    readonly type: "integer";
+                    readonly minimum: 1;
+                };
                 readonly title: {
                     readonly type: "string";
                 };
@@ -196,7 +200,7 @@ declare const DashboardConfigSchema: {
         };
         readonly visibility: {
             readonly type: "string";
-            readonly enum: readonly ["private", "department", "org"];
+            readonly enum: readonly ["PRIVATE", "DEPARTMENT", "ORG"];
         };
         readonly filters: {
             readonly type: "array";
@@ -737,7 +741,7 @@ declare const DashboardSummarySchema: {
         };
         readonly visibility: {
             readonly type: "string";
-            readonly enum: readonly ["private", "department", "org"];
+            readonly enum: readonly ["PRIVATE", "DEPARTMENT", "ORG"];
         };
         readonly ownerId: {
             readonly type: "string";
@@ -771,7 +775,7 @@ declare const DashboardDetailSchema: {
         };
         readonly visibility: {
             readonly type: "string";
-            readonly enum: readonly ["private", "department", "org"];
+            readonly enum: readonly ["PRIVATE", "DEPARTMENT", "ORG"];
         };
         readonly ownerId: {
             readonly type: "string";
@@ -815,7 +819,7 @@ declare const CreateDashboardRequestSchema: {
         };
         readonly visibility: {
             readonly type: "string";
-            readonly enum: readonly ["private", "department", "org"];
+            readonly enum: readonly ["PRIVATE", "DEPARTMENT", "ORG"];
         };
         readonly layout: {
             readonly $ref: "dashboard-layout.json";
@@ -839,7 +843,7 @@ declare const UpdateDashboardRequestSchema: {
         };
         readonly visibility: {
             readonly type: "string";
-            readonly enum: readonly ["private", "department", "org"];
+            readonly enum: readonly ["PRIVATE", "DEPARTMENT", "ORG"];
         };
         readonly layout: {
             readonly $ref: "dashboard-layout.json";
@@ -907,6 +911,11 @@ interface Block {
     type: string;
     /** largura no grid de 12 colunas do container pai (row ou bloco-container). */
     span: number;
+    /**
+     * altura no mosaico — quantas linhas o bloco ocupa em containers que usam
+     * grid (ex.: bento_grid). Opcional; default 1. Lido pelo render-engine.
+     */
+    rowSpan?: number;
     /** título do card (header do frame). Se ausente, o render usa o `manifest.name`. */
     title?: string;
     /** subtítulo do header. */
@@ -926,7 +935,7 @@ interface DashboardLayout {
     rows: Row[];
 }
 type ArtifactStatus = 'draft' | 'published';
-type Visibility = 'private' | 'department' | 'org';
+type Visibility = 'PRIVATE' | 'DEPARTMENT' | 'ORG';
 /** DashboardConfig completo (metadados + layout inline), como no doc 20. */
 type DashboardConfig = {
     id: string;
@@ -1122,7 +1131,7 @@ declare const validateDashboardSummary: ValidateFunction<{
     status: "draft" | "published";
     title: string;
     ownerId: string;
-    visibility: "private" | "department" | "org";
+    visibility: "PRIVATE" | "DEPARTMENT" | "ORG";
     updatedAt: string;
 }>;
 declare const validateDashboardDetail: ValidateFunction<DashboardDetail>;
@@ -1737,7 +1746,7 @@ declare const dashboardConfigFixture: {
     title: string;
     ownerId: string;
     departmentId: string;
-    visibility: "department";
+    visibility: "DEPARTMENT";
     filters: ({
         id: string;
         type: "date_range";

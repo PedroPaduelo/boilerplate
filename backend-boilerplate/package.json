@@ -5,8 +5,8 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsup",
-    "build:catalog": "tsx scripts/build-catalog.ts",
-    "build:catalog:watch": "tsx scripts/build-catalog.ts --watch",
+    "build:catalog": "tsx --tsconfig tsconfig.catalog.json scripts/build-catalog.ts",
+    "build:catalog:watch": "tsx --tsconfig tsconfig.catalog.json scripts/build-catalog.ts --watch",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "service:up": "docker-compose up -d postgres redis",

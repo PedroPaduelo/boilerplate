@@ -39,7 +39,7 @@ export const DashboardSummarySchema = {
     id: { type: 'string' },
     title: { type: 'string' },
     status: { type: 'string', enum: ['draft', 'published'] },
-    visibility: { type: 'string', enum: ['private', 'department', 'org'] },
+    visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'] },
     ownerId: { type: 'string' },
     departmentId: { type: ['string', 'null'] },
     updatedAt: { type: 'string' },
@@ -58,7 +58,7 @@ export const DashboardDetailSchema = {
     id: { type: 'string' },
     title: { type: 'string' },
     status: { type: 'string', enum: ['draft', 'published'] },
-    visibility: { type: 'string', enum: ['private', 'department', 'org'] },
+    visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'] },
     ownerId: { type: 'string' },
     departmentId: { type: ['string', 'null'] },
     version: { type: 'integer', minimum: 1 },
@@ -80,7 +80,7 @@ export const CreateDashboardRequestSchema = {
   properties: {
     title: { type: 'string', minLength: 1 },
     departmentId: { type: ['string', 'null'] },
-    visibility: { type: 'string', enum: ['private', 'department', 'org'] },
+    visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'] },
     layout: { $ref: 'dashboard-layout.json' },
   },
 } as const;
@@ -95,7 +95,7 @@ export const UpdateDashboardRequestSchema = {
   properties: {
     title: { type: 'string', minLength: 1 },
     departmentId: { type: ['string', 'null'] },
-    visibility: { type: 'string', enum: ['private', 'department', 'org'] },
+    visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'] },
     layout: { $ref: 'dashboard-layout.json' },
   },
 } as const;

@@ -82,6 +82,9 @@ export const DashboardLayoutSchema = {
         type: { type: 'string', minLength: 1 },
         // largura no grid de 12 colunas (relativa ao container pai — row ou bloco-container).
         span: { type: 'integer', minimum: 1, maximum: 12 },
+        // altura no mosaico: quantas linhas o bloco ocupa em containers com grid
+        // (ex.: bento_grid). Opcional — default 1. Mesma sintaxe de span p/ a IA.
+        rowSpan: { type: 'integer', minimum: 1 },
         // título do card (header do "frame" — chart-widget). Opcional: se ausente, o
         // render usa o `manifest.name` do tipo. Permite a IA nomear o card no relatório.
         title: { type: 'string' },
@@ -135,7 +138,7 @@ export const DashboardConfigSchema = {
     title: { type: 'string', minLength: 1 },
     ownerId: { type: 'string', minLength: 1 },
     departmentId: { type: ['string', 'null'] },
-    visibility: { type: 'string', enum: ['private', 'department', 'org'] },
+    visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'] },
     filters: {
       type: 'array',
       items: { $ref: 'dashboard-layout.json#/$defs/filter' },

@@ -1,7 +1,7 @@
 {
   "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
   "catalogVersion": 1,
-  "count": 49,
+  "count": 42,
   "blocks": [
     {
       "type": "__example",
@@ -27,7 +27,7 @@
       "type": "alert",
       "kind": "text",
       "name": "Alerta",
-      "description": "Aviso/observação em destaque (título + descrição), com variante de cor.",
+      "description": "Aviso/observação em destaque (título + descrição), com variante de cor + ícone, ícone opcional e botão de fechar opcional.",
       "source": "vitrine:alert",
       "propsSchema": {
         "type": "object",
@@ -40,21 +40,67 @@
             "type": "string",
             "enum": [
               "default",
+              "info",
+              "success",
+              "warning",
+              "error",
               "destructive"
+            ],
+            "default": "default",
+            "description": "Variante semântica (define cor da borda/texto + ícone). ENUM FECHADO (sem input livre).",
+            "oneOf": [
+              {
+                "const": "default",
+                "description": "Neutro (card) — ícone ℹ Info. Aviso genérico sem conotação."
+              },
+              {
+                "const": "info",
+                "description": "Informativo (azul/sky) — ícone ℹ Info. Contexto/dica."
+              },
+              {
+                "const": "success",
+                "description": "Sucesso (verde/emerald) — ícone ✓ CircleCheck. Operação concluída/meta atingida."
+              },
+              {
+                "const": "warning",
+                "description": "Atenção (âmbar/amber) — ícone ⚠ TriangleAlert. Algo requer cuidado."
+              },
+              {
+                "const": "error",
+                "description": "Erro (vermelho) — ícone ✕ CircleX. Falha/valor crítico. Alias semântico de destructive."
+              },
+              {
+                "const": "destructive",
+                "description": "Destrutivo (vermelho, token --destructive do DS) — ícone CircleAlert. Ação irreversível/alerta forte."
+              }
             ]
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Título do alerta (obrigatório)."
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Texto do corpo do alerta (opcional)."
+          },
+          "showIcon": {
+            "type": "boolean",
+            "default": true,
+            "description": "Mostra o ícone semântico (ℹ/✓/⚠/✕) conforme a variante. false oculta o ícone."
+          },
+          "dismissible": {
+            "type": "boolean",
+            "default": false,
+            "description": "Quando true, exibe um botão X no canto que fecha o alerta (estado local — ao fechar, o bloco some da tela)."
           }
         }
       },
       "defaultProps": {
         "variant": "default",
         "title": "Atenção",
-        "description": "A inadimplência da zona Leste ultrapassou 30% no período."
+        "description": "A inadimplência da zona Leste ultrapassou 30% no período.",
+        "showIcon": true,
+        "dismissible": false
       },
       "version": "1.0.0"
     },
@@ -74,7 +120,9 @@
               "default",
               "stacked",
               "percent"
-            ]
+            ],
+            "default": "default",
+            "description": "Composição das áreas: \"default\" (sobrepostas, cada série da baseline ao valor), \"stacked\" (empilhadas) ou \"percent\" (100% normalizado)."
           },
           "fill": {
             "type": "string",
@@ -82,13 +130,42 @@
               "gradient",
               "solid",
               "none"
-            ]
+            ],
+            "default": "gradient",
+            "description": "Preenchimento da área: \"gradient\" (cor da série → transparente), \"solid\" (cor opaca com 25% alpha) ou \"none\" (só a linha de topo)."
           },
           "showLegend": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Exibe bloco de legenda clicável abaixo do SVG (uma bolinha por série + rótulo)."
           },
           "showGridLines": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Exibe linhas de grade horizontais tracejadas (alinhadas aos ticks do eixo Y)."
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "multi",
+            "description": "Modo de paleta: \"multi\" (default) = cicla chart-1..5 por série; \"single\" = força accent em todas; \"none\" = sem distinção de cor."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor base da(s) série(s). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Aplicada como stroke/fill via classe Tailwind ou style.stroke quando CSS custom."
           }
         }
       },
@@ -125,7 +202,9 @@
         "type": "default",
         "fill": "gradient",
         "showLegend": true,
-        "showGridLines": true
+        "showGridLines": true,
+        "palette": "multi",
+        "accent": "chart-1"
       },
       "maxRows": 5000,
       "version": "1.0.0"
@@ -182,24 +261,89 @@
       "type": "bar_chart",
       "kind": "chart",
       "name": "Gráfico de Barras",
-      "description": "Compara valores entre categorias.",
+      "description": "Compara valores entre categorias em barras verticais (colunas) ou horizontais. Suporta empilhamento (stacked) quando os dados têm múltiplas séries (campo `series`).",
       "source": "vitrine:bar-chart",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "stacked": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false,
+            "description": "Empilha as séries em cada coluna (requer dados MULTI-SÉRIE: pontos com o campo `series`). true = cada categoria do eixo X vira uma coluna com segmentos empilhados, um por série. false = barras planas (1 barra por ponto). LIMITAÇÃO: só vale na orientação \"vertical\"; em \"horizontal\" o empilhamento é ignorado (barras planas), mas a cor por série é preservada. Se não houver dados multi-série, degrada para barras planas."
           },
           "orientation": {
             "type": "string",
             "enum": [
               "vertical",
               "horizontal"
-            ]
+            ],
+            "default": "vertical",
+            "description": "Orientação das barras: \"vertical\" (colunas, default) ou \"horizontal\" (barras deitadas — bom para rótulos longos). O empilhamento (stacked) só funciona na vertical."
           },
           "accent": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor base das barras (usado em palette=\"single\"). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Em palette=\"multi\" é IGNORADO (a paleta cíclica do DS vence)."
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "single",
+            "description": "Modo de paleta AUTOMÁTICA: \"single\" (default) = todas as barras/séries com a mesma cor (accent); \"multi\" = cicla chart-1..5 por série/barra (accent custom é ignorado); \"none\" = sem cor (default do UI base). Sobrescrito por `seriesColors` quando este é fornecido."
+          },
+          "seriesColors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Cor por série, na ORDEM (índice 0 = primeira série, 1 = segunda, etc.). Cada item aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), linear-gradient()). SOBRESCREVE a palette automática para aquela série. Se omitido, usa `palette` (multi cicla chart-1..5, single usa accent). Use principalmente com stacked=true para fixar manualmente a cor de cada série empilhada."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "compactBRL",
+            "description": "Formato PT-BR do valor exibido no topo da barra/coluna + tooltip. ENUM FECHADO (sem input livre): BRL, compactBRL, number, compactNumber, percent.",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\"). DEFAULT."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
           }
         }
       },
@@ -222,21 +366,36 @@
         "example": [
           {
             "x": "Jan",
-            "y": 120
+            "y": 120,
+            "series": "Receita"
+          },
+          {
+            "x": "Jan",
+            "y": 95,
+            "series": "Despesa"
           },
           {
             "x": "Fev",
-            "y": 90
+            "y": 138,
+            "series": "Receita"
+          },
+          {
+            "x": "Fev",
+            "y": 110,
+            "series": "Despesa"
           }
         ]
       },
       "defaultProps": {
         "orientation": "vertical",
-        "stacked": false
+        "stacked": false,
+        "accent": "chart-1",
+        "palette": "single",
+        "valueFormat": "compactBRL"
       },
       "minColumns": 1,
       "maxRows": 5000,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "bar_list",
@@ -254,7 +413,36 @@
               "ascending",
               "descending",
               "none"
-            ]
+            ],
+            "default": "descending",
+            "description": "Ordem de exibição dos itens: \"descending\" (default, maior primeiro), \"ascending\" (menor primeiro) ou \"none\" (preserva a ordem do dataset)."
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "single",
+            "description": "Modo de paleta: \"single\" (default) = TODAS as barras com a mesma cor (accent); \"multi\" = cicla chart-1..5 por item (helper paletteClass(i) via BarListTremorItem.barClassName); \"none\" = sem distinção (usa o default do UI base)."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor base da barra (só usado em palette=\"single\"). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+          },
+          "textColor": {
+            "type": "string",
+            "description": "Cor do texto que fica DENTRO da barra. Por padrão (vazio) é AUTOMÁTICA por contraste (luminância WCAG da cor da barra → preto em barra clara, branco em barra escura) — sempre legível. Informe só para forçar: cor CSS (#000, rgb(255,255,255), white) ou classe Tailwind (text-white, text-black)."
           }
         }
       },
@@ -282,7 +470,9 @@
         ]
       },
       "defaultProps": {
-        "sortOrder": "descending"
+        "sortOrder": "descending",
+        "palette": "single",
+        "accent": "chart-1"
       },
       "maxRows": 5000,
       "version": "1.0.0"
@@ -291,49 +481,47 @@
       "type": "bento_grid",
       "kind": "layout",
       "name": "Bento Grid",
-      "description": "Grade de destaques em estilo \"bento\" — cards com cabeçalho visual, título e descrição.",
-      "source": "vitrine:bento-grid",
+      "description": "Container de layout em mosaico \"bento\". Renderiza sub-blocos (gráficos/cards/tabelas) num grid; cada filho usa `span` (largura 1..12) e `rowSpan` (altura). Use `block.blocks` para os filhos. Props: columns, gap.",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "title"
-              ],
-              "properties": {
-                "title": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                }
-              }
-            }
+          "columns": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12,
+            "default": 12,
+            "description": "Número de colunas do grid bento (1..12). O `span` de cada filho é relativo a este total. Default: 12 (alinha com o grid do dashboard)."
+          },
+          "gap": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ],
+            "default": "md",
+            "description": "Espaçamento entre as células do mosaico: sm (compacto), md (default), lg (espaçado)."
+          },
+          "autoRows": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ],
+            "default": "md",
+            "description": "Altura base de cada linha do mosaico (afeta o efeito do `rowSpan` dos filhos): sm (~8rem), md (~11rem, default), lg (~14rem)."
           }
         }
       },
       "defaultProps": {
-        "items": [
-          {
-            "title": "Arrecadação em tempo real",
-            "description": "Receita consolidada por tributo e período."
-          },
-          {
-            "title": "Inadimplência por zona",
-            "description": "Regiões com maior atraso de pagamento."
-          },
-          {
-            "title": "Metas do trimestre",
-            "description": "Progresso das metas por secretaria."
-          }
-        ]
+        "columns": 12,
+        "gap": "md",
+        "autoRows": "md"
       },
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "type": "callout",
@@ -356,22 +544,38 @@
               "success",
               "warning",
               "error"
-            ]
+            ],
+            "description": "Preset semântico que define as cores base da caixa, do texto e do ícone (default | info=azul | success=verde | warning=amarelo | error=vermelho). boxColor/textColor sobrescrevem por cima."
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Título em destaque (linha 1, ao lado do ícone). Obrigatório."
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Corpo do banner (linha 2, abaixo do título)."
+          },
+          "boxColor": {
+            "type": "string",
+            "description": "Cor da CAIXA (fundo). Sobrescreve a cor do variant. INDEPENDENTE do texto. Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), gradient). Vazio = usa a cor do variant."
+          },
+          "textColor": {
+            "type": "string",
+            "description": "Cor do TEXTO (título + corpo + ícone). Sobrescreve a cor do variant. INDEPENDENTE da caixa. Mesmo formato de boxColor (enum DS, classe Tailwind ou cor CSS). Vazio = herda a cor do variant."
+          },
+          "showIcon": {
+            "type": "boolean",
+            "description": "Mostra o ícone semântico à esquerda do título. Default: true."
           }
         }
       },
       "defaultProps": {
         "variant": "success",
         "title": "Meta atingida",
-        "description": "A arrecadação do trimestre superou a meta em 8%."
+        "description": "A arrecadação do trimestre superou a meta em 8%.",
+        "showIcon": true
       },
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "card_hover",
@@ -455,82 +659,6 @@
         "title": "Detalhes da apuração",
         "body": "A consulta considera os lançamentos com vencimento dentro do período selecionado.",
         "defaultOpen": true
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "connection_list",
-      "kind": "layout",
-      "name": "Lista de Conexões",
-      "description": "Lista de conexões/bancos com indicador de status e meta.",
-      "source": "vitrine:connection-list",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "activeId": {
-            "type": "string"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "id",
-                "name"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "meta": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "online",
-                    "offline",
-                    "warning"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "defaultProps": {
-        "activeId": "arrecadacao",
-        "items": [
-          {
-            "id": "arrecadacao",
-            "name": "db_arrecadacao",
-            "meta": "24 schemas",
-            "status": "online"
-          },
-          {
-            "id": "divida",
-            "name": "db_divida_ativa",
-            "meta": "12 schemas",
-            "status": "online"
-          },
-          {
-            "id": "rh",
-            "name": "db_recursos_humanos",
-            "meta": "8 schemas",
-            "status": "warning"
-          },
-          {
-            "id": "legado",
-            "name": "db_legado",
-            "meta": "offline",
-            "status": "offline"
-          }
-        ]
       },
       "version": "1.0.0"
     },
@@ -670,10 +798,70 @@
         "additionalProperties": false,
         "properties": {
           "showLegend": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Exibe legenda clicável ao lado (uma linha por categoria com bolinha, valor absoluto e percentual). Em listas longas (6+ categorias) vira grade de 2 colunas com rolagem."
           },
           "centerLabel": {
-            "type": "string"
+            "type": "string",
+            "description": "Rótulo exibido no centro do donut quando NÃO há hover em nenhum segmento (abaixo dele aparece o VALOR TOTAL, soma das fatias). Default: \"Total\"."
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "single",
+            "description": "Modo de paleta: \"single\" (default) = TODAS as fatias na MESMA cor (accent), variando a opacidade por fatia para mantê-las distinguíveis; \"multi\" = cicla chart-1..5 por categoria (accent custom é IGNORADO — a paleta do DS vence); \"none\" = sem cor (currentColor herdado, sem distinção)."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor base aplicada aos segmentos (só usado em palette=\"single\"; em \"multi\" a paleta cíclica do DS vence). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "compactBRL",
+            "description": "Formato PT-BR do valor exibido no centro do donut (total/fatia) + legenda. ENUM FECHADO (sem input livre).",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\"). DEFAULT."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
           }
         }
       },
@@ -701,7 +889,10 @@
         ]
       },
       "defaultProps": {
-        "showLegend": true
+        "showLegend": true,
+        "palette": "single",
+        "accent": "chart-1",
+        "valueFormat": "compactBRL"
       },
       "version": "1.0.0"
     },
@@ -774,83 +965,6 @@
             "content": "Empenhado, liquidado e pago por secretaria, com saldo orçamentário disponível."
           }
         ]
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "favorites_list",
-      "kind": "layout",
-      "name": "Lista de Favoritos",
-      "description": "Lista de itens favoritados (estrela) com rótulo.",
-      "source": "vitrine:favorites-list",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "id",
-                "label"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      },
-      "defaultProps": {
-        "items": [
-          {
-            "id": "1",
-            "label": "public.contribuintes"
-          },
-          {
-            "id": "2",
-            "label": "public.lancamentos"
-          },
-          {
-            "id": "3",
-            "label": "public.divida_ativa"
-          },
-          {
-            "id": "4",
-            "label": "fazenda.arrecadacao_mensal"
-          }
-        ]
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "features_section",
-      "kind": "layout",
-      "name": "Seção de Features",
-      "description": "Seção de destaques com títulos, descrições e previews animados (skeletons).",
-      "source": "vitrine:features-section-with-skeletons",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "heading": {
-            "type": "string"
-          },
-          "subheading": {
-            "type": "string"
-          }
-        }
-      },
-      "defaultProps": {
-        "heading": "Tudo que a gestão precisa",
-        "subheading": "Do dado bruto à decisão: indicadores, relatórios e painéis em tempo real."
       },
       "version": "1.0.0"
     },
@@ -934,7 +1048,65 @@
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
-        "properties": {}
+        "properties": {
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "single",
+            "description": "Modo de paleta: \"single\" (default) = TODAS as barras com a mesma cor (accent); \"multi\" = cicla chart-1..5 por item (helper paletteClass(i) via HBarChartDatum.barClassName) — accent custom é IGNORADO nesse modo (a paleta do DS vence); \"none\" = sem distinção (default do UI base)."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor base da barra (só usado em palette=\"single\"; em \"multi\" a paleta cíclica do DS vence). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "compactBRL",
+            "description": "Formato PT-BR do valor exibido no rótulo lateral + tooltip. ENUM FECHADO (sem input livre).",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\"). DEFAULT."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
+          }
+        }
       },
       "dataContract": {
         "shape": "series",
@@ -959,7 +1131,11 @@
           }
         ]
       },
-      "defaultProps": {},
+      "defaultProps": {
+        "palette": "single",
+        "accent": "chart-1",
+        "valueFormat": "compactBRL"
+      },
       "minColumns": 1,
       "maxRows": 5000,
       "version": "1.0.0"
@@ -1062,14 +1238,111 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "label": {
+            "type": "string",
+            "description": "Rótulo da métrica. Sobrescreve o rótulo vindo do dado (data.label)."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "auto",
+            "description": "Formato PT-BR do valor exibido. \"auto\" (default) escolhe o melhor display pela unidade/magnitude (formatKpiValue); os demais FORÇAM o formato. ENUM FECHADO (sem input livre).",
+            "oneOf": [
+              {
+                "const": "auto",
+                "description": "formatKpiValue — escolhe automático: moeda compacta p/ unit BRL/USD/EUR, número compacto p/ magnitude ≥ 10 mil, número cheio caso contrário. DEFAULT."
+              },
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 1.284.000,00\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 1,28 mi\")."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.284.000\")."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"1,28 mi\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
+          },
           "accent": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor de destaque do card (rail lateral + chip do ícone). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Resolvida por resolveAccent()."
           },
           "icon": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "DollarSign",
+              "Banknote",
+              "Coins",
+              "Wallet",
+              "PiggyBank",
+              "CreditCard",
+              "Receipt",
+              "Landmark",
+              "TrendingUp",
+              "TrendingDown",
+              "Activity",
+              "BarChart3",
+              "LineChart",
+              "PieChart",
+              "Target",
+              "Gauge",
+              "Percent",
+              "Users",
+              "UserCheck",
+              "Building2",
+              "MapPin",
+              "FileText",
+              "ClipboardList",
+              "Calendar",
+              "Clock",
+              "AlertTriangle",
+              "CheckCircle2",
+              "Info",
+              "ArrowUpRight",
+              "ArrowDownRight"
+            ],
+            "description": "Ícone lucide-react exibido no canto do card. ENUM CURADO (set relevante p/ dashboards: financeiro/métricas/pessoas/status). Ex.: \"DollarSign\", \"TrendingUp\", \"Users\", \"Landmark\". Vazio = sem ícone."
           },
           "showDelta": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Mostra a variação (delta) vs. período anterior. false = esconde."
+          },
+          "deltaPolarity": {
+            "type": "string",
+            "enum": [
+              "up-good",
+              "up-bad"
+            ],
+            "default": "up-good",
+            "description": "Polaridade da variação: \"up-good\" (default) = subir é bom (delta positivo verde); \"up-bad\" = subir é ruim (delta positivo vermelho, ex.: inadimplência, custo)."
           }
         }
       },
@@ -1097,7 +1370,10 @@
         }
       },
       "defaultProps": {
-        "showDelta": true
+        "showDelta": true,
+        "valueFormat": "auto",
+        "accent": "chart-1",
+        "deltaPolarity": "up-good"
       },
       "version": "1.0.0"
     },
@@ -1154,10 +1430,36 @@
         "additionalProperties": false,
         "properties": {
           "smooth": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Se true, desenha as linhas como curvas suaves (Catmull-Rom). Se false, segmentos retos (polyline)."
           },
           "area": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Se true, preenche área abaixo de cada linha além do traço."
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "multi",
+            "description": "Modo de paleta: \"multi\" (default) = cicla chart-1..5 por série; \"single\" = força accent em todas; \"none\" = sem distinção de cor."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor base da(s) série(s). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Aplicada como stroke via classe Tailwind ou style.stroke quando CSS custom."
           }
         }
       },
@@ -1190,7 +1492,9 @@
       },
       "defaultProps": {
         "smooth": true,
-        "area": true
+        "area": true,
+        "palette": "multi",
+        "accent": "chart-1"
       },
       "maxRows": 5000,
       "version": "1.0.0"
@@ -1204,7 +1508,83 @@
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
-        "properties": {}
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Rótulo da métrica (sobrescreve o `label` vindo dos dados). Se vazio, usa o label dos dados ou o nome do bloco."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "compactBRL",
+            "description": "Formato PT-BR do valor em destaque. ENUM FECHADO (sem input livre). Substitui a formatação crua antiga.",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 124.500,00\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 124,5 mil\"). DEFAULT."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"124.500\")."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"124,5 mil\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor do brilho/destaque do card. Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+          },
+          "showDelta": {
+            "type": "boolean",
+            "default": true,
+            "description": "Mostra a variação percentual (%) abaixo do valor. `false` esconde a variação mesmo quando há `delta` nos dados."
+          },
+          "deltaPolarity": {
+            "type": "string",
+            "enum": [
+              "up-good",
+              "up-bad"
+            ],
+            "default": "up-good",
+            "description": "Semântica de cor da variação. ENUM FECHADO.",
+            "oneOf": [
+              {
+                "const": "up-good",
+                "description": "Subir é bom: variação positiva = verde, negativa = vermelho. DEFAULT (ex.: receita, vendas)."
+              },
+              {
+                "const": "up-bad",
+                "description": "Subir é ruim: variação positiva = vermelho, negativa = verde (ex.: inadimplência, custos, atrasos)."
+              }
+            ]
+          }
+        }
       },
       "dataContract": {
         "shape": "scalar",
@@ -1229,7 +1609,12 @@
           "delta": 0.125
         }
       },
-      "defaultProps": {},
+      "defaultProps": {
+        "valueFormat": "compactBRL",
+        "accent": "chart-1",
+        "showDelta": true,
+        "deltaPolarity": "up-good"
+      },
       "version": "1.0.0"
     },
     {
@@ -1306,7 +1691,9 @@
         "additionalProperties": false,
         "properties": {
           "max": {
-            "type": "number"
+            "type": "number",
+            "default": 100,
+            "description": "Valor máximo da escala (denominador do %). Ex.: max=100 → value=68 vira 68%."
           },
           "variant": {
             "type": "string",
@@ -1316,7 +1703,26 @@
               "warning",
               "error",
               "success"
-            ]
+            ],
+            "default": "default",
+            "description": "Cor SEMÂNTICA do preenchimento + trilho (default=azul, neutral=cinza, warning=amarelo, error=vermelho, success=verde). É SOBRESCRITO por `accent` quando este vier preenchido."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "description": "Cor CUSTOM do preenchimento. Quando preenchida, SOBRESCREVE o `variant`. Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS crua (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+          },
+          "showValue": {
+            "type": "boolean",
+            "default": true,
+            "description": "Mostra (default) ou esconde o \"%\" exibido ao lado do rótulo do dado."
           }
         }
       },
@@ -1339,7 +1745,8 @@
       },
       "defaultProps": {
         "max": 100,
-        "variant": "default"
+        "variant": "default",
+        "showValue": true
       },
       "version": "1.0.0"
     },
@@ -1354,7 +1761,9 @@
         "additionalProperties": false,
         "properties": {
           "max": {
-            "type": "number"
+            "type": "number",
+            "default": 100,
+            "description": "Valor máximo da escala (o 100% do anel). Default 100 — nesse caso o `value` já É um percentual. Com max ≠ 100, o anel mostra value/max e o tooltip explicita \"X de Y\"."
           },
           "variant": {
             "type": "string",
@@ -1364,7 +1773,21 @@
               "warning",
               "error",
               "success"
-            ]
+            ],
+            "default": "default",
+            "description": "Tema de cor do anel (paleta semântica): default (azul), neutral (cinza), warning (amarelo), error (vermelho), success (verde). É IGNORADO quando `accent` está preenchido (accent sobrescreve o variant)."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "description": "Cor custom do arco. Quando preenchida, SOBRESCREVE o `variant`. Aceita enum DS (chart-1..5, primary), classe Tailwind de stroke (stroke-purple-500), ou cor CSS crua (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Vazio = usa o `variant`."
           }
         }
       },
@@ -1392,73 +1815,6 @@
       "version": "1.0.0"
     },
     {
-      "type": "query_history",
-      "kind": "layout",
-      "name": "Histórico de Consultas",
-      "description": "Histórico de queries SQL recentes com duração e horário.",
-      "source": "vitrine:query-history-list",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "id",
-                "sql"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "sql": {
-                  "type": "string"
-                },
-                "durationMs": {
-                  "type": "integer"
-                },
-                "timeLabel": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      },
-      "defaultProps": {
-        "items": [
-          {
-            "id": "1",
-            "sql": "SELECT tributo, SUM(valor) FROM arrecadacao GROUP BY tributo",
-            "durationMs": 42,
-            "timeLabel": "há 2 min"
-          },
-          {
-            "id": "2",
-            "sql": "SELECT * FROM divida_ativa WHERE situacao = $1",
-            "durationMs": 128,
-            "timeLabel": "há 7 min"
-          },
-          {
-            "id": "3",
-            "sql": "SELECT COUNT(*) FROM contribuintes WHERE ativo",
-            "durationMs": 15,
-            "timeLabel": "há 18 min"
-          },
-          {
-            "id": "4",
-            "sql": "SELECT mes, total FROM arrecadacao_mensal ORDER BY mes",
-            "durationMs": 63,
-            "timeLabel": "há 1 h"
-          }
-        ]
-      },
-      "version": "1.0.0"
-    },
-    {
       "type": "radial_gauge",
       "kind": "chart",
       "name": "Medidor Radial",
@@ -1469,13 +1825,31 @@
         "additionalProperties": false,
         "properties": {
           "max": {
-            "type": "number"
+            "type": "number",
+            "default": 100,
+            "description": "Valor MÁXIMO da escala do medidor (fim do arco). Ex.: 100 para percentuais. O `value` dos dados é posicionado entre `min` e `max`."
           },
           "min": {
-            "type": "number"
+            "type": "number",
+            "default": 0,
+            "description": "Valor MÍNIMO da escala do medidor (início do arco). Default 0. Define o piso da escala junto com `max`."
           },
           "unit": {
-            "type": "string"
+            "type": "string",
+            "description": "Unidade exibida ao lado do número no miolo (ex.: \"%\", \"km\", \"pts\"). Se ausente, usa a `unit` dos dados (data.unit)."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor do ARCO do medidor (stroke + número central + brilho). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
           }
         }
       },
@@ -1503,7 +1877,8 @@
       },
       "defaultProps": {
         "max": 100,
-        "min": 0
+        "min": 0,
+        "accent": "chart-1"
       },
       "version": "1.0.0"
     },
@@ -1573,10 +1948,37 @@
         "additionalProperties": false,
         "properties": {
           "showLegend": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Exibe legenda clicável acima do chart (uma bolinha por categoria, com clique para dim das outras)."
           },
           "showGridLines": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Exibe linhas de grade horizontais e verticais tracejadas."
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "multi",
+            "description": "Modo de paleta: \"multi\" (default) = cicla chart-1..5 por categoria; \"single\" = força accent em todas (1 cor); \"none\" = sem distinção (usa a palette cíclica padrão)."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor ÚNICA aplicada a TODAS as categorias (vence palette cíclica). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
           }
         }
       },
@@ -1611,7 +2013,9 @@
       },
       "defaultProps": {
         "showLegend": true,
-        "showGridLines": true
+        "showGridLines": true,
+        "palette": "multi",
+        "accent": "chart-1"
       },
       "maxRows": 5000,
       "version": "1.0.0"
@@ -1702,17 +2106,79 @@
         "additionalProperties": false,
         "properties": {
           "label": {
-            "type": "string"
+            "type": "string",
+            "default": "Sinal",
+            "description": "Rótulo curto do sinal exibido acima do valor (ex.: \"Latência p95\", \"Arrecadação\")."
           },
-          "unit": {
-            "type": "string"
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "compactNumber",
+            "description": "Formato PT-BR do valor em destaque (último ponto da série). ENUM FECHADO (sem input livre). Default \"compactNumber\".",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\"). DEFAULT."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor da sparkline (pinta o traço/preenchimento, NÃO o fundo). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), var(--chart-1))."
           },
           "trendPolarity": {
             "type": "string",
             "enum": [
               "up-good",
               "up-bad"
-            ]
+            ],
+            "default": "up-good",
+            "description": "Direção considerada \"boa\": \"up-good\" (subir = verde, padrão) ou \"up-bad\" (subir = vermelho, ex.: latência/erro)."
+          },
+          "trendBasis": {
+            "type": "string",
+            "enum": [
+              "first-vs-last",
+              "prev-vs-last"
+            ],
+            "default": "prev-vs-last",
+            "description": "Base do cálculo da tendência: \"prev-vs-last\" (default) = último vs penúltimo (variação mais recente); \"first-vs-last\" = último vs primeiro (variação no período inteiro)."
+          },
+          "showSparkline": {
+            "type": "boolean",
+            "default": true,
+            "description": "Mostra (true, default) ou esconde (false) a mini-sparkline abaixo do valor."
           }
         }
       },
@@ -1741,7 +2207,11 @@
       },
       "defaultProps": {
         "label": "Sinal",
-        "trendPolarity": "up-good"
+        "valueFormat": "compactNumber",
+        "accent": "chart-1",
+        "trendPolarity": "up-good",
+        "trendBasis": "prev-vs-last",
+        "showSparkline": true
       },
       "maxRows": 1000,
       "version": "1.0.0"
@@ -1762,7 +2232,9 @@
               "area",
               "bar",
               "line"
-            ]
+            ],
+            "default": "area",
+            "description": "Variante do spark chart: \"area\" (default, com gradiente), \"bar\" (colunas) ou \"line\" (linha sem preenchimento)."
           },
           "curveType": {
             "type": "string",
@@ -1770,7 +2242,32 @@
               "linear",
               "monotone",
               "step"
-            ]
+            ],
+            "default": "monotone",
+            "description": "Curva usada em type=\"area\" e type=\"line\": \"linear\" (reta entre pontos), \"monotone\" (suavizada sem overshoot) ou \"step\" (degraus)."
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "none"
+            ],
+            "default": "single",
+            "description": "Modo de paleta: \"single\" (default) = 1 cor (accent) na série; \"multi\" = GRADIENTE multicolor (chart-1..5) ao longo da série (spark é single-série, então multi vira um arco-íris contínuo, não fatias); \"none\" = comportamento single."
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor da SÉRIE (pinta o traço/preenchimento do gráfico, NÃO o fundo). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), var(--chart-1)). Usada em palette \"single\"/\"none\"; em \"multi\" a paleta multicolor vence."
           }
         }
       },
@@ -1799,7 +2296,9 @@
       },
       "defaultProps": {
         "type": "area",
-        "curveType": "monotone"
+        "curveType": "monotone",
+        "palette": "single",
+        "accent": "chart-1"
       },
       "maxRows": 5000,
       "version": "1.0.0"
@@ -1814,8 +2313,84 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "label": {
+            "type": "string",
+            "description": "Rótulo do ladrilho. Sobrescreve o `label` derivado dos dados (data.label). Se ausente, usa data.label e, por fim, o nome do bloco."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "compactNumber",
+            "description": "Formato PT-BR do valor exibido. ENUM FECHADO (sem input livre). Substitui o prefixo de moeda hardcoded.",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\"). DEFAULT."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
+          },
+          "accent": {
+            "type": "string",
+            "enum": [
+              "chart-1",
+              "chart-2",
+              "chart-3",
+              "chart-4",
+              "chart-5",
+              "primary"
+            ],
+            "default": "chart-1",
+            "description": "Cor de destaque (barra lateral). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+          },
+          "showDelta": {
+            "type": "boolean",
+            "default": true,
+            "description": "Mostra a variação (delta) quando os dados trazem `delta`. `false` esconde a variação."
+          },
+          "deltaPolarity": {
+            "type": "string",
+            "enum": [
+              "up-good",
+              "up-bad"
+            ],
+            "default": "up-good",
+            "description": "Polaridade da variação: \"up-good\" (subir é bom → positivo verde) | \"up-bad\" (subir é ruim → positivo vermelho).",
+            "oneOf": [
+              {
+                "const": "up-good",
+                "description": "Subir é bom: delta positivo = verde, negativo = vermelho. DEFAULT."
+              },
+              {
+                "const": "up-bad",
+                "description": "Subir é ruim: delta positivo = vermelho, negativo = verde."
+              }
+            ]
+          },
           "hint": {
-            "type": "string"
+            "type": "string",
+            "description": "Texto auxiliar exibido ao lado do delta (ex.: \"vs. ontem\")."
           }
         }
       },
@@ -1841,7 +2416,12 @@
           "delta": 0.06
         }
       },
-      "defaultProps": {},
+      "defaultProps": {
+        "valueFormat": "compactNumber",
+        "accent": "chart-1",
+        "showDelta": true,
+        "deltaPolarity": "up-good"
+      },
       "version": "1.0.0"
     },
     {
@@ -1900,80 +2480,6 @@
         "pageSize": 10
       },
       "maxRows": 5000,
-      "version": "1.0.0"
-    },
-    {
-      "type": "team_section",
-      "kind": "layout",
-      "name": "Seção de Time",
-      "description": "Seção \"nosso time\" com cards de membros: foto, cargo e bio.",
-      "source": "vitrine:team-section-with-scales",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "eyebrow": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "members": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "name",
-                "role",
-                "image"
-              ],
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "role": {
-                  "type": "string"
-                },
-                "image": {
-                  "type": "string"
-                },
-                "bio": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      },
-      "defaultProps": {
-        "eyebrow": "Nosso time",
-        "title": "Quem cuida dos dados",
-        "description": "Equipe responsável pelos indicadores e relatórios da prefeitura.",
-        "members": [
-          {
-            "name": "Ana Souza",
-            "role": "Coordenadora de Dados",
-            "image": "https://i.pravatar.cc/160?img=47",
-            "bio": "Lidera a governança de dados e a estratégia de indicadores."
-          },
-          {
-            "name": "Bruno Lima",
-            "role": "Analista de BI",
-            "image": "https://i.pravatar.cc/160?img=12",
-            "bio": "Constrói os painéis de arrecadação e dívida ativa."
-          },
-          {
-            "name": "Carla Dias",
-            "role": "Engenheira de Dados",
-            "image": "https://i.pravatar.cc/160?img=32",
-            "bio": "Mantém os pipelines e a qualidade das bases."
-          }
-        ]
-      },
       "version": "1.0.0"
     },
     {
@@ -2068,168 +2574,6 @@
         "triggerLabel": "Passe o mouse",
         "content": "Receita acumulada no exercício",
         "side": "top"
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "user_list",
-      "kind": "layout",
-      "name": "Lista de Usuários",
-      "description": "Lista de usuários com avatar, e-mail, status e metadados.",
-      "source": "vitrine:user-list-item",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "users": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "name"
-              ],
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "email": {
-                  "type": "string"
-                },
-                "avatar": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string"
-                },
-                "meta": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      },
-      "defaultProps": {
-        "users": [
-          {
-            "name": "Ana Souza",
-            "email": "ana.souza@prefeitura.gov.br",
-            "avatar": "https://i.pravatar.cc/80?img=47",
-            "status": "Ativo",
-            "meta": "Coordenação de Dados"
-          },
-          {
-            "name": "Bruno Lima",
-            "email": "bruno.lima@prefeitura.gov.br",
-            "avatar": "https://i.pravatar.cc/80?img=12",
-            "status": "Ativo",
-            "meta": "BI"
-          },
-          {
-            "name": "Carla Dias",
-            "email": "carla.dias@prefeitura.gov.br",
-            "avatar": "https://i.pravatar.cc/80?img=32",
-            "status": "Férias",
-            "meta": "Engenharia de Dados"
-          },
-          {
-            "name": "Diego Alves",
-            "email": "diego.alves@prefeitura.gov.br",
-            "avatar": "https://i.pravatar.cc/80?img=68",
-            "status": "Inativo",
-            "meta": "Suporte"
-          }
-        ]
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "work_experience",
-      "kind": "layout",
-      "name": "Experiência Profissional",
-      "description": "Linha do tempo de experiências/cargos com período, descrição e tecnologias.",
-      "source": "vitrine:work-experience-component",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "variant": {
-            "type": "string",
-            "enum": [
-              "timeline",
-              "card"
-            ]
-          },
-          "experiences": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "company",
-                "role",
-                "period"
-              ],
-              "properties": {
-                "company": {
-                  "type": "string"
-                },
-                "role": {
-                  "type": "string"
-                },
-                "period": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                },
-                "technologies": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "defaultProps": {
-        "variant": "timeline",
-        "experiences": [
-          {
-            "company": "Prefeitura Municipal",
-            "role": "Coordenadora de Dados",
-            "period": "2022 — atual",
-            "description": "Governança de dados e indicadores estratégicos.",
-            "technologies": [
-              "Postgres",
-              "Power BI",
-              "Python"
-            ]
-          },
-          {
-            "company": "Secretaria da Fazenda",
-            "role": "Analista de BI",
-            "period": "2019 — 2022",
-            "description": "Painéis de arrecadação e dívida ativa.",
-            "technologies": [
-              "SQL",
-              "Tableau"
-            ]
-          },
-          {
-            "company": "Tribunal de Contas",
-            "role": "Estagiária de Dados",
-            "period": "2018 — 2019",
-            "description": "Apoio à auditoria de contas públicas.",
-            "technologies": [
-              "Excel",
-              "SQL"
-            ]
-          }
-        ]
       },
       "version": "1.0.0"
     }

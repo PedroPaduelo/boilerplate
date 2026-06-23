@@ -12,7 +12,7 @@ export const dashboardConfigFixture = {
   title: 'Dívida Ativa 2026',
   ownerId: 'user_admin',
   departmentId: 'dep_fazenda',
-  visibility: 'department',
+  visibility: 'DEPARTMENT',
   filters: [
     {
       id: 'f_periodo',

@@ -424,7 +424,7 @@ export async function publishDashboard(
   // materializa o snapshot de dados (executa todos os dataBinding inline).
   // `dashboardId` é preenchido pelo update abaixo; usamos string vazia aqui.
   const payloadDraft = await materializePublishedDataPayload(
-    dashboard.draftLayout as DashboardLayout,
+    dashboard.draftLayout as unknown as DashboardLayout,
     ctx,
   );
   const payload: typeof payloadDraft = { ...payloadDraft, dashboardId: dashboard.id };
