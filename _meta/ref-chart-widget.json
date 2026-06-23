@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "chart-widget",
+  "title": "Chart Widget",
+  "description": "Casca de widget para gráficos com header (título + badge de tipo + ações), body (com estado loading via Skeleton) e footer opcional (query + duração). Envolve qualquer visualização num container consistente — passe o gráfico como children.",
+  "registryDependencies": [
+    "https://ui-list-ui-componets-cmqcdlm7.cloud.serendiped.com/r/badge.json",
+    "https://ui-list-ui-componets-cmqcdlm7.cloud.serendiped.com/r/skeleton.json"
+  ],
+  "files": [
+    {
+      "path": "src/components/ui/chart-widget.tsx",
+      "content": "import * as React from \"react\"\n\nimport { cn } from \"@/lib/utils\"\nimport { Badge } from \"@/components/ui/badge\"\nimport { Skeleton } from \"@/components/ui/skeleton\"\n\ninterface ChartWidgetProps extends React.HTMLAttributes<HTMLDivElement> {\n  title: string\n  chartType?: string\n  query?: string\n  durationMs?: number\n  loading?: boolean\n  actions?: React.ReactNode\n  children?: React.ReactNode\n}\n\nfunction ChartWidget({\n  title,\n  chartType,\n  query,\n  durationMs,\n  loading = false,\n  actions,\n  children,\n  className,\n  ...props\n}: ChartWidgetProps) {\n  return (\n    <div\n      data-slot=\"chart-widget\"\n      className={cn(\n        \"rounded-xl border border-border bg-card text-foreground\",\n        className,\n      )}\n      {...props}\n    >\n      {/* Header */}\n      <div className=\"flex items-center justify-between gap-2 border-b border-border px-4 py-3\">\n        <div className=\"flex items-center gap-2\">\n          <h3 className=\"text-sm font-medium leading-none\">{title}</h3>\n          {chartType ? (\n            <Badge variant=\"secondary\" className=\"text-xs capitalize\">\n              {chartType}\n            </Badge>\n          ) : null}\n        </div>\n        {actions ? (\n          <div className=\"flex items-center gap-1\">{actions}</div>\n        ) : null}\n      </div>\n\n      {/* Body */}\n      <div className=\"px-4 py-3\">\n        {loading ? (\n          <Skeleton className=\"h-40 w-full\" />\n        ) : (\n          children\n        )}\n      </div>\n\n      {/* Footer (optional) */}\n      {query ? (\n        <div className=\"flex items-center gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground\">\n          <code\n            className=\"max-w-md truncate font-mono\"\n            title={query}\n          >\n            {query}\n          </code>\n          {durationMs != null ? (\n            <span className=\"shrink-0 tabular-nums\">\n              · {durationMs}ms\n            </span>\n          ) : null}\n        </div>\n      ) : null}\n    </div>\n  )\n}\n\nexport { ChartWidget, type ChartWidgetProps }\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

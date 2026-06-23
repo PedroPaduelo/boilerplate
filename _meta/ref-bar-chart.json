@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "bar-chart",
+  "title": "Bar Chart",
+  "description": "Gráfico de barras verticais minimalista feito só com divs: altura proporcional ao maior valor da série e cor de preenchimento configurável via `accent`. Sem dependências, ideal para mini-gráficos de receita/uso em dashboards.",
+  "files": [
+    {
+      "path": "src/components/ui/bar-chart.tsx",
+      "content": "/**\n * BarChart — gráfico de barras VERTICAIS minimalista, feito só com divs.\n *\n * Cada barra tem altura proporcional ao maior valor da série (normalização\n * local), com a cor de preenchimento controlável via `accent` (classe\n * Tailwind, ex.: \"bg-primary\" / \"bg-emerald-500\"). A altura é aplicada por\n * `style` inline (nunca classe interpolada), garantindo qualquer percentual.\n *\n * Extraído da composição `saas-dashboard-pro`. Sem dependências novas, sem\n * estado — apenas deriva o máximo da série e desenha. O elemento raiz expõe\n * `data-slot=\"bar-chart\"` e aceita className/props padrão de um <div>.\n */\n\nimport * as React from \"react\"\n\nimport { cn } from \"@/lib/utils\"\n\n/** Um ponto da série: rótulo do eixo + valor numérico. */\nexport interface BarChartDatum {\n  label: string\n  value: number\n}\n\nexport interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {\n  /** Série de barras (rótulo + valor). O maior valor define o topo (100%). */\n  series: BarChartDatum[]\n  /** Classe Tailwind de cor de preenchimento das barras. Default: \"bg-primary\". */\n  accent?: string\n}\n\nfunction BarChart({ series, accent = \"bg-primary\", className, ...props }: BarChartProps) {\n  const max = Math.max(...series.map((s) => s.value), 1)\n  return (\n    <div\n      data-slot=\"bar-chart\"\n      className={cn(\"flex h-40 items-end gap-1.5\", className)}\n      {...props}\n    >\n      {series.map((s) => {\n        const pct = (s.value / max) * 100\n        return (\n          <div\n            key={s.label}\n            className=\"flex min-w-0 flex-1 flex-col items-center gap-1.5\"\n          >\n            <div className=\"flex w-full flex-1 items-end\">\n              <div\n                className={cn(\"w-full rounded-t-md\", accent)}\n                style={{ height: `${pct}%` }}\n              />\n            </div>\n            <span className=\"w-full truncate text-center text-[10px] text-muted-foreground\">\n              {s.label}\n            </span>\n          </div>\n        )\n      })}\n    </div>\n  )\n}\n\nexport { BarChart }\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}
