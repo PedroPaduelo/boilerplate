@@ -26,7 +26,7 @@ export function DeleteUserDialog({
 
   const handleConfirm = () => {
     if (!user) return;
-    deleteUser.mutate(user.id, { onSuccess: () => onOpenChange(false) });
+    deleteUser.mutate(user.id, { onSettled: () => onOpenChange(false) });
   };
 
   return (

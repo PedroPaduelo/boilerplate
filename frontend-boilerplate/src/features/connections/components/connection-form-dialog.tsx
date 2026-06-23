@@ -161,7 +161,7 @@ export function ConnectionFormDialog({
           // Só envia a senha se preenchida (vazio = não troca).
           ...(data.password.trim() ? { password: data.password } : {}),
         },
-        { onSuccess: () => onOpenChange(false) },
+        { onSettled: () => onOpenChange(false) },
       );
     } else {
       createConnection.mutate(
@@ -179,7 +179,7 @@ export function ConnectionFormDialog({
           departmentId,
           isActive: data.isActive === 'active',
         },
-        { onSuccess: () => onOpenChange(false) },
+        { onSettled: () => onOpenChange(false) },
       );
     }
   };

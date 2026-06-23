@@ -27,7 +27,7 @@ export function DeleteConnectionDialog({
   const handleConfirm = () => {
     if (!connection) return;
     deleteConnection.mutate(connection.id, {
-      onSuccess: () => onOpenChange(false),
+      onSettled: () => onOpenChange(false),
     });
   };
 

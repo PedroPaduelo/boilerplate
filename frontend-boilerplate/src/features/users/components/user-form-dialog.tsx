@@ -119,7 +119,7 @@ export function UserFormDialog({
           isActive: data.isActive === 'active',
           ...(data.password ? { password: data.password } : {}),
         },
-        { onSuccess: () => onOpenChange(false) },
+        { onSettled: () => onOpenChange(false) },
       );
     } else {
       createUser.mutate(
@@ -129,7 +129,7 @@ export function UserFormDialog({
           password: data.password,
           role: data.role,
         },
-        { onSuccess: () => onOpenChange(false) },
+        { onSettled: () => onOpenChange(false) },
       );
     }
   };

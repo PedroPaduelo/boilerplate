@@ -78,7 +78,7 @@ export function AddToDashboardDialog({
         chart,
         connectionId: effectiveConnectionId,
       },
-      { onSuccess: () => onOpenChange(false) },
+      { onSettled: () => onOpenChange(false) },
     );
   };
 
