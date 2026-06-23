@@ -11,6 +11,17 @@
  * Hover: o pai controla `activeIndex` e recebe `onSegmentHover`. O arco ativo
  * engrossa (destaque) e os demais esmaecem — o pai usa o índice para mostrar
  * o detalhe no centro / destacar a legenda.
+ *
+ * Cor do segmento (Turno 5 — expansível via prop do bloco `accent`):
+ *  - `className` (Tailwind, ex.: "stroke-chart-1") → aplicado no `stroke` do
+ *    arco (a regra CSS do tema resolve `var(--color-chart-1)`).
+ *  - `style` (CSSProperties) → aplicado no arco via `style={…}`. Use para
+ *    cores CSS custom (hex/rgb/hsl/gradient) que NÃO existem no enum do DS.
+ *  - Se AMBOS vierem: `style` VENCE `className` (atributos de apresentação
+ *    SVG vencem a classe CSS).
+ *  - Se NENHUM vier: arco fica com stroke `currentColor` (cor herdada).
+ *    O caller do catálogo pode setar `style={{ color: '#ff0000' }}` no
+ *    container para uma cor CSS custom em todos os arcos.
  */
 
 import * as React from "react"
@@ -21,8 +32,15 @@ import { cn } from "@/shared/lib/utils"
 export interface DonutSegment {
   label: string
   value: number
-  /** Classe Tailwind da cor do arco (ex.: "stroke-primary", "stroke-emerald-500"). */
-  className: string
+  /** Classe Tailwind da cor do arco (ex.: "stroke-primary", "stroke-emerald-500").
+   *  IGNORADO se `style` for passado. */
+  className?: string | null
+  /**
+   * Estilo inline aplicado ao arco (vence `className`). O caller do catálogo
+   * passa o `style.stroke` resolvido pelo `resolveAccentForStroke` ou
+   * `resolveAccent` (ex.: `style: { stroke: "#ff0000" }`).
+   */
+  style?: React.CSSProperties
 }
 
 export interface DonutChartProps
@@ -91,6 +109,10 @@ function DonutChart({
         {arcs.map(({ seg, dash, offset, key, index }) => {
           const isActive = activeIndex === index
           const dim = activeIndex != null && !isActive
+          // Resolve a cor do arco: `style.stroke` (se setado) > `className`
+          // (se setado) > nada (usa `currentColor` herdado do container).
+          const hasStyleStroke = Boolean(seg.style?.stroke)
+          const classNameForArc = hasStyleStroke ? undefined : seg.className ?? undefined
           return (
             <circle
               key={key}
@@ -99,7 +121,7 @@ function DonutChart({
               r={radius}
               fill="none"
               className={cn(
-                seg.className,
+                classNameForArc,
                 "cursor-pointer transition-[stroke-width,opacity] duration-200",
                 dim && "opacity-40",
               )}
@@ -107,6 +129,7 @@ function DonutChart({
               strokeDasharray={`${dash.toFixed(2)} ${(circumference - dash).toFixed(2)}`}
               strokeDashoffset={(-offset).toFixed(2)}
               strokeLinecap="butt"
+              style={seg.style}
               onMouseEnter={() => onSegmentHover?.(index)}
             >
               <title>{`${seg.label}: ${seg.value.toLocaleString("pt-BR")}`}</title>

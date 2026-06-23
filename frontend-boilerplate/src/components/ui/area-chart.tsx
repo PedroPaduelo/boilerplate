@@ -21,6 +21,17 @@
  * Hover: uma camada de colunas invisíveis captura o mouse por índice do eixo X;
  * ao passar, destaca os pontos (guia vertical + markers) e mostra um
  * tooltip-card com o rótulo X e o valor de cada série naquele ponto.
+ *
+ * Cor da série (Turno 5 — expansível via prop do bloco `accent`):
+ *  - `color` (qualquer CSS color) → vai no `stroke=` da polyline, no `fill=`
+ *    do gradiente e na cor de fundo da bolinha da legenda. Default: cicla
+ *    a paleta `var(--chart-1..5)` por índice da série.
+ *  - `style` (CSSProperties) → aplicado via `style={…}` no polyline (atributo
+ *    de apresentação que vence o `stroke=` default) e merge no `style.fill`
+ *    do gradiente. Use para cores CSS custom (hex/rgb/hsl/gradient). VENCE
+ *    `color` quando setado.
+ *  - Se AMBOS vierem: `style.stroke`/`style.fill` vencem `color` no
+ *    polyline (atributos de apresentação SVG).
  */
 
 import * as React from "react"
@@ -32,8 +43,17 @@ export interface AreaSeries {
   label: string
   /** Valores numéricos alinhados a `xLabels` (1 por ponto). */
   data: number[]
-  /** Cor da série (qualquer CSS color). Default: cicla a paleta de chart do tema. */
+  /** Cor da série (qualquer CSS color). Default: cicla a paleta de chart do tema.
+   *  IGNORADO se `style` for passado. */
   color?: string
+  /**
+   * Estilo inline aplicado ao polyline (vence `color`/`stroke=`). O caller
+   * do catálogo passa o `style.stroke` e/ou `style.fill` resolvido pelo
+   * `resolveAccentForStroke` (`stroke: "#ff0000"` ou
+   * `fill: "url(#grad)"`). Suporta qualquer cor CSS — hex, rgb, hsl,
+   * oklch, gradient, `var(--chart-1)`.
+   */
+  style?: React.CSSProperties
 }
 
 /** Modo de composição das áreas. */
@@ -176,8 +196,19 @@ function AreaChart({
   const yAt = (v: number) => PAD.top + innerH - ((v - min) / span) * innerH
 
   const ticks = niceTicks(min, maxPlot)
+  // Cor de uma série: `style.fill`/`style.stroke` (se setado) > `color` >
+  // palette cíclica por índice. Usado tanto no polyline quanto no gradiente.
   const colorOf = (i: number) =>
-    series[i]?.color ?? CHART_PALETTE[i % CHART_PALETTE.length]
+    series[i]?.style?.stroke ??
+    series[i]?.color ??
+    CHART_PALETTE[i % CHART_PALETTE.length]
+  // Fill da área/gradiente: `style.fill` (se setado) > `style.stroke` >
+  // `color` > palette. Suporta `var(--chart-1)` literal no gradiente.
+  const fillColorOf = (i: number) =>
+    series[i]?.style?.fill ??
+    series[i]?.style?.stroke ??
+    series[i]?.color ??
+    CHART_PALETTE[i % CHART_PALETTE.length]
   const fmtTip = valueFormatter ?? yValueFormatter ?? ((v: number) => String(v))
 
   return (
@@ -201,7 +232,7 @@ function AreaChart({
             <defs>
               {series.map((_, si) => {
                 const id = `${uid}-area-${si}`
-                const color = colorOf(si)
+                const color = fillColorOf(si)
                 return (
                   <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={color} stopOpacity={0.35} />
@@ -267,7 +298,8 @@ function AreaChart({
           {/* Séries: área (gradiente/sólido) + linha de topo + markers no hover */}
           {series.map((s, si) => {
             const bands = stacks[si]
-            const color = colorOf(si)
+            const stroke = colorOf(si)
+            const fillStop = fillColorOf(si)
             const topPts = bands.map((b, i) => `${xAt(i)},${yAt(b.top)}`)
             const basePts = bands
               .map((b, i) => `${xAt(i)},${yAt(b.base)}`)
@@ -278,7 +310,7 @@ function AreaChart({
               fill === "gradient"
                 ? `url(#${uid}-area-${si})`
                 : fill === "solid"
-                  ? color
+                  ? fillStop
                   : "none"
             return (
               <g key={`series-${si}`}>
@@ -293,10 +325,11 @@ function AreaChart({
                 <polyline
                   points={linePts}
                   fill="none"
-                  stroke={color}
+                  stroke={stroke}
                   strokeWidth={2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  style={s.style}
                 />
                 {bands.map((b, i) => (
                   <circle
@@ -304,7 +337,7 @@ function AreaChart({
                     cx={xAt(i)}
                     cy={yAt(b.top)}
                     r={hoverIdx === i ? 4 : 0}
-                    fill={color}
+                    fill={fillStop}
                     className="stroke-background"
                     strokeWidth={1.5}
                   />

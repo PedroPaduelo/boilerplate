@@ -20,6 +20,17 @@
  * apresentação default — por isso o tema é respeitado de verdade.
  *
  * Não depende mais das cores do Tremor (`tremor-utils`): só `recharts` + `cn`.
+ *
+ * Cor única (Turno 5 — `accent` global): aceita `accent` (classe Tailwind
+ * `bg-chart-N`/`fill-chart-N`/`stroke-chart-N`/`primary`) e/ou `style`
+ * (CSSProperties) GLOBAIS para forçar uma cor ÚNICA em todas as séries —
+ * sobrescreve a paleta cíclica por categoria. Útil para `palette: 'single'`
+ * (todas as categorias com a mesma cor) ou para cor custom (hex/rgb/hsl/
+ * gradient) no playground. Quando AMBOS vierem: `style` vence `accent`
+ * (atributos de apresentação inline > classes CSS). Cobre:
+ *   - `accent: 'chart-1'` → className `fill-chart-1 stroke-chart-1 bg-chart-1`
+ *   - `style={{ color: '#ff0000' }}` → aplicado no container (afeta gradientes
+ *     e `var(--chart-1)`) E cada série fica `fill: currentColor` via classe.
  */
 import * as React from "react"
 import {
@@ -115,6 +126,21 @@ export interface ScatterChartTremorProps
   showYAxis?: boolean
   /** Altura do container (classe Tailwind). Default: "h-80". */
   height?: string
+  /**
+   * Cor ÚNICA aplicada a TODAS as séries/categorias. Aceita:
+   *   - enum DS: 'chart-1'..'chart-5' | 'primary' (validado pelo schema)
+   *   - classe Tailwind: 'bg-purple-500' / 'fill-purple-500' / 'stroke-purple-500'
+   *   - cor CSS: '#40E0D0', 'rgb(0,255,0)', 'oklch(...)', 'var(--chart-1)'
+   * Default: undefined → cicla a paleta por categoria (multi).
+   */
+  accent?: string
+  /**
+   * Estilo inline GLOBAL aplicado a TODAS as séries (vence `accent`).
+   * Use para cores CSS custom (hex/rgb/hsl/gradient) que NÃO existem
+   * no enum do DS. Também aplicado no container do chart via `style`,
+   * afetando `currentColor` (usado em defs de gradiente e afins).
+   */
+  style?: React.CSSProperties
 }
 
 /** Formatador padrão: inteiros sem casa, fracionários com 1 casa. */
@@ -127,7 +153,7 @@ const defaultFormatter = (num: number): string =>
 
 interface ScatterTooltipProps {
   categoryLabel: string
-  colorIdx: number
+  dotClassName: string
   xLabel: string
   yLabel: string
   xValue: number
@@ -137,7 +163,7 @@ interface ScatterTooltipProps {
 
 const ScatterTooltip = ({
   categoryLabel,
-  colorIdx,
+  dotClassName,
   xLabel,
   yLabel,
   xValue,
@@ -148,7 +174,7 @@ const ScatterTooltip = ({
     <div className="flex items-center gap-1.5 border-b border-border px-3 py-2">
       <span
         aria-hidden="true"
-        className={cn("size-2.5 shrink-0 rounded-full", CHART_BG[colorIdx])}
+        className={cn("size-2.5 shrink-0 rounded-full", dotClassName)}
       />
       <span className="font-medium text-popover-foreground">{categoryLabel}</span>
     </div>
@@ -175,12 +201,12 @@ const ScatterTooltip = ({
 
 interface LegendItemProps {
   name: string
-  colorIdx: number
+  dotClassName: string
   onClick?: (name: string) => void
   activeLegend?: string
 }
 
-const LegendItem = ({ name, colorIdx, onClick, activeLegend }: LegendItemProps) => {
+const LegendItem = ({ name, dotClassName, onClick, activeLegend }: LegendItemProps) => {
   const interactive = !!onClick
   const isDimmed = !!activeLegend && activeLegend !== name
   return (
@@ -198,7 +224,7 @@ const LegendItem = ({ name, colorIdx, onClick, activeLegend }: LegendItemProps) 
         aria-hidden="true"
         className={cn(
           "size-2.5 shrink-0 rounded-full",
-          CHART_BG[colorIdx],
+          dotClassName,
           isDimmed ? "opacity-40" : "opacity-100",
         )}
       />
@@ -240,10 +266,40 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
       showYAxis = true,
       height = "h-80",
       className,
+      accent,
+      style,
       ...other
     } = props
 
     const axisFormatter = axisValueFormatter ?? valueFormatter
+
+    // Modo SINGLE-ACCENT: quando `accent` ou `style` for passado, força todas
+    // as categorias a usarem a MESMA cor (derivada do `accent` resolvido
+    // ou do `style.fill`/`style.stroke`). Default: cicla a paleta por
+    // categoria (multi).
+    const isSingleAccent = accent != null || style != null
+
+    // Resolve `accent` (string livre) em classes Tailwind (fill-…/stroke-…/
+    // bg-…) quando for enum do DS. Aceita:
+    //   - bare enum ('chart-1') → `fill-chart-1` / `stroke-chart-1`
+    //   - 'primary' → `fill-primary` / `stroke-primary`
+    //   - classe Tailwind completa (`bg-purple-500` → `fill-purple-500` /
+    //     `stroke-purple-500`)
+    //   - cor CSS (hex/rgb/...) → undefined nas classes (style cuida)
+    let accentFillClass: string | undefined
+    let accentStrokeClass: string | undefined
+    let accentBgClass: string | undefined
+    if (accent) {
+      // Strip prefixos comuns (`bg-`/`fill-`/`stroke-`) para chegar no bare.
+      const bare = accent
+        .replace(/^(bg-|fill-|stroke-)/, "")
+        .trim()
+      if (bare) {
+        accentFillClass = `fill-${bare}`
+        accentStrokeClass = `stroke-${bare}`
+        accentBgClass = `bg-${bare}`
+      }
+    }
 
     // Categorias únicas na ORDEM DE APARIÇÃO → índice de cor da paleta (cíclico).
     const categories = React.useMemo(
@@ -252,9 +308,19 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
     )
     const colorIndex = React.useMemo(() => {
       const map = new Map<string, number>()
-      categories.forEach((cat, i) => map.set(cat, i % PALETTE_SIZE))
+      categories.forEach((cat, i) =>
+        map.set(cat, isSingleAccent ? 0 : i % PALETTE_SIZE),
+      )
       return map
-    }, [categories])
+    }, [categories, isSingleAccent])
+
+    // Helper: dotClassName para a categoria (bolinha da legenda + tooltip).
+    // Em single-accent, usa accentBgClass; senão usa CHART_BG[idx].
+    const dotClassOf = (cat: string): string => {
+      if (isSingleAccent && accentBgClass) return accentBgClass
+      const idx = colorIndex.get(cat) ?? 0
+      return CHART_BG[idx]
+    }
 
     // Estado: legenda ativa (item clicado → dim das outras categorias).
     const [activeLegend, setActiveLegend] = React.useState<string | undefined>(undefined)
@@ -274,6 +340,11 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
         className={cn("w-full", height, className)}
         data-slot="scatter-chart-tremor"
         tremor-id="tremor-raw"
+        // `style` global: aplicado no container — afeta `var(--chart-1)`
+        // (que o recharts resolve como `currentColor` no gradiente, se houver)
+        // e qualquer elemento que use `currentColor` herdado. O Scatter
+        // também recebe `style` por série abaixo (mais adiante).
+        style={style}
         {...other}
       >
         <ResponsiveContainer className="size-full">
@@ -337,7 +408,7 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
                 return (
                   <ScatterTooltip
                     categoryLabel={cat}
-                    colorIdx={colorIndex.get(cat) ?? 0}
+                    dotClassName={dotClassOf(cat)}
                     xLabel={xAxisLabel}
                     yLabel={yAxisLabel}
                     xValue={Number(raw[x] ?? 0)}
@@ -358,7 +429,7 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
                         <LegendItem
                           key={cat}
                           name={cat}
-                          colorIdx={colorIndex.get(cat) ?? 0}
+                          dotClassName={dotClassOf(cat)}
                           onClick={handleClickLegendItem}
                           activeLegend={activeLegend}
                         />
@@ -374,11 +445,27 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
               return (
                 <Scatter
                   key={cat}
-                  className={cn(CHART_FILL[idx], CHART_STROKE[idx])}
+                  // Em single-accent, sobrescreve as classes Tailwind pelas
+                  // derivadas de `accent` (fill-/stroke-/bg-…). Se só
+                  // `style` foi passado, mantém a palette e deixa o
+                  // `style` inline (via prop abaixo) cuidar da cor.
+                  className={cn(
+                    isSingleAccent && accentFillClass
+                      ? accentFillClass
+                      : CHART_FILL[idx],
+                    isSingleAccent && accentStrokeClass
+                      ? accentStrokeClass
+                      : CHART_STROKE[idx],
+                  )}
                   fillOpacity={fillOpacity(cat)}
                   name={cat}
                   data={seriesData}
                   isAnimationActive={showAnimation}
+                  // `style` por série: propaga o style global; o recharts
+                  // aplica nos elementos internos (circle/symbol). Como
+                  // `style.fill`/`style.stroke` são atributos de apresentação
+                  // inline, vencem as classes Tailwind acima.
+                  style={style}
                 />
               )
             })}

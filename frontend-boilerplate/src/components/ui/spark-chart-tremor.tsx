@@ -18,6 +18,20 @@
  * (aceita a mesma forma do Tremor, `AvailableChartColorsKeys[]`), mas é
  * IGNORADA — a série sempre usa a paleta do DS. Isso é intencional e
  * documentado aqui; o bloco do catálogo nem expõe essa prop.
+ *
+ * Cor ÚNICA (Turno 5 — `accent`/`style` global): aceita `accent` (string
+ * DS enum ou classe Tailwind) e/ou `style` (CSSProperties) para forçar uma
+ * cor custom (hex/rgb/hsl/gradient) em vez do `var(--chart-1)` padrão.
+ * Quando `style` vier, é aplicado:
+ *  - no container do chart (afeta `currentColor` herdado);
+ *  - no `<linearGradient>` (`style={{ color: barStyle.color ?? 'var(--chart-1)' }}`)
+ *    — o `<stop stopColor="currentColor">` herda do container e o gradiente
+ *    usa a cor custom.
+ * Quando `accent` vier (sem style), é montado um style interno com
+ * `color: 'var(--chart-N)'` (derivado do enum DS) para que o gradiente
+ * acompanhe. Cobre:
+ *   - `accent: 'chart-2'` → gradiente usa `var(--chart-2)`
+ *   - `style: { color: '#ff0000' }` → gradiente usa `#ff0000`
  */
 import * as React from "react"
 import {
@@ -61,6 +75,21 @@ export interface SparkChartTremorProps
   connectNulls?: boolean
   /** Curva usada em `type="area"` e `type="line"`. Default: `"linear"`. */
   curveType?: SparkCurveType
+  /**
+   * Acento de cor para o spark. Aceita enum DS ('chart-1'..'chart-5' |
+   * 'primary') validado pelo schema, ou classe Tailwind (`bg-chart-2`),
+   * ou cor CSS (`#ff0000`, `var(--chart-1)`). Default: undefined →
+   * usa `--chart-1` (paleta padrão).
+   */
+  accent?: string
+  /**
+   * Estilo inline GLOBAL aplicado ao container + `<linearGradient>`.
+   * VENCE `accent`. Use para cores CSS custom (hex/rgb/hsl/gradient)
+   * que NÃO existem no enum do DS. Cobre:
+   *   - `style: { color: '#ff0000' }` → gradiente usa `#ff0000`
+   *   - `style: { color: 'linear-gradient(...)' }` → gradiente gradient
+   */
+  style?: React.CSSProperties
 }
 
 /**
@@ -89,6 +118,32 @@ const yAxisDomain = (
   return [yMin, yMax]
 }
 
+/**
+ * Resolve o `color` do `<linearGradient>` (CSS var ou cor custom) a partir
+ * de `style` (vence) e `accent` (fallback). Aceita:
+ *   - `accent: 'chart-2'` (bare enum) → `var(--chart-2)`
+ *   - `accent: 'bg-chart-2'` (classe Tailwind) → `var(--chart-2)`
+ *   - `accent: 'primary'` → `var(--primary)` (não-cíclica; raramente usado)
+ *   - `style: { color: '#ff0000' }` → `#ff0000` (custom, vence accent)
+ *   - qualquer outra string → usada como CSS color crua (ex.: `'#abc'`)
+ *   - undefined → `var(--chart-1)` (default DS).
+ */
+const resolveGradientColor = (
+  accent: string | undefined,
+  styleColor: string | undefined,
+): string => {
+  if (styleColor) return styleColor
+  if (accent) {
+    const bare = accent.replace(/^(bg-|fill-|stroke-)/, "").trim()
+    // Enum DS → CSS var do tema.
+    if (/^chart-[1-5]$/.test(bare)) return `var(--${bare})`
+    if (bare === "primary") return "var(--primary)"
+    // Senão, devolve como CSS color crua (hex/rgb/oklch/gradient).
+    return bare
+  }
+  return "var(--chart-1)"
+}
+
 const SparkChartTremor = React.forwardRef<HTMLDivElement, SparkChartTremorProps>(
   (props, forwardedRef) => {
     // `colors` é aceito por compatibilidade mas ignorado (sempre DS palette):
@@ -101,6 +156,8 @@ const SparkChartTremor = React.forwardRef<HTMLDivElement, SparkChartTremorProps>
       connectNulls = false,
       curveType = "linear",
       className,
+      accent,
+      style,
       ...other
     } = props
     // Consome `colors` uma vez para o TS saber que existe e não reclamar.
@@ -110,16 +167,37 @@ const SparkChartTremor = React.forwardRef<HTMLDivElement, SparkChartTremorProps>
     const [yMin, yMax] = yAxisDomain(data)
     const gradientId = React.useId()
 
-    // Cor da série: paleta de chart do DS via CSS var.
-    //   - <line>/<bar>: classe Tailwind literal `stroke-chart-1` / `fill-chart-1`
-    //     (a regra CSS da classe resolve `var(--color-chart-1)` e vence o
-    //     atributo de apresentação default do recharts).
-    //   - <linearGradient>: precisa de cor LITERAL no `stop-color`, então usamos
-    //     `var(--chart-1)` direto via `style` (mesma técnica do area-chart.tsx).
-    const strokeClass = "stroke-chart-1"
-    const fillClass = "fill-chart-1"
+    // Cor do gradient (resolvida por accent/style). Aplicada no container
+    // via `style={{ color: ... }}` — o `<stop stopColor="currentColor">`
+    // herda do container (corrente), então o gradiente usa a cor custom
+    // sem precisar de classe Tailwind interpolada.
+    // Ordem do merge: `style` do consumer VENCE; `gradientColor` é só o
+    // fallback quando `style.color` não foi setado.
+    const containerStyle: React.CSSProperties = {
+      ...style,
+      color: style?.color ?? resolveGradientColor(accent, undefined),
+    }
+    // Para o line/bar (sem gradient), classes Tailwind derivadas do accent:
+    // enum DS → `stroke-chart-N` / `fill-chart-N`; senão, sem classe (style cuida).
+    let strokeClass = "stroke-chart-1"
+    let fillClass = "fill-chart-1"
+    if (accent) {
+      const bare = accent.replace(/^(bg-|fill-|stroke-)/, "").trim()
+      if (/^chart-[1-5]$/.test(bare)) {
+        strokeClass = `stroke-${bare}`
+        fillClass = `fill-${bare}`
+      } else if (bare === "primary") {
+        strokeClass = "stroke-primary"
+        fillClass = "fill-primary"
+      } else {
+        // Cor custom → deixa só o style inline cuidar (zera as classes).
+        strokeClass = ""
+        fillClass = ""
+      }
+    }
 
     const commonMargin = { bottom: 1, left: 1, right: 1, top: 1 }
+    const gradientColor = containerStyle.color as string
 
     return (
       <div
@@ -127,6 +205,11 @@ const SparkChartTremor = React.forwardRef<HTMLDivElement, SparkChartTremorProps>
         className={cn("h-12 w-28", className)}
         data-slot="spark-chart-tremor"
         tremor-id="tremor-raw"
+        // `style` global no container: propaga `color` para o gradiente
+        // (via `currentColor`) e qualquer outra prop (ex.: `opacity`,
+        // `transform`). `color` do consumer VENCE (em `containerStyle`
+        // acima); senão usa o accent resolvido.
+        style={containerStyle}
         {...other}
       >
         <ResponsiveContainer>
@@ -179,10 +262,10 @@ const SparkChartTremor = React.forwardRef<HTMLDivElement, SparkChartTremorProps>
                     y1="0"
                     x2="0"
                     y2="1"
-                    // `style` no gradient propaga `stop-color` para os <stop>
-                    // sem precisar de classe Tailwind (que o JIT não geraria
-                    // para classes interpoladas em defs).
-                    style={{ color: "var(--chart-1)" }}
+                    // `style` no gradient propaga `color` (resolvida acima)
+                    // para os <stop> via `currentColor` — sem precisar de
+                    // classe Tailwind interpolada (que o JIT não geraria).
+                    style={{ color: gradientColor }}
                   >
                     <stop offset="5%" stopColor="currentColor" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="currentColor" stopOpacity={0} />

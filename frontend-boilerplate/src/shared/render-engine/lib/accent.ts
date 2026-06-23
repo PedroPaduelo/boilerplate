@@ -50,6 +50,17 @@ export function accentClass(color: AccentColor | undefined): string {
   return `bg-${color ?? ACCENT_DEFAULT}`;
 }
 
+/**
+ * Traduz um `AccentColor` em classe Tailwind de **STROKE** (não background).
+ * Usado por charts SVG (line/area/spark) onde a cor do traço é `stroke-…`,
+ * e.g. `stroke-chart-1` no `polyline`/`line`. O CSS var do tema é
+ * `--color-chart-1` (a regra `stroke-chart-1` resolve
+ * `stroke: var(--color-chart-1)` no tema — shadcn/Tailwind).
+ */
+export function accentStrokeClass(color: AccentColor | undefined): string {
+  return `stroke-${color ?? ACCENT_DEFAULT}`;
+}
+
 /** Type guard: checa se `value` é um AccentColor válido. Útil p/ detectores
  *  de "enum de cor" e pra normalização de input livre em editores (ex.: o
  *  playground do catálogo). */
@@ -113,6 +124,44 @@ export function resolveAccent(value: string | undefined | null): ResolvedAccent 
   return { kind: 'class', className: `bg-${s}` };
 }
 
+/** Mesma semântica de `resolveAccent` mas com a cor no campo `stroke`
+ *  (em vez de `background`). Pensada pra charts SVG (line/area/spark) que
+ *  aplicam cor via atributo `stroke={…}` e precisam do CSS var
+ *  `var(--chart-N)` quando a cor é do enum do DS — sem isso, classes
+ *  Tailwind `stroke-chart-N` poderiam não casar com o tema dependendo
+ *  de como o SVG está renderizando. Devolve:
+ *   - `{ kind: 'class', className: 'stroke-chart-1' }` p/ enum do DS
+ *     (classe Tailwind `stroke-chart-N` — o CSS var é resolvido pela
+ *     regra `stroke-chart-1 { stroke: var(--color-chart-1) }` gerada
+ *     pelo shadcn);
+ *   - `{ kind: 'style', style: { stroke: '#40E0D0' } }` p/ cor CSS crua
+ *     (hex/rgb/hsl/oklch/gradient) — aplicado via `style="..."` no
+ *     elemento SVG, atributo presentation que vence o `stroke=` default;
+ *   - `{ kind: 'class', className: 'stroke-purple-500' }` p/ classe
+ *     Tailwind bare (`stroke-…`); se vier `purple-500` sem prefixo,
+ *     prefixa `stroke-`. */
+export function resolveAccentForStroke(
+  value: string | undefined | null,
+): ResolvedAccent {
+  if (value == null || value === '') {
+    return { kind: 'class', className: accentStrokeClass(undefined) };
+  }
+  const s = String(value).trim();
+  if (!s) {
+    return { kind: 'class', className: accentStrokeClass(undefined) };
+  }
+  if (isAccentColor(s)) {
+    return { kind: 'class', className: accentStrokeClass(s) };
+  }
+  if (s.startsWith('stroke-') || s.startsWith('fill-') || s.includes(' ')) {
+    return { kind: 'class', className: s };
+  }
+  if (looksLikeCssColor(s)) {
+    return { kind: 'style', style: { stroke: s } };
+  }
+  return { kind: 'class', className: `stroke-${s}` };
+}
+
 /** Palette cíclica (5 cores do DS) — p/ multi-série. */
 export const PALETTE: readonly AccentColor[] = [
   'chart-1',
@@ -125,4 +174,10 @@ export const PALETTE: readonly AccentColor[] = [
 /** Cor de uma série pelo índice (cicla a palette). */
 export function paletteClass(index: number): string {
   return accentClass(PALETTE[index % PALETTE.length]);
+}
+
+/** Equivalente stroke do `paletteClass` — classe Tailwind `stroke-chart-N`
+ *  para o índice da série. */
+export function paletteStrokeClass(index: number): string {
+  return accentStrokeClass(PALETTE[index % PALETTE.length]);
 }

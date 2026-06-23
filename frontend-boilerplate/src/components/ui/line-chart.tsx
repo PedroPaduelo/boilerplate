@@ -10,6 +10,17 @@
  * Hover: uma camada de colunas invisíveis captura o mouse por índice do eixo X;
  * ao passar, destaca o ponto (guia vertical + markers) e mostra um tooltip-card
  * com o rótulo X e o valor de cada série naquele ponto.
+ *
+ * Cor da série (Turno 5 — expansível via prop do bloco `accent`):
+ *  - `className` (Tailwind, ex.: "stroke-chart-1") → aplica no `stroke` da
+ *    polyline/marker e no `fill` do marker (a regra CSS do tema resolve
+ *    `var(--color-chart-1)`).
+ *  - `style` (CSSProperties) → aplicado no polyline/marker via `style={…}`
+ *    (atributo de apresentação que vence o `stroke=` default). O caller
+ *    do catálogo passa o `style.stroke` resolvido pelo `resolveAccentForStroke`.
+ *  - Se AMBOS vierem: `style` VENCE (`style.stroke` tem prioridade sobre
+ *    `className` em atributos de apresentação SVG). Cobre cor custom
+ *    (`#40E0D0`, `rgb(0,255,0)`, `oklch(...)`, `linear-gradient(...)`).
  */
 
 import * as React from "react"
@@ -21,8 +32,16 @@ export interface LineSeries {
   label: string
   /** Série de valores numéricos. */
   data: number[]
-  /** Classe Tailwind da cor da linha (ex.: "stroke-chart-1"). Default: "stroke-primary". */
+  /** Classe Tailwind da cor da linha (ex.: "stroke-chart-1"). Default: "stroke-primary".
+   *  IGNORADO se `style` for passado. */
   className?: string
+  /**
+   * Estilo inline aplicado ao `stroke` da polyline + marker + `fill` do
+   * marker. Use para cores CSS custom (hex/rgb/hsl/gradient) que NÃO
+   * existem no enum do DS. VENCE `className` quando setado. Suporta
+   * `stroke: "var(--chart-1)"` ou `stroke: "#ff0000"`.
+   */
+  style?: React.CSSProperties
 }
 
 export interface LineChartProps {
@@ -99,6 +118,29 @@ function LineChart({
   const ticks = niceTicks(min, max)
   const fmtTip = valueFormatter ?? yValueFormatter ?? ((v: number) => String(v))
 
+  // Helper: devolve o className de stroke de uma série. Quando `style.stroke`
+  // estiver setado, devolvemos `undefined` (o atributo `style` cuida da cor;
+  // atributos de apresentação SVG vencem a classe CSS).
+  const strokeClassOf = (s: LineSeries): string | undefined =>
+    s.style?.stroke ? undefined : (s.className ?? "stroke-primary")
+  // Equivalente para fill (marker, área). Se style.stroke vier e style.fill
+  // NÃO vier, derivamos um fill do stroke (mesma cor, alpha 0.1) via style.
+  const fillClassOf = (s: LineSeries): string | undefined =>
+    s.style?.stroke ? undefined : (s.className ?? "stroke-primary").replace("stroke-", "fill-")
+  // Style do marker (fill): se style.stroke vier mas sem style.fill, cria
+  // um fill com a mesma cor (alpha 0.1) pra parecer com a área.
+  const markerStyleOf = (s: LineSeries): React.CSSProperties | undefined => {
+    if (!s.style?.stroke) return undefined
+    if (s.style.fill) return s.style
+    return { ...s.style, fillOpacity: 0.1 }
+  }
+  // Style da área (fill com alpha): mesma técnica do marker.
+  const areaStyleOf = (s: LineSeries): React.CSSProperties | undefined => {
+    if (!s.style?.stroke) return undefined
+    if (s.style.fill) return { fill: s.style.fill, fillOpacity: 0.1 }
+    return { fill: s.style.stroke, fillOpacity: 0.1 }
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div
@@ -169,8 +211,8 @@ function LineChart({
 
           {/* Séries: área + linha + markers */}
           {series.map((s, si) => {
-            const stroke = s.className ?? "stroke-primary"
-            const fill = stroke.replace("stroke-", "fill-")
+            const strokeCls = strokeClassOf(s)
+            const fillCls = fillClassOf(s)
             const linePts = s.data.map((v, i) => `${xAt(i)},${yAt(v)}`).join(" ")
             const areaPts = `${xAt(0)},${PAD.top + innerH} ${linePts} ${xAt(
               s.data.length - 1,
@@ -178,15 +220,20 @@ function LineChart({
             return (
               <g key={`series-${si}`}>
                 {showArea && (
-                  <polygon points={areaPts} className={cn(fill, "opacity-10")} />
+                  <polygon
+                    points={areaPts}
+                    className={cn(fillCls, "opacity-10")}
+                    style={areaStyleOf(s)}
+                  />
                 )}
                 <polyline
                   points={linePts}
                   fill="none"
-                  className={stroke}
+                  className={strokeCls}
                   strokeWidth={2.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  style={s.style}
                 />
                 {s.data.map((v, i) => (
                   <circle
@@ -194,8 +241,9 @@ function LineChart({
                     cx={xAt(i)}
                     cy={yAt(v)}
                     r={hoverIdx === i ? 4.5 : 2.5}
-                    className={cn(fill, "stroke-background")}
+                    className={cn(fillCls, "stroke-background")}
                     strokeWidth={1.5}
+                    style={markerStyleOf(s)}
                   />
                 ))}
               </g>
@@ -232,8 +280,17 @@ function LineChart({
                   <span
                     className={cn(
                       "inline-block h-2 w-2 shrink-0 rounded-full",
-                      s.className?.replace("stroke-", "bg-") ?? "bg-primary",
+                      // bolinha da legenda: usa style.stroke ou className
+                      // (mesma técnica do polyline).
+                      s.style?.stroke
+                        ? ""
+                        : s.className?.replace("stroke-", "bg-") ?? "bg-primary",
                     )}
+                    style={
+                      s.style?.stroke
+                        ? { backgroundColor: s.style.stroke }
+                        : undefined
+                    }
                   />
                   <span className="text-muted-foreground">{s.label}</span>
                   <span className="ml-auto font-medium tabular-nums text-popover-foreground">
@@ -254,8 +311,15 @@ function LineChart({
               <span
                 className={cn(
                   "inline-block h-2 w-2 rounded-full",
-                  s.className?.replace("stroke-", "bg-") ?? "bg-primary",
+                  s.style?.stroke
+                    ? ""
+                    : s.className?.replace("stroke-", "bg-") ?? "bg-primary",
                 )}
+                style={
+                  s.style?.stroke
+                    ? { backgroundColor: s.style.stroke }
+                    : undefined
+                }
               />
               <span className="text-xs text-muted-foreground">{s.label}</span>
             </div>

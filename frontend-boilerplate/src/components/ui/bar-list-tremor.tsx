@@ -19,6 +19,20 @@ import { cn } from "@/shared/lib/utils"
  *   extras (ex.: `{ channel: string; region: string }`) e BarListTremor
  *   apenas garante que `value`, `name`, `href?`, `key?` estejam presentes.
  *
+ * Cor da barra (Turno 5 — expansível via prop do bloco `accent`):
+ *  - `barClassName` (Tailwind, ex.: "bg-chart-2", "bg-purple-500") → aplicado
+ *    na barra via `className`. VENCE o `bg-chart-1` hardcoded. Use para
+ *    enums do DS ou classes Tailwind custom (single-palette).
+ *  - `barStyle` (CSSProperties) → aplicado na barra via `style={…}`
+ *    (atributo de apresentação que vence a classe CSS). Use para cores
+ *    CSS custom (hex/rgb/hsl/gradient) que NÃO existem no enum do DS.
+ *    Cobre:
+ *      - `barStyle: { background: '#40E0D0' }` (cor CSS direta)
+ *      - `barStyle: { background: 'linear-gradient(...)' }` (gradient)
+ *      - `barStyle: { background: 'var(--chart-2)' }` (CSS var do tema)
+ *  - Se AMBOS vierem: `barStyle` VENCE `barClassName` (atributos de
+ *    apresentação inline vencem classes CSS).
+ *
  * @see https://www.tremor.so/docs/visualizations/bar-list
  * @see https://github.com/tremorlabs/tremor/blob/main/src/components/BarList/BarList.tsx
  */
@@ -47,6 +61,20 @@ export interface BarListTremorProps<T = unknown>
   onValueChange?: (payload: BarListTremorItem<T>) => void
   /** Ordem de exibição dos itens. Default: `"descending"`. */
   sortOrder?: "ascending" | "descending" | "none"
+  /**
+   * Estilo inline GLOBAL aplicado à barra de cada linha (vence o
+   * `bg-chart-1` hardcoded e `barClassName`). O caller do catálogo passa
+   * o `style.background` resolvido pelo `resolveAccent`
+   * (ex.: `barStyle: { background: "#ff0000" }`). Suporta qualquer
+   * cor CSS — hex, rgb, hsl, oklch, gradient, `var(--chart-1)`.
+   */
+  barStyle?: React.CSSProperties
+  /**
+   * Classe Tailwind GLOBAL aplicada à barra de cada linha (ex.: `bg-chart-2`,
+   * `bg-purple-500`). VENCE o `bg-chart-1` hardcoded mas é VENCIDA por
+   * `barStyle` (atributo de apresentação inline > classes CSS).
+   */
+  barClassName?: string
 }
 
 function BarListTremor<T = unknown>({
@@ -55,6 +83,8 @@ function BarListTremor<T = unknown>({
   showAnimation = false,
   onValueChange,
   sortOrder = "descending",
+  barStyle,
+  barClassName,
   className,
   ...props
 }: BarListTremorProps<T>) {
@@ -108,14 +138,18 @@ function BarListTremor<T = unknown>({
                 rowHeight,
                 // Barra: paleta de chart do DS (mesma de line/area/donut/scatter).
                 // Antes era `bg-blue-200/dark:bg-blue-900` (Tremor hardcoded).
-                "bg-chart-1",
+                // Precedência de cor (Turno 5):
+                //   1) `barStyle` (CSS custom, vence tudo)
+                //   2) `barClassName` (classe Tailwind, vence o default)
+                //   3) `bg-chart-1` (default, hardcoded)
+                barStyle ? '' : barClassName ?? "bg-chart-1",
                 onValueChange
                   ? "group-hover:opacity-90"
                   : "",
                 index === sortedData.length - 1 ? "mb-0" : "",
                 showAnimation ? "duration-800" : "",
               )}
-              style={{ width: `${widths[index]}%` }}
+              style={{ width: `${widths[index]}%`, ...barStyle }}
             >
               <div className="absolute left-2 flex max-w-full pr-2">
                 {item.href ? (

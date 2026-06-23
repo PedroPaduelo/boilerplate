@@ -1,8 +1,12 @@
 /**
  * Manifesto do bloco `donut` — distribuição de um total entre categorias
  * (shape 'categorical'). Alinhado a @dashboards/contracts.
+ *
+ * Props de COR: `accent` aceita enum DS + classe Tailwind + cor CSS (resolvido
+ * em runtime por `resolveAccent`/`resolveAccentForStroke` no component.tsx).
  */
 import type { BlockManifest } from '@dashboards/contracts';
+import { ACCENT_COLORS } from '../../lib/accent';
 
 export const manifest = {
   type: 'donut',
@@ -14,12 +18,34 @@ export const manifest = {
     type: 'object',
     additionalProperties: false,
     properties: {
-      showLegend: { type: 'boolean' },
-      centerLabel: { type: 'string' },
-      // ENTREGA 3: prop de palette — donut usa palette cíclica nativamente
-      // (chart-1..5 por categoria), mas a prop fica no schema pra preparar
-      // override (ex.: 'none' = sem cor, usar a default do UI base).
-      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'single' },
+      // Exibe legenda à direita (uma linha por categoria com bolinha, valor e %).
+      showLegend: {
+        type: 'boolean',
+        default: true,
+        description: 'Exibe legenda clicável à direita (uma linha por categoria com bolinha, valor absoluto e percentual).',
+      },
+      // Rótulo exibido no centro do donut quando NÃO há hover (ex.: "Total").
+      centerLabel: {
+        type: 'string',
+        description: 'Rótulo exibido no centro do donut quando NÃO há hover em nenhum segmento. Default: "Total".',
+      },
+      // Modo de paleta — donut cicla nativamente; `single` colapsa tudo em
+      // uma cor (accent), `multi` cicla chart-1..5, `none` = paleta padrão.
+      palette: {
+        type: 'string',
+        enum: ['single', 'multi', 'none'],
+        default: 'single',
+        description: 'Modo de paleta: "single" (default) = TODAS as fatias com a mesma cor (accent); "multi" = cicla chart-1..5 por categoria; "none" = sem distinção (usa a palette cíclica padrão).',
+      },
+      // COR — string livre; resolveAccent() decide se vira classe Tailwind
+      // (chart-N, primary, stroke-purple-500) ou style.stroke (#hex, rgb(),
+      // gradient, oklch(), var(--chart-1)).
+      accent: {
+        type: 'string',
+        enum: [...ACCENT_COLORS],
+        default: 'chart-1',
+        description: 'Cor base aplicada aos segmentos (só usado em palette="single"). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)).',
+      },
     },
   },
   dataContract: {
@@ -33,6 +59,6 @@ export const manifest = {
       { label: 'Em aberto', value: 38 },
     ],
   },
-  defaultProps: { showLegend: true, palette: 'single' },
+  defaultProps: { showLegend: true, palette: 'single', accent: 'chart-1' },
   version: '1.0.0',
 } satisfies BlockManifest;
