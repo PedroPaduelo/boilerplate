@@ -8,6 +8,7 @@ import { useAuthStore } from '@/features/auth/store';
 const TITLES: Record<string, string> = {
   '/dashboards': 'Dashboards',
   '/charts': 'Gráficos',
+  '/catalog': 'Catálogo',
   '/connections': 'Conexões',
   '/chat': 'Chat',
   '/users': 'Usuários',
@@ -32,6 +33,10 @@ export function DashboardLayout() {
     location.pathname.startsWith(k),
   );
   const title = activeKey ? TITLES[activeKey] : 'Painel';
+
+  // Rotas "full-bleed": ocupam 100% do espaço (sem padding/max-width/borda).
+  // O detalhe da conexão é um workbench e aproveita melhor a tela cheia.
+  const fullBleed = location.pathname.startsWith('/connections/');
 
   const initials = (user?.name ?? user?.email ?? 'U')
     .split(' ')
@@ -70,7 +75,13 @@ export function DashboardLayout() {
           }
         />
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1760px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div
+            className={
+              fullBleed
+                ? 'h-full w-full'
+                : 'mx-auto w-full max-w-[1760px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8'
+            }
+          >
             <Outlet />
           </div>
         </main>

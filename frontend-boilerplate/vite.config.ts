@@ -42,6 +42,15 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        // `@dashboards/contracts` é um pacote LINKADO (file:../shared/contracts)
+        // que importa `ajv`/`ajv-formats`. No build, o rolldown resolve esses
+        // imports a partir do real-path do pacote (shared/contracts/dist) e não
+        // os encontra (ficam hoisted no node_modules do FE). Apontamos o
+        // specifier para o diretório do pacote no node_modules do app (onde
+        // ambos existem, pois são deps transitivas de contracts) — preservando
+        // subpaths e destravando o `vite build`.
+        ajv: path.resolve(__dirname, 'node_modules/ajv'),
+        'ajv-formats': path.resolve(__dirname, 'node_modules/ajv-formats'),
       },
     },
     server: {

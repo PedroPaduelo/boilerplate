@@ -3,6 +3,7 @@ import {
   Users as UsersIcon,
   LayoutDashboard,
   BarChart3,
+  Blocks,
   Database,
   MessageSquare,
   LogOut,
@@ -37,6 +38,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: '/dashboards', label: 'Dashboards', icon: LayoutDashboard, permission: 'artifacts:view' },
   { id: '/charts', label: 'Gráficos', icon: BarChart3, permission: 'artifacts:view' },
+  { id: '/catalog', label: 'Catálogo', icon: Blocks, permission: 'artifacts:view' },
   { id: '/connections', label: 'Conexões', icon: Database, permission: 'connections:use' },
   { id: '/chat', label: 'Chat', icon: MessageSquare, permission: 'artifacts:manage' },
   { id: '/users', label: 'Usuários', icon: UsersIcon, roles: ['ADMIN'] },
