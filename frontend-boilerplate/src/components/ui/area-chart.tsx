@@ -388,9 +388,10 @@ function AreaChart({
         )}
       </div>
 
-      {/* Legenda */}
+      {/* Legenda — CENTRALIZADA abaixo do gráfico (justify-center); mantém o
+          wrap (flex-wrap) quando há muitas séries. */}
       {showLegend && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-1">
           {series.map((s, i) => (
             <div key={`legend-${i}`} className="flex items-center gap-1.5">
               <span
