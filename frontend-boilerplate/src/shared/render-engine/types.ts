@@ -9,7 +9,7 @@
  * Doc 03 (catálogo + motor de render), doc 33 (anatomia do bloco) e doc 20
  * (contrato LAYOUT × DADOS × BLOCO).
  */
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type {
   BlockManifest,
   ScalarData,
@@ -34,6 +34,13 @@ export interface BlockComponentProps<P = Record<string, unknown>, D = BlockData>
   state: BlockRenderState;
   /** Mensagem de erro (quando state === 'error'). */
   error?: string;
+  /**
+   * Sub-blocos JÁ renderizados (grid de filhos), injetados pelo BlockRenderer
+   * em blocos-CONTAINER (ex.: `section`, `bento`). O componente container só
+   * desenha seu "shell" (header + moldura) e coloca `children` no corpo.
+   * `undefined` em blocos folha.
+   */
+  children?: ReactNode;
 }
 
 /** Assinatura de um componente de bloco. */

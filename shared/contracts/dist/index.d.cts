@@ -116,11 +116,23 @@ declare const DashboardLayoutSchema: {
                     readonly minimum: 1;
                     readonly maximum: 12;
                 };
+                readonly title: {
+                    readonly type: "string";
+                };
+                readonly subtitle: {
+                    readonly type: "string";
+                };
                 readonly props: {
                     readonly type: "object";
                 };
                 readonly dataBinding: {
                     readonly $ref: "#/$defs/dataBinding";
+                };
+                readonly blocks: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly $ref: "#/$defs/block";
+                    };
                 };
             };
         };
@@ -869,13 +881,50 @@ declare const BlockDataRequestSchema: {
  * composto à mão reaproveitando os tipos já derivados (sem reescrever contrato).
  */
 
-type DashboardLayout = FromSchema<typeof DashboardLayoutSchema>;
-type Filter = DashboardLayout['filters'][number];
-type Row = DashboardLayout['rows'][number];
-type Block = Row['blocks'][number];
-type DataBinding = NonNullable<Block['dataBinding']>;
-type DataBindingParam = NonNullable<DataBinding['params']>[number];
-type FilterType = Filter['type'];
+type FilterType = 'date_range' | 'select' | 'multiselect' | 'search' | 'number_range';
+interface Filter {
+    id: string;
+    type: FilterType;
+    label: string;
+    /** valor inicial do filtro — shape depende do tipo. */
+    default?: unknown;
+}
+interface DataBindingParam {
+    filterId: string;
+    as: string;
+}
+interface DataBinding {
+    connectionId: string;
+    query: string;
+    params?: DataBindingParam[];
+    /** mapeamento resultado→shape do bloco (ref nomeada ou objeto declarativo). */
+    transform?: unknown;
+    ttlSeconds?: number;
+}
+interface Block {
+    id: string;
+    /** catalogType (ex.: kpi, bar_chart, rich_text, section). */
+    type: string;
+    /** largura no grid de 12 colunas do container pai (row ou bloco-container). */
+    span: number;
+    /** título do card (header do frame). Se ausente, o render usa o `manifest.name`. */
+    title?: string;
+    /** subtítulo do header. */
+    subtitle?: string;
+    props?: Record<string, unknown>;
+    dataBinding?: DataBinding;
+    /** filhos (composição recursiva) — presente em blocos-container (section/bento). */
+    blocks?: Block[];
+}
+interface Row {
+    id: string;
+    title?: string;
+    blocks: Block[];
+}
+interface DashboardLayout {
+    filters: Filter[];
+    rows: Row[];
+}
 type ArtifactStatus = 'draft' | 'published';
 type Visibility = 'private' | 'department' | 'org';
 /** DashboardConfig completo (metadados + layout inline), como no doc 20. */
@@ -944,36 +993,7 @@ type BlockDataRequest = FromSchema<typeof BlockDataRequestSchema>;
 
 /** Instância ajv compartilhada. `strict:false` aceita $defs/keywords anotativos. */
 declare const ajv: Ajv;
-declare const validateDashboardLayout: ValidateFunction<{
-    filters: {
-        default?: unknown;
-        id: string;
-        type: "date_range" | "select" | "multiselect" | "search" | "number_range";
-        label: string;
-    }[];
-    rows: {
-        title?: string | undefined;
-        id: string;
-        blocks: {
-            dataBinding?: {
-                params?: {
-                    filterId: string;
-                    as: string;
-                }[] | undefined;
-                transform?: unknown;
-                ttlSeconds?: number | undefined;
-                connectionId: string;
-                query: string;
-            } | undefined;
-            props?: {
-                [x: string]: unknown;
-            } | undefined;
-            id: string;
-            type: string;
-            span: number;
-        }[];
-    }[];
-}>;
+declare const validateDashboardLayout: ValidateFunction<DashboardLayout>;
 declare const validateDashboardConfig: ValidateFunction<DashboardConfig>;
 declare const validateBlockManifest: ValidateFunction<{
     version?: string | undefined;
@@ -1033,8 +1053,8 @@ declare const validateBlockDataResult: ValidateFunction<{
     data?: unknown;
     meta?: {
         [x: string]: unknown;
-        ttlSeconds?: number | undefined;
         cached?: boolean | undefined;
+        ttlSeconds?: number | undefined;
         executedAt?: string | undefined;
         rowCount?: number | undefined;
         truncated?: boolean | undefined;
@@ -1057,8 +1077,8 @@ declare const validateDashboardDataPayload: ValidateFunction<{
             data?: unknown;
             meta?: {
                 [x: string]: unknown;
-                ttlSeconds?: number | undefined;
                 cached?: boolean | undefined;
+                ttlSeconds?: number | undefined;
                 executedAt?: string | undefined;
                 rowCount?: number | undefined;
                 truncated?: boolean | undefined;

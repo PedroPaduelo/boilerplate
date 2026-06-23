@@ -21,10 +21,20 @@ export interface DashboardRendererProps {
   layout: DashboardLayout;
   /** Payload de dados batch (mapa blockId → resultado). Opcional. */
   data?: DashboardDataPayload;
+  /**
+   * Aplica o "frame" (shell `ChartWidget`) nos blocos de visualização. Default
+   * `true` (dashboard real). A GALERIA do catálogo passa `false`.
+   */
+  framed?: boolean;
   className?: string;
 }
 
-export function DashboardRenderer({ layout, data, className }: DashboardRendererProps) {
+export function DashboardRenderer({
+  layout,
+  data,
+  framed = true,
+  className,
+}: DashboardRendererProps) {
   return (
     <div data-slot="dashboard" className={cn('flex flex-col gap-6', className)}>
       {layout.filters.length > 0 ? (
@@ -59,7 +69,12 @@ export function DashboardRenderer({ layout, data, className }: DashboardRenderer
                   data-slot="dashboard-cell"
                   style={{ gridColumn: `span ${span} / span ${span}` }}
                 >
-                  <BlockRenderer block={block} result={data?.blocks?.[block.id]} />
+                  <BlockRenderer
+                    block={block}
+                    data={data}
+                    result={data?.blocks?.[block.id]}
+                    framed={framed}
+                  />
                 </div>
               );
             })}

@@ -30,6 +30,7 @@
  * blocos não-afetados (ver `useDashboardData`).
  */
 import { useState } from 'react';
+import type { DashboardLayout } from '@dashboards/contracts';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -135,7 +136,10 @@ function DashboardViewContent({ detail, layout, mode, onBack }: ContentProps) {
   // Passamos `filters: []` ao DashboardRenderer (ele renderiza chips estáticos);
   // a FilterBar interativa fica acima. Assim reusamos o grid/blocos do
   // render-engine sem duplicar a barra de filtros.
-  const gridLayout = { filters: [], rows: layout?.rows ?? [] };
+  const gridLayout: DashboardLayout = {
+    filters: [],
+    rows: (layout?.rows ?? []) as DashboardLayout['rows'],
+  };
 
   return (
     <div className="flex flex-col gap-5">

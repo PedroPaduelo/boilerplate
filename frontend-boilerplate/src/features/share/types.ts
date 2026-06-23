@@ -5,11 +5,10 @@
  */
 export type ShareTargetType = 'DASHBOARD' | 'CHART';
 
-/** Layout publicado (`{ filters, rows }`, doc 20). Conteúdo livre nesta camada. */
-export interface PublishedLayout {
-  filters: unknown[];
-  rows: unknown[];
-}
+import type { DashboardLayout } from '@dashboards/contracts';
+
+/** Layout publicado (espelha `DashboardLayout` do contrato — `{ filters, rows }`). */
+export type PublishedLayout = DashboardLayout;
 
 export interface PublicDashboard {
   id: string;

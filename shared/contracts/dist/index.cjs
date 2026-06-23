@@ -154,14 +154,26 @@ var DashboardLayoutSchema = {
       required: ["id", "type", "span"],
       properties: {
         id: { type: "string", minLength: 1 },
-        // referencia um `type` do CATÁLOGO (catalogType). Ex.: kpi, bar_chart, rich_text.
+        // referencia um `type` do CATÁLOGO (catalogType). Ex.: kpi, bar_chart, rich_text, section.
         type: { type: "string", minLength: 1 },
-        // largura no grid de 12 colunas.
+        // largura no grid de 12 colunas (relativa ao container pai — row ou bloco-container).
         span: { type: "integer", minimum: 1, maximum: 12 },
+        // título do card (header do "frame" — chart-widget). Opcional: se ausente, o
+        // render usa o `manifest.name` do tipo. Permite a IA nomear o card no relatório.
+        title: { type: "string" },
+        // subtítulo do header do card (linha de apoio abaixo do título). Opcional.
+        subtitle: { type: "string" },
         // props visuais do bloco (validadas pelo manifest.propsSchema do catálogo).
         props: { type: "object" },
-        // ausente em blocos narrativos (title / rich_text).
-        dataBinding: { $ref: "#/$defs/dataBinding" }
+        // ausente em blocos narrativos (title / rich_text) e em containers (section).
+        dataBinding: { $ref: "#/$defs/dataBinding" },
+        // COMPOSIÇÃO RECURSIVA (hierarquia): blocos-container (ex.: `section`, `bento`)
+        // agrupam sub-blocos num grid interno de 12 colunas. Cada filho é um `block`
+        // (folha ou outro container) — permite "seção dentro de seção" / relatórios ricos.
+        blocks: {
+          type: "array",
+          items: { $ref: "#/$defs/block" }
+        }
       }
     },
     row: {
@@ -1046,3 +1058,4 @@ var dashboardDataPayloadFixture = {
   validateTableData,
   validateUpdateDashboardRequest
 });
+//# sourceMappingURL=index.cjs.map

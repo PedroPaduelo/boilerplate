@@ -7,7 +7,6 @@
  */
 import type { FromSchema } from 'json-schema-to-ts';
 import type {
-  DashboardLayoutSchema,
   BlockManifestSchema,
   ScalarDataSchema,
   SeriesDataSchema,
@@ -27,14 +26,66 @@ import type {
 } from '../schemas';
 
 // ---------- Camada 1: LAYOUT ----------
-export type DashboardLayout = FromSchema<typeof DashboardLayoutSchema>;
-export type Filter = DashboardLayout['filters'][number];
-export type Row = DashboardLayout['rows'][number];
-export type Block = Row['blocks'][number];
-export type DataBinding = NonNullable<Block['dataBinding']>;
-export type DataBindingParam = NonNullable<DataBinding['params']>[number];
+// Tipos MANUAIS: o `block` é RECURSIVO (campo `blocks` = filhos), e o
+// `json-schema-to-ts` (FromSchema) não deriva `$ref` recursivo. O schema neutro
+// (`DashboardLayoutSchema`) segue sendo a fonte de validação em RUNTIME (ajv);
+// estes tipos espelham o schema 1:1.
+export type FilterType =
+  | 'date_range'
+  | 'select'
+  | 'multiselect'
+  | 'search'
+  | 'number_range';
 
-export type FilterType = Filter['type'];
+export interface Filter {
+  id: string;
+  type: FilterType;
+  label: string;
+  /** valor inicial do filtro — shape depende do tipo. */
+  default?: unknown;
+}
+
+export interface DataBindingParam {
+  filterId: string;
+  as: string;
+}
+
+export interface DataBinding {
+  connectionId: string;
+  query: string;
+  params?: DataBindingParam[];
+  /** mapeamento resultado→shape do bloco (ref nomeada ou objeto declarativo). */
+  transform?: unknown;
+  ttlSeconds?: number;
+}
+
+export interface Block {
+  id: string;
+  /** catalogType (ex.: kpi, bar_chart, rich_text, section). */
+  type: string;
+  /** largura no grid de 12 colunas do container pai (row ou bloco-container). */
+  span: number;
+  /** título do card (header do frame). Se ausente, o render usa o `manifest.name`. */
+  title?: string;
+  /** subtítulo do header. */
+  subtitle?: string;
+  props?: Record<string, unknown>;
+  dataBinding?: DataBinding;
+  /** filhos (composição recursiva) — presente em blocos-container (section/bento). */
+  blocks?: Block[];
+}
+
+export interface Row {
+  id: string;
+  title?: string;
+  blocks: Block[];
+}
+
+export interface DashboardLayout {
+  filters: Filter[];
+  rows: Row[];
+}
+
 export type ArtifactStatus = 'draft' | 'published';
 export type Visibility = 'private' | 'department' | 'org';
 
