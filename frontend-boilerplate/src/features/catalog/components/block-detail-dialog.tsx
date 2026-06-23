@@ -7,13 +7,22 @@
  *   ┌─────────────────────┬────────────────────────────────────┐
  *   │                     │  PROPS   (gerado do propsSchema)   │
  *   │  PREVIEW AO VIVO    │   - string / number / boolean      │
- *   │  (BlockRenderer     │   - enum → <Select>                │
- *   │   framed — shell    │   - COR → enum + input livre +     │
- *   │   ChartWidget       │          preview (ColorFieldEditor) │
- *   │   idêntico ao       │                                    │
- *   │   dashboard real)   │  WRAPPER (ChartWidget: header +    │
+ *   │  (BlockRenderer     │     → <Switch> compacto shadcn     │
+ *   │   framed — shell    │   - enum → <Select>                │
+ *   │   ChartWidget       │   - COR → enum + input livre +     │
+ *   │   idêntico ao       │          preview (ColorFieldEditor) │
+ *   │   dashboard real)   │                                    │
+ *   │                     │  WRAPPER (ChartWidget: header +    │
  *   │                     │   footer) — Título, Subtítulo,     │
- *   │                     │   Query SQL, Duração ms.            │
+ *   │                     │   Query SQL, Duração ms.           │
+ *   │                     │                                    │
+ *   │                     │  LINHAS DE EXPLICAÇÃO (canônico    │
+ *   │                     │   — Turno 4):                      │
+ *   │                     │   - array de { enabled, text }     │
+ *   │                     │   - Switch por linha + Input + X   │
+ *   │                     │   - "+ Adicionar" / "Auto"         │
+ *   │                     │   - Switch "Mostrar SQL"           │
+ *   │                     │                                    │
  *   │                     │  DADOS (dataContract.example)      │
  *   │                     │   - seletor "Dados:" → variantes   │
  *   │                     │     (3-5 fixtures pré-prontas)     │
@@ -22,13 +31,24 @@
  *   │                     │   - verde/vermelho                 │
  *   └─────────────────────┴────────────────────────────────────┘
  *
- * Editor de cor (ENTREGA 2): se a prop é enum de cor (chart-1..5 + primary)
- * OU se chama `accent` / `accentColor` / `paletteColor`, o sub-componente
- * `ColorFieldEditor` substitui o `<Select>` padrão — oferece 3 zonas:
- * 1) enum DS (Select fechado), 2) input texto livre (classe Tailwind ou cor
- * CSS crua), 3) preview ao vivo (~20×20px). Sem validação AJV no campo
+ * Padrão canônico do CARD/GRÁFICO (footer do ChartWidget):
+ *   1) Array de TAKEAWAYS (0..N linhas com lâmpada + texto; `enabled` filtra)
+ *   2) Linha TÉCNICA (query + duração) — SEMPRE a ÚLTIMA posição; some se
+ *      `showSql === false`. Duração formatada via `formatDuration()` do
+ *      `format.ts` (exibe "142ms" / "1.4s" / "2min 15s" / "1h 5min" — não
+ *      "142ms" cru em queries lentas).
+ *
+ * Editor de cor (ENTREGA 2 — Turno 1): se a prop é enum de cor
+ * (chart-1..5 + primary) OU se chama `accent`/`accentColor`/`paletteColor`,
+ * o sub-componente `ColorFieldEditor` substitui o `<Select>` padrão — oferece
+ * 3 zonas: 1) enum DS (Select fechado), 2) input texto livre (classe Tailwind
+ * ou cor CSS crua), 3) preview ao vivo (~20×20px). Sem validação AJV no campo
  * livre: o preview É o feedback — se a classe/cor não existir, simplesmente
  * não vai renderizar.
+ *
+ * Boolean editor (ENTREGA 6 — Turno 4): antes era checkbox nativo estilizado
+ * (alto, label em cima). Agora usa o `<Switch>` shadcn compacto (32×18px) com
+ * label AO LADO, em faixa horizontal — padrão dos switches do design system.
  *
  * Seletor de variantes (ENTREGA 3 — Turno 2): acima do textarea, exibe botões
  * "Dados: [Padrão] [Multi-série] [Valores grandes] …" que carregam fixtures
@@ -39,7 +59,7 @@
  *
  * Read-only do disco (não persiste nada). Estado 100% local — ao fechar e
  * reabrir, reseta para `defaultProps` + `dataContract.example` (ou
- * `definition.fixture` como fallback).
+ * `definition.fixture` como fallback). Reset por `manifest.type` no useEffect.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
@@ -48,7 +68,14 @@ import {
   type BlockManifest,
   type DataShape,
 } from '@dashboards/contracts';
-import { RotateCcw, Sparkles } from 'lucide-react';
+import {
+  Lightbulb,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  Wand2,
+  X,
+} from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -69,8 +96,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { BlockRenderer } from '@/shared/render-engine';
 import { ACCENT_COLORS, isAccentColor } from '@/shared/render-engine/lib/accent';
+import { formatDuration } from '@/shared/lib/format';
 import { cn } from '@/shared/lib/utils';
 
 import {
@@ -110,6 +139,9 @@ interface PropField {
   schema: PropSchema;
   required: boolean;
 }
+
+/** Item de takeaway (insight de rodapé) — espelha o tipo de `ChartWidget`. */
+type Takeaway = { enabled: boolean; text: string };
 
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
@@ -151,8 +183,8 @@ function initialDataFor(entry: CatalogEntry): unknown {
 const COLOR_PROP_NAMES = new Set(['accent', 'accentColor', 'paletteColor']);
 
 /** Um enum conta como "enum de cor" se TODOS os valores (string) pertencem a
- *  ACCENT_COLORS. Aceita também valores já com prefixo `bg-` (alguns catálogos
- *  guardam `bg-chart-1` na enum). */
+ * ACCENT_COLORS. Aceita também valores já com prefixo `bg-` (alguns catálogos
+ * guardam `bg-chart-1` na enum). */
 function isAccentEnum(enumValues: readonly unknown[]): boolean {
   if (!enumValues.length) return false;
   return enumValues.every((v) => {
@@ -181,6 +213,24 @@ function looksLikeCssColor(v: string): boolean {
     /^(rgb|rgba|hsl|hsla|oklch|oklab|color)\(/i.test(s) ||
     /^(linear|radial|conic)-gradient\(/i.test(s)
   );
+}
+
+/* Tipos de bloco que JÁ SÃO cards próprios (não recebem moldura ChartWidget,
+ * portanto não consomem takeaways/SQL — espelha SELF_CONTAINED do
+ * `block-renderer.tsx`). */
+const SELF_CONTAINED_TYPES = new Set<string>([
+  'kpi',
+  'metric_glow',
+  'stat_tile',
+  'signal_card',
+  'progress_bar',
+  'progress_circle',
+  'radial_gauge',
+]);
+
+/** Decide se o bloco é visualizável com moldura (kind=chart e NÃO self-contained). */
+function isFramedChart(entry: CatalogEntry): boolean {
+  return entry.kind === 'chart' && !SELF_CONTAINED_TYPES.has(entry.type);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -398,27 +448,28 @@ function PropFieldEditor({
     );
   }
 
-  // 2) boolean → checkbox nativo estilizado
+  // 2) boolean → <Switch> shadcn compacto (ENTREGA 6 — Turno 4).
+  // Label AO LADO do toggle (horizontal, ~32×18px). Removido o checkbox
+  // nativo estilizado, que ficava com altura desproporcional e label em
+  // cima do controle, ocupando muito espaço vertical no playground.
   if (schema.type === 'boolean') {
     return (
       <label
         htmlFor={`prop-${key}`}
-        className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card px-2.5 py-1.5"
+        className="flex h-8 items-center justify-between gap-2 rounded-md border border-border/60 bg-card px-2.5"
       >
-        <div className="flex items-center gap-1.5">
-          <span className="font-medium text-xs">{labelStr}</span>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate font-medium text-xs">{labelStr}</span>
           {required ? (
-            <Badge variant="outline" className="h-4 px-1 text-[9px]">
+            <Badge variant="outline" className="h-4 shrink-0 px-1 text-[9px]">
               obrigatório
             </Badge>
           ) : null}
         </div>
-        <input
+        <Switch
           id={`prop-${key}`}
-          type="checkbox"
           checked={Boolean(value)}
-          onChange={(e) => onChange(e.target.checked)}
-          className="size-4 cursor-pointer accent-primary"
+          onCheckedChange={(v) => onChange(v)}
         />
       </label>
     );
@@ -468,6 +519,204 @@ function PropFieldEditor({
         onChange={(e) => onChange(e.target.value)}
         className="h-8 text-xs"
       />
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  TakeawaysEditor — lista editável de insights de rodapé                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Editor de TAKEAWAYS (canônico Turno 4) — array editável de
+ * `{ enabled, text }` para o rodapé do ChartWidget.
+ *
+ * Cada linha = `<Switch>` (on/off) + `<Input>` (texto) + botão "X" (remover).
+ * Estado sempre VISÍVEL (não some quando `enabled=false` — para o usuário
+ * poder reativar).
+ *
+ * Ações extras:
+ *  - `+ Adicionar linha` no final (sem limite rígido, mas mantém UX saudável
+ *    com cap sugerido de 5 visíveis no scroll).
+ *  - `Auto-preencher (Wand2)` se o bloco tiver `def.deriveTakeaway`: gera
+ *    1-2 linhas a partir do `deriveTakeaway` da fixture do bloco. Se retornar
+ *    `string[]` ou `string`, divide entre as linhas. Anexa às linhas
+ *    existentes (não substitui).
+ *  - Switch global "Mostrar SQL" (controla a visibilidade da query + duração
+ *    do footer técnico do ChartWidget — `false` esconde a linha INTEIRA).
+ */
+function TakeawaysEditor({
+  definition,
+  data,
+  items,
+  onChange,
+  showSql,
+  onShowSqlChange,
+}: {
+  definition: CatalogEntry['definition'];
+  data: unknown;
+  items: Takeaway[];
+  onChange: (next: Takeaway[]) => void;
+  showSql: boolean;
+  onShowSqlChange: (next: boolean) => void;
+}) {
+  // ----- handlers locais -----
+  const addLine = () => {
+    onChange([...items, { enabled: true, text: '' }]);
+  };
+  const removeLine = (idx: number) => {
+    onChange(items.filter((_, i) => i !== idx));
+  };
+  const toggleLine = (idx: number, enabled: boolean) => {
+    onChange(items.map((it, i) => (i === idx ? { ...it, enabled } : it)));
+  };
+  const setText = (idx: number, text: string) => {
+    onChange(items.map((it, i) => (i === idx ? { ...it, text } : it)));
+  };
+
+  // ----- auto-preenchimento via `def.deriveTakeaway(data)` -----
+  const autoFill = () => {
+    if (typeof definition.deriveTakeaway !== 'function') return;
+    let result: string | string[] | undefined;
+    try {
+      result = definition.deriveTakeaway(data as never);
+    } catch {
+      return;
+    }
+    if (result == null) return;
+    const lines: string[] = Array.isArray(result) ? result : [result];
+    const cleaned = lines
+      .map((s) => String(s).trim())
+      .filter((s) => s.length > 0);
+    if (cleaned.length === 0) return;
+    // Anexa como NOVAS linhas (enabled=true) — não substitui o que o user
+    // já digitou. Se TODAS as linhas atuais estão vazias, SUBSTITUI a
+    // primeira linha vazia em vez de duplicar.
+    const emptyIdx = items.findIndex((it) => it.text.trim() === '');
+    const allOthersFilled = items.every(
+      (it, i) => i === emptyIdx || it.text.trim() !== '',
+    );
+    if (emptyIdx >= 0 && allOthersFilled) {
+      const next = [...items];
+      // preenche a 1ª linha vazia com a 1ª frase
+      next[emptyIdx] = { enabled: true, text: cleaned[0] };
+      // anexa o resto (se houver)
+      for (let i = 1; i < cleaned.length; i++) {
+        next.push({ enabled: true, text: cleaned[i] });
+      }
+      onChange(next);
+      return;
+    }
+    onChange([
+      ...items,
+      ...cleaned.map((s) => ({ enabled: true, text: s })),
+    ]);
+  };
+
+  const canAutoFill = typeof definition.deriveTakeaway === 'function';
+
+  return (
+    <div className="space-y-2">
+      <div
+        className="flex items-center justify-between rounded-md border border-border/60 bg-card/30 px-2.5 py-1.5"
+        data-slot="takeaways-editor"
+      >
+        <div className="flex items-center gap-1.5">
+          <Lightbulb className="size-3.5 shrink-0 text-amber-500 dark:text-amber-400" />
+          <span className="text-xs font-medium">Linhas de explicação</span>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            (footer)
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {items.length === 0
+              ? '— nenhuma'
+              : items.length === 1
+                ? '— 1 linha'
+                : `— ${items.length} linhas`}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          {canAutoFill ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={autoFill}
+              className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+              title="Preencher a partir do `deriveTakeaway` do bloco (1-2 linhas)"
+            >
+              <Wand2 className="size-3" />
+              Auto
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addLine}
+            className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+            title="Adicionar linha de explicação"
+          >
+            <Plus className="size-3" />
+            Adicionar
+          </Button>
+        </div>
+      </div>
+
+      {items.length > 0 ? (
+        <div className="space-y-1.5">
+          {items.map((it, i) => (
+            <div
+              key={`takeaway-row-${i}`}
+              className="flex items-center gap-1.5"
+              data-slot="takeaway-row"
+            >
+              <Switch
+                checked={it.enabled}
+                onCheckedChange={(v) => toggleLine(i, v)}
+                aria-label={`Linha ${i + 1} — on/off`}
+              />
+              <Input
+                type="text"
+                value={it.text}
+                onChange={(e) => setText(i, e.target.value)}
+                placeholder="Ex.: Maior valor: Jan (R$ 100 mi)"
+                className={cn('h-8 text-xs', !it.enabled && 'opacity-50')}
+                aria-label={`Linha ${i + 1} — texto`}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => removeLine(i)}
+                className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                title="Remover linha"
+                aria-label={`Remover linha ${i + 1}`}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Switch global: mostrar SQL (footer técnico) */}
+      <label
+        htmlFor="show-sql"
+        className="flex h-8 items-center justify-between gap-2 rounded-md border border-border/60 bg-card px-2.5"
+      >
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-xs font-medium">Mostrar SQL</span>
+          <span className="text-[10px] text-muted-foreground">
+            (esconde a query + duração do footer)
+          </span>
+        </div>
+        <Switch
+          id="show-sql"
+          checked={showSql}
+          onCheckedChange={onShowSqlChange}
+        />
+      </label>
     </div>
   );
 }
@@ -526,9 +775,7 @@ function FixtureVariantPicker({
               isActive
                 ? 'border-primary/60 bg-primary text-primary-foreground shadow-sm'
                 : 'border-border/60 bg-card text-foreground hover:border-primary/40 hover:bg-primary/5',
-              disabled &&
-                !isActive &&
-                'pointer-events-none opacity-50',
+              disabled && !isActive && 'pointer-events-none opacity-50',
             )}
           >
             {v.label}
@@ -549,8 +796,6 @@ export function BlockDetailDialog({ entry, onOpenChange }: BlockDetailDialogProp
 
   return (
     <Dialog open={!!entry} onOpenChange={onOpenChange}>
-      {/* ENTREGA 1: modal 70vw × 70vh (era max-w-5xl max-h-90vh). Equilibra as
-          duas dimensões para abrir mais confortável no playground. */}
       {/* Modal 90vw × 85vh. Sobrescreve o default do shadcn (sm:max-w-lg
           = 512px) com !important + max-w-none no sm pra garantir que
           SEMPRE vença o default, mesmo com Tailwind JIT reorderando. */}
@@ -592,6 +837,11 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
     return local[manifest.type];
   }, [manifest.type]);
 
+  // Bloco é visualizável com moldura ChartWidget (= recebe takeaways+SQL)?
+  // Apenas `kind === 'chart'` e NÃO self-contained. Espelha a lógica do
+  // `block-renderer.tsx` para o editor não oferecer controle sem efeito.
+  const showTakeawayEditor = isFramedChart(entry);
+
   // ---------- estado local ----------
   const [propsDraft, setPropsDraft] = useState<Record<string, unknown>>(() =>
     initialPropsFor(manifest, previewProps),
@@ -604,6 +854,17 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   const [previewSubtitle, setPreviewSubtitle] = useState<string>('');
   const [previewQuery, setPreviewQuery] = useState<string>('');
   const [previewDurationMs, setPreviewDurationMs] = useState<number | ''>('');
+  // Takeaways (canônico — Turno 4): array de `{ enabled, text }` que vai
+  // para o footer do ChartWidget. Inicia com 1 linha vazia (UX saudável:
+  // sempre há UM campo pronto para o usuário digitar). Reset por
+  // `manifest.type` no useEffect abaixo.
+  const [takeaways, setTakeaways] = useState<Takeaway[]>([
+    { enabled: true, text: '' },
+  ]);
+  // showSql — quando `false`, a linha técnica (query + duração) SOME
+  // inteira do footer (mesmo se `previewQuery` estiver preenchida). Default:
+  // `true` (mostra). Reset por `manifest.type` no useEffect.
+  const [showSql, setShowSql] = useState<boolean>(true);
   const [dataText, setDataText] = useState<string>(() => {
     // Se o bloco tem variantes, o estado inicial é a variante `default` (que
     // por convenção é uma cópia literal da fixture oficial — paridade visual).
@@ -645,6 +906,8 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
     setPreviewSubtitle('');
     setPreviewQuery('');
     setPreviewDurationMs('');
+    setTakeaways([{ enabled: true, text: '' }]);
+    setShowSql(true);
     const def = variants.find((v) => v.id === 'default');
     const init = def ? def.data : initialDataFor(entry);
     setDataText(JSON.stringify(init, null, 2));
@@ -711,6 +974,11 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
     setDataError(null);
   };
 
+  const resetTakeaways = () => {
+    setTakeaways([{ enabled: true, text: '' }]);
+    setShowSql(true);
+  };
+
   /** Aplica uma variante: popula o textarea e re-valida. */
   const applyVariant = (v: FixtureVariant) => {
     setVariantId(v.id);
@@ -734,11 +1002,22 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
     }
   };
 
+  // Parse do JSON atual (para passar ao `deriveTakeaway` no auto-preencher).
+  const currentData = useMemo<unknown>(() => {
+    try {
+      return JSON.parse(dataText);
+    } catch {
+      return undefined;
+    }
+  }, [dataText]);
+
   // ---------- preview ----------
   // `block` carrega props + metadados do ChartWidget (title/subtitle/query)
   // que o dashboard injeta via `block.title`/`block.dataBinding.query`. Aqui
   // o playground injeta os valores do state local `previewTitle`/etc. para
   // o usuário visualizar exatamente o que vai aparecer no dashboard.
+  // TAKEAWAYS + SHOWSQL: lidos do state local e propagados no `block` —
+  // o `BlockRenderer` lê e passa pro `ChartWidget` no formato correto.
   const block = useMemo(() => {
     const trimmedQuery = previewQuery.trim();
     const out: Record<string, unknown> = {
@@ -749,11 +1028,39 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
     };
     if (previewTitle.trim()) out.title = previewTitle.trim();
     if (previewSubtitle.trim()) out.subtitle = previewSubtitle.trim();
-    if (trimmedQuery) {
+    // SQL só vai pro block se `showSql === true`. Quando o user desliga o
+    // switch, escondemos a query inteira (incluindo do footer técnico).
+    if (showSql && trimmedQuery) {
       out.dataBinding = { query: trimmedQuery };
     }
+    // Takeaways: filtra as linhas vazias antes de mandar pro renderer
+    // (ChartWidget também filtra, mas mandamos limpo para clareza no
+    // console/JSON.stringify).
+    if (showTakeawayEditor && takeaways.length > 0) {
+      const cleaned = takeaways.filter(
+        (t) => t.enabled && t.text.trim().length > 0,
+      );
+      if (cleaned.length > 0) {
+        out.takeaways = cleaned;
+      }
+    }
+    // showSql: só manda no block se for `false` (true = default, sem
+    // necessidade de explicitar). Quando false, o renderer esconde a linha
+    // técnica INTEIRA do footer.
+    if (!showSql) {
+      out.showSql = false;
+    }
     return out;
-  }, [manifest.type, previewQuery, previewSubtitle, previewTitle, propsDraft]);
+  }, [
+    manifest.type,
+    previewQuery,
+    previewSubtitle,
+    previewTitle,
+    propsDraft,
+    showSql,
+    showTakeawayEditor,
+    takeaways,
+  ]);
 
   // Só monta o `result` se a forma dos dados bater — senão, fica skeleton.
   // Inclui `meta.durationMs` quando o usuário setar (vai pro footer do
@@ -785,6 +1092,13 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
     manifest.type,
     previewDurationMs,
   ]);
+
+  // Duração formatada para o hint ao lado do input (state guarda cru, display
+  // mostra formatado — ex.: "142 → 142ms", "135000 → 2min 15s").
+  const durationDisplay =
+    typeof previewDurationMs === 'number' && Number.isFinite(previewDurationMs)
+      ? formatDuration(previewDurationMs)
+      : '—';
 
   return (
     <div className="grid h-[85vh] min-h-0 grid-cols-1 md:grid-cols-2">
@@ -917,7 +1231,14 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
                   placeholder="SELECT ... FROM ..."
                   spellCheck={false}
                   className="h-8 font-mono text-[11px]"
+                  disabled={!showSql}
                 />
+                {!showSql ? (
+                  <p className="text-[10px] text-muted-foreground">
+                    Mostrar SQL está desligado — a query não vai para o footer
+                    mesmo estando preenchida.
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-1.5">
@@ -930,15 +1251,58 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
                   min={0}
                   value={previewDurationMs}
                   onChange={(e) => {
-                    const v = e.target.value
-                    setPreviewDurationMs(v === '' ? '' : Number(v))
+                    const v = e.target.value;
+                    setPreviewDurationMs(v === '' ? '' : Number(v));
                   }}
                   placeholder="ex.: 142"
                   className="h-8 text-xs tabular-nums"
+                  disabled={!showSql}
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  Preview: <span className="font-mono">{durationDisplay}</span>{' '}
+                  <span className="text-muted-foreground">
+                    (formatado por `formatDuration`)
+                  </span>
+                </p>
               </div>
             </div>
           </section>
+
+          {/* ----- LINHAS DE EXPLICAÇÃO (canônico Turno 4) ----- */}
+          {/* Editor de TAKEAWAYS (apenas para blocos com moldura ChartWidget).
+              Para blocos narrativos ou self-contained, o `ChartWidget` não
+              envolve o componente — o array `takeaways` não teria efeito,
+              então escondemos a seção inteira (UX mais limpa). */}
+          {showTakeawayEditor ? (
+            <>
+              <Separator />
+              <section className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Insights do rodapé
+                  </h4>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetTakeaways}
+                    className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    <RotateCcw className="size-3" />
+                    Reset
+                  </Button>
+                </div>
+                <TakeawaysEditor
+                  definition={entry.definition}
+                  data={currentData}
+                  items={takeaways}
+                  onChange={setTakeaways}
+                  showSql={showSql}
+                  onShowSqlChange={setShowSql}
+                />
+              </section>
+            </>
+          ) : null}
 
           <Separator />
 
@@ -981,9 +1345,7 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
                   spellCheck={false}
                   className={cn(
                     'h-64 w-full resize-y rounded-md border bg-muted/30 p-2 font-mono text-[11px] leading-relaxed text-foreground outline-none focus:ring-2 focus:ring-ring',
-                    dataError
-                      ? 'border-destructive/60'
-                      : 'border-border/60',
+                    dataError ? 'border-destructive/60' : 'border-border/60',
                   )}
                 />
                 <div className="flex items-center gap-2 text-[11px]">
@@ -1028,7 +1390,9 @@ function PreviewSurface({
   block,
   result,
 }: {
-  block: ReturnType<typeof Object> extends never ? never : Parameters<typeof BlockRenderer>[0]['block'];
+  block: ReturnType<typeof Object> extends never
+    ? never
+    : Parameters<typeof BlockRenderer>[0]['block'];
   result: Parameters<typeof BlockRenderer>[0]['result'];
 }) {
   // Erro: dados inválidos → mostra skeleton gentil sem quebrar a UI.

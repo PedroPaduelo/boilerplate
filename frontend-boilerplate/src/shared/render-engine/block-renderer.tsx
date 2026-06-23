@@ -9,15 +9,23 @@
  *
  *  2) ENCAPSULAMENTO VISUAL (frame): quando `framed`, blocos de VISUALIZAÇÃO
  *     (kind=chart, exceto KPIs/métricas que já são cards) são envolvidos no
- *     shell padrão `ChartWidget` — header (título + tipo) + corpo + footer
- *     (query SQL + duração). Padroniza todos os cards do dashboard.
+ *     shell padrão `ChartWidget` — header (título + tipo) + corpo + rodapé
+ *     (takeaways + query SQL + duração). Padroniza todos os cards do dashboard.
+ *
+ * TAKEAWAYS (canônico): `def.deriveTakeaway?.(data)` pode retornar
+ *   `string | string[] | undefined`. O BlockRenderer normaliza p/ o array
+ *   `{ enabled: true, text: ... }[]` que o `ChartWidget` aceita. Cada string
+ *   vira uma linha com lâmpada; `undefined`/vazio = nenhuma linha.
  *
  * Estados (doc 32 §4): skeleton | loading | success | error | empty.
  */
 import type { ReactNode } from 'react';
 import type { Block, BlockDataResult, DashboardDataPayload } from '@dashboards/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChartWidget } from '@/components/ui/chart-widget';
+import {
+  ChartWidget,
+  type ChartWidgetTakeaway,
+} from '@/components/ui/chart-widget';
 import { cn } from '@/shared/lib/utils';
 import { getBlock } from './registry';
 import type { BlockData, BlockRenderState } from './types';
@@ -87,6 +95,51 @@ function durationOf(result: BlockDataResult | undefined): number | undefined {
     return meta?.durationMs;
   }
   return undefined;
+}
+
+/** Lê `block.takeaways` (lista editável pelo playground) de forma segura. */
+function takeawaysOf(
+  block: Block,
+): ChartWidgetTakeaway[] | undefined {
+  const raw = (block as { takeaways?: unknown }).takeaways;
+  if (!Array.isArray(raw)) return undefined;
+  // Filtra silenciosamente entradas malformadas (não é string/não tem enabled).
+  return raw
+    .map((t): ChartWidgetTakeaway | null => {
+      if (t == null || typeof t !== 'object') return null;
+      const obj = t as { enabled?: unknown; text?: unknown };
+      if (typeof obj.text !== 'string') return null;
+      return {
+        enabled: Boolean(obj.enabled),
+        text: obj.text,
+      };
+    })
+    .filter((t): t is ChartWidgetTakeaway => t !== null);
+}
+
+/** Normaliza o retorno de `deriveTakeaway` (string | string[] | undefined)
+ *  para o array que o ChartWidget consome. Aceita retrocompat: `string` vira
+ *  `[{ enabled: true, text }]`. */
+function normalizeTakeaway(
+  raw: string | string[] | undefined,
+): ChartWidgetTakeaway[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+      .map((s) => ({ enabled: true, text: s }));
+  }
+  // string (legado) → 1 item
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return [];
+  return [{ enabled: true, text: trimmed }];
+}
+
+/** Lê `block.showSql` (boolean) — `undefined` significa "default = true". */
+function showSqlOf(block: Block): boolean {
+  const raw = (block as { showSql?: unknown }).showSql;
+  if (typeof raw === 'boolean') return raw;
+  return true;
 }
 
 export function BlockRenderer({
@@ -197,10 +250,19 @@ export function BlockRenderer({
 
   if (shouldFrame) {
     const loading = state === 'skeleton' || state === 'loading';
-    // Takeaway (insight de rodapé): cada bloco decide como derivá-lo a partir
-    // dos seus dados (opt-in). Só calcula no sucesso, com dado presente.
-    const takeaway =
-      state === 'success' && dataVal != null ? def.deriveTakeaway?.(dataVal) : undefined;
+    // Takeaways: 2 fontes, mescladas em ORDEM (takeaways explícitas primeiro
+    // → derivadas do bloco depois). Isso permite o playground sobrescrever
+    // o `deriveTakeaway` por bloco. Filtra por enabled no ChartWidget.
+    const blockTakeaways = takeawaysOf(block) ?? [];
+    const derivedTakeaways =
+      state === 'success' && dataVal != null
+        ? normalizeTakeaway(def.deriveTakeaway?.(dataVal))
+        : [];
+    const allTakeaways: ChartWidgetTakeaway[] = [
+      ...blockTakeaways,
+      ...derivedTakeaways,
+    ];
+    const showSql = showSqlOf(block);
     return (
       <div
         data-slot="block"
@@ -214,7 +276,8 @@ export function BlockRenderer({
           query={block.dataBinding?.query}
           durationMs={durationOf(ownResult)}
           loading={loading}
-          takeaway={takeaway}
+          takeaways={allTakeaways}
+          showSql={showSql}
         >
           {loading ? null : body}
         </ChartWidget>

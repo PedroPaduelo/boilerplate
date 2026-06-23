@@ -49,6 +49,14 @@ export type BlockComponent<P = Record<string, unknown>, D = BlockData> = Compone
 >;
 
 /**
+ * Retorno de `BlockDefinition.deriveTakeaway`. Cada string vira uma linha
+ * de insight no rodapé do `ChartWidget`. `string` (legado, 1 item) ainda é
+ * aceito por retrocompat — `BlockRenderer` normaliza p/ `string[]` antes de
+ * passar pro ChartWidget.
+ */
+export type TakeawayResult = string | string[] | undefined;
+
+/**
  * Contrato que TODO bloco do catálogo implementa.
  * Exportado como `definition` (e `default`) em `catalog/<type>/component.tsx`.
  */
@@ -62,12 +70,18 @@ export interface BlockDefinition<P = Record<string, unknown>, D = BlockData> {
   /** Dado de exemplo que casa com o `dataContract` (preview/dev/testes). */
   fixture?: D | null;
   /**
-   * (Opcional) Deriva uma frase curta de INSIGHT de negócio ("takeaway") a
-   * partir dos dados já resolvidos no shape do bloco — exibida no rodapé do
-   * `ChartWidget`. Retorne `undefined` para não exibir nada. Mantém o cálculo
-   * do insight no PRÓPRIO bloco (padrão escalável p/ todo o catálogo, opt-in).
+   * (Opcional) Deriva 0..N frases curtas de INSIGHT de negócio ("takeaway")
+   * a partir dos dados já resolvidos no shape do bloco — exibidas no
+   * rodapé do `ChartWidget`. Retorne:
+   *  - `undefined` / vazio → nenhum insight renderizado;
+   *  - `string` → 1 linha (retrocompat com a versão 1 linha);
+   *  - `string[]` → 1 linha por string (padrão atual — cada string já
+   *    vira 1 item `{ enabled: true, text }` no ChartWidget).
+   *
+   * Mantém o cálculo do insight no PRÓPRIO bloco (padrão escalável p/ todo
+   * o catálogo, opt-in).
    */
-  deriveTakeaway?: (data: D) => string | undefined;
+  deriveTakeaway?: (data: D) => TakeawayResult;
 }
 
 /**

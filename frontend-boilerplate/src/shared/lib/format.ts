@@ -113,3 +113,52 @@ export function formatKpiValue(value: unknown, unit?: string): string {
   if (Math.abs(n) >= 10000) return formatCompactNumberBR(n);
   return formatNumberBR(n, 2);
 }
+
+/**
+ * Formata uma duração em MILISSEGUNDOS em uma string PT-BR legível
+ * (escala automática conforme a magnitude):
+ *
+ *  - `< 1_000`         → `"142ms"`        (1 unidade = 1ms)
+ *  - `< 60_000`        → `"1.4s"`         (1 casa decimal)
+ *  - `< 3_600_000`     → `"2min 15s"`     (minutos + segundos inteiros)
+ *  - `≥ 3_600_000`     → `"1h 5min"`      (horas + minutos inteiros; sem segundos)
+ *
+ * Aceita `number` ou `string` numérica (coerção branda via `toNumber`).
+ * `null` / `undefined` / `NaN` / `0` → `"—"` (sentinel de "sem duração"
+ * presente em todo o DS — ex.: query não executada ainda).
+ *
+ * Por que existe: o `ChartWidget` precisa exibir a duração da query SQL no
+ * rodapé técnico. Mostrar `durationMs` cru ("142") ou com sufixo hard-coded
+ * ("142ms") é quebradiço p/ queries lentas (60_000ms = "60000ms" — feio).
+ * A escala automática mantém a coluna curta em todas as magnitudes que
+ * acontecem na vida real: do cache hit (5ms) ao ETL pesado (2h).
+ */
+export function formatDuration(ms: unknown): string {
+  const n = toNumber(ms);
+  if (n == null || n === 0) return '—';
+
+  const MS_PER_SECOND = 1_000;
+  const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+  const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+
+  if (n < MS_PER_SECOND) {
+    // ex.: 142 → "142ms"
+    return `${Math.round(n)}ms`;
+  }
+  if (n < MS_PER_MINUTE) {
+    // ex.: 1400 → "1.4s" (1 casa). Locale PT-BR usa "," como decimal.
+    return `${formatNumberBR(n / MS_PER_SECOND, 1)}s`;
+  }
+  if (n < MS_PER_HOUR) {
+    // ex.: 135_000 → "2min 15s" (min + seg inteiros; sem casa decimal).
+    const totalSeconds = Math.floor(n / MS_PER_SECOND);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}min ${seconds}s`;
+  }
+  // >= 1h: "1h 5min" (sem segundos — longa duração não precisa dessa precisão).
+  const totalMinutes = Math.floor(n / MS_PER_MINUTE);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}min`;
+}

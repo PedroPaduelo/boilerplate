@@ -1,15 +1,39 @@
 /**
  * Bloco `bar_chart` (shape 'series') — usa o Vitrine `BarChart`.
  * Mapeia cada ponto {x,y} da série para {label,value} do gráfico e expõe um
- * `deriveTakeaway` (insight de rodapé exibido pelo ChartWidget).
+ * `deriveTakeaway` (insights de rodapé exibidos pelo ChartWidget).
  *
  * Prop de COR: `accent` é enum fechado (`chart-1..5 | 'primary'`), validado
  * pelo schema. Tradução enum → classe Tailwind via `accentClass()` em
  * `lib/accent.ts`. Default: `'chart-1'`.
  *
- * Prop `palette` (ENTREGA 3): aceita o valor; o render atual é single-série
- * (não cicla cores), então o valor não tem efeito ainda — entra em turno futuro.
+ * Prop `palette` (ENTREGA 3 — Turno 2 do playground): aceita 3 valores
+ *  - `'single'` (default): toda a série usa `accent` (1 cor).
+ *  - `'multi'`: cada ponto vira uma cor do PALETTE (chart-1..5 cíclico).
+ *    ⚠️ LIMITAÇÃO CONHECIDA (2026-06-23): o `BarChart` da Vitrine
+ *    (`@/components/ui/bar-chart.tsx`) é single-série por design — recebe
+ *    um `accent` único e aplica a TODAS as barras. A prop `palette: 'multi'`
+ *    é aceita pelo schema, mas o RENDER atual ainda usa `accent` (não
+ *    cicla). Quando virar necessário multi-série real, o caminho é:
+ *      1) ou estender o `BarChart` para aceitar uma classe por ponto
+ *         (passando `accentClass(i)` em vez de `accent`), o que implica
+ *         revisar o cálculo de max/largura relativa entre séries;
+ *      2) ou empilhar via `stacked: true` com mapeamento de série (já
+ *         aceito no schema, ainda não implementado);
+ *      3) ou trocar pelo `AreaChart` (multi-série por natureza) caso o
+ *         uso de empilhamento não seja desejado.
+ *    Por ora, quando `palette === 'multi'`, emitimos um `console.warn` em
+ *    dev pra deixar o "fio solto" visível e não travar a renderização.
+ *  - `'none'`: o bloco segue igual a `'single'` (placeholder p/ futuras
+ *    variações — manter o slot).
+ *
+ * Prop `valueFormatter` (opcional, novo): permite trocar o formatador do
+ * valor exibido na barra / tooltip / valor horizontal. Default interno é
+ * `formatCompactBRL` (consistente com o padrão atual). O objetivo é
+ * normalizar — se você quiser moeda crua, número inteiro etc., basta
+ * passar um formatter via prop (sem mexer no componente).
  */
+import { useEffect, useRef } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart } from '@/components/ui/bar-chart';
 import { HBarChart } from '@/components/ui/h-bar-chart';
@@ -25,6 +49,13 @@ type BarProps = {
   orientation?: 'vertical' | 'horizontal';
   accent?: AccentColor;
   palette?: 'single' | 'multi' | 'none';
+  /**
+   * Formatter do valor exibido no topo da barra / tooltip / valor lateral
+   * (no `HBarChart`). Default: `formatCompactBRL` ("R$ 2,61 bi"). O bloco
+   * normaliza para o caller trocar via prop — sem precisar editar o
+   * componente.
+   */
+  valueFormatter?: (value: number) => string;
 };
 
 /**
@@ -34,9 +65,43 @@ type BarProps = {
  */
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
+function defaultFormatter(value: number): string {
+  return formatCompactBRL(value);
+}
+
 export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data }) => {
-  // `palette` aceito no schema; render atual é single (não cicla cores).
   const points = (data ?? []) as SeriesPoint[];
+
+  // `valueFormatter` flexível: usa a prop se passada, senão o default BRL
+  // (mantém o comportamento atual do bloco).
+  const valueFormatter = props.valueFormatter ?? defaultFormatter;
+
+  // `palette === 'multi'` é aceito pelo schema, mas o BarChart da Vitrine é
+  // single-série (1 accent pra todas as barras) — vide JSDoc do bloco.
+  // Avisamos em dev pra deixar a limitação visível. Emitido UMA vez por
+  // instância (useRef evita flood no re-render).
+  const warnedMultiRef = useRef(false);
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      props.palette === 'multi' &&
+      !warnedMultiRef.current
+    ) {
+      console.warn(
+        '[bar_chart] `palette: "multi"` ainda não cicla cores — o BarChart da Vitrine ' +
+          'aceita um único `accent`. Render atual usa `accent` único. ' +
+          'Veja JSDoc do componente para opções de implementação futura.',
+      );
+      warnedMultiRef.current = true;
+    }
+  }, [props.palette]);
+
+  // Reseta o flag se a prop voltar a "single"/"none" — permite novo aviso
+  // se o user reativar (caso comum: testar e desfazer).
+  useEffect(() => {
+    if (props.palette !== 'multi') warnedMultiRef.current = false;
+  }, [props.palette]);
+
   const series = points.map((d) => ({
     label: String(d.x),
     value: d.y ?? 0,
@@ -51,7 +116,7 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
       <HBarChart
         series={series}
         accent={accent}
-        valueFormatter={(v) => formatCompactBRL(v)}
+        valueFormatter={valueFormatter}
       />
     );
   }
@@ -59,22 +124,46 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
     <BarChart
       series={series}
       accent={accent}
-      valueFormatter={(v) => formatCompactBRL(v)}
+      valueFormatter={valueFormatter}
     />
   );
 };
 
 /**
- * Insight de rodapé (takeaway): aponta a categoria de MAIOR valor da série
- * (ex.: "Maior valor: Mai (R$ 110)"). Valor formatado em PT-BR via format.ts —
- * mesmo formatter (`formatCompactBRL`) usado nas barras, p/ consistência.
+ * Insights de rodapé (canônico — Turno 4): retorna 1 ou 2 frases curtas
+ * (cada uma vira 1 linha com lâmpada no ChartWidget):
+ *  - SEMPRE a 1ª: "Maior valor: {x} ({y em BRL compacto})".
+ *  - OPCIONAL 2ª: "Menor valor: {x} ({y em BRL compacto})" — só se
+ *    houver mais de 1 ponto E o menor valor for > 0 (evita mostrar
+ *    "Menor valor: X (R$ 0)" quando todos os pontos são zero).
+ *
+ * Retorno `string[]` (novo padrão); o BlockRenderer normaliza p/ o array
+ * `{ enabled: true, text }[]` que o ChartWidget consome. Formato PT-BR via
+ * `formatCompactBRL` (mesmo formatter das barras → consistência visual).
  */
-function deriveTakeaway(data: SeriesData): string | undefined {
+function deriveTakeaway(data: SeriesData): string[] | undefined {
   const points = (data ?? []) as SeriesPoint[];
   if (points.length === 0) return undefined;
+
   const top = points.reduce((best, p) => ((p.y ?? 0) > (best.y ?? 0) ? p : best));
   if ((top.y ?? 0) <= 0) return undefined;
-  return `Maior valor: ${String(top.x)} (${formatCompactBRL(top.y ?? 0)})`;
+
+  const insights: string[] = [
+    `Maior valor: ${String(top.x)} (${formatCompactBRL(top.y ?? 0)})`,
+  ];
+
+  if (points.length > 1) {
+    const bottom = points.reduce((best, p) =>
+      (p.y ?? 0) < (best.y ?? 0) ? p : best,
+    );
+    if ((bottom.y ?? 0) > 0 && bottom !== top) {
+      insights.push(
+        `Menor valor: ${String(bottom.x)} (${formatCompactBRL(bottom.y ?? 0)})`,
+      );
+    }
+  }
+
+  return insights;
 }
 
 export const definition = defineBlock<BarProps, SeriesData>({
