@@ -173,23 +173,36 @@ export function BlockRenderer({
   // ----- CONTAINER (composição recursiva: section / bento / ...) -----
   const childBlocks = Array.isArray(block.blocks) ? block.blocks : [];
   if (childBlocks.length > 0) {
+    // Renderiza UM filho com a moldura/estado certos. Os containers que
+    // dispõem os filhos manualmente (bento, resizable, expandable) usam esta
+    // função via `renderChild`; o grid padrão abaixo também a usa.
+    const renderChild = (child: Block): ReactNode => (
+      <BlockRenderer
+        block={child}
+        data={data}
+        result={data?.blocks?.[child.id]}
+        framed
+      />
+    );
+    // Grid PADRÃO de 12 colunas (retrocompat — `section`/`dashboard_panel`
+    // usam via `children`). `span` = largura (1..12); `rowSpan` (opcional,
+    // default 1) = altura, para layouts mosaico/bento.
     const childGrid = (
       <div data-slot="block-children" className="grid grid-cols-12 gap-4">
         {childBlocks.map((child) => {
           const span = child.span ?? 12;
+          const rowSpan = (child as { rowSpan?: number }).rowSpan ?? 1;
           return (
             <div
               key={child.id}
               data-slot="block-child-cell"
               className="min-w-0"
-              style={{ gridColumn: `span ${span} / span ${span}` }}
+              style={{
+                gridColumn: `span ${span} / span ${span}`,
+                gridRow: rowSpan > 1 ? `span ${rowSpan} / span ${rowSpan}` : undefined,
+              }}
             >
-              <BlockRenderer
-                block={child}
-                data={data}
-                result={data?.blocks?.[child.id]}
-                framed
-              />
+              {renderChild(child)}
             </div>
           );
         })}
@@ -203,7 +216,13 @@ export function BlockRenderer({
         data-block-container="true"
         className={className}
       >
-        <Component props={props} state="success" data={undefined}>
+        <Component
+          props={props}
+          state="success"
+          data={undefined}
+          childBlocks={childBlocks}
+          renderChild={renderChild}
+        >
           {childGrid}
         </Component>
       </div>

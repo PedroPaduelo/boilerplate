@@ -39,8 +39,25 @@ export interface BlockComponentProps<P = Record<string, unknown>, D = BlockData>
    * em blocos-CONTAINER (ex.: `section`, `bento`). O componente container só
    * desenha seu "shell" (header + moldura) e coloca `children` no corpo.
    * `undefined` em blocos folha.
+   *
+   * Use `children` quando o container só quer o GRID PADRÃO (12 colunas) — é
+   * o caminho simples e retrocompatível (ex.: `section`, `dashboard_panel`).
    */
   children?: ReactNode;
+  /**
+   * Sub-blocos CRUS (não renderizados) — id/type/span/rowSpan/dataBinding.
+   * Injetado junto com `children` em containers. Use quando o container quer
+   * CONTROLAR a disposição dos filhos (bento mosaico, painéis arrastáveis,
+   * cards que expandem) em vez do grid padrão. Cada filho é renderizado com
+   * `renderChild(block)`. `undefined` em blocos folha.
+   */
+  childBlocks?: Block[];
+  /**
+   * Renderiza UM sub-bloco (com a moldura/estado certos). Usado pelos
+   * containers que dispõem os filhos manualmente (com `childBlocks`).
+   * `undefined` em blocos folha.
+   */
+  renderChild?: (block: Block) => ReactNode;
 }
 
 /** Assinatura de um componente de bloco. */
