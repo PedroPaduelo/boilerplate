@@ -33,6 +33,20 @@ export interface KpiCardProps
    * uma variação positiva passa a ser sinalizada como negativa.
    */
   higherIsBetter?: boolean
+  /**
+   * Cor de DESTAQUE do card (resolvida por `resolveAccent()` no bloco do
+   * catálogo). Forma de CLASSE Tailwind de fundo (ex.: `bg-chart-1`,
+   * `bg-purple-500`). Aplicada ao rail lateral (sempre visível) e ao chip
+   * do ícone (fundo sólido). Quando ausente, o card usa o estilo neutro.
+   * Mutuamente exclusiva com `accentStyle` (a UI usa o que vier).
+   */
+  accentClassName?: string
+  /**
+   * Cor de DESTAQUE via estilo inline (ex.: `{ background: '#40E0D0' }`).
+   * Usada para cores CSS cruas (hex/rgb/oklch/gradient) que não cabem numa
+   * classe Tailwind. Aplicada ao rail lateral e ao fundo do chip do ícone.
+   */
+  accentStyle?: React.CSSProperties
 }
 
 function KpiCard({
@@ -46,24 +60,49 @@ function KpiCard({
   icon: Icon,
   trend,
   higherIsBetter = true,
+  accentClassName,
+  accentStyle,
   className,
   ...props
 }: KpiCardProps) {
   const positive = trend ? trend === "up" : (delta ?? 0) >= 0
   const good = positive === higherIsBetter
+  const hasAccent = Boolean(accentClassName || accentStyle)
   return (
     <div
       data-slot="kpi-card"
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm",
+        "relative flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm",
         className
       )}
       {...props}
     >
+      {/* Rail de destaque (accent) — sempre visível quando há accent, mesmo
+          sem ícone. Garante que a cor de destaque do card "apareça". */}
+      {hasAccent ? (
+        <span
+          aria-hidden
+          data-slot="kpi-accent-rail"
+          className={cn(
+            "absolute inset-y-0 left-0 w-1",
+            accentStyle ? undefined : accentClassName
+          )}
+          style={accentStyle}
+        />
+      ) : null}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{label}</span>
         {Icon ? (
-          <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <span
+            data-slot="kpi-icon"
+            className={cn(
+              "flex size-8 items-center justify-center rounded-lg",
+              hasAccent
+                ? cn("text-white", accentStyle ? undefined : accentClassName)
+                : "bg-muted text-muted-foreground"
+            )}
+            style={accentStyle}
+          >
             <Icon className="size-4" />
           </span>
         ) : null}
