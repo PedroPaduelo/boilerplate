@@ -115,6 +115,60 @@ export function formatKpiValue(value: unknown, unit?: string): string {
 }
 
 /**
+ * Catálogo de FORMATADORES DE VALOR para os blocos do catálogo (escolhidos via
+ * `valueFormat` enum no schema). Cada string do enum casa 1:1 com um helper
+ * PT-BR de `format.ts` — a UI base (`HBarChart`/`BarChart`/etc.) recebe uma
+ * `valueFormatter: (v: number) => string`, montada no component.tsx a partir
+ * deste enum. PT-BR via `Intl.NumberFormat`.
+ *
+ * Por que enum (não string livre):
+ *  - autocomplete exato no editor de blocos do playground;
+ *  - validação AJV na borda (em vez de quebrar em runtime);
+ *  - coberto por testes de schema (`manifest.propsSchema.valueFormat.enum`).
+ */
+export const VALUE_FORMATS = [
+  'BRL',
+  'compactBRL',
+  'number',
+  'compactNumber',
+  'percent',
+] as const;
+
+/** Tipo da prop `valueFormat` (union literal dos valores do enum). */
+export type ValueFormat = (typeof VALUE_FORMATS)[number];
+
+/**
+ * Resolve um `valueFormat` (enum) no `valueFormatter` (função) usado pela UI
+ * base. Aceita `unknown` (number | string numérica | null) e devolve SEMPRE
+ * uma string formatada em PT-BR (sentinel `"—"` para entradas inválidas,
+ * igual aos outros helpers deste módulo).
+ *
+ * Default interno: `'compactBRL'` (consistente com o padrão histórico dos
+ * blocos do catálogo). Valores fora do enum caem no default (defensivo —
+ * AJV já teria rejeitado, mas se a prop vier nula/indefinida/errada, não
+ * quebramos o render).
+ */
+export function formatValueByEnum(
+  value: unknown,
+  format: ValueFormat | string | undefined | null,
+): string {
+  switch (format) {
+    case 'BRL':
+      return formatBRL(value);
+    case 'compactBRL':
+      return formatCompactBRL(value);
+    case 'number':
+      return formatNumberBR(value);
+    case 'compactNumber':
+      return formatCompactNumberBR(value);
+    case 'percent':
+      return formatPercentBR(value);
+    default:
+      return formatCompactBRL(value);
+  }
+}
+
+/**
  * Formata uma duração em MILISSEGUNDOS em uma string PT-BR legível
  * (escala automática conforme a magnitude):
  *
