@@ -1,5 +1,5 @@
 /**
- * Cliente da rota PÚBLICA `GET /public/:token` (T-B4) — lado FE da T-G1.
+ * Cliente das rotas PÚBLICAS do share (T-B4) — lado FE da T-G1.
  *
  * IMPORTANTE (não vazar auth): usamos uma instância axios DEDICADA, SEM os
  * interceptors do `apiClient` (que anexam o JWT do usuário e disparam logout em
@@ -9,7 +9,11 @@
  */
 import axios, { AxiosError } from 'axios';
 import { env } from '@/shared/lib/env';
-import type { PublicArtifactResponse, ShareBlockReason } from './types';
+import type {
+  PublicArtifactResponse,
+  PublicDashboardDataPayload,
+  ShareBlockReason,
+} from './types';
 
 /** Instância "limpa" — sem Authorization, sem redirect em 401. */
 const publicClient = axios.create({
@@ -45,13 +49,37 @@ export function reasonFromStatus(status: number | undefined): ShareBlockReason {
 
 export const shareApi = {
   /**
-   * Abre o link público. Sucesso → artefato em modo PUBLISHED. Falha → lança
-   * `ShareLinkError` com o motivo (revoked/expired/not_found/error).
+   * Abre o link público. Sucesso → artefato em modo PUBLISHED (incluindo o
+   * snapshot de dados `publishedDataPayload` no caso de dashboard).
+   * Falha → lança `ShareLinkError` com o motivo (revoked/expired/not_found/error).
    */
   open: async (token: string): Promise<PublicArtifactResponse> => {
     try {
       const { data } = await publicClient.get<PublicArtifactResponse>(
         `/public/${encodeURIComponent(token)}`,
+      );
+      return data;
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        const status = err.response?.status;
+        const body = err.response?.data as { message?: string } | undefined;
+        throw new ShareLinkError(reasonFromStatus(status), status, body?.message);
+      }
+      throw new ShareLinkError('error');
+    }
+  },
+
+  /**
+   * Snapshot público de dados (T-G1 bugfix do share público) — endpoint
+   * dedicado `GET /public/:token/data`. Retorna o `DashboardDataPayload`
+   * materializado no publish (modo `published`, blocos já no shape).
+   * Em dashboards legados (publicados antes do bugfix) pode vir `blocks: {}`.
+   * Mesmo mapeamento de erro do `open`.
+   */
+  openData: async (token: string): Promise<PublicDashboardDataPayload> => {
+    try {
+      const { data } = await publicClient.get<PublicDashboardDataPayload>(
+        `/public/${encodeURIComponent(token)}/data`,
       );
       return data;
     } catch (err) {

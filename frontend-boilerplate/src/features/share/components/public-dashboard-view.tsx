@@ -1,17 +1,16 @@
 /**
- * Página PÚBLICA read-only (T-G1) — `/public/:token`, SEM auth.
+ * Página PÚBLICA read-only (T-G1, com bugfix T-G1) — `/public/:token`, SEM auth.
  *
- * Consome `GET /public/:token` (T-B4) via `usePublicArtifact` (cliente sem JWT).
- * Renderiza o artefato em modo PUBLISHED com o MESMO render-engine (T-I) — sem
- * nenhuma ação autenticada (não há FilterBar interativa, edição, share, etc.).
+ * Consome `GET /public/:token` (T-B4) via `usePublicArtifact` (cliente sem JWT)
+ * para título/layout/expira; e `GET /public/:token/data` para o snapshot
+ * materializado de dados (T-G1 bugfix — antes o batch era autenticado e a
+ * página não conseguia hidratar blocos de dados). Renderiza o artefato em modo
+ * PUBLISHED com o MESMO render-engine (T-I).
  *
  * Bloqueios (mapeados do status HTTP pelo `shareApi`):
  *  - revogado (403) / expirado (410) / inexistente (404) → tela de bloqueio clara.
  *
- * LIMITAÇÃO consciente do MVP: não existe endpoint público de DADOS (o batch
- * `POST /dashboards/:id/data` é autenticado, T-C). Logo, blocos de dados ficam
- * em estado de carregamento; o conteúdo narrativo (título/texto) renderiza
- * normalmente. A página é, antes de tudo, o relatório read-only.
+ * Sem filtro interativo (read-only), sem ações autenticadas.
  */
 import { useParams } from 'react-router-dom';
 import { Ban, Clock, FileQuestion, Lock, ShieldAlert } from 'lucide-react';
@@ -19,12 +18,21 @@ import type { ComponentType } from 'react';
 import { DashboardRenderer, BlockRenderer } from '@/shared/render-engine';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { usePublicArtifact } from '../hooks';
+import { usePublicArtifact, usePublicData } from '../hooks';
 import type { ShareBlockReason } from '../types';
 
 export function PublicDashboardView() {
   const { token } = useParams<{ token: string }>();
   const { data, isLoading, isError, error } = usePublicArtifact(token);
+
+  // Snapshot de dados: só ligamos se o token for de DASHBOARD (a rota
+  // dedicada /public/:token/data rejeita CHART com 400). A UI consome SÓ
+  // quando a página é de fato um dashboard.
+  const isDashboard = data?.targetType === 'DASHBOARD';
+  const { data: dataPayload, isLoading: dataLoading } = usePublicData(
+    token,
+    isDashboard,
+  );
 
   if (isLoading) {
     return (
@@ -64,7 +72,27 @@ export function PublicDashboardView() {
       </header>
 
       {data.targetType === 'DASHBOARD' && data.dashboard ? (
-        <DashboardRenderer layout={data.dashboard.publishedLayout} />
+        // Snapshot pode estar em `data.dashboard.publishedDataPayload` (legado,
+        // embutido no GET /public/:token) OU no `dataPayload` (endpoint
+        // dedicado). Preferimos o dedicado quando já chegou (mais rico e
+        // sempre presente pós-bugfix). Enquanto o segundo ainda está
+        // carregando, mostramos skeleton nos blocos de dados — mas o
+        // `publishedLayout` (narrativos) já renderiza, então a página nunca
+        // fica vazia.
+        <DashboardRenderer
+          layout={data.dashboard.publishedLayout}
+          data={dataPayload ?? data.dashboard.publishedDataPayload ?? undefined}
+        />
+      ) : null}
+
+      {data.targetType === 'DASHBOARD' && dataLoading ? (
+        // Skeleton sutil só para os blocos de dados enquanto o snapshot chega.
+        // O `publishedLayout` (chips de filtro + narrativos) já está visível
+        // acima; isto só ocupa o espaço dos blocos de dados.
+        <div data-slot="public-data-skeleton" aria-busy className="mt-4 space-y-3">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
       ) : null}
 
       {data.targetType === 'CHART' && data.chart ? (
