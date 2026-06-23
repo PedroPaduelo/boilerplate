@@ -154,20 +154,27 @@
     height: 100%;
   }
   /* Trava scroll no documento: o shell cuida do scroll interno (main/sidebar).
-     `overflow: hidden` no <html> é IGNORADO pelos browsers (sempre tratado
-     como 'auto' por compatibilidade) — por isso precisamos de `overflow:
-     clip` + `!important` para vencer resets/libs de UI. Mantém
-     `overflow: hidden` no body como redundância e para o caso de browsers
-     antigos (clip não era suportado antes de 2022). */
+     Por que essa combinação toda:
+     - `overflow: hidden/clip` no <html> é IGNORADO pelos browsers (sempre
+       tratado como 'auto' por compatibilidade histórica) — o viewport
+       continua rolando e a sidebar desce junto.
+     - `overflow: hidden` no body também é contornável: childs com
+       overflow:visible podem propagar o scroll.
+     - Solução robusta: `position: fixed` no body + overflow:hidden. Body
+       vira um "viewport" de tamanho fixo (top:0/left:0/100%/100vh), sem
+       scroll possível; o shell dentro dele (sidebar + <main>) é que rola
+       internamente. Usado pelos apps de chat e shells de SO modernos. */
   html {
     @apply font-sans;
-    overflow: clip !important;
     height: 100% !important;
   }
   body {
     @apply bg-background text-foreground antialiased;
-    overflow: hidden !important;
+    position: fixed !important;
+    inset: 0 !important;
     height: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important;
   }
   #root {
     height: 100%;
