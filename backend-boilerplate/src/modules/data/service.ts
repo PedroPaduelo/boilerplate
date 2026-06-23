@@ -14,6 +14,7 @@ import {
   validateDashboardLayout,
   type BlockDataResult,
 } from '@dashboards/contracts';
+import type { Connection as PrismaConnection } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '@/http/routes/_errors';
 import { prisma } from '@/lib/prisma';
 import type { ActorContext } from '@/lib/rbac';
@@ -276,4 +277,83 @@ export async function buildDashboardData(
     generatedAt: new Date().toISOString(),
     blocks,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Hidratação de UM CHART isolado (usado pela tela /charts/:id — playground)
+// ---------------------------------------------------------------------------
+
+/** Forma mínima do dataBinding cru guardado no Chart (draft/published). */
+interface ChartBindingShape {
+  connectionId?: string;
+  query?: string;
+  params?: unknown[];
+  transform?: unknown;
+}
+
+/**
+ * Executa o `dataBinding` de UM chart e devolve o resultado JÁ transformado no
+ * shape do seu `dataContract` — é a versão REST do `preview_chart_data` (MCP),
+ * consumida pela tela de detalhe do gráfico (playground com dados reais).
+ *
+ * Sempre INLINE (sem cache/fila): a tela de edição precisa do dado fresco.
+ * Revalida a visibilidade do chart E da conexão referenciada (404 se invisível).
+ */
+export async function buildChartData(
+  chartId: string,
+  mode: DataMode,
+  ctx: ActorContext,
+): Promise<BlockDataResult> {
+  const chart = await prisma.chart.findUnique({
+    where: { id: chartId },
+    select: {
+      ownerId: true,
+      visibility: true,
+      departmentId: true,
+      catalogType: true,
+      draftDataBinding: true,
+      publishedDataBinding: true,
+    },
+  });
+  if (!chart || !canViewArtifact(chart, ctx)) {
+    throw new NotFoundError('Chart not found');
+  }
+
+  const bindingRaw = (
+    mode === 'published' ? chart.publishedDataBinding : chart.draftDataBinding
+  ) as ChartBindingShape | null;
+  if (!bindingRaw || !bindingRaw.connectionId || !bindingRaw.query) {
+    return {
+      blockId: chartId,
+      state: 'error',
+      error: { code: 'no_binding', message: `chart has no ${mode} dataBinding` },
+    };
+  }
+
+  // Revalida visibilidade da conexão (mesma política do block-resolver).
+  const conn = await prisma.connection.findUnique({
+    where: { id: bindingRaw.connectionId },
+  });
+  if (!conn || !canViewArtifact(conn, ctx)) {
+    return {
+      blockId: chartId,
+      state: 'error',
+      error: { code: 'forbidden_connection', message: 'referenced connection not accessible' },
+    };
+  }
+
+  const shape = getCatalogDataShape(chart.catalogType);
+
+  return executeBlockData(
+    {
+      blockId: chartId,
+      connection: toPgRunnerConnection(conn as PrismaConnection),
+      sql: bindingRaw.query,
+      paramsValues: Array.isArray(bindingRaw.params) ? bindingRaw.params : [],
+      transform: bindingRaw.transform,
+      shape,
+      cached: false,
+    },
+    { runQuery },
+  );
 }

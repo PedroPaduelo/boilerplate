@@ -118,6 +118,16 @@ function toEntry(definition: BlockDefinition): CatalogEntry {
   };
 }
 
+/**
+ * Retorna a entrada do catálogo para um `catalogType` específico (ex.: vinda do
+ * `chart.catalogType`), ou `undefined` se o tipo não existir no registry VIVO.
+ * Usado pela tela de detalhe do gráfico (playground com dados reais).
+ */
+export function getCatalogEntryByType(type: string): CatalogEntry | undefined {
+  const def = listBlocks().find((d) => d.type === type);
+  return def && !HIDDEN_TYPES.has(def.type) ? toEntry(def) : undefined;
+}
+
 /** Lista as entradas do catálogo, ordenadas (categoria → nome). */
 export function getCatalogEntries(): CatalogEntry[] {
   return listBlocks()

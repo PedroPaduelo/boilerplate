@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { auth } from '@/middlewares/auth';
 import { redisInstance } from '@/lib/redis';
 import { dashboardDataRoute } from './routes/dashboard-data';
+import { chartDataRoute } from './routes/chart-data';
 import { ensureQueryExecWorker } from './jobs/worker';
 
 /**
@@ -11,6 +12,7 @@ import { ensureQueryExecWorker } from './jobs/worker';
  * e `src/modules/README.md`). Superfície (doc 31):
  *
  *   POST /dashboards/:id/data    hidratação batch     artifacts:view
+ *   POST /charts/:id/data        hidrata um gráfico   artifacts:view
  *
  * Cache de DADOS (Redis, 2 níveis), fila `query-exec` (BullMQ, anti-stampede via
  * jobId=cacheKey) e emissão por Socket.IO (`block:queued|running|data|error`) na
@@ -25,6 +27,7 @@ const dataModule: FastifyPluginAsync = async (app) => {
   await app.register(auth);
 
   await dashboardDataRoute(app);
+  await chartDataRoute(app);
 
   // Sobe o worker da fila quando o app fica pronto e o Redis está disponível.
   app.addHook('onReady', async () => {

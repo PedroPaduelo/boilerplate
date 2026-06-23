@@ -1,5 +1,11 @@
+import type { BlockDataResult } from '@dashboards/contracts';
 import { apiClient } from '@/shared/lib/api-client';
-import type { Chart, ChartsResponse, CreateChartInput } from './types';
+import type {
+  Chart,
+  ChartsResponse,
+  CreateChartInput,
+  UpdateChartInput,
+} from './types';
 
 /**
  * Cliente HTTP da feature `charts`. Usa a instância única `apiClient`
@@ -24,6 +30,23 @@ export const chartsApi = {
   // POST /charts — cria (manage). Usado para duplicar.
   create: async (input: CreateChartInput): Promise<Chart> => {
     const { data } = await apiClient.post<Chart>('/charts', input);
+    return data;
+  },
+
+  // PATCH /charts/:id — edita o draft (manage + owner).
+  update: async (id: string, input: UpdateChartInput): Promise<Chart> => {
+    const { data } = await apiClient.patch<Chart>(`/charts/${id}`, input);
+    return data;
+  },
+
+  // POST /charts/:id/data — executa o dataBinding e devolve o resultado no shape.
+  getData: async (
+    id: string,
+    mode: 'draft' | 'published' = 'draft',
+  ): Promise<BlockDataResult> => {
+    const { data } = await apiClient.post<BlockDataResult>(`/charts/${id}/data`, {
+      mode,
+    });
     return data;
   },
 

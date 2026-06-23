@@ -58,3 +58,13 @@ export interface CreateChartInput {
   departmentId?: string | null;
   visibility?: ArtifactVisibility;
 }
+
+/** Patch do draft (todos opcionais; pelo menos 1 campo). Espelha o backend. */
+export interface UpdateChartInput {
+  title?: string;
+  catalogType?: string;
+  draftProps?: Record<string, unknown>;
+  draftDataBinding?: DataBinding;
+  departmentId?: string | null;
+  visibility?: ArtifactVisibility;
+}
