@@ -194,9 +194,17 @@ function isAccentEnum(enumValues: readonly unknown[]): boolean {
   });
 }
 
-/** Decide se a prop merece o ColorFieldEditor (nome conhecido OU enum de cor). */
+/** Decide se a prop merece o ColorFieldEditor:
+ *  - nome conhecido explícito (`accent`/`accentColor`/`paletteColor`), OU
+ *  - QUALQUER prop cujo nome termine em "color"/"Color" (ex.: `boxColor`,
+ *    `textColor`, `borderColor`) — convenção do catálogo p/ props de cor, OU
+ *  - enum cujos valores são todos da paleta DS (`chart-1..5` + primary).
+ *  Enums com `description` por valor (oneOf) NÃO são tratados como cor a
+ *  menos que os valores batam com ACCENT_COLORS. */
 function isColorProp(key: string, schema: PropSchema): boolean {
   if (COLOR_PROP_NAMES.has(key)) return true;
+  // Convenção: sufixo "color"/"Color" no nome da prop = editor de cor.
+  if (/color$/i.test(key)) return true;
   if (schema.enum && isAccentEnum(schema.enum)) return true;
   return false;
 }
