@@ -2,11 +2,16 @@
  * Bloco `bar_chart` (shape 'series') — usa o Vitrine `BarChart`.
  * Mapeia cada ponto {x,y} da série para {label,value} do gráfico e expõe um
  * `deriveTakeaway` (insight de rodapé exibido pelo ChartWidget).
+ *
+ * Prop de COR: `accent` é enum fechado (`chart-1..5 | 'primary'`), validado
+ * pelo schema. Tradução enum → classe Tailwind via `accentClass()` em
+ * `lib/accent.ts`. Default: `'chart-1'`.
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart } from '@/components/ui/bar-chart';
 import { HBarChart } from '@/components/ui/h-bar-chart';
 import { formatCompactBRL } from '@/shared/lib/format';
+import { accentClass, type AccentColor } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -15,7 +20,7 @@ import { fixture } from './fixture';
 type BarProps = {
   stacked?: boolean;
   orientation?: 'vertical' | 'horizontal';
-  accent?: string;
+  accent?: AccentColor;
 };
 
 /**
@@ -31,13 +36,16 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
     label: String(d.x),
     value: d.y ?? 0,
   }));
+  // `accentClass()` traduz enum (chart-N | primary) em classe Tailwind
+  // (`bg-chart-N` / `bg-primary`) que o UI base já consome nativamente.
+  const accent = accentClass(props.accent);
   // `orientation: "horizontal"` re-aproveita o `HBarChart` (mesma "família" do
   // DS, mesmo accent e mesmo formatter). Vertical é o default.
   if (props.orientation === 'horizontal') {
     return (
       <HBarChart
         series={series}
-        accent={props.accent ?? 'bg-chart-1'}
+        accent={accent}
         valueFormatter={(v) => formatCompactBRL(v)}
       />
     );
@@ -45,7 +53,7 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
   return (
     <BarChart
       series={series}
-      accent={props.accent ?? 'bg-chart-1'}
+      accent={accent}
       valueFormatter={(v) => formatCompactBRL(v)}
     />
   );

@@ -1,8 +1,13 @@
 /**
  * Manifesto do bloco `bar_chart` — compara valores entre categorias
  * (shape 'series', x categórico). Alinhado a @dashboards/contracts.
+ *
+ * Props de COR: `accent` é um enum FECHADO da paleta do DS (chart-1..5 +
+ * primary) — validado pelo schema, sem string solta. Helper:
+ * `frontend-boilerplate/src/shared/render-engine/lib/accent.ts`.
  */
 import type { BlockManifest } from '@dashboards/contracts';
+import { ACCENT_COLORS } from '../../lib/accent';
 
 export const manifest = {
   type: 'bar_chart',
@@ -16,7 +21,8 @@ export const manifest = {
     properties: {
       stacked: { type: 'boolean' },
       orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
-      accent: { type: 'string' },
+      // COR — enum fechado da paleta do DS (ver `lib/accent.ts`).
+      accent: { type: 'string', enum: [...ACCENT_COLORS], default: 'chart-1' },
     },
   },
   dataContract: {
@@ -31,7 +37,7 @@ export const manifest = {
       { x: 'Fev', y: 90 },
     ],
   },
-  defaultProps: { orientation: 'vertical', stacked: false },
+  defaultProps: { orientation: 'vertical', stacked: false, accent: 'chart-1' },
   minColumns: 1,
   maxRows: 5000,
   version: '1.0.0',
