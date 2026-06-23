@@ -33,6 +33,17 @@ import { cn } from "@/shared/lib/utils"
  *  - Se AMBOS vierem: `barStyle` VENCE `barClassName` (atributos de
  *    apresentação inline vencem classes CSS).
  *
+ * Cor da barra POR ITEM (Turno 6 — `palette: 'multi'`): cada item pode
+ * trazer o próprio `barClassName` (Tailwind) e/ou `barStyle` (CSS) — o
+ * caller do catálogo (ex.: bloco `bar_list`) passa `paletteClass(i)` em
+ * cada item para ciclar a palette de charts (chart-1..5). Precedência
+ * (Turno 6) por linha:
+ *   1) `item.barStyle` (CSS custom, vence tudo) — se setado, NÃO aplica
+ *      nenhuma classe Tailwind (evita `bg-#40E0D0` inválido)
+ *   2) `item.barClassName` (classe Tailwind, vence o default)
+ *   3) `barClassName` GLOBAL (fallback)
+ *   4) `bg-chart-1` (default, hardcoded)
+ *
  * @see https://www.tremor.so/docs/visualizations/bar-list
  * @see https://github.com/tremorlabs/tremor/blob/main/src/components/BarList/BarList.tsx
  */
@@ -47,6 +58,18 @@ export type BarListTremorItem<T> = T & {
   value: number
   /** Rótulo exibido dentro da barra. */
   name: string
+  /**
+   * (Turno 6) Classe Tailwind da cor da barra DESTE item. VENCE o
+   * `barClassName` global. Usado pelo caller do catálogo p/ ciclar
+   * `paletteClass(i)` (chart-1..5) em `palette: 'multi'`. Opcional.
+   */
+  barClassName?: string
+  /**
+   * (Turno 6) Estilo inline da barra DESTE item (ex.: `{ background: '#ff0000' }`).
+   * VENCE `barClassName` (do item e global) — atributos de apresentação
+   * inline > classes CSS. Use para cor CSS custom por linha.
+   */
+  barStyle?: React.CSSProperties
 }
 
 export interface BarListTremorProps<T = unknown>
@@ -115,79 +138,87 @@ function BarListTremor<T = unknown>({
       {...props}
     >
       <div className="relative w-full space-y-1.5">
-        {sortedData.map((item, index) => (
-          <Component
-            key={item.key ?? item.name}
-            onClick={() => {
-              if (onValueChange) onValueChange(item)
-            }}
-            className={cn(
-              "group w-full rounded-sm",
-              "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              onValueChange
-                ? [
-                    "m-0! cursor-pointer",
-                    "hover:bg-muted",
-                  ]
-                : "",
-            )}
-          >
-            <div
+        {sortedData.map((item, index) => {
+          // Precedência de cor POR ITEM (Turno 6):
+          //   1) item.barStyle (CSS custom, vence tudo)
+          //   2) item.barClassName (classe Tailwind do item)
+          //   3) barClassName GLOBAL (fallback)
+          //   4) bg-chart-1 (default, hardcoded)
+          // O `item.barStyle` (se setado) substitui `barStyle` global —
+          // atributos de apresentação inline do item vencem.
+          const itemBarStyle = item.barStyle ?? barStyle
+          const itemBarClassName =
+            item.barClassName ?? barClassName ?? "bg-chart-1"
+          return (
+            <Component
+              key={item.key ?? item.name}
+              onClick={() => {
+                if (onValueChange) onValueChange(item)
+              }}
               className={cn(
-                "flex items-center rounded-sm transition-all",
-                rowHeight,
-                // Barra: paleta de chart do DS (mesma de line/area/donut/scatter).
-                // Antes era `bg-blue-200/dark:bg-blue-900` (Tremor hardcoded).
-                // Precedência de cor (Turno 5):
-                //   1) `barStyle` (CSS custom, vence tudo)
-                //   2) `barClassName` (classe Tailwind, vence o default)
-                //   3) `bg-chart-1` (default, hardcoded)
-                barStyle ? '' : barClassName ?? "bg-chart-1",
+                "group w-full rounded-sm",
+                "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 onValueChange
-                  ? "group-hover:opacity-90"
+                  ? [
+                      "m-0! cursor-pointer",
+                      "hover:bg-muted",
+                    ]
                   : "",
-                index === sortedData.length - 1 ? "mb-0" : "",
-                showAnimation ? "duration-800" : "",
               )}
-              style={{ width: `${widths[index]}%`, ...barStyle }}
             >
-              <div className="absolute left-2 flex max-w-full pr-2">
-                {item.href ? (
-                  <a
-                    href={item.href}
-                    className={cn(
-                      "truncate whitespace-nowrap rounded-sm text-sm",
-                      // Texto SOBRE a barra colorida (`bg-chart-1`): usa o
-                      // "foreground do primário" do DS (`primary-foreground`),
-                      // que é branco-quase-puro no light e azul-escuro no
-                      // dark — ambos com contraste alto contra `--chart-1`.
-                      // O valor numérico à direita (fora da barra) continua
-                      // `text-foreground` por estar no fundo da página.
-                      "text-primary-foreground",
-                      "hover:underline hover:underline-offset-2",
-                      "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    )}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    {item.name}
-                  </a>
-                ) : (
-                  <p
-                    className={cn(
-                      "truncate whitespace-nowrap text-sm",
-                      // Mesma justificativa do <a> acima — ver bloco vizinho.
-                      "text-primary-foreground",
-                    )}
-                  >
-                    {item.name}
-                  </p>
+              <div
+                className={cn(
+                  "flex items-center rounded-sm transition-all",
+                  rowHeight,
+                  // Se `itemBarStyle` foi passado (cor CSS custom), NÃO aplica
+                  // a classe Tailwind (que viraria `bg-#40E0D0` etc.).
+                  itemBarStyle ? '' : itemBarClassName,
+                  onValueChange
+                    ? "group-hover:opacity-90"
+                    : "",
+                  index === sortedData.length - 1 ? "mb-0" : "",
+                  showAnimation ? "duration-800" : "",
                 )}
+                style={{ width: `${widths[index]}%`, ...itemBarStyle }}
+              >
+                <div className="absolute left-2 flex max-w-full pr-2">
+                  {item.href ? (
+                    <a
+                      href={item.href}
+                      className={cn(
+                        "truncate whitespace-nowrap rounded-sm text-sm",
+                        // Texto SOBRE a barra colorida (`bg-chart-1`): usa o
+                        // "foreground do primário" do DS (`primary-foreground`),
+                        // que é branco-quase-puro no light e azul-escuro no
+                        // dark — ambos com contraste alto contra `--chart-1`.
+                        // O valor numérico à direita (fora da barra) continua
+                        // `text-foreground` por estar no fundo da página.
+                        "text-primary-foreground",
+                        "hover:underline hover:underline-offset-2",
+                        "outline-none ring-0 ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {item.name}
+                    </a>
+                  ) : (
+                    <p
+                      className={cn(
+                        "truncate whitespace-nowrap text-sm",
+                        // Mesma justificativa do <a> acima — ver bloco vizinho.
+                        "text-primary-foreground",
+                      )}
+                    >
+                      {item.name}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          </Component>
-        ))}
+            </Component>
+          )
+        })}
       </div>
       <div>
         {sortedData.map((item, index) => (

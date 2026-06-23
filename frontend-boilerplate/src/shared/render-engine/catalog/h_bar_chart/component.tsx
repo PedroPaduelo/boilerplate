@@ -10,16 +10,14 @@
  *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.background` inline
  *     na barra (atributo de apresentação que vence a classe CSS).
  *
- * Modo de aplicação (Turno 5 — expandido do `bar_chart`):
+ * Modo de aplicação (Turno 6 — multi IMPLEMENTADO):
  *   - `palette: 'single'` (default) → TODAS as barras com a mesma cor (accent).
- *   - `palette: 'multi'` → cicla BG_PALETTE por item (cores diferentes
- *     por barra). O `HBarChart` ainda não cicla nativamente — vide warn.
+ *     Passa `style`/`accent` no nível GLOBAL do HBarChart.
+ *   - `palette: 'multi'` → cicla palette (chart-1..5) por item, via
+ *     `paletteClass(i)` aplicado em CADA datum (`barClassName` por linha).
+ *     (Turno 6 — IMPLEMENTADO: `HBarChartDatum` ganhou `barClassName?`/
+ *     `barStyle?` por item, então o ciclo vai direto na barra de cada linha.)
  *   - `palette: 'none'` → sem distinção (deixa o default do UI base).
- *
- * `palette: 'multi'` warning (Turno 5 — replicado do bar_chart): `palette:
- * 'multi'` é aceito pelo schema mas o `HBarChart` da Vitrine é single-cor
- * por design (`accent` único). Avisamos em dev pra deixar a limitação
- * visível.
  *
  * `valueFormatter` (opcional, novo Turno 5): permite trocar o formatador do
  * valor exibido no rótulo lateral + tooltip (default interno
@@ -31,12 +29,11 @@
  *  - OPCIONAL 2ª: "Menor: {label} ({y})" — só se houver +1 ponto e
  *    o menor > 0.
  */
-import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
-import { HBarChart } from '@/components/ui/h-bar-chart';
+import { HBarChart, type HBarChartDatum } from '@/components/ui/h-bar-chart';
 import { formatCompactNumberBR } from '@/shared/lib/format';
-import { resolveAccent } from '../../lib/accent';
+import { resolveAccent, paletteClass } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -64,7 +61,7 @@ type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
 export const Component: BlockComponent<HBarProps, SeriesData> = ({ props, data }) => {
   const points = (data ?? []) as SeriesPoint[];
-  const series = points.map((p) => ({ label: String(p.x), value: p.y ?? 0 }));
+  const palette = props.palette ?? 'single';
 
   // valueFormatter flexível: usa a prop se passada, senão o default.
   const valueFormatter = props.valueFormatter ?? formatCompactNumberBR;
@@ -73,36 +70,32 @@ export const Component: BlockComponent<HBarProps, SeriesData> = ({ props, data }
   // { style: { background } } (CSS). VENCE o default `bg-primary` do UI
   // base quando `style` está presente; senão, aplica a classe.
   const resolvedAccent = resolveAccent(props.accent);
-  const chartAccent: string =
+  const globalBarClassName: string =
     resolvedAccent.kind === 'class' ? resolvedAccent.className : 'bg-chart-1';
-  const chartStyle: CSSProperties | undefined =
+  const globalBarStyle: CSSProperties | undefined =
     resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
 
-  // `palette === 'multi'` warning: o HBarChart é single-cor por design
-  // (vide JSDoc do bloco). Avisamos em dev.
-  const warnedMultiRef = useRef(false);
-  useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      props.palette === 'multi' &&
-      !warnedMultiRef.current
-    ) {
-      console.warn(
-        '[h_bar_chart] `palette: "multi"` ainda não cicla cores — o HBarChart da Vitrine ' +
-          'aplica uma cor única em todas as barras. Render atual usa `accent` único.',
-      );
-      warnedMultiRef.current = true;
+  // Modo SINGLE → aplica accent GLOBAL no nível do HBarChart (1 cor pra
+  // todas as barras). Modo MULTI → cicla palette por item via
+  // `barClassName` em cada datum. Modo NONE → sem distinção (default
+  // `bg-primary` do UI base, vence por estar ausente no nível global).
+  const series: HBarChartDatum[] = points.map((p, i) => {
+    const datum: HBarChartDatum = { label: String(p.x), value: p.y ?? 0 };
+    if (palette === 'multi') {
+      datum.barClassName = paletteClass(i);
     }
-  }, [props.palette]);
-  useEffect(() => {
-    if (props.palette !== 'multi') warnedMultiRef.current = false;
-  }, [props.palette]);
+    return datum;
+  });
 
   return (
     <HBarChart
       series={series}
-      accent={chartAccent}
-      style={chartStyle}
+      // accent GLOBAL — aplicado em `palette === 'single'`. Em `multi`, cada
+      // datum traz o próprio `barClassName` (paleta cíclica), que VENCE o
+      // global via lógica de precedência do HBarChart. Em `none`, passa só
+      // o fallback `bg-chart-1` (senão usa `bg-primary` default do UI base).
+      accent={palette === 'single' ? globalBarClassName : 'bg-chart-1'}
+      style={palette === 'single' ? globalBarStyle : undefined}
       valueFormatter={valueFormatter}
     />
   );

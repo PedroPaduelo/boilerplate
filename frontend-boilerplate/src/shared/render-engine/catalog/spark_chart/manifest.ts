@@ -32,12 +32,15 @@ export const manifest = {
         default: 'monotone',
         description: 'Curva usada em type="area" e type="line": "linear" (reta entre pontos), "monotone" (suavizada sem overshoot) ou "step" (degraus).',
       },
-      // Modo de paleta — spark é single-série por natureza.
+      // Modo de paleta — spark é SINGLE-SÉRIE (Turno 6): 'multi'/'none' são
+      // IGNORADOS (spark não tem o conceito de multi-item visual); a cor é
+      // SEMPRE a do `accent`. Mantido no schema p/ simetria com os outros
+      // gráficos do catálogo.
       palette: {
         type: 'string',
         enum: ['single', 'multi', 'none'],
         default: 'single',
-        description: 'Modo de paleta: "single" (default) = 1 cor (accent); "multi" = cicla chart-1..5; "none" = sem distinção (default do DS).',
+        description: 'Modo de paleta: "single" (default) = 1 cor (accent); "multi" e "none" = IGNORADOS (spark é single-série, sempre usa accent).',
       },
       // COR — string livre; resolveAccent() decide se vira classe Tailwind
       // (chart-N, primary, bg-purple-500) ou style.color (#hex, rgb(),

@@ -25,12 +25,12 @@ export const manifest = {
         default: 'descending',
         description: 'Ordem de exibição dos itens: "descending" (default, maior primeiro), "ascending" (menor primeiro) ou "none" (preserva a ordem do dataset).',
       },
-      // Modo de paleta — bar_list categórica é single-série por natureza.
+      // Modo de paleta (Turno 6 — multi IMPLEMENTADO via BarListTremorItem.barClassName).
       palette: {
         type: 'string',
         enum: ['single', 'multi', 'none'],
         default: 'single',
-        description: 'Modo de paleta: "single" (default) = TODAS as barras com a mesma cor (accent); "multi" = cicla chart-1..5 por item; "none" = sem distinção (usa o default do UI base).',
+        description: 'Modo de paleta: "single" (default) = TODAS as barras com a mesma cor (accent); "multi" = cicla chart-1..5 por item (helper paletteClass(i) via BarListTremorItem.barClassName); "none" = sem distinção (usa o default do UI base).',
       },
       // COR — string livre; resolveAccent() decide se vira classe Tailwind
       // (chart-N, primary, bg-purple-500) ou style.background (#hex, rgb(),

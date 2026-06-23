@@ -23,10 +23,14 @@ export const manifest = {
       orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
       // COR — enum fechado da paleta do DS (ver `lib/accent.ts`).
       accent: { type: 'string', enum: [...ACCENT_COLORS], default: 'chart-1' },
-      // ENTREGA 3: prop de palette — bar_chart atual só renderiza single
-      // (dataContract tem `series` opcional mas o componente não cicla cores
-      // ainda). A prop fica no schema para preparar o override futuro.
-      palette: { type: 'string', enum: ['single', 'multi', 'none'], default: 'single' },
+      // Modo de paleta (Turno 6 — multi IMPLEMENTADO via BarChartDatum.barClassName
+      // e, quando orientation="horizontal", HBarChartDatum.barClassName).
+      palette: {
+        type: 'string',
+        enum: ['single', 'multi', 'none'],
+        default: 'single',
+        description: 'Modo de paleta: "single" (default) = TODAS as barras com a mesma cor (accent); "multi" = cicla chart-1..5 por item (helper paletteClass(i) via BarChartDatum.barClassName / HBarChartDatum.barClassName); "none" = sem distinção (mesmo comportamento de "single").',
+      },
     },
   },
   dataContract: {

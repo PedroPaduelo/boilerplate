@@ -12,10 +12,14 @@
  *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.color` inline no
  *     container (vence a classe CSS).
  *
- * Modo de aplicação (spark é single-série por natureza — `accent` SEMPRE
- * aplicado, `palette` fica no schema para consistência com os outros blocos):
+ * Modo de aplicação (spark é SINGLE-SÉRIE por natureza — Turno 6):
  *   - `palette: 'single'` (default) → 1 cor (accent).
- *   - `palette: 'multi'`/`none'` → mesmo comportamento (spark não cicla).
+ *   - `palette: 'multi'` → IGNORADO. Spark é uma linha única (sem
+ *     fatias/itens visíveis que justifiquem ciclar cores), então o
+ *     componente sempre aplica `accent`. A prop fica no schema só
+ *     para simetria com os outros gráficos do catálogo (não emite
+ *     warn — comportamento é determinístico).
+ *   - `palette: 'none'` → mesmo comportamento (ignorado).
  *
  * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas:
  *  - SEMPRE a 1ª: "Tendência: {up|down|flat}" (delta % entre primeiro e último).
@@ -33,6 +37,13 @@ import { fixture } from './fixture';
 type SparkProps = {
   type?: 'area' | 'bar' | 'line';
   curveType?: 'linear' | 'monotone' | 'step';
+  /**
+   * Modo de paleta (spark é single-série por natureza).
+   *  - 'single' (default) → 1 cor (accent).
+   *  - 'multi' → IGNORADO (spark não cicla).
+   *  - 'none' → IGNORADO (mesmo comportamento).
+   * Mantido no schema p/ simetria com os outros gráficos.
+   */
   palette?: 'single' | 'multi' | 'none';
   /**
    * Cor ÚNICA da série (spark é single-série por natureza).
@@ -57,6 +68,9 @@ export const Component: BlockComponent<SparkProps, SeriesData> = ({ props, data 
     resolvedAccent.kind === 'class' ? resolvedAccent.className : undefined;
   const accentStyle: CSSProperties | undefined =
     resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
+
+  // `palette` é aceito pelo schema mas é IGNORADO (spark é single-série).
+  // Não emitimos warn — comportamento determinístico, documentado na JSDoc.
 
   return (
     <div className="flex justify-center py-4">

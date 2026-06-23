@@ -12,27 +12,24 @@
  *
  * Modo de aplicação:
  *   - `palette: 'single'` (default) → TODAS as fatias com a mesma cor (accent).
- *   - `palette: 'multi'` → cicla STROKE_PALETTE / BG_PALETTE por categoria
- *     (cores diferentes por fatia). `accent` vira fallback se houver 1 só.
+ *   - `palette: 'multi'` → cicla palette (chart-1..5) por categoria, via
+ *     `paletteStrokeClass(i)` (helper em `lib/accent.ts`). `accent` vira
+ *     fallback quando há 1 só categoria. (Turno 6 — IMPLEMENTADO: o
+ *     `DonutChart` da Vitrine já tinha `className` por segmento desde o
+ *     Turno 5; agora o bloco APLICA o ciclo aqui.)
  *   - `palette: 'none'` → sem distinção de cor (deixa a palette cíclica padrão).
- *
- * `palette: 'multi'` warning (Turno 5 — replicado do bar_chart): `palette:
- * 'multi'` é aceito pelo schema e o DonutChart JÁ cicla nativamente por
- * fatia. Diferente do `bar_chart` (single-série na Vitrine), o `donut` JÁ
- * implementa multi-fatia — então NÃO precisa de warn. Mantido no schema
- * para simetria com os outros blocos.
  *
  * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas:
  *  - SEMPRE a 1ª: "Maior fatia: {label} ({pct}%)".
  *  - OPCIONAL 2ª: "Menor fatia: {label} ({pct}%)" — só se houver +1 fatia.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { CategoricalData } from '@dashboards/contracts';
 import { DonutChart, type DonutSegment } from '@/components/ui/donut-chart';
 import { cn } from '@/shared/lib/utils';
 import { formatCompactBRL, formatPercentBR } from '@/shared/lib/format';
-import { resolveAccentForStroke } from '../../lib/accent';
+import { resolveAccentForStroke, paletteStrokeClass, paletteClass } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -50,15 +47,6 @@ type DonutProps = {
   accent?: string;
 };
 
-const STROKE_PALETTE = [
-  'stroke-chart-1',
-  'stroke-chart-2',
-  'stroke-chart-3',
-  'stroke-chart-4',
-  'stroke-chart-5',
-];
-const BG_PALETTE = ['bg-chart-1', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'];
-
 /** Elemento de CategoricalData anotado localmente (FromSchema resolve p/ any no FE). */
 type CategoryPoint = { label: string; value: number | null };
 
@@ -73,7 +61,7 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, 
   const palette = props.palette ?? 'single';
 
   // Modo single: aplica accent em TODOS os segmentos (mesma cor).
-  // Modo multi: cicla STROKE_PALETTE / BG_PALETTE por categoria.
+  // Modo multi/none: cicla palette por categoria.
   const isSingle = palette === 'single';
   const segments: DonutSegment[] = items.map((d, i) => {
     if (isSingle) {
@@ -85,38 +73,16 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, 
         style: resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined,
       };
     }
-    // MULTI/NONE: cicla palette por categoria.
+    // MULTI/NONE: cicla palette por categoria (helpers do `lib/accent.ts`).
     return {
       label: d.label,
       value: d.value ?? 0,
-      className: STROKE_PALETTE[i % STROKE_PALETTE.length],
+      className: paletteStrokeClass(i),
     };
   });
   const total = items.reduce((acc, d) => acc + (d.value ?? 0), 0) || 1;
   const showLegend = props.showLegend !== false;
   const active = hovered != null ? items[hovered] : null;
-
-  // Warn em dev para `palette: 'multi'` quando accent for passado
-  // (o accent é ignorado em multi — o usuário pode esquecer).
-  const warnedMultiRef = useRef(false);
-  useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      palette === 'multi' &&
-      props.accent != null &&
-      props.accent !== '' &&
-      !warnedMultiRef.current
-    ) {
-      console.warn(
-        '[donut] `accent` é ignorado quando `palette: "multi"` — a paleta cíclica vence. ' +
-          'Use `palette: "single"` para forçar uma cor única (accent) em todos os segmentos.',
-      );
-      warnedMultiRef.current = true;
-    }
-  }, [palette, props.accent]);
-  useEffect(() => {
-    if (palette !== 'multi') warnedMultiRef.current = false;
-  }, [palette]);
 
   return (
     <div data-slot="block-donut" className="flex flex-wrap items-center gap-6">
@@ -155,26 +121,26 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, 
             const value = d.value ?? 0;
             const isActive = hovered === i;
             // Bolinha da legenda: SINGLE usa accent (style ou className),
-            // MULTI cicla BG_PALETTE por índice.
-            let legendDotClassName: string | undefined
-            let legendDotStyle: CSSProperties | undefined
+            // MULTI cicla palette por índice.
+            let legendDotClassName: string | undefined;
+            let legendDotStyle: CSSProperties | undefined;
             if (isSingle) {
               if (resolvedAccent.kind === 'style') {
                 // SVG segment usa style.stroke; a bolinha da legenda (div
                 // HTML) precisa de style.background. Derivamos a cor do
                 // stroke pra usar como background.
-                const stroke = resolvedAccent.style.stroke
+                const stroke = resolvedAccent.style.stroke;
                 if (typeof stroke === 'string') {
-                  legendDotStyle = { backgroundColor: stroke }
+                  legendDotStyle = { backgroundColor: stroke };
                 } else {
-                  legendDotClassName = BG_PALETTE[0]
+                  legendDotClassName = paletteClass(0);
                 }
               } else {
                 legendDotClassName = resolvedAccent.className
-                  .replace(/^stroke-/, 'bg-') ?? BG_PALETTE[0]
+                  .replace(/^stroke-/, 'bg-') ?? paletteClass(0);
               }
             } else {
-              legendDotClassName = BG_PALETTE[i % BG_PALETTE.length]
+              legendDotClassName = paletteClass(i);
             }
             return (
               <li
@@ -203,7 +169,7 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, 
                   {formatPercentBR(value / total)}
                 </span>
               </li>
-            )
+            );
           })}
         </ul>
       ) : null}

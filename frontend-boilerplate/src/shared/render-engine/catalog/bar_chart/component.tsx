@@ -1,7 +1,8 @@
 /**
- * Bloco `bar_chart` (shape 'series') — usa o Vitrine `BarChart`.
- * Mapeia cada ponto {x,y} da série para {label,value} do gráfico e expõe um
- * `deriveTakeaway` (insights de rodapé exibidos pelo ChartWidget).
+ * Bloco `bar_chart` (shape 'series') — usa o Vitrine `BarChart` (vertical,
+ * default) ou `HBarChart` (horizontal). Mapeia cada ponto {x,y} da série
+ * para {label,value} do gráfico e expõe um `deriveTakeaway` (insights de
+ * rodapé exibidos pelo ChartWidget).
  *
  * Prop de COR: `accent` é enum fechado (`chart-1..5 | 'primary'`), validado
  * pelo schema. Mas o input livre do playground permite string custom —
@@ -10,25 +11,14 @@
  * cor CSS crua (`#40E0D0`, `rgb(0,255,0)`, `oklch(...)`, `linear-gradient(...)`).
  * Default: `'chart-1'`.
  *
- * Prop `palette` (ENTREGA 3 — Turno 2 do playground): aceita 3 valores
- *  - `'single'` (default): toda a série usa `accent` (1 cor).
- *  - `'multi'`: cada ponto vira uma cor do PALETTE (chart-1..5 cíclico).
- *    ⚠️ LIMITAÇÃO CONHECIDA (2026-06-23): o `BarChart` da Vitrine
- *    (`@/components/ui/bar-chart.tsx`) é single-série por design — recebe
- *    um `accent` único e aplica a TODAS as barras. A prop `palette: 'multi'`
- *    é aceita pelo schema, mas o RENDER atual ainda usa `accent` (não
- *    cicla). Quando virar necessário multi-série real, o caminho é:
- *      1) ou estender o `BarChart` para aceitar uma classe por ponto
- *         (passando `accentClass(i)` em vez de `accent`), o que implica
- *         revisar o cálculo de max/largura relativa entre séries;
- *      2) ou empilhar via `stacked: true` com mapeamento de série (já
- *         aceito no schema, ainda não implementado);
- *      3) ou trocar pelo `AreaChart` (multi-série por natureza) caso o
- *         uso de empilhamento não seja desejado.
- *    Por ora, quando `palette === 'multi'`, emitimos um `console.warn` em
- *    dev pra deixar o "fio solto" visível e não travar a renderização.
- *  - `'none'`: o bloco segue igual a `'single'` (placeholder p/ futuras
- *    variações — manter o slot).
+ * Prop `palette` (Turno 6 — multi IMPLEMENTADO):
+ *  - `'single'` (default): toda a série usa `accent` (1 cor). Passa
+ *    `accent`/`style` no nível global do BarChart/HBarChart.
+ *  - `'multi'`: cada ponto vira uma cor do PALETTE (chart-1..5 cíclico),
+ *    via `paletteClass(i)` aplicado em CADA datum (`barClassName` por
+ *    barra). (Turno 6 — IMPLEMENTADO: `BarChartDatum` e `HBarChartDatum`
+ *    ganharam `barClassName?`/`barStyle?` por item.)
+ *  - `'none'`: o bloco segue igual a `'single'` (sem distinção de cor).
  *
  * Prop `valueFormatter` (opcional, novo): permite trocar o formatador do
  * valor exibido na barra / tooltip / valor horizontal. Default interno é
@@ -36,13 +26,12 @@
  * normalizar — se você quiser moeda crua, número inteiro etc., basta
  * passar um formatter via prop (sem mexer no componente).
  */
-import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
-import { BarChart } from '@/components/ui/bar-chart';
-import { HBarChart } from '@/components/ui/h-bar-chart';
+import { BarChart, type BarChartDatum } from '@/components/ui/bar-chart';
+import { HBarChart, type HBarChartDatum } from '@/components/ui/h-bar-chart';
 import { formatCompactBRL } from '@/shared/lib/format';
-import { resolveAccent } from '../../lib/accent';
+import { resolveAccent, paletteClass } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -84,66 +73,56 @@ function defaultFormatter(value: number): string {
 
 export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data }) => {
   const points = (data ?? []) as SeriesPoint[];
+  const palette = props.palette ?? 'single';
 
   // `valueFormatter` flexível: usa a prop se passada, senão o default BRL
   // (mantém o comportamento atual do bloco).
   const valueFormatter = props.valueFormatter ?? defaultFormatter;
 
-  // `palette === 'multi'` é aceito pelo schema, mas o BarChart da Vitrine é
-  // single-série (1 accent pra todas as barras) — vide JSDoc do bloco.
-  // Avisamos em dev pra deixar a limitação visível. Emitido UMA vez por
-  // instância (useRef evita flood no re-render).
-  const warnedMultiRef = useRef(false);
-  useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      props.palette === 'multi' &&
-      !warnedMultiRef.current
-    ) {
-      console.warn(
-        '[bar_chart] `palette: "multi"` ainda não cicla cores — o BarChart da Vitrine ' +
-          'aceita um único `accent`. Render atual usa `accent` único. ' +
-          'Veja JSDoc do componente para opções de implementação futura.',
-      );
-      warnedMultiRef.current = true;
-    }
-  }, [props.palette]);
-
-  // Reseta o flag se a prop voltar a "single"/"none" — permite novo aviso
-  // se o user reativar (caso comum: testar e desfazer).
-  useEffect(() => {
-    if (props.palette !== 'multi') warnedMultiRef.current = false;
-  }, [props.palette]);
-
-  const series = points.map((d) => ({
-    label: String(d.x),
-    value: d.y ?? 0,
-  }));
   // `resolveAccent()` decide se a cor é enum (classe Tailwind) ou cor CSS
   // (style.background). Cobre o playground (que aceita `#40E0D0`,
   // `linear-gradient(...)`, etc.) sem quebrar a paleta do DS.
   const resolvedAccent = resolveAccent(props.accent);
-  const chartAccent =
-    resolvedAccent.kind === 'class' ? resolvedAccent.className : '';
-  const chartStyle: CSSProperties | undefined =
+  const globalBarClassName: string =
+    resolvedAccent.kind === 'class' ? resolvedAccent.className : 'bg-chart-1';
+  const globalBarStyle: CSSProperties | undefined =
     resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
+
+  // Modo MULTI → cicla palette por item via `barClassName` em cada datum.
+  // SINGLE/NONE → só o accent GLOBAL é aplicado.
+  const isMulti = palette === 'multi';
+
   // `orientation: "horizontal"` re-aproveita o `HBarChart` (mesma "família" do
   // DS, mesmo accent e mesmo formatter). Vertical é o default.
   if (props.orientation === 'horizontal') {
+    const series: HBarChartDatum[] = points.map((d, i) => {
+      const datum: HBarChartDatum = { label: String(d.x), value: d.y ?? 0 };
+      if (isMulti) datum.barClassName = paletteClass(i);
+      return datum;
+    });
     return (
       <HBarChart
         series={series}
-        accent={chartAccent}
-        style={chartStyle}
+        // accent GLOBAL — aplicado em `palette === 'single'`. Em `multi`,
+        // cada datum traz o próprio `barClassName` (paleta cíclica), que
+        // VENCE o global via lógica de precedência do HBarChart.
+        accent={palette === 'single' ? globalBarClassName : 'bg-chart-1'}
+        style={palette === 'single' ? globalBarStyle : undefined}
         valueFormatter={valueFormatter}
       />
     );
   }
+  const series: BarChartDatum[] = points.map((d, i) => {
+    const datum: BarChartDatum = { label: String(d.x), value: d.y ?? 0 };
+    if (isMulti) datum.barClassName = paletteClass(i);
+    return datum;
+  });
   return (
     <BarChart
       series={series}
-      accent={chartAccent}
-      style={chartStyle}
+      // accent GLOBAL — idem bloco `h_bar_chart` (acima).
+      accent={palette === 'single' ? globalBarClassName : 'bg-chart-1'}
+      style={palette === 'single' ? globalBarStyle : undefined}
       valueFormatter={valueFormatter}
     />
   );

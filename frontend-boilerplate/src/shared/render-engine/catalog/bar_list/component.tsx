@@ -10,30 +10,25 @@
  *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.background` inline
  *     na barra (atributo de apresentação que vence a classe CSS).
  *
- * Modo de aplicação (Turno 5 — expandido do `bar_chart`):
+ * Modo de aplicação (Turno 6 — multi IMPLEMENTADO):
  *   - `palette: 'single'` (default) → TODAS as barras com a mesma cor (accent).
- *   - `palette: 'multi'` → cicla BG_PALETTE por item (cores diferentes
- *     por linha). O `BarListTremor` ainda não cicla nativamente — usa
- *     `bg-chart-1` hardcoded; a prop fica no schema para preparar o
- *     override futuro. Ver aviso abaixo.
+ *     Passa `barStyle`/`barClassName` no nível global da `BarListTremor`.
+ *   - `palette: 'multi'` → cicla palette (chart-1..5) por item, via
+ *     `paletteClass(i)` aplicado em CADA item (`barClassName` por linha).
+ *     (Turno 6 — IMPLEMENTADO: `BarListTremorItem` ganhou `barClassName?`/
+ *     `barStyle?` por item, então o ciclo vai direto na barra de cada linha.)
  *   - `palette: 'none'` → sem distinção de cor (deixa o default do UI base).
- *
- * `palette: 'multi'` warning (Turno 5 — replicado do bar_chart): `palette:
- * 'multi'` é aceito pelo schema mas o `BarListTremor` da Vitrine é
- * single-cor por design (`bg-chart-1` hardcoded). Avisamos em dev pra
- * deixar a limitação visível.
  *
  * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas:
  *  - SEMPRE a 1ª: "Top 1: {label} ({value})".
  *  - OPCIONAL 2ª: "Último: {label} ({value})" — só se houver +1 item e
  *    o último > 0.
  */
-import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { CategoricalData } from '@dashboards/contracts';
-import { BarListTremor } from '@/components/ui/bar-list-tremor';
+import { BarListTremor, type BarListTremorItem } from '@/components/ui/bar-list-tremor';
 import { formatCompactBRL } from '@/shared/lib/format';
-import { resolveAccent } from '../../lib/accent';
+import { resolveAccent, paletteClass } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -54,48 +49,45 @@ type BarListProps = {
 
 type CategoryPoint = { label: string; value: number | null };
 
+/** Row do BarListTremor (genérico ancorado em `unknown`). */
+type BarListRow = BarListTremorItem<unknown>;
+
 export const Component: BlockComponent<BarListProps, CategoricalData> = ({ props, data }) => {
   const items = (data ?? []) as CategoryPoint[];
-  const rows = items.map((d) => ({ name: d.label, value: d.value ?? 0 }));
+  const palette = props.palette ?? 'single';
 
   // `resolveAccent()` devolve { className } (Tailwind `bg-…`) ou
   // { style: { background } } (CSS). VENCE a classe `bg-chart-1` do UI
   // base quando `style` está presente.
   const resolvedAccent = resolveAccent(props.accent);
-  const barClassName: string | undefined =
+  const globalBarClassName: string | undefined =
     resolvedAccent.kind === 'class' ? resolvedAccent.className : undefined;
-  const barStyle: CSSProperties | undefined =
+  const globalBarStyle: CSSProperties | undefined =
     resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
 
-  // `palette === 'multi'` warning: o BarListTremor é single-cor por design
-  // (vide JSDoc do bloco). Avisamos em dev.
-  const warnedMultiRef = useRef(false);
-  useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      props.palette === 'multi' &&
-      !warnedMultiRef.current
-    ) {
-      console.warn(
-        '[bar_list] `palette: "multi"` ainda não cicla cores — o BarListTremor da Vitrine ' +
-          'aplica uma cor única em todas as barras. Render atual usa `accent` único.',
-      );
-      warnedMultiRef.current = true;
+  // Modo SINGLE → aplica accent GLOBAL no nível do BarListTremor (1 cor pra
+  // todas as barras). Modo MULTI → cicla palette por item via `barClassName`
+  // em cada row. Modo NONE → sem distinção (deixa o default `bg-chart-1`).
+  const rows: BarListRow[] = items.map((d, i) => {
+    const row: BarListRow = { name: d.label, value: d.value ?? 0 };
+    if (palette === 'multi') {
+      row.barClassName = paletteClass(i);
     }
-  }, [props.palette]);
-  useEffect(() => {
-    if (props.palette !== 'multi') warnedMultiRef.current = false;
-  }, [props.palette]);
+    return row;
+  });
 
   return (
     <BarListTremor
       data={rows}
       sortOrder={props.sortOrder ?? 'descending'}
       valueFormatter={(v) => formatCompactBRL(v)}
-      // accent resolvido — `barStyle` vence `barClassName` na UI base
-      // (atributo de apresentação > classe CSS).
-      barStyle={barStyle}
-      barClassName={barClassName}
+      // accent GLOBAL — aplicado quando `palette === 'single'`.
+      // Em `multi`, cada row traz o próprio `barClassName` (paleta cíclica),
+      // que VENCE o global via lógica de precedência do BarListTremor
+      // (item.barClassName → barClassName global → bg-chart-1 default).
+      // Em `none`, não passamos nada — UI base usa o `bg-chart-1` default.
+      barStyle={palette === 'single' ? globalBarStyle : undefined}
+      barClassName={palette === 'single' ? globalBarClassName : undefined}
     />
   );
 };

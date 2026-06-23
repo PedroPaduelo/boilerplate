@@ -11,6 +11,17 @@
  *
  * O valor é formatado pelo `valueFormatter` injetado pelo bloco do catálogo
  * (mantém o componente UI agnóstico de moeda/locale). Sem ele, usa o número cru.
+ *
+ * Cor da barra (Turno 5 — `accent`/`style` global + Turno 6 — `barClassName`/
+ * `barStyle` por item p/ `palette: 'multi'`):
+ *  - `barClassName` (Tailwind, ex.: "bg-chart-2", "bg-purple-500") → aplicado
+ *    na barra via `className`. VENCE o default `bg-primary` quando setado.
+ *  - `style` (CSSProperties) → aplicado na barra via `style={…}` (atributo
+ *    de apresentação que vence a classe CSS).
+ *  - Por ITEM (Turno 6): `HBarChartDatum.barClassName`/`barStyle` sobrescreve
+ *    o global para aquela barra (precedência: item.style > item.barClassName
+ *    > style global > barClassName global > bg-primary default). Usado pelo
+ *    catálogo p/ ciclar a palette de charts (chart-1..5) em `palette: 'multi'`.
  */
 
 import * as React from "react"
@@ -21,16 +32,29 @@ import { cn } from "@/shared/lib/utils"
 export interface HBarChartDatum {
   label: string
   value: number
+  /**
+   * (Turno 6) Classe Tailwind da cor desta barra (ex.: "bg-chart-2",
+   * "bg-purple-500"). VENCE `barClassName` GLOBAL. Usado pelo caller
+   * do catálogo p/ ciclar `paletteClass(i)` em `palette: 'multi'`.
+   */
+  barClassName?: string
+  /**
+   * (Turno 6) Estilo inline desta barra (ex.: `{ background: '#ff0000' }`).
+   * VENCE tudo (item e global). Use para cor CSS custom por linha.
+   */
+  barStyle?: React.CSSProperties
 }
 
 export interface HBarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Série de barras (rótulo + valor). O maior valor define a barra cheia (100%). */
   series: HBarChartDatum[]
   /** Classe Tailwind de cor de preenchimento das barras. Default: "bg-primary".
-   *  IGNORADO se `style` for passado. */
+   *  IGNORADO se `style` for passado OU se a linha trouxer o próprio
+   *  `barClassName`/`barStyle` (Turno 6 — precedência por item). */
   accent?: string
   /** Estilo inline aplicado à barra. Use para cores CSS custom (hex/rgb/hsl/
-   *  gradient) que NÃO existem no enum do DS. VENCE `accent` quando setado. */
+   *  gradient) que NÃO existem no enum do DS. VENCE `accent` quando setado.
+   *  Também é vencido por `barStyle` por item (Turno 6). */
   style?: React.CSSProperties
   /** Formata o valor (rótulo lateral + tooltip + aria-label). Sem ele, usa o número cru. */
   valueFormatter?: (value: number) => string
@@ -58,6 +82,14 @@ function HBarChart({
         const formatted = valueFormatter ? valueFormatter(s.value) : String(s.value)
         const active = hoverIdx === i
         const dimmed = hoverIdx !== null && !active
+        // Precedência de cor POR ITEM (Turno 6):
+        //   1) item.barStyle (CSS custom, vence tudo)
+        //   2) item.barClassName (classe Tailwind do item)
+        //   3) barStyle global (CSS custom)
+        //   4) barClassName/accent global (classe Tailwind)
+        //   5) bg-primary (default, hardcoded)
+        const itemBarStyle = s.barStyle ?? barStyle
+        const itemBarClassName = s.barClassName ?? accent
         return (
           <div
             key={`${s.label}-${i}`}
@@ -78,12 +110,12 @@ function HBarChart({
                   aria-label={`${s.label}: ${formatted}`}
                   className={cn(
                     "h-full rounded-full transition-[width,box-shadow] duration-300",
-                    // Se `barStyle` foi passado (cor CSS custom), NÃO aplica
+                    // Se `itemBarStyle` foi passado (cor CSS custom), NÃO aplica
                     // a classe `accent` (que viraria `bg-#40E0D0` etc.).
-                    barStyle ? '' : accent,
+                    itemBarStyle ? '' : itemBarClassName,
                     active && "shadow-sm",
                   )}
-                  style={{ width: `${pct}%`, ...barStyle }}
+                  style={{ width: `${pct}%`, ...itemBarStyle }}
                 />
               </div>
               {/* Tooltip-card no hover */}

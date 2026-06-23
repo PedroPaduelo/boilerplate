@@ -35,7 +35,7 @@ export const manifest = {
         type: 'string',
         enum: ['single', 'multi', 'none'],
         default: 'single',
-        description: 'Modo de paleta: "single" (default) = TODAS as fatias com a mesma cor (accent); "multi" = cicla chart-1..5 por categoria; "none" = sem distinção (usa a palette cíclica padrão).',
+        description: 'Modo de paleta: "single" (default) = TODAS as fatias com a mesma cor (accent); "multi" = cicla chart-1..5 por categoria (helper paletteStrokeClass(i)); "none" = sem distinção (usa a palette cíclica padrão).',
       },
       // COR — string livre; resolveAccent() decide se vira classe Tailwind
       // (chart-N, primary, stroke-purple-500) ou style.stroke (#hex, rgb(),
