@@ -547,7 +547,10 @@ export function BlockDetailDialog({ entry, onOpenChange }: BlockDetailDialogProp
     <Dialog open={!!entry} onOpenChange={onOpenChange}>
       {/* ENTREGA 1: modal 70vw × 70vh (era max-w-5xl max-h-90vh). Equilibra as
           duas dimensões para abrir mais confortável no playground. */}
-      <DialogContent className="max-h-[85vh] max-w-[90vw] w-[90vw] gap-0 overflow-hidden p-0">
+      {/* Modal 90vw × 85vh. Sobrescreve o default do shadcn (sm:max-w-lg
+          = 512px) com !important + max-w-none no sm pra garantir que
+          SEMPRE vença o default, mesmo com Tailwind JIT reorderando. */}
+      <DialogContent className="!max-w-none sm:!max-w-[90vw] w-[90vw] !w-[90vw] max-h-[85vh] overflow-hidden p-0 gap-0">
         {entry ? (
           <BlockDetailContent key={dialogKey} entry={entry} />
         ) : null}
@@ -743,9 +746,9 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   }, [dataError, dataText, entry.shape, manifest.type]);
 
   return (
-    <div className="grid h-[85vh] grid-cols-1 md:grid-cols-2">
+    <div className="grid h-[85vh] min-h-0 grid-cols-1 md:grid-cols-2">
       {/* ============================== ESQUERDA — PREVIEW ============================== */}
-      <div className="flex min-h-0 flex-col border-b border-border/60 bg-muted/20 md:border-b-0 md:border-r">
+      <div className="flex min-h-0 min-w-0 flex-col border-b border-border/60 bg-muted/20 md:border-b-0 md:border-r">
         <DialogHeader className="px-5 pt-5 pb-3">
           <div className="flex flex-wrap items-center gap-2">
             <DialogTitle>{manifest.name}</DialogTitle>
