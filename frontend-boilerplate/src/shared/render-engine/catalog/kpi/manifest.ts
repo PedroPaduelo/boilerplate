@@ -17,6 +17,7 @@
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
+import { CATALOG_ICONS } from '../../lib/icons';
 import { VALUE_FORMATS } from '@/shared/lib/format';
 
 export const manifest = {
@@ -56,10 +57,12 @@ export const manifest = {
         default: 'chart-1',
         description: 'Cor de destaque do card (rail lateral + chip do ícone). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Resolvida por resolveAccent().',
       },
-      // Ícone lucide — nome em PascalCase ("DollarSign") ou kebab-case ("dollar-sign").
+      // Ícone lucide — ENUM CURADO (set relevante p/ dashboards). A IA/MCP lê
+      // o enum p/ saber QUAIS ícones existem. PascalCase (chave do lucide).
       icon: {
         type: 'string',
-        description: 'Nome do ícone lucide-react exibido no canto do card (ex.: "DollarSign", "TrendingUp", "Users"). Aceita PascalCase ou kebab-case. Vazio = sem ícone.',
+        enum: [...CATALOG_ICONS],
+        description: 'Ícone lucide-react exibido no canto do card. ENUM CURADO (set relevante p/ dashboards: financeiro/métricas/pessoas/status). Ex.: "DollarSign", "TrendingUp", "Users", "Landmark". Vazio = sem ícone.',
       },
       // Variação.
       showDelta: {

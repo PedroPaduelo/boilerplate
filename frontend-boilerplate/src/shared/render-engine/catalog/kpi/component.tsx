@@ -18,8 +18,7 @@
  *  - `deltaPolarity` → 'up-good' (subir = verde) | 'up-bad' (subir = vermelho).
  *                      Mapeia para `higherIsBetter` do `KpiCard`.
  */
-import type { ComponentType, CSSProperties } from 'react';
-import { icons as lucideIcons } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type { ScalarData } from '@dashboards/contracts';
 import { KpiCard } from '@/components/ui/kpi-card';
 import {
@@ -28,6 +27,7 @@ import {
   type ValueFormat,
 } from '@/shared/lib/format';
 import { resolveAccent } from '../../lib/accent';
+import { resolveLucideIcon } from '../../lib/lucide-resolver';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -44,30 +44,6 @@ type KpiProps = {
   showDelta?: boolean;
   deltaPolarity?: 'up-good' | 'up-bad';
 };
-
-type LucideIconComponent = ComponentType<{ className?: string }>;
-
-/**
- * Resolve um nome de ícone (PascalCase "DollarSign" ou kebab-case
- * "dollar-sign") contra o registry `icons` do lucide-react (chaves em
- * PascalCase). Retorna `undefined` se o nome não existir — o card renderiza
- * sem ícone (degradação suave em vez de quebrar).
- */
-function resolveLucideIcon(name: string | undefined): LucideIconComponent | undefined {
-  if (!name) return undefined;
-  const raw = name.trim();
-  if (!raw) return undefined;
-  const registry = lucideIcons as Record<string, LucideIconComponent>;
-  // 1) tenta o nome exato (já PascalCase).
-  if (registry[raw]) return registry[raw];
-  // 2) normaliza kebab/snake/space → PascalCase ("dollar-sign" → "DollarSign").
-  const pascal = raw
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-  return registry[pascal];
-}
 
 export const Component: BlockComponent<KpiProps, ScalarData> = ({ props, data }) => {
   const value = data?.value ?? 0;
