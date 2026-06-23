@@ -1126,7 +1126,7 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-          <PreviewSurface result={result} block={block} />
+          <PreviewSurface result={result} block={block} hasShape={Boolean(entry.shape)} />
         </div>
       </div>
 
@@ -1397,14 +1397,20 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
 function PreviewSurface({
   block,
   result,
+  hasShape,
 }: {
   block: ReturnType<typeof Object> extends never
     ? never
     : Parameters<typeof BlockRenderer>[0]['block'];
   result: Parameters<typeof BlockRenderer>[0]['result'];
+  /** Bloco consome dados (tem `dataContract.shape`)? Narrativos/layout = false. */
+  hasShape: boolean;
 }) {
-  // Erro: dados inválidos → mostra skeleton gentil sem quebrar a UI.
-  if (result === undefined) {
+  // Só pausa o preview quando o bloco CONSOME dados E o JSON está inválido
+  // (result undefined por erro de parse/validação). Blocos narrativos/layout
+  // (alert, callout, title, rich_text, section…) NÃO têm shape — renderizam
+  // direto a partir das props, sem `result`.
+  if (hasShape && result === undefined) {
     return (
       <div className="flex h-full min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-card/40 p-6 text-center text-sm text-muted-foreground">
         Preview pausado — corrija o JSON dos dados para renderizar.
