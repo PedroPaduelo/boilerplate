@@ -1,7 +1,7 @@
 {
   "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
   "catalogVersion": 1,
-  "count": 8,
+  "count": 14,
   "blocks": [
     {
       "type": "__example",
@@ -22,6 +22,78 @@
         "label": "Auto-registrado ✔"
       },
       "version": "0.0.0"
+    },
+    {
+      "type": "area_chart",
+      "kind": "chart",
+      "name": "Gráfico de Área",
+      "description": "Série temporal preenchida; mostra volume/tendência ao longo do tempo (suporta múltiplas séries).",
+      "source": "vitrine:area-chart-tremor",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "default",
+              "stacked",
+              "percent"
+            ]
+          },
+          "fill": {
+            "type": "string",
+            "enum": [
+              "gradient",
+              "solid",
+              "none"
+            ]
+          },
+          "showLegend": {
+            "type": "boolean"
+          },
+          "showGridLines": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "series",
+        "spec": {
+          "x": {
+            "type": "temporal",
+            "required": true
+          },
+          "y": {
+            "type": "number",
+            "required": true
+          },
+          "series": {
+            "type": "category",
+            "required": false
+          }
+        },
+        "example": [
+          {
+            "x": "2026-01",
+            "y": 120,
+            "series": "Receita"
+          },
+          {
+            "x": "2026-01",
+            "y": 80,
+            "series": "Despesa"
+          }
+        ]
+      },
+      "defaultProps": {
+        "type": "default",
+        "fill": "gradient",
+        "showLegend": true,
+        "showGridLines": true
+      },
+      "maxRows": 5000,
+      "version": "1.0.0"
     },
     {
       "type": "bar_chart",
@@ -84,6 +156,55 @@
       "version": "1.0.0"
     },
     {
+      "type": "bar_list",
+      "kind": "chart",
+      "name": "Lista de Barras (ranking)",
+      "description": "Ranking de categorias (Top N) — barra proporcional ao valor, ordenada.",
+      "source": "vitrine:bar-list-tremor",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sortOrder": {
+            "type": "string",
+            "enum": [
+              "ascending",
+              "descending",
+              "none"
+            ]
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "categorical",
+        "spec": {
+          "label": {
+            "type": "category",
+            "required": true
+          },
+          "value": {
+            "type": "number",
+            "required": true
+          }
+        },
+        "example": [
+          {
+            "label": "IPTU",
+            "value": 4200
+          },
+          {
+            "label": "ISS",
+            "value": 3100
+          }
+        ]
+      },
+      "defaultProps": {
+        "sortOrder": "descending"
+      },
+      "maxRows": 5000,
+      "version": "1.0.0"
+    },
+    {
       "type": "donut",
       "kind": "chart",
       "name": "Donut",
@@ -127,6 +248,45 @@
       "defaultProps": {
         "showLegend": true
       },
+      "version": "1.0.0"
+    },
+    {
+      "type": "h_bar_chart",
+      "kind": "chart",
+      "name": "Barras Horizontais",
+      "description": "Compara valores entre categorias em barras horizontais (rótulos longos cabem melhor).",
+      "source": "vitrine:h-bar-chart",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "dataContract": {
+        "shape": "series",
+        "spec": {
+          "x": {
+            "type": "category",
+            "required": true
+          },
+          "y": {
+            "type": "number",
+            "required": true
+          }
+        },
+        "example": [
+          {
+            "x": "Centro",
+            "y": 1200
+          },
+          {
+            "x": "Norte",
+            "y": 980
+          }
+        ]
+      },
+      "defaultProps": {},
+      "minColumns": 1,
+      "maxRows": 5000,
       "version": "1.0.0"
     },
     {
@@ -231,6 +391,55 @@
       "version": "1.0.0"
     },
     {
+      "type": "radial_gauge",
+      "kind": "chart",
+      "name": "Medidor Radial",
+      "description": "Medidor (gauge) de um valor sobre uma escala — ótimo para metas e percentuais.",
+      "source": "vitrine:radial-gauge",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "max": {
+            "type": "number"
+          },
+          "min": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "scalar",
+        "spec": {
+          "value": {
+            "type": "number",
+            "required": true
+          },
+          "label": {
+            "type": "string",
+            "required": false
+          },
+          "unit": {
+            "type": "string",
+            "required": false
+          }
+        },
+        "example": {
+          "value": 72,
+          "label": "Cobertura",
+          "unit": "%"
+        }
+      },
+      "defaultProps": {
+        "max": 100,
+        "min": 0
+      },
+      "version": "1.0.0"
+    },
+    {
       "type": "rich_text",
       "kind": "text",
       "name": "Texto rico",
@@ -251,6 +460,118 @@
       "defaultProps": {
         "markdown": ""
       },
+      "version": "1.0.0"
+    },
+    {
+      "type": "scatter_chart",
+      "kind": "chart",
+      "name": "Dispersão (scatter)",
+      "description": "Correlação entre duas variáveis numéricas (x × y); `series` colore por categoria.",
+      "source": "vitrine:scatter-chart-tremor",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "showLegend": {
+            "type": "boolean"
+          },
+          "showGridLines": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "series",
+        "spec": {
+          "x": {
+            "type": "number",
+            "required": true
+          },
+          "y": {
+            "type": "number",
+            "required": true
+          },
+          "series": {
+            "type": "category",
+            "required": false
+          }
+        },
+        "example": [
+          {
+            "x": 12,
+            "y": 40,
+            "series": "Zona A"
+          },
+          {
+            "x": 28,
+            "y": 55,
+            "series": "Zona B"
+          }
+        ]
+      },
+      "defaultProps": {
+        "showLegend": true,
+        "showGridLines": true
+      },
+      "maxRows": 5000,
+      "version": "1.0.0"
+    },
+    {
+      "type": "spark_chart",
+      "kind": "chart",
+      "name": "Sparkline",
+      "description": "Minigráfico de tendência (sem eixos) — ótimo ao lado de um KPI.",
+      "source": "vitrine:spark-chart-tremor",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "area",
+              "bar",
+              "line"
+            ]
+          },
+          "curveType": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "monotone",
+              "step"
+            ]
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "series",
+        "spec": {
+          "x": {
+            "type": "category",
+            "required": false
+          },
+          "y": {
+            "type": "number",
+            "required": true
+          }
+        },
+        "example": [
+          {
+            "x": "1",
+            "y": 5
+          },
+          {
+            "x": "2",
+            "y": 8
+          }
+        ]
+      },
+      "defaultProps": {
+        "type": "area",
+        "curveType": "monotone"
+      },
+      "maxRows": 5000,
       "version": "1.0.0"
     },
     {
