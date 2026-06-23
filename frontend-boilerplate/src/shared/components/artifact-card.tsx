@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { MoreHorizontal, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, MoreHorizontal, type LucideIcon } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -40,6 +40,22 @@ export interface ArtifactCardAction {
   separatorBefore?: boolean;
 }
 
+/**
+ * Props para o modo de confirmação inline. Quando setado, o card se
+ * TRANSFORMA em um painel de confirmação (sem modal/overlay) com botões
+ * "Sim, excluir" e "Cancelar". Resolve definitivamente o bug do
+ * `react-remove-scroll` que deixava o `<body>` com `pointer-events: none`
+ * após fechar o Radix `AlertDialog`.
+ */
+export interface ArtifactCardConfirming {
+  /** Dispara a mutação destrutiva. */
+  onConfirm: () => void;
+  /** Fecha o modo de confirmação sem chamar a mutação. */
+  onCancel: () => void;
+  /** Desabilita ambos os botões durante a request. */
+  isPending?: boolean;
+}
+
 export interface ArtifactCardProps {
   title: string;
   icon: LucideIcon;
@@ -57,12 +73,26 @@ export interface ArtifactCardProps {
   /** Rótulo do botão principal (default "Abrir"). */
   openLabel?: string;
   actions: ArtifactCardAction[];
+  /**
+   * Se definido, o card entra em modo de confirmação inline. O menu, o
+   * badge de status e o botão "Abrir" desaparecem; o card exibe:
+   *   • Ícone de aviso + texto "Excluir {title}?"
+   *   • Botão "Sim, excluir" (variant destructive, disabled se isPending)
+   *   • Botão "Cancelar"
+   */
+  confirming?: ArtifactCardConfirming;
 }
 
 /**
  * Card genérico de artefato (dashboard ou gráfico) para as telas de listagem.
  * Presentacional e agnóstico de feature: recebe os dados já mapeados e a lista
  * de ações (já filtradas por RBAC pelo chamador).
+ *
+ * Suporta DOIS modos mutuamente exclusivos:
+ *   1. Normal — exibe o card completo + menu de ações.
+ *   2. Confirmação inline — `confirming` está setado. Vira um painel de
+ *      confirmação SEM modal/overlay, eliminando o bug do Radix
+ *      `AlertDialog` + `react-remove-scroll` que travava a UI após delete.
  */
 export function ArtifactCard({
   title,
@@ -76,7 +106,59 @@ export function ArtifactCard({
   onPrefetch,
   openLabel = 'Abrir',
   actions,
+  confirming,
 }: ArtifactCardProps) {
+  // MODO DE CONFIRMAÇÃO: substitui TODO o conteúdo do card por um painel
+  // inline. Não usa portal, não usa overlay, não monta nada que precise
+  // cleanup assíncrono.
+  if (confirming) {
+    return (
+      <Card
+        className="gap-4 border-destructive/40 bg-destructive/5 py-5"
+        role="group"
+        aria-label={`Confirmar exclusão de ${title}`}
+        data-confirming="true"
+      >
+        <CardHeader className="px-5">
+          <div className="flex items-start gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+              <AlertTriangle className="size-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="truncate text-base" title={title}>
+                Excluir {title}?
+              </CardTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Esta ação não pode ser desfeita.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardFooter className="justify-end gap-2 px-5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={confirming.onCancel}
+            disabled={confirming.isPending}
+            data-testid="cancel-delete"
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={confirming.onConfirm}
+            disabled={confirming.isPending}
+            data-testid="confirm-delete"
+          >
+            {confirming.isPending ? 'Excluindo...' : 'Sim, excluir'}
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
+  // MODO NORMAL
   const st = statusBadge(status);
   const hasMenu = actions.length > 0;
 

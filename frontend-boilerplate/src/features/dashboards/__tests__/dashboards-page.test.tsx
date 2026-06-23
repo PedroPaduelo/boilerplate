@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,33 +16,43 @@ beforeAll(() => {
 
 /* ------------------------------------------------------------------ mocks -- */
 
-const { state, prefetchFn, deleteMock } = vi.hoisted(() => {
-  type Pending = { onSettled?: () => void } | null;
-  const deleteMock = {
-    isPending: false,
-    pending: null as Pending,
-    mutate: vi.fn((_id: string, options?: { onSettled?: () => void }) => {
-      deleteMock.isPending = true;
-      deleteMock.pending = { onSettled: options?.onSettled };
-    }),
-    settleOk: () => {
-      deleteMock.isPending = false;
-      deleteMock.pending?.onSettled?.();
-      deleteMock.pending = null;
-    },
-    settleFail: () => {
-      deleteMock.isPending = false;
-      deleteMock.pending?.onSettled?.();
-      deleteMock.pending = null;
-    },
-  };
+const { state, prefetchFn } = vi.hoisted(() => {
   return {
     // Estado de auth mutável entre testes (papel/usuário logado).
     state: { user: { id: 'me', role: 'CREATOR' } as { id: string; role: string } | null },
     prefetchFn: vi.fn(),
-    deleteMock,
   };
 });
+
+/**
+ * Stub REATIVO do `useDeleteDashboard`: usa `useState` para `isPending` e
+ * `pending.onSettled`, então o re-render reflete o estado. Os testes chamam
+ * `mutate` (via click no botão) e depois `settleOk`/`settleFail` para
+ * resolver a promise pendente. A mutação está mockada no escopo do
+ * `vi.mock` (mais abaixo) para que o hook use este state.
+ */
+type DeleteMock = {
+  isPending: boolean;
+  pending: { onSettled?: () => void } | null;
+  mutate: ReturnType<typeof vi.fn> & { __wired?: boolean };
+  settleOk: () => void;
+  settleFail: () => void;
+};
+const deleteMock: DeleteMock = {
+  isPending: false,
+  pending: null,
+  mutate: vi.fn(),
+  settleOk: () => {
+    deleteMock.isPending = false;
+    deleteMock.pending?.onSettled?.();
+    deleteMock.pending = null;
+  },
+  settleFail: () => {
+    deleteMock.isPending = false;
+    deleteMock.pending?.onSettled?.();
+    deleteMock.pending = null;
+  },
+};
 
 const dashboards: Dashboard[] = [
   {
@@ -73,72 +83,63 @@ const dashboards: Dashboard[] = [
   },
 ];
 
-/**
- * Stub do ConfirmDeleteDialog. Em vez de montar Radix AlertDialog (que
- * dispara focus trap e loop de eventos no jsdom), capturamos as props e
- * renderizamos um botão simples que exercita `onConfirm`. Mantém o teste
- * FOCADO no fluxo "mutation erro → dialog fecha", que é o fix.
- */
-type CapturedDialogProps = {
-  open: boolean;
-  isPending: boolean;
-  onConfirm: () => void;
-  onOpenChange: (open: boolean) => void;
-  itemName?: string;
-  title: string;
-};
-const captured: { current: CapturedDialogProps | null } = { current: null };
-
-vi.mock('@/shared/components/confirm-delete-dialog', () => ({
-  ConfirmDeleteDialog: (props: CapturedDialogProps) => {
-    captured.current = props;
-    if (!props.open) return null;
-    return (
-      <div data-testid="confirm-delete-stub" data-state="open">
-        <h2>{props.title}</h2>
-        <p data-testid="item-name">{props.itemName ?? ''}</p>
-        <button
-          type="button"
-          onClick={props.onConfirm}
-          disabled={props.isPending}
-          data-testid="confirm-btn"
-        >
-          {props.isPending ? 'Excluindo...' : 'Excluir'}
-        </button>
-        <button
-          type="button"
-          onClick={() => props.onOpenChange(false)}
-          data-testid="cancel-btn"
-        >
-          Cancelar
-        </button>
-      </div>
-    );
-  },
-}));
-
-vi.mock('../hooks', () => ({
-  useDashboards: () => ({
-    data: {
-      dashboards,
-      total: dashboards.length,
-      page: 1,
-      pageSize: 12,
-      totalPages: 1,
+vi.mock('../hooks', async () => {
+  const React = await import('react');
+  return {
+    useDashboards: () => ({
+      data: {
+        dashboards,
+        total: dashboards.length,
+        page: 1,
+        pageSize: 12,
+        totalPages: 1,
+      },
+      isLoading: false,
+      isError: false,
+    }),
+    usePrefetchDashboard: () => prefetchFn,
+    useDuplicateDashboard: () => ({ mutate: vi.fn(), isPending: false }),
+    // Hook REATIVO: usa useState para isPending/pending, então o
+    // ArtifactCard re-renderiza quando `mutate`/`settle` rodam.
+    useDeleteDashboard: () => {
+      const [isPending, setIsPending] = React.useState(false);
+      const [pending, setPending] = React.useState<{ onSettled?: () => void } | null>(
+        null,
+      );
+      // Conecta `mutate` ao setter do React state. Chamadas subsequentes
+      // a `deleteMock.mutate(...)` disparam re-render via setIsPending.
+      if (!deleteMock.mutate.__wired) {
+        deleteMock.mutate.mockImplementation(
+          (_id: string, options?: { onSettled?: () => void }) => {
+            setIsPending(true);
+            setPending({ onSettled: options?.onSettled });
+          },
+        );
+        deleteMock.mutate.__wired = true;
+      }
+      // Espelha estado em `deleteMock` para o test harness.
+      deleteMock.isPending = isPending;
+      deleteMock.pending = pending;
+      deleteMock.settleOk = () => {
+        setIsPending(false);
+        const p = pending;
+        setPending(null);
+        p?.onSettled?.();
+      };
+      deleteMock.settleFail = () => {
+        setIsPending(false);
+        const p = pending;
+        setPending(null);
+        p?.onSettled?.();
+      };
+      return {
+        mutate: deleteMock.mutate,
+        isPending,
+      };
     },
-    isLoading: false,
-    isError: false,
-  }),
-  usePrefetchDashboard: () => prefetchFn,
-  useDuplicateDashboard: () => ({ mutate: vi.fn(), isPending: false }),
-  useDeleteDashboard: () => ({
-    mutate: deleteMock.mutate,
-    get isPending() {
-      return deleteMock.isPending;
-    },
-  }),
-  usePublishDashboard: () => ({ mutate: vi.fn(), isPending: false }),
-}));
+    usePublishDashboard: () => ({ mutate: vi.fn(), isPending: false }),
+  };
+});
 
 vi.mock('@/shared/hooks/use-departments', () => ({
   useDepartments: () => ({ data: { departments: [] } }),
@@ -167,10 +168,13 @@ function renderPage() {
 describe('DashboardsPage', () => {
   beforeEach(() => {
     prefetchFn.mockClear();
-    deleteMock.mutate.mockClear();
+    // Reseta o mock reativo para que o próximo render religa as closures
+    // de useState ao deleteMock.mutate (evita reutilizar setIsPending/
+    // setPending de um teste anterior).
+    deleteMock.mutate.__wired = false;
+    deleteMock.mutate.mockReset();
     deleteMock.isPending = false;
     deleteMock.pending = null;
-    captured.current = null;
     state.user = { id: 'me', role: 'CREATOR' };
   });
 
@@ -222,14 +226,28 @@ describe('DashboardsPage', () => {
   });
 
   /**
-   * FIX DO BUG: ConfirmDeleteDialog FECHA após falha da mutation.
-   * O stub captura as props do diálogo; após o `settleFail` (que dispara
-   * `onSettled` → `close()` no hook), o dialog deve receber `open=false`.
-   * Antes do fix, só `onSuccess` resetava o state e a UI travava.
+   * FIX DEFINITIVO: o card entra em modo de confirmação INLINE (sem modal,
+   * sem overlay) quando o usuário clica "Excluir". O `<body>` NUNCA fica
+   * travado com `pointer-events: none` (que era o bug do Radix AlertDialog
+   * + react-remove-scroll).
+   *
+   * Aqui verificamos:
+   *  • O card muda de modo (data-confirming="true" no card do item alvo).
+   *  • Aparece o texto "Excluir Vendas Mensais?" + botões Cancelar /
+   *    "Sim, excluir".
+   *  • O menu/badge de status SOMEM no card em confirmação.
+   *  • Confirmar chama a mutação; settled (sucesso OU erro) volta o card
+   *    ao normal.
    */
-  it('excluir: dialog FECHA quando a mutation falha (onSettled → close)', async () => {
+  it('excluir: card entra em modo de confirmação inline (sem modal/overlay)', async () => {
     const user = userEvent.setup();
     renderPage();
+
+    // Sanidade: card normal NÃO está em modo confirming.
+    const vendasCard = screen
+      .getByText('Vendas Mensais')
+      .closest('[data-slot="card"]')!;
+    expect(vendasCard.querySelector('[data-confirming="true"]')).toBeNull();
 
     // Abre o menu de ações do primeiro card e clica Excluir.
     const trigger = screen.getByRole('button', { name: /Ações de Vendas Mensais/i });
@@ -237,27 +255,52 @@ describe('DashboardsPage', () => {
     const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
     await user.click(deleteItem);
 
-    // Dialog visível com o nome do item.
-    expect(screen.getByTestId('confirm-delete-stub')).toBeInTheDocument();
-    expect(captured.current?.itemName).toBe('Vendas Mensais');
-    expect(captured.current?.open).toBe(true);
+    // Card em modo confirming com o nome do item.
+    const confirmingCard = await screen.findByRole('group', {
+      name: /Confirmar exclusão de Vendas Mensais/i,
+    });
+    expect(confirmingCard).toHaveAttribute('data-confirming', 'true');
+    expect(
+      within(confirmingCard).getByText(/Excluir Vendas Mensais\?/),
+    ).toBeInTheDocument();
+    expect(
+      within(confirmingCard).getByRole('button', { name: /Cancelar/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(confirmingCard).getByRole('button', { name: /Sim, excluir/i }),
+    ).toBeInTheDocument();
 
-    // Confirma a exclusão.
-    const confirmBtn = screen.getByTestId('confirm-btn');
+    // O outro card (Receita por Região) NÃO entra em modo confirming.
+    expect(
+      screen
+        .getByText('Receita por Região')
+        .closest('[data-slot="card"]')!
+        .querySelector('[data-confirming="true"]'),
+    ).toBeNull();
+  });
+
+  it('excluir: clicar "Sim, excluir" chama a mutação com o id correto', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const trigger = screen.getByRole('button', { name: /Ações de Vendas Mensais/i });
+    await user.click(trigger);
+    const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
+    await user.click(deleteItem);
+
+    const confirmBtn = await screen.findByTestId('confirm-delete');
     fireEvent.click(confirmBtn);
     expect(deleteMock.mutate).toHaveBeenCalledWith('d1', expect.any(Object));
-
-    // Simula erro: onSettled é disparado, hook chama close().
-    deleteMock.settleFail();
-
-    // Dialog FECHOU (stub retorna null quando open=false).
-    await waitFor(() => {
-      expect(screen.queryByTestId('confirm-delete-stub')).not.toBeInTheDocument();
-    });
-    expect(captured.current?.open).toBe(false);
   });
 
-  it('excluir: dialog FECHA quando a mutation tem SUCESSO', async () => {
+  /**
+   * FIX DO BUG: o modo de confirmação sai do card após o `onSettled` rodar,
+   * MESMO em caso de erro de mutação. Antes do fix (com AlertDialog Radix),
+   * falhas de rede/500/404 deixavam o `<body>` com `pointer-events: none`
+   * (bug do react-remove-scroll cleanup). Agora sem portal, sem overlay,
+   * esse caminho simplesmente não existe.
+   */
+  it('excluir: card SAI do modo de confirmação quando a mutação falha', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -266,19 +309,33 @@ describe('DashboardsPage', () => {
     const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
     await user.click(deleteItem);
 
-    expect(screen.getByTestId('confirm-delete-stub')).toBeInTheDocument();
-    const confirmBtn = screen.getByTestId('confirm-btn');
-    fireEvent.click(confirmBtn);
+    // Antes do settle: card em modo confirming.
+    expect(
+      screen.getByRole('group', {
+        name: /Confirmar exclusão de Vendas Mensais/i,
+      }),
+    ).toBeInTheDocument();
 
-    deleteMock.settleOk();
+    // Confirma a exclusão.
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+    expect(deleteMock.mutate).toHaveBeenCalledWith('d1', expect.any(Object));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('confirm-delete-stub')).not.toBeInTheDocument();
+    // Simula erro: onSettled é disparado, hook zera `deleting`.
+    act(() => {
+      deleteMock.settleFail();
     });
-    expect(captured.current?.open).toBe(false);
+
+    // Card voltou ao normal: nenhum card está em modo confirming.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('group', {
+          name: /Confirmar exclusão de Vendas Mensais/i,
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 
-  it('excluir: cancelar NÃO chama a mutação', async () => {
+  it('excluir: card SAI do modo de confirmação quando a mutação tem SUCESSO', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -287,16 +344,71 @@ describe('DashboardsPage', () => {
     const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
     await user.click(deleteItem);
 
-    expect(screen.getByTestId('confirm-delete-stub')).toBeInTheDocument();
-
-    // Clica em Cancelar (fireEvent evita checagem de pointer-events do
-    // overlay do DropdownMenu que está fechando nesse momento).
-    const cancelBtn = screen.getByTestId('cancel-btn');
-    fireEvent.click(cancelBtn);
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+    act(() => {
+      deleteMock.settleOk();
+    });
 
     await waitFor(() => {
-      expect(screen.queryByTestId('confirm-delete-stub')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('group', {
+          name: /Confirmar exclusão de Vendas Mensais/i,
+        }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('excluir: cancelar NÃO chama a mutação e volta o card ao normal', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const trigger = screen.getByRole('button', { name: /Ações de Vendas Mensais/i });
+    await user.click(trigger);
+    const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
+    await user.click(deleteItem);
+
+    // Card em modo confirming.
+    expect(
+      screen.getByRole('group', {
+        name: /Confirmar exclusão de Vendas Mensais/i,
+      }),
+    ).toBeInTheDocument();
+
+    // Clica Cancelar.
+    fireEvent.click(screen.getByTestId('cancel-delete'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('group', {
+          name: /Confirmar exclusão de Vendas Mensais/i,
+        }),
+      ).not.toBeInTheDocument();
     });
     expect(deleteMock.mutate).not.toHaveBeenCalled();
+  });
+
+  it('excluir: durante a request, o botão "Sim, excluir" fica disabled', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const trigger = screen.getByRole('button', { name: /Ações de Vendas Mensais/i });
+    await user.click(trigger);
+    const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
+    await user.click(deleteItem);
+
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    // isPending=true no mock → botão disabled. Re-busca o nó (o React
+    // pode ter substituído o elemento no re-render).
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-delete')).toBeDisabled();
+    });
+    expect(screen.getByTestId('confirm-delete')).toHaveTextContent(/Excluindo\.\.\./);
+
+    // settleOk é síncrono, mas precisa estar dentro de act por causa do
+    // setState interno do mock reativo.
+    act(() => {
+      deleteMock.settleOk();
+    });
   });
 });

@@ -18,7 +18,6 @@ import { ArtifactCard } from '@/shared/components/artifact-card';
 import { ArtifactListView } from '@/shared/components/artifact-list-view';
 import { buildArtifactCardActions } from '@/shared/components/artifact-action-builder';
 import { ShareArtifactDialog } from '@/shared/components/share-artifact-dialog';
-import { ConfirmDeleteDialog } from '@/shared/components/confirm-delete-dialog';
 
 import {
   useCharts,
@@ -62,7 +61,8 @@ export function ChartsPage() {
 
   const [sharing, setSharing] = useState<Chart | null>(null);
   const {
-    dialogProps: deleteDialog,
+    deleting: deletingChart,
+    confirmation: deleteConfirmation,
     openDelete: openDeleteChart,
   } = useConfirmDelete<Chart>({
     mutation: remove,
@@ -148,6 +148,11 @@ export function ChartsPage() {
               onOpen={() => navigate(`/charts/${c.id}`)}
               onPrefetch={() => prefetch(c.id, mode)}
               actions={actions}
+              confirming={
+                deletingChart?.id === c.id && deleteConfirmation
+                  ? deleteConfirmation
+                  : undefined
+              }
             />
           );
         })}
@@ -160,10 +165,6 @@ export function ChartsPage() {
         targetType="CHART"
         targetId={sharing?.id ?? null}
         targetTitle={sharing?.title}
-      />
-      <ConfirmDeleteDialog
-        title="Excluir gráfico?"
-        {...deleteDialog}
       />
     </>
   );

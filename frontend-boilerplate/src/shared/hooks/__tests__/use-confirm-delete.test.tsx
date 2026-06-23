@@ -109,19 +109,21 @@ describe('useConfirmDelete', () => {
     );
   }
 
-  it('estado inicial: isOpen=false, deleting=null, isPending=false', () => {
+  it('estado inicial: isOpen=false, deleting=null, isPending=false, confirmation=null', () => {
     const { result } = makeRenderHook();
     expect(result.current.deleting).toBeNull();
     expect(result.current.isOpen).toBe(false);
     expect(result.current.isPending).toBe(false);
+    expect(result.current.confirmation).toBeNull();
   });
 
-  it('openDelete(item) define deleting e abre o diálogo', () => {
+  it('openDelete(item) define deleting, isOpen=true e preenche confirmation', () => {
     const { result } = makeRenderHook();
     act(() => result.current.openDelete(sampleItem));
     expect(result.current.deleting).toEqual(sampleItem);
     expect(result.current.isOpen).toBe(true);
-    expect(result.current.dialogProps.itemName).toBe('Meu Item');
+    expect(result.current.confirmation).not.toBeNull();
+    expect(result.current.confirmation?.isPending).toBe(false);
   });
 
   it('close() reseta o state sem chamar a mutação', () => {
@@ -132,28 +134,32 @@ describe('useConfirmDelete', () => {
     act(() => result.current.close());
     expect(result.current.deleting).toBeNull();
     expect(result.current.isOpen).toBe(false);
+    expect(result.current.confirmation).toBeNull();
     expect(harness.mutationFn).not.toHaveBeenCalled();
   });
 
-  it('dialogProps.onOpenChange(false) também fecha', () => {
+  it('confirmation.onCancel também fecha (sem chamar mutação)', () => {
     const { result } = makeRenderHook();
     act(() => result.current.openDelete(sampleItem));
-    act(() => result.current.dialogProps.onOpenChange(false));
+    const onCancel = result.current.confirmation!.onCancel;
+    act(() => onCancel());
     expect(result.current.isOpen).toBe(false);
     expect(result.current.deleting).toBeNull();
+    expect(result.current.confirmation).toBeNull();
+    expect(harness.mutationFn).not.toHaveBeenCalled();
   });
 
-  it('dialogProps.onOpenChange(true) é no-op', () => {
-    const { result } = makeRenderHook();
-    act(() => result.current.openDelete(sampleItem));
-    act(() => result.current.dialogProps.onOpenChange(true));
-    expect(result.current.isOpen).toBe(true);
-  });
-
-  it('passa o id correto para a mutação', () => {
+  it('passa o id correto para a mutação ao chamar confirm()', () => {
     const { result } = makeRenderHook();
     act(() => result.current.openDelete(sampleItem));
     act(() => result.current.confirm());
+    expect(harness.mutationFn).toHaveBeenCalledWith('item-1');
+  });
+
+  it('confirmation.onConfirm é o mesmo confirm() e dispara a mutação', () => {
+    const { result } = makeRenderHook();
+    act(() => result.current.openDelete(sampleItem));
+    act(() => result.current.confirmation!.onConfirm());
     expect(harness.mutationFn).toHaveBeenCalledWith('item-1');
   });
 
@@ -162,16 +168,18 @@ describe('useConfirmDelete', () => {
     act(() => result.current.confirm());
     expect(harness.mutationFn).not.toHaveBeenCalled();
     expect(result.current.deleting).toBeNull();
+    expect(result.current.confirmation).toBeNull();
   });
 
-  it('fecha o diálogo no SUCESSO da mutação (onSettled)', async () => {
+  it('fecha a confirmação no SUCESSO da mutação (onSettled)', async () => {
     const { result } = makeRenderHook();
     act(() => result.current.openDelete(sampleItem));
     act(() => result.current.confirm());
 
-    // Antes do settled: pending + open.
+    // Antes do settled: pending + open + confirmation ativa.
     expect(result.current.isPending).toBe(true);
     expect(result.current.isOpen).toBe(true);
+    expect(result.current.confirmation?.isPending).toBe(true);
 
     await act(async () => {
       harness.settleOk();
@@ -182,17 +190,18 @@ describe('useConfirmDelete', () => {
     expect(result.current.isPending).toBe(false);
     expect(result.current.deleting).toBeNull();
     expect(result.current.isOpen).toBe(false);
+    expect(result.current.confirmation).toBeNull();
   });
 
-  it('fecha o diálogo no ERRO da mutação (onSettled) — o teste do fix', async () => {
+  it('fecha a confirmação no ERRO da mutação (onSettled) — o teste do fix', async () => {
     const { result } = makeRenderHook();
     act(() => result.current.openDelete(sampleItem));
     act(() => result.current.confirm());
     expect(result.current.isOpen).toBe(true);
 
     // Mesmo que a mutação rejeite (ex.: 500, 404, rede), o `onSettled` é
-    // chamado pelo React Query → o dialog TEM que fechar. Antes do fix, só
-    // `onSuccess` resetava, então a UI travava.
+    // chamado pelo React Query → a confirmação TEM que fechar. Antes do fix,
+    // o AlertDialog Radix deixava o `<body>` com `pointer-events: none`.
     await act(async () => {
       harness.settleFail();
       await Promise.resolve();
@@ -200,6 +209,7 @@ describe('useConfirmDelete', () => {
 
     expect(result.current.deleting).toBeNull();
     expect(result.current.isOpen).toBe(false);
+    expect(result.current.confirmation).toBeNull();
   });
 
   it('NÃO fecha enquanto a mutação está pendente (sem settled)', async () => {
@@ -215,28 +225,29 @@ describe('useConfirmDelete', () => {
 
     expect(result.current.isPending).toBe(true);
     expect(result.current.isOpen).toBe(true);
+    expect(result.current.confirmation?.isPending).toBe(true);
     expect(result.current.deleting).toEqual(sampleItem);
   });
 
   it('isPending reflete o state da mutação', async () => {
     const { result } = makeRenderHook();
     expect(result.current.isPending).toBe(false);
-    expect(result.current.dialogProps.isPending).toBe(false);
+    expect(result.current.confirmation).toBeNull();
 
     act(() => result.current.openDelete(sampleItem));
     act(() => result.current.confirm());
     expect(result.current.isPending).toBe(true);
-    expect(result.current.dialogProps.isPending).toBe(true);
+    expect(result.current.confirmation?.isPending).toBe(true);
 
     await act(async () => {
       harness.settleOk();
       await Promise.resolve();
     });
     expect(result.current.isPending).toBe(false);
-    expect(result.current.dialogProps.isPending).toBe(false);
+    expect(result.current.confirmation).toBeNull();
   });
 
-  it('pode reabrir o diálogo com outro item após o ciclo fechar', async () => {
+  it('pode reabrir a confirmação com outro item após o ciclo fechar', async () => {
     const { result } = makeRenderHook();
 
     // 1º ciclo
@@ -247,11 +258,13 @@ describe('useConfirmDelete', () => {
       await Promise.resolve();
     });
     expect(result.current.isOpen).toBe(false);
+    expect(result.current.confirmation).toBeNull();
 
     // 2º ciclo com item diferente
     act(() => result.current.openDelete(otherItem));
     expect(result.current.isOpen).toBe(true);
     expect(result.current.deleting).toEqual(otherItem);
+    expect(result.current.confirmation).not.toBeNull();
 
     act(() => result.current.confirm());
     expect(harness.mutationFn).toHaveBeenLastCalledWith('item-2');
@@ -268,38 +281,12 @@ describe('useConfirmDelete', () => {
     act(() => result.current.openDelete(otherItem));
 
     expect(result.current.deleting).toEqual(otherItem);
-    expect(result.current.dialogProps.itemName).toBe('Outro');
 
     act(() => result.current.confirm());
     expect(harness.mutationFn).toHaveBeenLastCalledWith('item-2');
   });
 
-  it('dialogProps reflete o estado atual do hook', async () => {
-    const { result } = makeRenderHook();
-    // Fechado
-    expect(result.current.dialogProps.open).toBe(false);
-    expect(result.current.dialogProps.isPending).toBe(false);
-    expect(result.current.dialogProps.itemName).toBeUndefined();
-    expect(result.current.dialogProps.onConfirm).toBe(result.current.confirm);
-
-    // Aberto
-    act(() => result.current.openDelete(sampleItem));
-    expect(result.current.dialogProps.open).toBe(true);
-    expect(result.current.dialogProps.itemName).toBe('Meu Item');
-
-    // Pending
-    act(() => result.current.confirm());
-    expect(result.current.dialogProps.isPending).toBe(true);
-
-    // Fechado de novo
-    await act(async () => {
-      harness.settleOk();
-      await Promise.resolve();
-    });
-    expect(result.current.dialogProps.open).toBe(false);
-  });
-
-  it('aceita mutation sem getTitle (itemName fica undefined)', () => {
+  it('aceita mutation sem getTitle (confirmation é montada normalmente)', () => {
     function renderWithoutTitle() {
       return renderHook(
         () => {
@@ -315,6 +302,6 @@ describe('useConfirmDelete', () => {
     const { result } = renderWithoutTitle();
     act(() => result.current.openDelete(sampleItem));
     expect(result.current.isOpen).toBe(true);
-    expect(result.current.dialogProps.itemName).toBeUndefined();
+    expect(result.current.confirmation).not.toBeNull();
   });
 });

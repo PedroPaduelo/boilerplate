@@ -1,36 +1,53 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Chart } from '../types';
 
-const { state, prefetchFn, deleteMock } = vi.hoisted(() => {
-  type Pending = { onSettled?: () => void } | null;
-  const deleteMock = {
-    isPending: false,
-    pending: null as Pending,
-    mutate: vi.fn((_id: string, options?: { onSettled?: () => void }) => {
-      deleteMock.isPending = true;
-      deleteMock.pending = { onSettled: options?.onSettled };
-    }),
-    settleOk: () => {
-      deleteMock.isPending = false;
-      deleteMock.pending?.onSettled?.();
-      deleteMock.pending = null;
-    },
-    settleFail: () => {
-      deleteMock.isPending = false;
-      deleteMock.pending?.onSettled?.();
-      deleteMock.pending = null;
-    },
-  };
+// Polyfills que o Radix (DropdownMenu) usa e o jsdom não implementa.
+beforeAll(() => {
+  const proto = window.HTMLElement.prototype as unknown as Record<string, unknown>;
+  proto.hasPointerCapture ??= () => false;
+  proto.setPointerCapture ??= () => {};
+  proto.releasePointerCapture ??= () => {};
+  proto.scrollIntoView ??= () => {};
+});
+
+const { state, prefetchFn } = vi.hoisted(() => {
   return {
     state: { user: { id: 'me', role: 'CREATOR' } as { id: string; role: string } | null },
     prefetchFn: vi.fn(),
-    deleteMock,
   };
 });
+
+/**
+ * Stub REATIVO do `useDeleteChart`: usa `useState` para `isPending`/`pending`
+ * dentro do hook (via `vi.mock`), então o ArtifactCard re-renderiza quando
+ * `mutate`/`settle` rodam.
+ */
+type DeleteMock = {
+  isPending: boolean;
+  pending: { onSettled?: () => void } | null;
+  mutate: ReturnType<typeof vi.fn> & { __wired?: boolean };
+  settleOk: () => void;
+  settleFail: () => void;
+};
+const deleteMock: DeleteMock = {
+  isPending: false,
+  pending: null,
+  mutate: vi.fn(),
+  settleOk: () => {
+    deleteMock.isPending = false;
+    deleteMock.pending?.onSettled?.();
+    deleteMock.pending = null;
+  },
+  settleFail: () => {
+    deleteMock.isPending = false;
+    deleteMock.pending?.onSettled?.();
+    deleteMock.pending = null;
+  },
+};
 
 const charts: Chart[] = [
   {
@@ -51,64 +68,53 @@ const charts: Chart[] = [
   },
 ];
 
-/**
- * Stub do ConfirmDeleteDialog para evitar o focus trap do Radix AlertDialog
- * em jsdom. Capturamos as props para asserir o estado do diálogo.
- */
-type CapturedDialogProps = {
-  open: boolean;
-  isPending: boolean;
-  onConfirm: () => void;
-  onOpenChange: (open: boolean) => void;
-  itemName?: string;
-  title: string;
-};
-const captured: { current: CapturedDialogProps | null } = { current: null };
-
-vi.mock('@/shared/components/confirm-delete-dialog', () => ({
-  ConfirmDeleteDialog: (props: CapturedDialogProps) => {
-    captured.current = props;
-    if (!props.open) return null;
-    return (
-      <div data-testid="confirm-delete-stub" data-state="open">
-        <h2>{props.title}</h2>
-        <p data-testid="item-name">{props.itemName ?? ''}</p>
-        <button
-          type="button"
-          onClick={props.onConfirm}
-          disabled={props.isPending}
-          data-testid="confirm-btn"
-        >
-          {props.isPending ? 'Excluindo...' : 'Excluir'}
-        </button>
-        <button
-          type="button"
-          onClick={() => props.onOpenChange(false)}
-          data-testid="cancel-btn"
-        >
-          Cancelar
-        </button>
-      </div>
-    );
-  },
-}));
-
-vi.mock('../hooks', () => ({
-  useCharts: () => ({
-    data: { charts, total: 1, page: 1, pageSize: 12, totalPages: 1 },
-    isLoading: false,
-    isError: false,
-  }),
-  usePrefetchChart: () => prefetchFn,
-  useDuplicateChart: () => ({ mutate: vi.fn(), isPending: false }),
-  useDeleteChart: () => ({
-    mutate: deleteMock.mutate,
-    get isPending() {
-      return deleteMock.isPending;
+vi.mock('../hooks', async () => {
+  const React = await import('react');
+  return {
+    useCharts: () => ({
+      data: { charts, total: 1, page: 1, pageSize: 12, totalPages: 1 },
+      isLoading: false,
+      isError: false,
+    }),
+    usePrefetchChart: () => prefetchFn,
+    useDuplicateChart: () => ({ mutate: vi.fn(), isPending: false }),
+    // Hook REATIVO: useState para isPending/pending, re-renderiza o card.
+    useDeleteChart: () => {
+      const [isPending, setIsPending] = React.useState(false);
+      const [pending, setPending] = React.useState<{ onSettled?: () => void } | null>(
+        null,
+      );
+      if (!deleteMock.mutate.__wired) {
+        deleteMock.mutate.mockImplementation(
+          (_id: string, options?: { onSettled?: () => void }) => {
+            setIsPending(true);
+            setPending({ onSettled: options?.onSettled });
+          },
+        );
+        deleteMock.mutate.__wired = true;
+      }
+      deleteMock.isPending = isPending;
+      deleteMock.pending = pending;
+      deleteMock.settleOk = () => {
+        setIsPending(false);
+        const p = pending;
+        setPending(null);
+        p?.onSettled?.();
+      };
+      deleteMock.settleFail = () => {
+        setIsPending(false);
+        const p = pending;
+        setPending(null);
+        p?.onSettled?.();
+      };
+      return {
+        mutate: deleteMock.mutate,
+        isPending,
+      };
     },
-  }),
-  usePublishChart: () => ({ mutate: vi.fn(), isPending: false }),
-}));
+    usePublishChart: () => ({ mutate: vi.fn(), isPending: false }),
+  };
+});
 
 vi.mock('@/shared/hooks/use-departments', () => ({
   useDepartments: () => ({ data: { departments: [] } }),
@@ -136,10 +142,12 @@ function renderPage() {
 describe('ChartsPage', () => {
   beforeEach(() => {
     prefetchFn.mockClear();
-    deleteMock.mutate.mockClear();
+    // Reseta o mock reativo para que o próximo render religa as closures
+    // de useState (evita reutilizar setIsPending/setPending antigos).
+    deleteMock.mutate.__wired = false;
+    deleteMock.mutate.mockReset();
     deleteMock.isPending = false;
     deleteMock.pending = null;
-    captured.current = null;
     state.user = { id: 'me', role: 'CREATOR' };
   });
 
@@ -156,36 +164,42 @@ describe('ChartsPage', () => {
   });
 
   /**
-   * FIX DO BUG: ConfirmDeleteDialog FECHA após falha da mutation. Antes do
-   * `useConfirmDelete`, só `onSuccess` resetava o state e a UI travava com
-   * o overlay Radix preso em qualquer falha de rede/500/404.
+   * FIX DEFINITIVO: o card entra em modo de confirmação INLINE (sem modal,
+   * sem overlay, sem portal). Elimina o bug do Radix AlertDialog +
+   * react-remove-scroll que deixava a UI travada com `pointer-events: none`
+   * no `<body>`.
    */
-  it('excluir: dialog FECHA quando a mutation falha (onSettled → close)', async () => {
+  it('excluir: card entra em modo de confirmação inline', async () => {
     const user = userEvent.setup();
     renderPage();
+
+    // Card normal (sem data-confirming).
+    const card = screen
+      .getByText('KPI de Receita')
+      .closest('[data-slot="card"]')!;
+    expect(card.querySelector('[data-confirming="true"]')).toBeNull();
 
     const trigger = screen.getByRole('button', { name: /Ações de KPI de Receita/i });
     await user.click(trigger);
     const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
     await user.click(deleteItem);
 
-    expect(screen.getByTestId('confirm-delete-stub')).toBeInTheDocument();
-    expect(captured.current?.itemName).toBe('KPI de Receita');
-    expect(captured.current?.open).toBe(true);
-
-    const confirmBtn = screen.getByTestId('confirm-btn');
-    fireEvent.click(confirmBtn);
-    expect(deleteMock.mutate).toHaveBeenCalledWith('c1', expect.any(Object));
-
-    deleteMock.settleFail();
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('confirm-delete-stub')).not.toBeInTheDocument();
+    const confirmingCard = await screen.findByRole('group', {
+      name: /Confirmar exclusão de KPI de Receita/i,
     });
-    expect(captured.current?.open).toBe(false);
+    expect(confirmingCard).toHaveAttribute('data-confirming', 'true');
+    expect(
+      within(confirmingCard).getByText(/Excluir KPI de Receita\?/),
+    ).toBeInTheDocument();
+    expect(
+      within(confirmingCard).getByRole('button', { name: /Cancelar/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(confirmingCard).getByRole('button', { name: /Sim, excluir/i }),
+    ).toBeInTheDocument();
   });
 
-  it('excluir: dialog FECHA quando a mutation tem SUCESSO', async () => {
+  it('excluir: clicar "Sim, excluir" chama a mutação com o id correto', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -194,15 +208,54 @@ describe('ChartsPage', () => {
     const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
     await user.click(deleteItem);
 
-    expect(screen.getByTestId('confirm-delete-stub')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('confirm-btn'));
+    fireEvent.click(await screen.findByTestId('confirm-delete'));
+    expect(deleteMock.mutate).toHaveBeenCalledWith('c1', expect.any(Object));
+  });
 
-    deleteMock.settleOk();
+  it('excluir: card SAI do modo de confirmação quando a mutação falha', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const trigger = screen.getByRole('button', { name: /Ações de KPI de Receita/i });
+    await user.click(trigger);
+    const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
+    await user.click(deleteItem);
+
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+    act(() => {
+      deleteMock.settleFail();
+    });
 
     await waitFor(() => {
-      expect(screen.queryByTestId('confirm-delete-stub')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('group', {
+          name: /Confirmar exclusão de KPI de Receita/i,
+        }),
+      ).not.toBeInTheDocument();
     });
-    expect(captured.current?.open).toBe(false);
+  });
+
+  it('excluir: card SAI do modo de confirmação quando a mutação tem SUCESSO', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const trigger = screen.getByRole('button', { name: /Ações de KPI de Receita/i });
+    await user.click(trigger);
+    const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
+    await user.click(deleteItem);
+
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+    act(() => {
+      deleteMock.settleOk();
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('group', {
+          name: /Confirmar exclusão de KPI de Receita/i,
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('excluir: cancelar NÃO chama a mutação', async () => {
@@ -214,15 +267,37 @@ describe('ChartsPage', () => {
     const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
     await user.click(deleteItem);
 
-    expect(screen.getByTestId('confirm-delete-stub')).toBeInTheDocument();
-
-    // fireEvent evita checagem de pointer-events do overlay do DropdownMenu
-    // que está fechando nesse momento.
-    fireEvent.click(screen.getByTestId('cancel-btn'));
+    fireEvent.click(screen.getByTestId('cancel-delete'));
 
     await waitFor(() => {
-      expect(screen.queryByTestId('confirm-delete-stub')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('group', {
+          name: /Confirmar exclusão de KPI de Receita/i,
+        }),
+      ).not.toBeInTheDocument();
     });
     expect(deleteMock.mutate).not.toHaveBeenCalled();
+  });
+
+  it('excluir: durante a request, "Sim, excluir" fica disabled e mostra "Excluindo..."', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const trigger = screen.getByRole('button', { name: /Ações de KPI de Receita/i });
+    await user.click(trigger);
+    const deleteItem = await screen.findByRole('menuitem', { name: /Excluir/i });
+    await user.click(deleteItem);
+
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    // Re-busca após re-render (isPending=true no mock reativo).
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-delete')).toBeDisabled();
+    });
+    expect(screen.getByTestId('confirm-delete')).toHaveTextContent(/Excluindo\.\.\./);
+
+    act(() => {
+      deleteMock.settleOk();
+    });
   });
 });

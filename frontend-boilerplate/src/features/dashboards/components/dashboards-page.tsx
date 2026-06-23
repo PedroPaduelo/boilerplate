@@ -18,7 +18,6 @@ import { ArtifactCard } from '@/shared/components/artifact-card';
 import { ArtifactListView } from '@/shared/components/artifact-list-view';
 import { buildArtifactCardActions } from '@/shared/components/artifact-action-builder';
 import { ShareArtifactDialog } from '@/shared/components/share-artifact-dialog';
-import { ConfirmDeleteDialog } from '@/shared/components/confirm-delete-dialog';
 
 import {
   useDashboards,
@@ -64,7 +63,8 @@ export function DashboardsPage() {
 
   const [sharing, setSharing] = useState<Dashboard | null>(null);
   const {
-    dialogProps: deleteDialog,
+    deleting: deletingDashboard,
+    confirmation: deleteConfirmation,
     openDelete: openDeleteDashboard,
   } = useConfirmDelete<Dashboard>({
     mutation: remove,
@@ -150,6 +150,11 @@ export function DashboardsPage() {
               onOpen={() => navigate(`/dashboards/${d.id}`)}
               onPrefetch={() => prefetch(d.id, mode)}
               actions={actions}
+              confirming={
+                deletingDashboard?.id === d.id && deleteConfirmation
+                  ? deleteConfirmation
+                  : undefined
+              }
             />
           );
         })}
@@ -162,10 +167,6 @@ export function DashboardsPage() {
         targetType="DASHBOARD"
         targetId={sharing?.id ?? null}
         targetTitle={sharing?.title}
-      />
-      <ConfirmDeleteDialog
-        title="Excluir dashboard?"
-        {...deleteDialog}
       />
     </>
   );

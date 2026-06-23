@@ -17,41 +17,43 @@ export interface UseConfirmDeleteOptions<TItem> {
   mutation: UseConfirmDeleteMutation<string>;
   /** Extrai o id do item a ser passado para a mutação. */
   getId: (item: TItem) => string;
-  /** Extrai o título/nome do item para mostrar no diálogo. Opcional. */
+  /** Extrai o título/nome do item para mostrar no card. Opcional. */
   getTitle?: (item: TItem) => string | undefined;
   /**
    * Texto curto que qualifica o tipo de item (ex.: "dashboard", "gráfico").
-   * Reservado para uso futuro (templates, ARIA, etc.) — o diálogo atual não
+   * Reservado para uso futuro (templates, ARIA, etc.) — o card atual não
    * consome. Opcional.
    */
   noun?: string;
 }
 
-export interface UseConfirmDeleteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  isPending: boolean;
+/**
+ * Props prontas para passar ao `<ArtifactCard confirming={...} />`. O card
+ * entra em modo de confirmação inline (sem modal, sem overlay, sem portal)
+ * enquanto este objeto estiver setado.
+ */
+export interface UseConfirmDeleteConfirmation {
   onConfirm: () => void;
-  itemName?: string;
-  noun?: string;
+  onCancel: () => void;
+  isPending: boolean;
 }
 
 export interface UseConfirmDeleteReturn<TItem> {
-  /** Item pendente de exclusão. `null` quando o diálogo está fechado. */
+  /** Item pendente de exclusão. `null` quando o card NÃO está em modo de confirmação. */
   deleting: TItem | null;
-  /** `true` enquanto o diálogo está aberto. Atalho para `deleting !== null`. */
+  /** `true` enquanto há item pendente. Atalho para `deleting !== null`. */
   isOpen: boolean;
-  /** `mutation.isPending` repassado para o diálogo. */
+  /** `mutation.isPending` repassado para o card. */
   isPending: boolean;
-  /** Abre o diálogo para o item informado. */
+  /** Abre o modo de confirmação para o item informado. */
   openDelete: (item: TItem) => void;
   /**
-   * Fecha o diálogo SEM disparar a mutação. Use no `onOpenChange` do
-   * `AlertDialog` quando o usuário cancela/pressiona Esc/clica fora.
+   * Fecha o modo de confirmação SEM disparar a mutação. Use no `onCancel`
+   * do `ArtifactCard` quando o usuário desiste.
    */
   close: () => void;
   /**
-   * Dispara a mutação para o item pendente. SEMPRE fecha o diálogo ao final
+   * Dispara a mutação para o item pendente. SEMPRE fecha o card ao final
    * (sucesso OU erro) via `onSettled` do React Query — é o coração do fix:
    * antes, só `onSuccess` resetava o state e qualquer falha (rede, 500, 404)
    * deixava o overlay Radix preso, travando a UI.
@@ -60,21 +62,31 @@ export interface UseConfirmDeleteReturn<TItem> {
    */
   confirm: () => void;
   /**
-   * Spread pronto para o `<ConfirmDeleteDialog />`. Use:
+   * Objeto pronto para passar como prop `confirming` do `<ArtifactCard />`.
+   * É `null` quando NÃO há item pendente — passe direto:
    *
    * ```tsx
-   * <ConfirmDeleteDialog title="Excluir dashboard?" {...dialogProps} />
+   * <ArtifactCard
+   *   {...}
+   *   confirming={deleting?.id === d.id ? deleteConfirmation : undefined}
+   * />
    * ```
    */
-  dialogProps: UseConfirmDeleteDialogProps;
+  confirmation: UseConfirmDeleteConfirmation | null;
 }
 
 /**
- * Hook genérico para o fluxo "abrir diálogo de confirmação → executar mutação
- * destrutiva". Centraliza o state do item pendente e o ciclo de vida do
- * diálogo: SEMPRE fecha o overlay ao final da mutação (sucesso ou erro),
- * evitando o anti-padrão que prendia a UI do Radix `AlertDialog` quando a
- * `mutate` falhava.
+ * Hook genérico para o fluxo "abrir confirmação de exclusão → executar mutação
+ * destrutiva". Centraliza o state do item pendente e SEMPRE fecha o modo de
+ * confirmação ao final da mutação (sucesso ou erro).
+ *
+ * DESIGN DECISÃO: a confirmação é INLINE dentro do próprio `<ArtifactCard>` —
+ * NÃO usa `AlertDialog` (Radix). O Radix AlertDialog tem um bug conhecido com
+ * `react-remove-scroll`: quando o componente é desmontado durante a animação
+ * de saída, o cleanup que destrava `pointer-events: none` no `<body>` pode
+ * não rodar, deixando a UI TRAVADA após qualquer fluxo de delete (mesmo
+ * após `onSettled`). Confirmar inline no próprio card elimina portal,
+ * overlay e focus trap, então não há nada para "destravar".
  *
  * Os toasts de erro/sucesso permanecem DENTRO da mutação chamada
  * (`onSuccess`/`onError` do `useDeleteDashboard` etc.) — este hook não
@@ -83,7 +95,7 @@ export interface UseConfirmDeleteReturn<TItem> {
 export function useConfirmDelete<TItem>(
   options: UseConfirmDeleteOptions<TItem>,
 ): UseConfirmDeleteReturn<TItem> {
-  const { mutation, getId, getTitle, noun } = options;
+  const { mutation, getId } = options;
   const [deleting, setDeleting] = useState<TItem | null>(null);
 
   const close = useCallback(() => setDeleting(null), []);
@@ -102,18 +114,16 @@ export function useConfirmDelete<TItem>(
   }, [deleting, getId, mutation]);
 
   const isOpen = deleting !== null;
-  const itemName = deleting && getTitle ? getTitle(deleting) : undefined;
 
-  const dialogProps: UseConfirmDeleteDialogProps = {
-    open: isOpen,
-    onOpenChange: (o) => {
-      if (!o) close();
-    },
-    isPending: mutation.isPending,
-    onConfirm: confirm,
-    itemName,
-    noun,
-  };
+  // `confirmation` é derivado: muda de referência quando isPending muda
+  // (para que o card re-renderize o estado disabled do botão).
+  const confirmation: UseConfirmDeleteConfirmation | null = isOpen
+    ? {
+        onConfirm: confirm,
+        onCancel: close,
+        isPending: mutation.isPending,
+      }
+    : null;
 
   return {
     deleting,
@@ -122,6 +132,6 @@ export function useConfirmDelete<TItem>(
     openDelete,
     close,
     confirm,
-    dialogProps,
+    confirmation,
   };
 }
