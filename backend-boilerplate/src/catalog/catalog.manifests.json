@@ -1,7 +1,7 @@
 {
   "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
   "catalogVersion": 1,
-  "count": 19,
+  "count": 22,
   "blocks": [
     {
       "type": "__example",
@@ -205,6 +205,64 @@
       "version": "1.0.0"
     },
     {
+      "type": "data_table",
+      "kind": "chart",
+      "name": "Tabela Rica",
+      "description": "Tabela com busca, ordenação e paginação (colunas tipadas). Para datasets tabulares.",
+      "source": "vitrine:data-table",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "filterPlaceholder": {
+            "type": "string"
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "table",
+        "spec": {
+          "columns": {
+            "type": "array",
+            "required": true
+          },
+          "rows": {
+            "type": "array",
+            "required": true
+          }
+        },
+        "example": {
+          "columns": [
+            {
+              "key": "municipio",
+              "label": "Município",
+              "type": "string"
+            },
+            {
+              "key": "valor",
+              "label": "Valor",
+              "type": "number"
+            }
+          ],
+          "rows": [
+            {
+              "municipio": "Centro",
+              "valor": 1000
+            }
+          ]
+        }
+      },
+      "defaultProps": {
+        "pageSize": 5
+      },
+      "maxRows": 5000,
+      "version": "1.0.0"
+    },
+    {
       "type": "donut",
       "kind": "chart",
       "name": "Donut",
@@ -290,6 +348,66 @@
       "version": "1.0.0"
     },
     {
+      "type": "invoice_table",
+      "kind": "chart",
+      "name": "Tabela de Fatura",
+      "description": "Itens com quantidade × valor unitário e total no rodapé. Linhas: label, qty, unit.",
+      "source": "vitrine:invoice-table",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "table",
+        "spec": {
+          "columns": {
+            "type": "array",
+            "required": true
+          },
+          "rows": {
+            "type": "array",
+            "required": true
+          }
+        },
+        "example": {
+          "columns": [
+            {
+              "key": "label",
+              "label": "Item",
+              "type": "string"
+            },
+            {
+              "key": "qty",
+              "label": "Qtd.",
+              "type": "number"
+            },
+            {
+              "key": "unit",
+              "label": "Valor",
+              "type": "number"
+            }
+          ],
+          "rows": [
+            {
+              "label": "Licença",
+              "qty": 3,
+              "unit": 1200
+            }
+          ]
+        }
+      },
+      "defaultProps": {
+        "currency": "BRL"
+      },
+      "maxRows": 1000,
+      "version": "1.0.0"
+    },
+    {
       "type": "kpi",
       "kind": "chart",
       "name": "KPI",
@@ -336,6 +454,48 @@
       "defaultProps": {
         "showDelta": true
       },
+      "version": "1.0.0"
+    },
+    {
+      "type": "leaderboard",
+      "kind": "chart",
+      "name": "Leaderboard",
+      "description": "Ranking (Top N) com posição, avatar e barra de progresso proporcional ao valor.",
+      "source": "vitrine:leaderboard-list",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "dataContract": {
+        "shape": "categorical",
+        "spec": {
+          "label": {
+            "type": "category",
+            "required": true
+          },
+          "value": {
+            "type": "number",
+            "required": true
+          }
+        },
+        "example": [
+          {
+            "label": "Ana Souza",
+            "value": 1280
+          },
+          {
+            "label": "Bruno Lima",
+            "value": 980
+          }
+        ]
+      },
+      "defaultProps": {},
+      "maxRows": 1000,
       "version": "1.0.0"
     },
     {
