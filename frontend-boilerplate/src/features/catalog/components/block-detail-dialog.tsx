@@ -8,8 +8,12 @@
  *   │                     │  PROPS   (gerado do propsSchema)   │
  *   │  PREVIEW AO VIVO    │   - string / number / boolean      │
  *   │  (BlockRenderer     │   - enum → <Select>                │
- *   │   com state local)  │   - COR → enum + input livre +     │
- *   │                     │          preview (ColorFieldEditor) │
+ *   │   framed — shell    │   - COR → enum + input livre +     │
+ *   │   ChartWidget       │          preview (ColorFieldEditor) │
+ *   │   idêntico ao       │                                    │
+ *   │   dashboard real)   │  WRAPPER (ChartWidget: header +    │
+ *   │                     │   footer) — Título, Subtítulo,     │
+ *   │                     │   Query SQL, Duração ms.            │
  *   │                     │  DADOS (dataContract.example)      │
  *   │                     │   - seletor "Dados:" → variantes   │
  *   │                     │     (3-5 fixtures pré-prontas)     │
@@ -592,6 +596,14 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   const [propsDraft, setPropsDraft] = useState<Record<string, unknown>>(() =>
     initialPropsFor(manifest, previewProps),
   );
+  // Cabeçalho/rodapé do WRAPPER ChartWidget (igual dashboard real).
+  // Esses campos NÃO são props do bloco — são do shell `ChartWidget` que
+  // envolve o bloco quando `framed=true` no dashboard. O playground permite
+  // editar pra você visualizar como vai ficar no relatório final.
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [previewSubtitle, setPreviewSubtitle] = useState<string>('');
+  const [previewQuery, setPreviewQuery] = useState<string>('');
+  const [previewDurationMs, setPreviewDurationMs] = useState<number | ''>('');
   const [dataText, setDataText] = useState<string>(() => {
     // Se o bloco tem variantes, o estado inicial é a variante `default` (que
     // por convenção é uma cópia literal da fixture oficial — paridade visual).
@@ -627,6 +639,12 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   // Reset ao trocar de bloco (o `key` no pai já desmonta, mas fica explícito).
   useEffect(() => {
     setPropsDraft(initialPropsFor(manifest, previewProps));
+    // Default do cabeçalho/rodapé: usa o `name` do manifesto como título
+    // inicial, deixa subtítulo/query/duração vazios (dashboard pode setar).
+    setPreviewTitle(manifest.name);
+    setPreviewSubtitle('');
+    setPreviewQuery('');
+    setPreviewDurationMs('');
     const def = variants.find((v) => v.id === 'default');
     const init = def ? def.data : initialDataFor(entry);
     setDataText(JSON.stringify(init, null, 2));
@@ -717,17 +735,29 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   };
 
   // ---------- preview ----------
-  const block = useMemo(
-    () => ({
+  // `block` carrega props + metadados do ChartWidget (title/subtitle/query)
+  // que o dashboard injeta via `block.title`/`block.dataBinding.query`. Aqui
+  // o playground injeta os valores do state local `previewTitle`/etc. para
+  // o usuário visualizar exatamente o que vai aparecer no dashboard.
+  const block = useMemo(() => {
+    const trimmedQuery = previewQuery.trim();
+    const out: Record<string, unknown> = {
       id: manifest.type,
       type: manifest.type,
       span: 12,
       props: propsDraft,
-    }),
-    [manifest.type, propsDraft],
-  );
+    };
+    if (previewTitle.trim()) out.title = previewTitle.trim();
+    if (previewSubtitle.trim()) out.subtitle = previewSubtitle.trim();
+    if (trimmedQuery) {
+      out.dataBinding = { query: trimmedQuery };
+    }
+    return out;
+  }, [manifest.type, previewQuery, previewSubtitle, previewTitle, propsDraft]);
 
   // Só monta o `result` se a forma dos dados bater — senão, fica skeleton.
+  // Inclui `meta.durationMs` quando o usuário setar (vai pro footer do
+  // ChartWidget, lado da query).
   const result = useMemo(() => {
     if (!entry.shape) return undefined;
     let parsed: unknown;
@@ -737,13 +767,24 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
       return undefined;
     }
     if (dataError) return undefined;
+    const durationMs =
+      typeof previewDurationMs === 'number' && Number.isFinite(previewDurationMs)
+        ? previewDurationMs
+        : undefined;
     return {
       blockId: manifest.type,
       state: 'success' as const,
       shape: entry.shape,
       data: parsed,
+      ...(durationMs !== undefined ? { meta: { durationMs } } : {}),
     };
-  }, [dataError, dataText, entry.shape, manifest.type]);
+  }, [
+    dataError,
+    dataText,
+    entry.shape,
+    manifest.type,
+    previewDurationMs,
+  ]);
 
   return (
     <div className="grid h-[85vh] min-h-0 grid-cols-1 md:grid-cols-2">
@@ -815,6 +856,88 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
                 Sem props configuráveis.
               </p>
             )}
+          </section>
+
+          <Separator />
+
+          {/* ----- WRAPPER (ChartWidget: header + footer) ----- */}
+          {/* Esses campos NÃO são do bloco em si — são do shell `ChartWidget`
+              que envolve o gráfico no dashboard (igual `block.title` /
+              `block.dataBinding.query` no Block). O playground permite
+              editar pra você visualizar EXATAMENTE como vai aparecer no
+              relatório. Bloco narrativo ou SELF_CONTAINED ignora o shell. */}
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Cabeçalho / Rodapé
+              </h4>
+              <span className="text-[10px] text-muted-foreground">
+                wrapper ChartWidget
+              </span>
+            </div>
+
+            <div className="space-y-3 rounded-md border border-border/60 bg-card/30 p-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="preview-title" className="text-xs font-medium">
+                  Título
+                </Label>
+                <Input
+                  id="preview-title"
+                  type="text"
+                  value={previewTitle}
+                  onChange={(e) => setPreviewTitle(e.target.value)}
+                  placeholder={manifest.name}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="preview-subtitle" className="text-xs font-medium">
+                  Subtítulo
+                </Label>
+                <Input
+                  id="preview-subtitle"
+                  type="text"
+                  value={previewSubtitle}
+                  onChange={(e) => setPreviewSubtitle(e.target.value)}
+                  placeholder="(vazio)"
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="preview-query" className="text-xs font-medium">
+                  Query SQL <span className="text-muted-foreground">(footer)</span>
+                </Label>
+                <Input
+                  id="preview-query"
+                  type="text"
+                  value={previewQuery}
+                  onChange={(e) => setPreviewQuery(e.target.value)}
+                  placeholder="SELECT ... FROM ..."
+                  spellCheck={false}
+                  className="h-8 font-mono text-[11px]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="preview-duration" className="text-xs font-medium">
+                  Duração <span className="text-muted-foreground">(ms, footer)</span>
+                </Label>
+                <Input
+                  id="preview-duration"
+                  type="number"
+                  min={0}
+                  value={previewDurationMs}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setPreviewDurationMs(v === '' ? '' : Number(v))
+                  }}
+                  placeholder="ex.: 142"
+                  className="h-8 text-xs tabular-nums"
+                />
+              </div>
+            </div>
           </section>
 
           <Separator />
@@ -918,7 +1041,14 @@ function PreviewSurface({
   }
   return (
     <div className="rounded-lg border border-border/60 bg-card p-4">
-      <BlockRenderer block={block} result={result} />
+      {/*
+        `framed` (sempre true no playground) ativa o shell ChartWidget no
+        BlockRenderer, igual ao dashboard real. O ChartWidget SÓ aparece
+        para blocos `kind === 'chart'` que NÃO estão em SELF_CONTAINED
+        (ver block-renderer.tsx). Blocos narrativos/layout continuam sem
+        moldura (sem chart-widget).
+      */}
+      <BlockRenderer block={block} result={result} framed />
     </div>
   );
 }
