@@ -154,13 +154,14 @@
     height: 100%;
   }
   /* Trava scroll no documento: o shell cuida do scroll interno (main/sidebar).
-     Sem isso, html/body ficam com overflow:visible/auto (default) e o scroll
-     "vaza" para o viewport, fazendo a sidebar inteira descer. !important
-     para vencer regras de Tailwind reset / libs de UI que tentam restaurar
-     overflow no body. */
+     `overflow: hidden` no <html> é IGNORADO pelos browsers (sempre tratado
+     como 'auto' por compatibilidade) — por isso precisamos de `overflow:
+     clip` + `!important` para vencer resets/libs de UI. Mantém
+     `overflow: hidden` no body como redundância e para o caso de browsers
+     antigos (clip não era suportado antes de 2022). */
   html {
     @apply font-sans;
-    overflow: hidden !important;
+    overflow: clip !important;
     height: 100% !important;
   }
   body {
