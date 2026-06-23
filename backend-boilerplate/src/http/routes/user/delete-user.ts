@@ -42,7 +42,7 @@ export async function deleteUser(app: FastifyInstance) {
           where: { id },
         });
 
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       }
     );
 }

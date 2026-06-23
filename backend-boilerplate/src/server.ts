@@ -187,10 +187,24 @@ async function start() {
 
   if (swaggerUser && swaggerPass) {
     app.register(fastifyBasicAuth, {
-      validate: (username, password, req, reply, done) => {
-        done({ username, valid: username === swaggerUser && password === swaggerPass });
+      validate: (username, password, _req, _reply, done) => {
+        if (username === swaggerUser && password === swaggerPass) {
+          done();
+        } else {
+          done(new Error('Acesso não autorizado à documentação'));
+        }
       },
-      ignore: (req) => !req.url.startsWith('/docs'), // Only protect /docs routes
+      authenticate: { realm: 'Swagger Docs' },
+    });
+
+    // Protege apenas as rotas /docs (o plugin decora `app.basicAuth` após
+    // registrar; o hook só o aplica nas rotas da documentação).
+    app.addHook('onRequest', (req, reply, done) => {
+      if (req.url.startsWith('/docs')) {
+        app.basicAuth(req, reply, done);
+      } else {
+        done();
+      }
     });
   } else {
     console.warn('⚠️  Swagger is not protected - set SWAGGER_USER and SWAGGER_PASSWORD for production');
