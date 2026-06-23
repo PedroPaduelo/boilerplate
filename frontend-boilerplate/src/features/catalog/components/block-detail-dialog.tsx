@@ -1,10 +1,36 @@
 /**
- * Dialog de DETALHES de um bloco do catálogo. Mostra a "ficha técnica" que o
- * MCP entrega à IA: descrição, origem, props visuais configuráveis
- * (`propsSchema`), contrato de dados (`dataContract`: shape + spec + exemplo) e
- * `defaultProps`. Read-only — documentação navegável do componente.
+ * Dialog de DETALHES de um bloco do catálogo — modo PLAYGROUND.
+ *
+ * O que mudou: antes era read-only (apenas ficha técnica). Agora é um
+ * playground interativo com 2 painéis editáveis + preview ao vivo:
+ *
+ *   ┌─────────────────────┬────────────────────────────────────┐
+ *   │                     │  PROPS   (gerado do propsSchema)   │
+ *   │  PREVIEW AO VIVO    │   - string / number / boolean      │
+ *   │  (BlockRenderer     │   - enum → <Select>                │
+ *   │   com state local)  │   - accent (chart-1..5, primary)   │
+ *   │                     │                                    │
+ *   │                     │  DADOS (dataContract.example)      │
+ *   │                     │   - <textarea> JSON                │
+ *   │                     │   - valida com validateBlockData.. │
+ *   │                     │   - verde/vermelho                 │
+ *   └─────────────────────┴────────────────────────────────────┘
+ *
+ * Read-only do disco (não persiste nada). Estado 100% local — ao fechar e
+ * reabrir, reseta para `defaultProps` + `dataContract.example` (ou
+ * `definition.fixture` como fallback).
  */
+import { useEffect, useMemo, useState } from 'react';
+import {
+  validateBlockDataByShape,
+  formatErrors,
+  type BlockManifest,
+  type DataShape,
+} from '@dashboards/contracts';
+import { RotateCcw } from 'lucide-react';
+
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +38,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { KIND_LABEL, SHAPE_LABEL, type CatalogEntry } from '../lib/catalog-entries';
+import { BlockRenderer } from '@/shared/render-engine';
+import { cn } from '@/shared/lib/utils';
+
+import {
+  KIND_LABEL,
+  SHAPE_LABEL,
+  type CatalogEntry,
+} from '../lib/catalog-entries';
+
+/* -------------------------------------------------------------------------- */
+/*  Tipos                                                                     */
+/* -------------------------------------------------------------------------- */
 
 interface BlockDetailDialogProps {
   entry: CatalogEntry | null;
@@ -23,134 +69,494 @@ interface BlockDetailDialogProps {
 interface PropSchema {
   type?: string | string[];
   enum?: unknown[];
+  default?: unknown;
   minimum?: number;
   maximum?: number;
 }
+
 interface PropsSchemaLike {
   properties?: Record<string, PropSchema>;
   required?: string[];
 }
 
-function propTypeLabel(schema: PropSchema): string {
-  if (schema.enum?.length) return schema.enum.map((v) => String(v)).join(' · ');
-  if (Array.isArray(schema.type)) return schema.type.join(' | ');
-  return schema.type ?? 'any';
+interface PropField {
+  key: string;
+  schema: PropSchema;
+  required: boolean;
 }
 
-function CodeBlock({ value }: { value: unknown }) {
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                   */
+/* -------------------------------------------------------------------------- */
+
+function initialPropsFor(
+  manifest: BlockManifest,
+  previewProps: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    ...((manifest.defaultProps as Record<string, unknown>) ?? {}),
+  };
+  // Previews específicos (ex.: `title.text`, `rich_text.markdown`).
+  if (previewProps) Object.assign(out, previewProps);
+  // Garante que cada prop do schema tenha um valor inicial.
+  const propsSchema = manifest.propsSchema as PropsSchemaLike | undefined;
+  for (const [k, sch] of Object.entries(propsSchema?.properties ?? {})) {
+    if (!(k in out)) {
+      if (sch.default !== undefined) out[k] = sch.default;
+      else if (sch.enum?.length) out[k] = sch.enum[0];
+      else if (sch.type === 'boolean') out[k] = false;
+      else if (sch.type === 'number' || sch.type === 'integer') out[k] = 0;
+      else out[k] = '';
+    }
+  }
+  return out;
+}
+
+/** Dado inicial do painel "Dados": prefere `dataContract.example`, cai pro
+ *  `definition.fixture`, e por fim num placeholder vazio. */
+function initialDataFor(entry: CatalogEntry): unknown {
+  const example = entry.definition.manifest.dataContract?.example;
+  if (example !== undefined) return example;
+  const fix = entry.definition.fixture;
+  return fix ?? null;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Field renderer — gera input conforme o tipo do schema                     */
+/* -------------------------------------------------------------------------- */
+
+function PropFieldEditor({
+  field,
+  value,
+  onChange,
+}: {
+  field: PropField;
+  value: unknown;
+  onChange: (next: unknown) => void;
+}) {
+  const { schema, key, required } = field;
+  const labelStr = key;
+
+  // 1) enum → <Select>
+  if (schema.enum?.length) {
+    const stringValue = value === undefined || value === null ? '' : String(value);
+    return (
+      <div className="space-y-1.5">
+        <Label htmlFor={`prop-${key}`} className="flex items-center gap-1.5 text-xs">
+          <span className="font-medium">{labelStr}</span>
+          {required ? (
+            <Badge variant="outline" className="h-4 px-1 text-[9px]">
+              obrigatório
+            </Badge>
+          ) : null}
+        </Label>
+        <Select value={stringValue} onValueChange={onChange}>
+          <SelectTrigger id={`prop-${key}`} className="h-8 w-full text-xs">
+            <SelectValue placeholder="…" />
+          </SelectTrigger>
+          <SelectContent>
+            {schema.enum.map((opt) => (
+              <SelectItem key={String(opt)} value={String(opt)} className="text-xs">
+                {String(opt)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
+
+  // 2) boolean → checkbox nativo estilizado
+  if (schema.type === 'boolean') {
+    return (
+      <label
+        htmlFor={`prop-${key}`}
+        className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card px-2.5 py-1.5"
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-xs">{labelStr}</span>
+          {required ? (
+            <Badge variant="outline" className="h-4 px-1 text-[9px]">
+              obrigatório
+            </Badge>
+          ) : null}
+        </div>
+        <input
+          id={`prop-${key}`}
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(e.target.checked)}
+          className="size-4 cursor-pointer accent-primary"
+        />
+      </label>
+    );
+  }
+
+  // 3) number/integer → input number
+  if (schema.type === 'number' || schema.type === 'integer') {
+    return (
+      <div className="space-y-1.5">
+        <Label htmlFor={`prop-${key}`} className="flex items-center gap-1.5 text-xs">
+          <span className="font-medium">{labelStr}</span>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {schema.type}
+          </span>
+        </Label>
+        <Input
+          id={`prop-${key}`}
+          type="number"
+          value={typeof value === 'number' ? value : Number(value) || 0}
+          min={schema.minimum}
+          max={schema.maximum}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            onChange(Number.isFinite(n) ? n : 0);
+          }}
+          className="h-8 text-xs tabular-nums"
+        />
+      </div>
+    );
+  }
+
+  // 4) default: string
   return (
-    <pre className="max-h-72 overflow-auto rounded-lg border border-border/60 bg-muted/40 p-3 text-xs leading-relaxed text-foreground">
-      <code>{JSON.stringify(value, null, 2)}</code>
-    </pre>
+    <div className="space-y-1.5">
+      <Label htmlFor={`prop-${key}`} className="flex items-center gap-1.5 text-xs">
+        <span className="font-medium">{labelStr}</span>
+        {required ? (
+          <Badge variant="outline" className="h-4 px-1 text-[9px]">
+            obrigatório
+          </Badge>
+        ) : null}
+      </Label>
+      <Input
+        id={`prop-${key}`}
+        type="text"
+        value={typeof value === 'string' ? value : String(value ?? '')}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 text-xs"
+      />
+    </div>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-      {children}
-    </h4>
-  );
-}
+/* -------------------------------------------------------------------------- */
+/*  Componente principal                                                      */
+/* -------------------------------------------------------------------------- */
 
 export function BlockDetailDialog({ entry, onOpenChange }: BlockDetailDialogProps) {
-  const manifest = entry?.definition.manifest;
-  const propsSchema = manifest?.propsSchema as PropsSchemaLike | undefined;
-  const properties = propsSchema?.properties ?? {};
-  const required = new Set(propsSchema?.required ?? []);
-  const propEntries = Object.entries(properties);
-  const dataContract = manifest?.dataContract;
+  // `key` do dialog = type do bloco → ao trocar de bloco, reseta o estado.
+  const dialogKey = entry?.type ?? 'none';
 
   return (
     <Dialog open={!!entry} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-        {entry && manifest ? (
-          <>
-            <DialogHeader>
-              <div className="flex flex-wrap items-center gap-2">
-                <DialogTitle>{manifest.name}</DialogTitle>
-                <Badge variant="secondary">{KIND_LABEL[entry.kind]}</Badge>
-                {entry.shape ? (
-                  <Badge variant="outline">{SHAPE_LABEL[entry.shape]}</Badge>
-                ) : null}
-              </div>
-              <DialogDescription>{manifest.description}</DialogDescription>
-            </DialogHeader>
-
-            <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-              <Meta label="Tipo" value={<code className="text-xs">{manifest.type}</code>} />
-              <Meta label="Origem" value={<code className="text-xs">{manifest.source}</code>} />
-              <Meta label="Versão" value={manifest.version ?? '—'} />
-            </dl>
-
-            <Separator />
-
-            <section className="space-y-2">
-              <SectionLabel>
-                Propriedades visuais {propEntries.length ? `(${propEntries.length})` : ''}
-              </SectionLabel>
-              {propEntries.length ? (
-                <ul className="divide-y divide-border/60 overflow-hidden rounded-lg border border-border/60">
-                  {propEntries.map(([key, schema]) => (
-                    <li
-                      key={key}
-                      className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <code className="text-xs font-medium text-foreground">{key}</code>
-                        {required.has(key) ? (
-                          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                            obrigatório
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {propTypeLabel(schema)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sem props configuráveis.</p>
-              )}
-            </section>
-
-            <section className="space-y-2">
-              <SectionLabel>Contrato de dados</SectionLabel>
-              {dataContract ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Shape <code className="text-xs text-foreground">{dataContract.shape}</code> — a
-                    query do agente precisa produzir este formato.
-                  </p>
-                  <CodeBlock value={dataContract.example ?? dataContract.spec} />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Bloco narrativo — não consome dados (o conteúdo vem das props).
-                </p>
-              )}
-            </section>
-
-            {manifest.defaultProps &&
-            Object.keys(manifest.defaultProps as object).length > 0 ? (
-              <section className="space-y-2">
-                <SectionLabel>Props padrão</SectionLabel>
-                <CodeBlock value={manifest.defaultProps} />
-              </section>
-            ) : null}
-          </>
+      <DialogContent className="max-h-[90vh] max-w-5xl gap-0 overflow-hidden p-0">
+        {entry ? (
+          <BlockDetailContent key={dialogKey} entry={entry} />
         ) : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function Meta({ label, value }: { label: string; value: React.ReactNode }) {
+function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
+  const manifest = entry.definition.manifest;
+  const propsSchema = manifest.propsSchema as PropsSchemaLike | undefined;
+  const fields: PropField[] = useMemo(
+    () =>
+      Object.entries(propsSchema?.properties ?? {}).map(([key, schema]) => ({
+        key,
+        schema,
+        required: (propsSchema?.required ?? []).includes(key),
+      })),
+    [propsSchema],
+  );
+
+  // PREVIEW_PROPS vem do `catalog-entries` (título p/ `title`, markdown p/
+  // `rich_text` etc.). Reaproveitado para o estado inicial.
+  const previewProps = useMemo(() => {
+    // `catalog-entries` mantém isso interno; aqui replicamos o shape mínimo
+    // (mesma estratégia) só pros blocos narrativos — pros de dados, o
+    // `defaultProps` + schema cobrem.
+    const local: Record<string, Record<string, unknown>> = {
+      title: { text: 'Arrecadação por município', level: 2, align: 'left' },
+    };
+    return local[manifest.type];
+  }, [manifest.type]);
+
+  // ---------- estado local ----------
+  const [propsDraft, setPropsDraft] = useState<Record<string, unknown>>(() =>
+    initialPropsFor(manifest, previewProps),
+  );
+  const [dataText, setDataText] = useState<string>(() =>
+    JSON.stringify(initialDataFor(entry), null, 2),
+  );
+  // Erro de parse/validação do JSON; null = OK (parsedAndValid).
+  const [dataError, setDataError] = useState<string | null>(() => {
+    try {
+      const parsed = JSON.parse(JSON.stringify(initialDataFor(entry)));
+      if (entry.shape) {
+        const { valid, errors } = validateBlockDataByShape(
+          entry.shape as DataShape,
+          parsed,
+        );
+        if (!valid) return formatErrors(errors);
+      }
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'JSON inválido';
+    }
+  });
+
+  // Reset ao trocar de bloco (o `key` no pai já desmonta, mas fica explícito).
+  useEffect(() => {
+    setPropsDraft(initialPropsFor(manifest, previewProps));
+    const init = initialDataFor(entry);
+    setDataText(JSON.stringify(init, null, 2));
+    try {
+      const parsed = JSON.parse(JSON.stringify(init));
+      if (entry.shape) {
+        const { valid, errors } = validateBlockDataByShape(
+          entry.shape as DataShape,
+          parsed,
+        );
+        setDataError(valid ? null : formatErrors(errors));
+      } else {
+        setDataError(null);
+      }
+    } catch (e) {
+      setDataError(e instanceof Error ? e.message : 'JSON inválido');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manifest.type]);
+
+  // ---------- handlers ----------
+  const onPropChange = (key: string, next: unknown) => {
+    setPropsDraft((d) => ({ ...d, [key]: next }));
+  };
+
+  const onDataChange = (text: string) => {
+    setDataText(text);
+    try {
+      const parsed = JSON.parse(text);
+      if (entry.shape) {
+        const { valid, errors } = validateBlockDataByShape(
+          entry.shape as DataShape,
+          parsed,
+        );
+        if (!valid) {
+          setDataError(formatErrors(errors));
+          return; // mantém o anterior no preview
+        }
+      }
+      setDataError(null);
+    } catch (e) {
+      setDataError(e instanceof Error ? e.message : 'JSON inválido');
+    }
+  };
+
+  const resetProps = () => {
+    setPropsDraft(initialPropsFor(manifest, previewProps));
+  };
+
+  const resetData = () => {
+    const init = initialDataFor(entry);
+    setDataText(JSON.stringify(init, null, 2));
+    setDataError(null);
+  };
+
+  // ---------- preview ----------
+  const block = useMemo(
+    () => ({
+      id: manifest.type,
+      type: manifest.type,
+      span: 12,
+      props: propsDraft,
+    }),
+    [manifest.type, propsDraft],
+  );
+
+  // Só monta o `result` se a forma dos dados bater — senão, fica skeleton.
+  const result = useMemo(() => {
+    if (!entry.shape) return undefined;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(dataText);
+    } catch {
+      return undefined;
+    }
+    if (dataError) return undefined;
+    return {
+      blockId: manifest.type,
+      state: 'success' as const,
+      shape: entry.shape,
+      data: parsed,
+    };
+  }, [dataError, dataText, entry.shape, manifest.type]);
+
   return (
-    <div className="space-y-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-medium text-foreground">{value}</dd>
+    <div className="grid h-[90vh] grid-cols-1 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      {/* ============================== ESQUERDA — PREVIEW ============================== */}
+      <div className="flex min-h-0 flex-col border-b border-border/60 bg-muted/20 md:border-b-0 md:border-r">
+        <DialogHeader className="px-5 pt-5 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <DialogTitle>{manifest.name}</DialogTitle>
+            <Badge variant="secondary">{KIND_LABEL[entry.kind]}</Badge>
+            {entry.shape ? (
+              <Badge variant="outline">{SHAPE_LABEL[entry.shape]}</Badge>
+            ) : null}
+          </div>
+          <DialogDescription className="line-clamp-2">
+            {manifest.description}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+          <PreviewSurface result={result} block={block} />
+        </div>
+      </div>
+
+      {/* ============================== DIREITA — CONTROLES ============================== */}
+      <div className="flex min-h-0 flex-col">
+        <div className="flex items-center justify-between border-b border-border/60 bg-muted/10 px-5 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Playground
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            Edite as props e o JSON dos dados — o preview atualiza ao vivo.
+          </p>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          {/* ----- PROPS ----- */}
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Propriedades visuais {fields.length ? `(${fields.length})` : ''}
+              </h4>
+              {fields.length ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetProps}
+                  className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="size-3" />
+                  Reset
+                </Button>
+              ) : null}
+            </div>
+
+            {fields.length ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {fields.map((f) => (
+                  <PropFieldEditor
+                    key={f.key}
+                    field={f}
+                    value={propsDraft[f.key]}
+                    onChange={(v) => onPropChange(f.key, v)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Sem props configuráveis.
+              </p>
+            )}
+          </section>
+
+          <Separator />
+
+          {/* ----- DADOS ----- */}
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Dados {entry.shape ? `(${SHAPE_LABEL[entry.shape]})` : ''}
+              </h4>
+              {entry.shape ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetData}
+                  className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="size-3" />
+                  Reset
+                </Button>
+              ) : null}
+            </div>
+
+            {entry.shape ? (
+              <>
+                <textarea
+                  value={dataText}
+                  onChange={(e) => onDataChange(e.target.value)}
+                  spellCheck={false}
+                  className={cn(
+                    'h-64 w-full resize-y rounded-md border bg-muted/30 p-2 font-mono text-[11px] leading-relaxed text-foreground outline-none focus:ring-2 focus:ring-ring',
+                    dataError
+                      ? 'border-destructive/60'
+                      : 'border-border/60',
+                  )}
+                />
+                <div className="flex items-center gap-2 text-[11px]">
+                  {dataError ? (
+                    <>
+                      <span className="inline-block size-1.5 shrink-0 rounded-full bg-destructive" />
+                      <span className="text-destructive">
+                        Inválido para o shape <code>{entry.shape}</code>:{' '}
+                        {dataError}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="inline-block size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                      <span className="text-muted-foreground">
+                        Válido — preview ao vivo com este dado.
+                      </span>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Bloco narrativo — não consome dados. O conteúdo vem das props
+                acima.
+              </p>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Surface de preview — centraliza o bloco e dá uma moldura leve             */
+/* -------------------------------------------------------------------------- */
+
+function PreviewSurface({
+  block,
+  result,
+}: {
+  block: ReturnType<typeof Object> extends never ? never : Parameters<typeof BlockRenderer>[0]['block'];
+  result: Parameters<typeof BlockRenderer>[0]['result'];
+}) {
+  // Erro: dados inválidos → mostra skeleton gentil sem quebrar a UI.
+  if (result === undefined) {
+    return (
+      <div className="flex h-full min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-card/40 p-6 text-center text-sm text-muted-foreground">
+        Preview pausado — corrija o JSON dos dados para renderizar.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-border/60 bg-card p-4">
+      <BlockRenderer block={block} result={result} />
+    </div>
+  );
+}
+
+
