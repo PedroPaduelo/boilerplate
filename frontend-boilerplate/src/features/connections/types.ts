@@ -96,24 +96,90 @@ export interface ConnectionTestResult {
 
 /* ----------------------------- Schema explorer ---------------------------- */
 
+/** Referência schema.tabela.coluna (alvo de uma FK / coluna FK). */
+export interface SchemaRef {
+  schema: string;
+  table: string;
+  column: string;
+}
+
 export interface SchemaColumn {
   name: string;
   dataType: string;
   nullable: boolean;
+  defaultValue?: string | null;
+  isPrimary?: boolean;
+  isForeign?: boolean;
+  references?: SchemaRef | null;
+  comment?: string | null;
+}
+
+export interface SchemaIndex {
+  name: string;
+  columns: string[];
+  unique: boolean;
+  primary: boolean;
+  /** btree | hash | gin | gist | spgist | brin */
+  method: string;
+}
+
+export interface SchemaForeignKey {
+  name: string;
+  columns: string[];
+  references: SchemaRef;
+  onDelete?: string | null;
+  onUpdate?: string | null;
 }
 
 export interface SchemaTable {
   schema: string;
   name: string;
   columns: SchemaColumn[];
+  /** Metadados ricos (introspecção enriquecida — opcionais p/ retrocompat). */
+  kind?: 'table' | 'view' | 'matview';
+  primaryKey?: string[];
+  indexes?: SchemaIndex[];
+  foreignKeys?: SchemaForeignKey[];
+  rowCount?: number | null;
+  sizeBytes?: number | null;
+  comment?: string | null;
+}
+
+/** Metadados do banco como um todo (versão, tamanho). */
+export interface SchemaDatabaseMeta {
+  name: string | null;
+  version: string | null;
+  sizeBytes: number | null;
 }
 
 export interface ConnectionSchema {
   connectionId: string;
   cached: boolean;
   tableCount: number;
+  /** Nº total de tabelas no banco (antes do cap). */
+  totalTables?: number;
+  /** `true` quando a introspecção limitou as tabelas retornadas. */
+  truncated?: boolean;
   fetchedAt: string;
+  database?: SchemaDatabaseMeta;
   tables: SchemaTable[];
+}
+
+/* ------------------------------- Query runner ----------------------------- */
+
+export interface RunQueryInput {
+  id: string;
+  sql: string;
+  params?: unknown[];
+  maxRows?: number;
+}
+
+export interface QueryResult {
+  columns: { name: string; dataTypeID: number }[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  truncated: boolean;
+  durationMs: number;
 }
 
 /* ------------------------------- Departments ------------------------------ */

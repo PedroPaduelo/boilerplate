@@ -1,105 +1,72 @@
 import { useState } from 'react';
-import {
-  Database,
-  Search,
-  SearchX,
-  Plus,
-  Pencil,
-  Trash2,
-  Table2,
-  PlugZap,
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 
-import {
-  Badge,
-  Button,
-  Input,
-  Skeleton,
-  Section,
-  SectionHeader,
-  TableFluid,
-  TableFluidHeader,
-  TableFluidBody,
-  TableFluidRow,
-  TableFluidHead,
-  TableFluidCell,
-} from '@/components/ui';
-import { cn, formatDateTime } from '@/shared/lib/utils';
-import { useDebounce } from '@/shared/hooks/use-debounce';
+import { Button, Skeleton, Section, SectionHeader } from '@/components/ui';
+import { DbOverviewGrid } from '@/components/ui/db-overview-grid';
+import type {
+  DatabaseInstance,
+  DbEnvironment,
+  DbStatus,
+} from '@/components/ui/db-overview-grid-types';
 import { useAuthStore } from '@/features/auth/store';
 import { hasPermission } from '@/shared/lib/rbac';
 
-import { useConnections, useTestConnection } from '../hooks';
+import { useConnections } from '../hooks';
 import type { Connection } from '../types';
 import { ConnectionFormDialog } from './connection-form-dialog';
-import { DeleteConnectionDialog } from './delete-connection-dialog';
-import { ConnectionSchemaDialog } from './connection-schema-explorer';
 
-/** Aparência da pílula de status conforme o resultado do último teste. */
-function statusConfig(status: string) {
+/** Status de conectividade do backend → status visual do tile. */
+function toTileStatus(status: string): DbStatus {
   const s = (status ?? '').toUpperCase();
-  if (s === 'OK' || s === 'ACTIVE' || s === 'CONNECTED') {
-    return { label: 'OK', className: 'bg-chart-2/10 text-chart-2' };
-  }
-  if (s === 'ERROR' || s === 'FAILED' || s === 'INACTIVE') {
-    return { label: 'Erro', className: 'bg-destructive/10 text-destructive' };
-  }
-  return { label: 'Não testada', className: 'bg-muted text-muted-foreground' };
+  if (s === 'OK' || s === 'ACTIVE' || s === 'CONNECTED') return 'healthy';
+  if (s === 'ERROR' || s === 'FAILED' || s === 'INACTIVE') return 'offline';
+  return 'degraded';
 }
 
-function EmptyConnections({ hasSearch }: { hasSearch: boolean }) {
-  const Icon = hasSearch ? SearchX : Database;
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Icon className="size-6" />
-      </span>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">
-          {hasSearch
-            ? 'Nenhuma conexão encontrada'
-            : 'Nenhuma conexão cadastrada'}
-        </p>
-        <p className="mx-auto max-w-xs text-xs text-muted-foreground">
-          {hasSearch
-            ? 'Ajuste os termos da busca para encontrar a conexão que procura.'
-            : 'Cadastre uma conexão PostgreSQL para começar a explorar e consultar dados.'}
-        </p>
-      </div>
-    </div>
-  );
+/** Deriva o "ambiente" a partir do nome/banco (heurística leve). */
+function toTileEnv(conn: Connection): DbEnvironment {
+  const hay = `${conn.name} ${conn.database}`.toLowerCase();
+  if (hay.includes('homolog')) return 'homolog';
+  if (hay.includes('staging') || hay.includes('hml')) return 'staging';
+  if (hay.includes('dev') || hay.includes('local')) return 'dev';
+  return 'prod';
+}
+
+/** Mapeia uma Connection para o shape de tile do DbOverviewGrid. */
+function toInstance(conn: Connection): DatabaseInstance {
+  return {
+    id: conn.id,
+    name: conn.name,
+    role: conn.description || conn.database,
+    env: toTileEnv(conn),
+    engine: 'postgresql',
+    host: conn.host,
+    port: conn.port,
+    version: '',
+    sizeMB: 0,
+    maxConnections: 0,
+    currentConnections: 0,
+    status: toTileStatus(conn.status),
+    queriesPerSec: 0,
+    slowQueriesCount: 0,
+    transactionsPerSec: 0,
+    cacheHitRatio: 0,
+    lastBackupAt: conn.lastTestedAt ?? undefined,
+    topTables: [],
+  };
 }
 
 export function ConnectionsPage() {
+  const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   // RBAC de UI (espelha o backend): manage = criar/editar/excluir.
   const canManage = hasPermission(role, 'connections:manage');
 
-  const [search, setSearch] = useState('');
-  const debounced = useDebounce(search, 300);
-  const { data, isLoading, isError } = useConnections({
-    search: debounced,
-    pageSize: 50,
-  });
-  const testConnection = useTestConnection();
-
-  // Estado dos modais (form/excluir/schema).
+  const { data, isLoading, isError } = useConnections({ pageSize: 100 });
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Connection | null>(null);
-  const [deleting, setDeleting] = useState<Connection | null>(null);
-  const [schemaFor, setSchemaFor] = useState<Connection | null>(null);
 
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-  const openEdit = (conn: Connection) => {
-    setEditing(conn);
-    setFormOpen(true);
-  };
-
-  const hasSearch = debounced.trim().length > 0;
-  const isEmpty = !isLoading && (data?.connections.length ?? 0) === 0;
+  const databases = (data?.connections ?? []).map(toInstance);
 
   return (
     <div className="flex flex-col gap-8">
@@ -108,10 +75,10 @@ export function ConnectionsPage() {
           className="mb-0"
           eyebrow="Dados"
           title="Conexões"
-          description="Cadastre, teste e explore o schema das conexões PostgreSQL da plataforma."
+          description="Explore as conexões PostgreSQL da plataforma. Clique em um card para abrir o workbench (schema, índices, FKs e query runner)."
           actions={
             canManage ? (
-              <Button onClick={openCreate} className="gap-2">
+              <Button onClick={() => setFormOpen(true)} className="gap-2">
                 <Plus className="size-4" />
                 Nova conexão
               </Button>
@@ -120,40 +87,15 @@ export function ConnectionsPage() {
         />
       </Section>
 
-      <Section
-        index={1}
-        className="rounded-xl border border-border/60 bg-card p-5 shadow-sm"
-      >
-        <SectionHeader
-          eyebrow="Diretório"
-          title="Lista de conexões"
-          description={
-            <>
-              <span className="tabular-nums">{data?.total ?? 0}</span> conexã
-              {(data?.total ?? 0) === 1 ? 'o' : 'es'} no total.
-            </>
-          }
-          actions={
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nome, host ou banco…"
-                className="rounded-lg pl-8"
-              />
-            </div>
-          }
-        />
-
+      <Section index={1}>
         {isLoading ? (
-          <div className="space-y-2">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              <Skeleton key={i} className="h-64 w-full rounded-xl" />
             ))}
           </div>
         ) : isError ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
             <p className="text-sm font-medium text-foreground">
               Não foi possível carregar as conexões
             </p>
@@ -161,140 +103,18 @@ export function ConnectionsPage() {
               Verifique sua conexão e tente novamente.
             </p>
           </div>
-        ) : isEmpty ? (
-          <EmptyConnections hasSearch={hasSearch} />
         ) : (
-          <div className="overflow-x-auto">
-            <TableFluid>
-              <TableFluidHeader>
-                <TableFluidRow>
-                  <TableFluidHead>Conexão</TableFluidHead>
-                  <TableFluidHead className="hidden md:table-cell">
-                    Host
-                  </TableFluidHead>
-                  <TableFluidHead>Status</TableFluidHead>
-                  <TableFluidHead className="hidden text-right lg:table-cell">
-                    Último teste
-                  </TableFluidHead>
-                  <TableFluidHead className="text-right">Ações</TableFluidHead>
-                </TableFluidRow>
-              </TableFluidHeader>
-              <TableFluidBody>
-                {data?.connections.map((conn, i) => {
-                  const status = statusConfig(conn.status);
-                  const testingThis =
-                    testConnection.isPending &&
-                    testConnection.variables === conn.id;
-                  return (
-                    <TableFluidRow key={conn.id} index={i}>
-                      <TableFluidCell>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-foreground">
-                            {conn.name}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {conn.database} · {conn.username}
-                          </p>
-                        </div>
-                      </TableFluidCell>
-                      <TableFluidCell className="hidden text-xs text-muted-foreground md:table-cell">
-                        {conn.host}:{conn.port}
-                      </TableFluidCell>
-                      <TableFluidCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'gap-1.5 rounded-full border-transparent',
-                            status.className,
-                          )}
-                        >
-                          <span className="size-1.5 rounded-full bg-current" />
-                          {status.label}
-                        </Badge>
-                      </TableFluidCell>
-                      <TableFluidCell className="hidden text-right text-xs tabular-nums text-muted-foreground lg:table-cell">
-                        {conn.lastTestedAt
-                          ? formatDateTime(conn.lastTestedAt)
-                          : '—'}
-                      </TableFluidCell>
-                      <TableFluidCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => testConnection.mutate(conn.id)}
-                            disabled={testingThis}
-                            aria-label={`Testar ${conn.name}`}
-                            title="Testar conectividade"
-                          >
-                            <PlugZap
-                              className={testingThis ? 'animate-pulse' : ''}
-                            />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setSchemaFor(conn)}
-                            aria-label={`Ver schema de ${conn.name}`}
-                            title="Explorar schema"
-                          >
-                            <Table2 />
-                          </Button>
-                          {canManage && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => openEdit(conn)}
-                                aria-label={`Editar ${conn.name}`}
-                                title="Editar"
-                              >
-                                <Pencil />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => setDeleting(conn)}
-                                aria-label={`Excluir ${conn.name}`}
-                                title="Excluir"
-                                className="text-muted-foreground hover:text-destructive"
-                              >
-                                <Trash2 />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableFluidCell>
-                    </TableFluidRow>
-                  );
-                })}
-              </TableFluidBody>
-            </TableFluid>
-          </div>
+          <DbOverviewGrid
+            databases={databases}
+            sortBy="name"
+            onDatabaseClick={(id) => navigate(`/connections/${id}`)}
+          />
         )}
       </Section>
 
       {canManage && (
-        <ConnectionFormDialog
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          connection={editing}
-        />
+        <ConnectionFormDialog open={formOpen} onOpenChange={setFormOpen} connection={null} />
       )}
-      <DeleteConnectionDialog
-        connection={deleting}
-        open={!!deleting}
-        onOpenChange={(open) => {
-          if (!open) setDeleting(null);
-        }}
-      />
-      <ConnectionSchemaDialog
-        connection={schemaFor}
-        open={!!schemaFor}
-        onOpenChange={(open) => {
-          if (!open) setSchemaFor(null);
-        }}
-      />
     </div>
   );
 }

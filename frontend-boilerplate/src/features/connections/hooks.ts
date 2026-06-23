@@ -7,6 +7,7 @@ import { referenceQueryOptions } from '@/shared/lib/query-policies';
 import type {
   ConnectionFilters,
   CreateConnectionInput,
+  RunQueryInput,
   UpdateConnectionInput,
 } from './types';
 
@@ -117,6 +118,19 @@ export function useTestConnection() {
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error, 'Erro ao testar conexão'));
+    },
+  });
+}
+
+/**
+ * Executa um SELECT read-only contra a conexão (preview/dev). Sem toast de
+ * sucesso (o resultado é renderizado inline); só reporta erro de execução.
+ */
+export function useRunConnectionQuery() {
+  return useMutation({
+    mutationFn: (input: RunQueryInput) => connectionsApi.runQuery(input),
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao executar a query'));
     },
   });
 }

@@ -113,23 +113,66 @@ export const queryResultSchema = z.object({
   durationMs: z.number(),
 });
 
+export const schemaRefSchema = z.object({
+  schema: z.string(),
+  table: z.string(),
+  column: z.string(),
+});
+
 export const schemaColumnSchema = z.object({
   name: z.string(),
   dataType: z.string(),
   nullable: z.boolean(),
+  defaultValue: z.string().nullable(),
+  isPrimary: z.boolean(),
+  isForeign: z.boolean(),
+  references: schemaRefSchema.nullable(),
+  comment: z.string().nullable(),
+});
+
+export const schemaIndexSchema = z.object({
+  name: z.string(),
+  columns: z.array(z.string()),
+  unique: z.boolean(),
+  primary: z.boolean(),
+  method: z.string(),
+});
+
+export const schemaForeignKeySchema = z.object({
+  name: z.string(),
+  columns: z.array(z.string()),
+  references: schemaRefSchema,
+  onDelete: z.string().nullable(),
+  onUpdate: z.string().nullable(),
 });
 
 export const schemaTableSchema = z.object({
   schema: z.string(),
   name: z.string(),
+  kind: z.enum(['table', 'view', 'matview']),
   columns: z.array(schemaColumnSchema),
+  primaryKey: z.array(z.string()),
+  indexes: z.array(schemaIndexSchema),
+  foreignKeys: z.array(schemaForeignKeySchema),
+  rowCount: z.number().nullable(),
+  sizeBytes: z.number().nullable(),
+  comment: z.string().nullable(),
+});
+
+export const schemaDatabaseMetaSchema = z.object({
+  name: z.string().nullable(),
+  version: z.string().nullable(),
+  sizeBytes: z.number().nullable(),
 });
 
 export const schemaResponseSchema = z.object({
   connectionId: z.string(),
   cached: z.boolean(),
   tableCount: z.number(),
+  totalTables: z.number(),
+  truncated: z.boolean(),
   fetchedAt: z.string(),
+  database: schemaDatabaseMetaSchema,
   tables: z.array(schemaTableSchema),
 });
 

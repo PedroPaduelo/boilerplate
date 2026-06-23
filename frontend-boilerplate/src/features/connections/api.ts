@@ -7,6 +7,8 @@ import type {
   ConnectionsResponse,
   CreateConnectionInput,
   DepartmentsResponse,
+  QueryResult,
+  RunQueryInput,
   UpdateConnectionInput,
 } from './types';
 
@@ -67,6 +69,16 @@ export const connectionsApi = {
       `/connections/${id}/schema`,
       { params: refresh ? { refresh: true } : undefined },
     );
+    return data;
+  },
+
+  // POST /connections/:id/query — SELECT read-only (preview/dev).
+  runQuery: async ({ id, sql, params, maxRows }: RunQueryInput): Promise<QueryResult> => {
+    const { data } = await apiClient.post<QueryResult>(`/connections/${id}/query`, {
+      sql,
+      params,
+      maxRows,
+    });
     return data;
   },
 };

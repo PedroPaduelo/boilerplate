@@ -16,6 +16,12 @@ const ConnectionsPage = lazy(() =>
   })),
 );
 
+const ConnectionDetailPage = lazy(() =>
+  import('./components/connection-detail-page').then((m) => ({
+    default: m.ConnectionDetailPage,
+  })),
+);
+
 export const featureRoutes: FeatureRoutes = {
   protected: [
     {
@@ -24,6 +30,17 @@ export const featureRoutes: FeatureRoutes = {
         <RequireRole permission="connections:use">
           <Suspense fallback={<PageLoader />}>
             <ConnectionsPage />
+          </Suspense>
+        </RequireRole>
+      ),
+    },
+    {
+      // Detalhe da conexão — DBA Workbench (schema explorer + query runner).
+      path: 'connections/:id',
+      element: (
+        <RequireRole permission="connections:use">
+          <Suspense fallback={<PageLoader />}>
+            <ConnectionDetailPage />
           </Suspense>
         </RequireRole>
       ),
