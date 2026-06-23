@@ -38,9 +38,18 @@ export interface DonutSegment {
   /**
    * Estilo inline aplicado ao arco (vence `className`). O caller do catálogo
    * passa o `style.stroke` resolvido pelo `resolveAccentForStroke` ou
-   * `resolveAccent` (ex.: `style: { stroke: "#ff0000" }`).
+   * `resolveAccent` (ex.: `style: { stroke: "#ff0000" }`). Também usado para
+   * `strokeOpacity` (diferenciação de fatias monocromáticas) — independente
+   * do `opacity` que o realce de hover aplica via classe.
    */
   style?: React.CSSProperties
+  /**
+   * Tooltip nativo (`<title>`) do arco. Se omitido, cai no fallback
+   * `"{label}: {value pt-BR}"`. O caller do catálogo passa aqui o valor JÁ
+   * formatado (ex.: `"Quitado: R$ 62,0 mil (52%)"`) para manter o tooltip do
+   * arco consistente com o formato do centro/legenda.
+   */
+  title?: string
 }
 
 export interface DonutChartProps
@@ -132,7 +141,7 @@ function DonutChart({
               style={seg.style}
               onMouseEnter={() => onSegmentHover?.(index)}
             >
-              <title>{`${seg.label}: ${seg.value.toLocaleString("pt-BR")}`}</title>
+              <title>{seg.title ?? `${seg.label}: ${seg.value.toLocaleString("pt-BR")}`}</title>
             </circle>
           )
         })}
