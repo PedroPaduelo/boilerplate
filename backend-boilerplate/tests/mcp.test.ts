@@ -451,6 +451,63 @@ describe('MCP — charts (create/update/publish/preview)', () => {
   });
 });
 
+describe('MCP — erros de create_chart sub-codificados (detail acionável)', () => {
+  it('catalogType inexistente → bad_request / detail=unknown_catalog_type', async () => {
+    const result = await callTool('create_chart', {
+      title: 'x',
+      catalogType: 'tipo_que_nao_existe',
+      draftProps: {},
+      draftDataBinding: { connectionId, query: 'SELECT 1' },
+    });
+    expect(result.isError).toBe(true);
+    const err = JSON.parse(result.content[0].text).error as {
+      code: string;
+      detail?: string;
+      message: string;
+    };
+    expect(err.code).toBe('bad_request');
+    expect(err.detail).toBe('unknown_catalog_type');
+    expect(err.message).toMatch(/list_catalog/);
+  });
+
+  it('connectionId inexistente → bad_request / detail=unknown_connection', async () => {
+    const result = await callTool('create_chart', {
+      title: 'x',
+      catalogType: CATALOG_TYPE,
+      draftProps: { label: 'v' },
+      draftDataBinding: { connectionId: 'conn-que-nao-existe', query: 'SELECT 1' },
+    });
+    expect(result.isError).toBe(true);
+    const err = JSON.parse(result.content[0].text).error as {
+      code: string;
+      detail?: string;
+      message: string;
+    };
+    expect(err.code).toBe('bad_request');
+    expect(err.detail).toBe('unknown_connection');
+    expect(err.message).toMatch(/list_connections/);
+  });
+
+  it('visibility=DEPARTMENT sem departmentId → bad_request / detail=missing_department', async () => {
+    const result = await callTool('create_chart', {
+      title: 'x',
+      catalogType: CATALOG_TYPE,
+      draftProps: { label: 'v' },
+      draftDataBinding: { connectionId, query: 'SELECT 1' },
+      visibility: 'DEPARTMENT',
+    });
+    expect(result.isError).toBe(true);
+    const err = JSON.parse(result.content[0].text).error as {
+      code: string;
+      detail?: string;
+      message: string;
+    };
+    expect(err.code).toBe('bad_request');
+    expect(err.detail).toBe('missing_department');
+    expect(err.message).toMatch(/departmentId/);
+  });
+});
+
 describe('MCP — dashboards (create/add chart/publish)', () => {
   let dashboardId = '';
   let chartId = '';

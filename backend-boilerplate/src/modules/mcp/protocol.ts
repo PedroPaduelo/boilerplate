@@ -92,14 +92,20 @@ function toolResult(value: unknown, isError = false): Record<string, unknown> {
 }
 
 /** Mensagem amigável para o agente a partir de um erro de execução de tool. */
-function describeToolError(error: unknown): { code: string; message: string } {
+function describeToolError(error: unknown): { code: string; message: string; detail?: string } {
   if (error instanceof ZodError) {
     const message = error.errors
       .map((e) => `${e.path.join('.') || '(root)'}: ${e.message}`)
       .join('; ');
     return { code: 'invalid_arguments', message: `invalid arguments: ${message}` };
   }
-  if (error instanceof McpToolError) return { code: error.code, message: error.message };
+  if (error instanceof McpToolError) {
+    return {
+      code: error.code,
+      message: error.message,
+      ...(error.detail ? { detail: error.detail } : {}),
+    };
+  }
   if (error instanceof BadRequestError) return { code: 'bad_request', message: error.message };
   if (error instanceof ForbiddenError) return { code: 'forbidden', message: error.message };
   if (error instanceof NotFoundError) return { code: 'not_found', message: error.message };
@@ -174,8 +180,11 @@ export async function handleMessage(
         const value = await tool.handler(params.arguments ?? {}, { actor });
         return ok(id, toolResult(value));
       } catch (error) {
-        const { code, message } = describeToolError(error);
-        return ok(id, toolResult({ error: { code, message } }, true));
+        const { code, message, detail } = describeToolError(error);
+        return ok(
+          id,
+          toolResult({ error: { code, message, ...(detail ? { detail } : {}) } }, true),
+        );
       }
     }
 

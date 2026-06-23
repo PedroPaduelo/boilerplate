@@ -34,7 +34,43 @@ import { requireConnectionForUse } from '@/modules/connections/rbac';
 import { toPgRunnerConnection } from '@/modules/connections/service';
 import { executeBlockData } from '@/modules/data/executor';
 import { assertPermission } from './guard';
-import type { ToolDefinition } from './types';
+import { enrichBadRequest, type AiErrorRule, type ToolDefinition } from './types';
+
+/**
+ * Regras que transformam o `bad_request` GENÉRICO dos services de chart em erros
+ * AUTOEXPLICATIVOS (sub-código `detail` + "como corrigir"). A IA distingue a
+ * causa pelo `detail` sem parsear a mensagem; a mensagem do validador (props
+ * AJV) continua visível. Espelha as validações de `modules/charts/service.ts`.
+ */
+const CHART_WRITE_ERROR_RULES: AiErrorRule[] = [
+  {
+    match: /^Unknown catalogType/,
+    detail: 'unknown_catalog_type',
+    hint: 'use list_catalog e passe em catalogType exatamente o campo "type" de um item existente.',
+  },
+  {
+    match: /^Invalid props for catalogType/,
+    detail: 'invalid_props',
+    hint:
+      'cada prop de draftProps precisa conformar ao propsSchema do tipo (veja em list_catalog ' +
+      'o tipo/enum/description de cada prop). Corrija os caminhos citados acima.',
+  },
+  {
+    match: /does not reference an existing connection/,
+    detail: 'unknown_connection',
+    hint: 'use list_connections para obter um connectionId válido para draftDataBinding.',
+  },
+  {
+    match: /departmentId is required/,
+    detail: 'missing_department',
+    hint: 'informe departmentId (dono do artefato) ou troque visibility para PRIVATE ou ORG.',
+  },
+  {
+    match: /department not found/,
+    detail: 'department_not_found',
+    hint: 'confirme o departmentId — ele precisa existir e (salvo ADMIN) você precisa ser membro.',
+  },
+];
 
 /**
  * JSON Schema (resumido) do `dataBinding` — espelha `dataBindingSchema` (Zod) do
@@ -45,14 +81,26 @@ const dataBindingJsonSchema = {
   additionalProperties: false,
   required: ['connectionId', 'query'],
   properties: {
-    connectionId: { type: 'string', description: 'Conexão de onde os dados vêm.' },
-    query: { type: 'string', description: 'SQL read-only (SELECT/WITH). $1,$2 para params.' },
-    params: { type: 'array', items: {}, description: 'Valores posicionais dos placeholders.' },
+    connectionId: {
+      type: 'string',
+      description: 'Conexão de onde os dados vêm — id de list_connections (precisa existir).',
+    },
+    query: {
+      type: 'string',
+      description:
+        'SQL SOMENTE-LEITURA (SELECT/WITH). Use $1,$2 para params. As COLUNAS do SELECT ' +
+        'devem seguir a convenção do shape do bloco: scalar→`value` (+label/unit/delta); ' +
+        'series→`x`,`y` (+`series`); categorical→`label`,`value`; table→colunas livres. ' +
+        'No Postgres, nomes com maiúsculas/schema custom são CASE-SENSITIVE: use aspas duplas ' +
+        '("SCH"."TABELA"). Prefira agregar (GROUP BY) a trazer linhas cruas.',
+    },
+    params: { type: 'array', items: {}, description: 'Valores posicionais dos placeholders $1..$n.' },
     transform: {
       description:
-        'Opcional. Mapeia o resultado da query para o shape do bloco. Identidade por ' +
-        'convenção de coluna (scalar: value; series: x,y,series; categorical: label,value; ' +
-        'table: columns+rows) ou objeto declarativo { x, y, series, label, value }.',
+        'Opcional. Mapeia o resultado da query para o shape do bloco quando as colunas NÃO ' +
+        'seguem a convenção. Identidade por convenção de coluna (scalar: value; series: ' +
+        'x,y,series; categorical: label,value; table: columns+rows) ou objeto declarativo ' +
+        '{ x, y, series, label, value } apontando nomes de coluna do resultado.',
     },
     ttlSeconds: {
       type: 'integer',
@@ -68,29 +116,58 @@ const dataBindingJsonSchema = {
 const createChartTool: ToolDefinition = {
   name: 'create_chart',
   description:
-    'Cria um novo gráfico (chart) em modo DRAFT, de propriedade do ator. `catalogType` DEVE ' +
-    'ser um `type` do `list_catalog`; `draftProps` é validado contra o `propsSchema` desse ' +
-    'tipo; `draftDataBinding.connectionId` deve existir (use `list_connections`). O chart ' +
-    'nasce não publicado — chame `publish_chart` para publicá-lo. Retorna o chart criado ' +
-    '(inclui o `id`).',
+    'OBJETIVO: cria um novo gráfico (chart) em modo DRAFT, de propriedade do ator. ' +
+    'QUANDO USAR: no fluxo, DEPOIS de descobrir o tipo (list_catalog), a conexão ' +
+    '(list_connections) e de validar a query (run_query). INPUT (obrigatórios): `title`; ' +
+    '`catalogType` = exatamente um `type` do list_catalog; `draftProps` = props visuais ' +
+    '(validadas contra o `propsSchema` desse tipo); `draftDataBinding` = { connectionId, query } ' +
+    '(connectionId precisa existir — use list_connections). `visibility` é UPPERCASE ' +
+    '(PRIVATE|DEPARTMENT|ORG, default PRIVATE); DEPARTMENT exige `departmentId`. ' +
+    'CONVENÇÃO DE COLUNAS do SELECT por shape do dataContract (veja list_catalog): ' +
+    'scalar→coluna `value` (+ label/unit/delta); series→`x`,`y` (+ `series`); ' +
+    'categorical→`label`,`value`; table→cada coluna do SELECT vira uma coluna. ' +
+    'Ou use `draftDataBinding.transform` declarativo { x, y, series, label, value }. ' +
+    'RETORNA: o chart criado (inclui `id`, status=DRAFT). ' +
+    'PRÉ-REQUISITO/ORDEM: o chart nasce NÃO publicado — depois rode preview_chart_data para ' +
+    'CONFERIR que renderiza, e só então publish_chart. ' +
+    'ERROS (code=bad_request com `detail`): `unknown_catalog_type` (catalogType inexistente → ' +
+    'list_catalog), `invalid_props` (props fora do propsSchema — a mensagem traz os caminhos), ' +
+    '`unknown_connection` (connectionId inexistente → list_connections), `missing_department` ' +
+    '(visibility=DEPARTMENT sem departmentId); `invalid_arguments` (forma dos args); ' +
+    '`forbidden` (sem permissão artifacts:manage).',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
     required: ['title', 'catalogType', 'draftProps', 'draftDataBinding'],
     properties: {
-      title: { type: 'string', minLength: 1, maxLength: 200 },
-      catalogType: { type: 'string', description: 'Tipo de bloco (de list_catalog).' },
-      draftProps: { type: 'object', description: 'Props visuais (validadas pelo propsSchema).' },
+      title: { type: 'string', minLength: 1, maxLength: 200, description: 'Título do chart.' },
+      catalogType: {
+        type: 'string',
+        description: 'Tipo de bloco: exatamente o `type` de um item do list_catalog.',
+      },
+      draftProps: {
+        type: 'object',
+        description: 'Props visuais — validadas contra o propsSchema do catalogType (list_catalog).',
+      },
       draftDataBinding: dataBindingJsonSchema,
       departmentId: { type: 'string', description: 'Obrigatório quando visibility=DEPARTMENT.' },
-      visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'], default: 'PRIVATE' },
+      visibility: {
+        type: 'string',
+        enum: ['PRIVATE', 'DEPARTMENT', 'ORG'],
+        default: 'PRIVATE',
+        description: 'UPPERCASE. PRIVATE (só o dono) | DEPARTMENT (exige departmentId) | ORG.',
+      },
     },
   },
   handler: async (rawArgs, { actor }) => {
     assertPermission(actor, 'artifacts:manage');
     const input = createChartBodySchema.parse(rawArgs ?? {});
-    const chart = await createChart(actor, input);
-    return serializeChart(chart);
+    try {
+      const chart = await createChart(actor, input);
+      return serializeChart(chart);
+    } catch (e) {
+      throw enrichBadRequest(e, CHART_WRITE_ERROR_RULES);
+    }
   },
 };
 
@@ -101,31 +178,45 @@ const updateChartArgs = z.object({ chartId: z.string().min(1) }).passthrough();
 const updateChartTool: ToolDefinition = {
   name: 'update_chart',
   description:
-    'Atualiza os campos DRAFT de um gráfico existente (título, props, dataBinding, ' +
-    'visibilidade). Só o dono (ou ADMIN) pode editar. NÃO altera a versão publicada — ' +
-    'edite o draft e depois chame `publish_chart` para promover. Passe `chartId` + os ' +
-    'campos a alterar. Retorna o chart atualizado.',
+    'OBJETIVO: atualiza os campos DRAFT de um gráfico existente (título, props, dataBinding, ' +
+    'visibilidade). QUANDO USAR: para corrigir/ajustar um chart antes (ou depois) de publicar. ' +
+    'INPUT: `chartId` (obrigatório) + só os campos a alterar (envie pelo menos um). As mesmas ' +
+    'regras do create_chart valem para os campos enviados: catalogType de list_catalog, ' +
+    'draftProps conforme o propsSchema, draftDataBinding.connectionId existente, visibility ' +
+    'UPPERCASE. Só o dono (ou ADMIN) pode editar. NÃO altera a versão publicada — edite o ' +
+    'draft e chame publish_chart para promover. RETORNA: o chart atualizado. ' +
+    'ERROS: `not_found` (chartId inexistente/invisível), `forbidden` (não é o dono) e os ' +
+    'mesmos `detail` do create_chart (unknown_catalog_type, invalid_props, unknown_connection, ' +
+    'missing_department).',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
     required: ['chartId'],
     properties: {
-      chartId: { type: 'string' },
+      chartId: { type: 'string', description: 'Id do chart a editar (de create_chart/list).' },
       title: { type: 'string', minLength: 1, maxLength: 200 },
-      catalogType: { type: 'string' },
-      draftProps: { type: 'object' },
+      catalogType: { type: 'string', description: 'Novo tipo (de list_catalog).' },
+      draftProps: { type: 'object', description: 'Novas props (validadas pelo propsSchema).' },
       draftDataBinding: dataBindingJsonSchema,
       departmentId: { type: 'string' },
-      visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'] },
+      visibility: {
+        type: 'string',
+        enum: ['PRIVATE', 'DEPARTMENT', 'ORG'],
+        description: 'UPPERCASE. DEPARTMENT exige departmentId.',
+      },
     },
   },
   handler: async (rawArgs, { actor }) => {
     assertPermission(actor, 'artifacts:manage');
     const { chartId, ...rest } = updateChartArgs.parse(rawArgs ?? {});
     const input = updateChartBodySchema.parse(rest);
-    const existing = await requireChartForModify(chartId, actor);
-    const chart = await updateChart(actor, existing, input);
-    return serializeChart(chart);
+    try {
+      const existing = await requireChartForModify(chartId, actor);
+      const chart = await updateChart(actor, existing, input);
+      return serializeChart(chart);
+    } catch (e) {
+      throw enrichBadRequest(e, CHART_WRITE_ERROR_RULES);
+    }
   },
 };
 
@@ -136,8 +227,12 @@ const publishChartArgs = z.object({ chartId: z.string().min(1) });
 const publishChartTool: ToolDefinition = {
   name: 'publish_chart',
   description:
-    'Publica um gráfico: copia o conteúdo DRAFT para PUBLISHED, marca `publishedAt` e ' +
-    'status=PUBLISHED. Só o dono (ou ADMIN). Retorna o chart publicado.',
+    'OBJETIVO: publica um gráfico — copia o conteúdo DRAFT para PUBLISHED, marca `publishedAt` ' +
+    'e status=PUBLISHED. QUANDO USAR: o ÚLTIMO passo do chart, DEPOIS de preview_chart_data ' +
+    'confirmar que o gráfico renderiza (state="success"). INPUT: `chartId`. Só o dono (ou ' +
+    'ADMIN) — exige permissão artifacts:publish. RETORNA: o chart publicado. ' +
+    'ERROS: `not_found` (chartId inexistente/invisível), `forbidden` (não é o dono / sem ' +
+    'permissão de publicar).',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -170,12 +265,17 @@ interface BindingShape {
 const previewChartDataTool: ToolDefinition = {
   name: 'preview_chart_data',
   description:
-    'Executa o dataBinding de um chart e devolve o resultado JÁ transformado no shape do ' +
-    'seu `dataContract` — útil para a IA CONFERIR se o gráfico vai renderizar antes de ' +
-    'publicar. `mode` = draft (padrão) usa o dataBinding em edição; published usa o ' +
-    'publicado. Respeita a visibilidade do chart E da conexão. Retorna um BlockDataResult ' +
-    '{ state: "success"|"error", shape, data, meta } — em erro, `error.code` indica o motivo ' +
-    '(query_failed, contract_violation, ...).',
+    'OBJETIVO: executa o dataBinding de um chart e devolve o resultado JÁ transformado no ' +
+    'shape do seu `dataContract` — para a IA CONFERIR se o gráfico vai renderizar ANTES de ' +
+    'publicar. QUANDO USAR: sempre entre create_chart/update_chart e publish_chart (rede de ' +
+    'segurança). INPUT: `chartId`; `mode` = draft (padrão, usa o dataBinding em edição) ou ' +
+    'published (usa o publicado). Respeita a visibilidade do chart E da conexão. RETORNA: um ' +
+    'BlockDataResult { state: "success"|"error", shape, data, meta }. ' +
+    'Em erro, `error.code` indica o motivo: `no_binding` (o chart não tem dataBinding nesse ' +
+    'mode — crie/edite o draft, ou tente o outro mode), `query_failed` (SQL falhou — confira ' +
+    'a query com run_query), `contract_violation` (o resultado não bate com o shape do ' +
+    'dataContract — a mensagem traz os caminhos; ajuste as colunas do SELECT ou o transform), ' +
+    '`transform_failed`. Erro de visibilidade vira `not_found`.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -197,7 +297,14 @@ const previewChartDataTool: ToolDefinition = {
       return {
         blockId: chartId,
         state: 'error' as const,
-        error: { code: 'no_binding', message: `chart has no ${mode} dataBinding` },
+        error: {
+          code: 'no_binding',
+          message:
+            `chart has no ${mode} dataBinding` +
+            (mode === 'published'
+              ? ' — publique o chart (publish_chart) ou use mode="draft" para pré-visualizar o rascunho.'
+              : ' — defina draftDataBinding via create_chart/update_chart antes de pré-visualizar.'),
+        },
       };
     }
 
@@ -227,10 +334,11 @@ const deleteChartArgs = z.object({ chartId: z.string().min(1) });
 const deleteChartTool: ToolDefinition = {
   name: 'delete_chart',
   description:
-    'Remove um gráfico (deleta do banco). Só o dono (ou ADMIN) pode deletar. ' +
-    'Idempotente quanto a RBAC: chama `requireChartForModify` (verifica visibilidade + ownership). ' +
-    'Retorna `{ id, deleted: true }`. Cuidado: dashboards que referenciam este chartId ' +
-    'ficam com bloco órfão até você atualizar/remover o bloco via `update_dashboard`.',
+    'OBJETIVO: remove um gráfico permanentemente (deleta do banco). INPUT: `chartId`. Só o ' +
+    'dono (ou ADMIN) — exige artifacts:manage. RETORNA: `{ id, deleted: true }`. ' +
+    'CUIDADO: dashboards que referenciam este chartId (via props.chartId) ficam com bloco ' +
+    'órfão até você atualizar/remover o bloco com update_dashboard. ' +
+    'ERROS: `not_found` (chartId inexistente/invisível), `forbidden` (não é o dono).',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -253,9 +361,11 @@ const unpublishChartArgs = z.object({ chartId: z.string().min(1) });
 const unpublishChartTool: ToolDefinition = {
   name: 'unpublish_chart',
   description:
-    'Despublica um gráfico: zera `publishedProps`/`publishedDataBinding`/`publishedAt` e ' +
-    'volta o status para DRAFT. Só o dono (ou ADMIN). O chart continua existindo como ' +
-    'rascunho. Retorna o chart despublicado.',
+    'OBJETIVO: despublica um gráfico — zera `publishedProps`/`publishedDataBinding`/' +
+    '`publishedAt` e volta o status para DRAFT. QUANDO USAR: para tirar do ar um chart ' +
+    'publicado sem deletá-lo (ele continua existindo como rascunho editável). INPUT: ' +
+    '`chartId`. Só o dono (ou ADMIN) — exige artifacts:publish. RETORNA: o chart ' +
+    'despublicado. ERROS: `not_found` (inexistente/invisível), `forbidden` (não é o dono).',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
