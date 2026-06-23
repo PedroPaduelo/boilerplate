@@ -2,24 +2,25 @@
  * Bloco `spark_chart` (shape 'series') — usa o Vitrine `SparkChartTremor`.
  * Reduz a série a um vetor de números (os `y`). Ampliado para a galeria.
  *
- * Prop de COR (Turno 5 — canônico): `accent` aceita enum DS + string custom
- * (resolvido por `resolveAccent()` em `lib/accent.ts`):
- *   - enum DS (chart-1..5 | 'primary') → `var(--chart-N)` no gradiente
- *     (cor literal no `<linearGradient>` via `style={{ color }}` + classe
- *     Tailwind `stroke-chart-N` no `<line>`/`<bar>`);
- *   - classe Tailwind (bg-purple-500) → derivamos `purple-500` puro e
- *     aplicamos como CSS color;
- *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.color` inline no
- *     container (vence a classe CSS).
+ * Prop de COR (ENTREGA 1 — a cor pinta o GRÁFICO, não o fundo): `accent`
+ * aceita enum DS + string custom, resolvido por `resolveAccentForStroke()`
+ * em `lib/accent.ts` (e NÃO `resolveAccent`, que devolveria `background` e
+ * pintava o fundo do card — o bug que esta entrega corrige):
+ *   - enum DS (chart-1..5 | 'primary') → classe `stroke-chart-N` (a UI base
+ *     deriva `var(--chart-N)` aplicada via `currentColor` no traço/gradiente);
+ *   - classe Tailwind (stroke-purple-500) → usada direto;
+ *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.stroke` → a UI base
+ *     aplica como cor da SÉRIE (stroke da linha/área, fill das barras),
+ *     NUNCA como background do container.
  *
- * Modo de aplicação (spark é SINGLE-SÉRIE por natureza — Turno 6):
- *   - `palette: 'single'` (default) → 1 cor (accent).
- *   - `palette: 'multi'` → IGNORADO. Spark é uma linha única (sem
- *     fatias/itens visíveis que justifiquem ciclar cores), então o
- *     componente sempre aplica `accent`. A prop fica no schema só
- *     para simetria com os outros gráficos do catálogo (não emite
- *     warn — comportamento é determinístico).
- *   - `palette: 'none'` → mesmo comportamento (ignorado).
+ * Modo de aplicação (ENTREGA 3 — `palette: 'multi'` IMPLEMENTADO):
+ *   - `palette: 'single'` (default) → 1 cor (accent) na série.
+ *   - `palette: 'multi'` → a UI base aplica um GRADIENTE multicolor (as 5
+ *     cores do DS, chart-1..5) ao longo da série (stroke/fill). Como o spark
+ *     é single-série, não há fatias para ciclar cores — então `multi` vira
+ *     um visual arco-íris contínuo (decisão (a) da entrega). Nesse modo o
+ *     `accent` de cor única é ignorado (a paleta multicolor vence).
+ *   - `palette: 'none'` → comportamento single (1 cor accent).
  *
  * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas:
  *  - SEMPRE a 1ª: "Tendência: {up|down|flat}" (delta % entre primeiro e último).
@@ -28,7 +29,7 @@
 import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
 import { SparkChartTremor } from '@/components/ui/spark-chart-tremor';
-import { resolveAccent } from '../../lib/accent';
+import { resolveAccentForStroke } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -38,17 +39,17 @@ type SparkProps = {
   type?: 'area' | 'bar' | 'line';
   curveType?: 'linear' | 'monotone' | 'step';
   /**
-   * Modo de paleta (spark é single-série por natureza).
-   *  - 'single' (default) → 1 cor (accent).
-   *  - 'multi' → IGNORADO (spark não cicla).
-   *  - 'none' → IGNORADO (mesmo comportamento).
-   * Mantido no schema p/ simetria com os outros gráficos.
+   * Modo de paleta (ENTREGA 3):
+   *  - 'single' (default) → 1 cor (accent) na série.
+   *  - 'multi' → GRADIENTE multicolor (chart-1..5) ao longo da série.
+   *  - 'none' → comportamento single (1 cor accent).
    */
   palette?: 'single' | 'multi' | 'none';
   /**
-   * Cor ÚNICA da série (spark é single-série por natureza).
-   * Aceita enum DS (validado pelo schema), classe Tailwind, cor CSS.
-   * Resolvido por `resolveAccent()` em `lib/accent.ts`.
+   * Cor ÚNICA da série (usada em palette 'single'/'none'). Aceita enum DS
+   * (validado pelo schema), classe Tailwind `stroke-…`, cor CSS. Resolvido
+   * por `resolveAccentForStroke()` — pinta o TRAÇO/preenchimento da série,
+   * nunca o fundo (ENTREGA 1).
    */
   accent?: string;
 };
@@ -59,18 +60,20 @@ export const Component: BlockComponent<SparkProps, SeriesData> = ({ props, data 
   const points = (data ?? []) as SeriesPoint[];
   const values = points.map((p) => p.y ?? 0);
 
-  // `resolveAccent()` devolve { className } (Tailwind `bg-…`) ou
-  // { style: { background } } (CSS). O `SparkChartTremor` aceita `accent`
-  // (classe Tailwind `bg-…`/`fill-…`/`stroke-…`) E `style` (CSS custom).
-  // Passamos ambos: o UI base decide precedência (style vence accent).
-  const resolvedAccent = resolveAccent(props.accent);
+  // ENTREGA 1 — a cor pinta o GRÁFICO, não o fundo: `resolveAccentForStroke()`
+  // devolve { className: 'stroke-…' } (Tailwind) ou { style: { stroke } }
+  // (CSS) — em vez do `resolveAccent()` antigo, que devolvia
+  // { style: { background } } e pintava o fundo do card. O `SparkChartTremor`
+  // aplica `accent`/`style` como cor da SÉRIE (stroke/fill).
+  const resolvedAccent = resolveAccentForStroke(props.accent);
   const accentClass: string | undefined =
     resolvedAccent.kind === 'class' ? resolvedAccent.className : undefined;
   const accentStyle: CSSProperties | undefined =
     resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
 
-  // `palette` é aceito pelo schema mas é IGNORADO (spark é single-série).
-  // Não emitimos warn — comportamento determinístico, documentado na JSDoc.
+  // ENTREGA 3 — palette 'multi' → gradiente multicolor na série (a UI base
+  // monta o gradiente com chart-1..5). 'single'/'none' usam a cor accent.
+  const multicolor = (props.palette ?? 'single') === 'multi';
 
   return (
     <div className="flex justify-center py-4">
@@ -81,6 +84,7 @@ export const Component: BlockComponent<SparkProps, SeriesData> = ({ props, data 
         className="h-20 w-full"
         accent={accentClass}
         style={accentStyle}
+        multicolor={multicolor}
       />
     </div>
   );
