@@ -39,7 +39,7 @@ function ChartWidget({
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium leading-none">{title}</h3>
           {chartType ? (
-            <Badge variant="secondary" className="text-xs capitalize">
+            <Badge variant="secondary" className="text-xs">
               {chartType}
             </Badge>
           ) : null}

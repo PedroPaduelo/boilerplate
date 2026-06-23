@@ -2,6 +2,7 @@
  * Bloco `donut` (shape 'categorical') — usa o Vitrine `DonutChart` + legenda.
  * Mapeia {label,value} para segmentos com cores do palette de charts do DS.
  */
+import { useState } from 'react';
 import type { CategoricalData } from '@dashboards/contracts';
 import { DonutChart } from '@/components/ui/donut-chart';
 import { cn } from '@/shared/lib/utils';
@@ -30,6 +31,7 @@ type CategoryPoint = { label: string; value: number | null };
 
 export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, data }) => {
   const items = (data ?? []) as CategoryPoint[];
+  const [hovered, setHovered] = useState<number | null>(null);
   const segments = items.map((d, i) => ({
     label: d.label,
     value: d.value ?? 0,
@@ -37,24 +39,54 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, 
   }));
   const total = items.reduce((acc, d) => acc + (d.value ?? 0), 0) || 1;
   const showLegend = props.showLegend !== false;
+  const active = hovered != null ? items[hovered] : null;
 
   return (
     <div data-slot="block-donut" className="flex flex-wrap items-center gap-6">
       <div className="relative shrink-0">
-        <DonutChart segments={segments} />
-        <span className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[11px] text-muted-foreground">Total</span>
-          <span className="text-sm font-semibold tabular-nums text-foreground">
-            {props.centerLabel ?? formatCompactBRL(total)}
-          </span>
+        <DonutChart
+          segments={segments}
+          activeIndex={hovered}
+          onSegmentHover={setHovered}
+        />
+        <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          {active ? (
+            <>
+              <span className="line-clamp-2 text-[10px] leading-tight text-muted-foreground">
+                {active.label}
+              </span>
+              <span className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+                {formatCompactBRL(active.value ?? 0)}
+              </span>
+              <span className="text-[11px] tabular-nums text-muted-foreground">
+                {formatPercentBR((active.value ?? 0) / total)}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-[11px] text-muted-foreground">Total</span>
+              <span className="text-sm font-semibold tabular-nums text-foreground">
+                {props.centerLabel ?? formatCompactBRL(total)}
+              </span>
+            </>
+          )}
         </span>
       </div>
       {showLegend ? (
         <ul data-slot="block-donut-legend" className="flex min-w-0 flex-1 flex-col gap-1.5">
           {items.map((d, i) => {
             const value = d.value ?? 0;
+            const isActive = hovered === i;
             return (
-              <li key={`${d.label}-${i}`} className="flex items-center gap-2 text-sm">
+              <li
+                key={`${d.label}-${i}`}
+                className={cn(
+                  'flex cursor-default items-center gap-2 rounded-md px-1.5 py-0.5 text-sm transition-colors',
+                  isActive ? 'bg-muted' : 'hover:bg-muted/50',
+                )}
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered(null)}
+              >
                 <span
                   className={cn(
                     'inline-block size-2.5 shrink-0 rounded-full',

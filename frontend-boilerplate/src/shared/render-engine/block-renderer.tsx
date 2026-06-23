@@ -206,6 +206,7 @@ export function BlockRenderer({
       >
         <ChartWidget
           title={block.title ?? def.manifest.name}
+          chartType={def.manifest.name}
           query={block.dataBinding?.query}
           durationMs={durationOf(ownResult)}
           loading={loading}

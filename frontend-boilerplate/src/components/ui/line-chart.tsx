@@ -1,19 +1,15 @@
 /**
- * LineChart — gráfico de linha em SVG com eixos, grid, área e legenda.
+ * LineChart — gráfico de linha em SVG com eixos, grid, área, markers e TOOLTIP
+ * interativo no hover.
  *
- * Desenha uma ou mais séries temporais como polylines sobre um par de eixos
- * (X com labels, Y com valores normalizados). Oferece grid tracejado opcional,
- * preenchimento de área translúcida por série, e legenda com indicadores de
- * cor. A escala vertical é normalizada ao min/max global de todas as séries,
- * garantindo proporção consistente entre linhas concorrentes. Cores via classes
- * Tailwind em cada série (ou `stroke-primary` como default).
+ * Diferente da versão anterior (que usava `preserveAspectRatio="none"` + viewBox
+ * fixo e DISTORCIA ao esticar), este componente MEDE a largura real do container
+ * (ResizeObserver) e desenha o viewBox em PIXELS REAIS — assim o stroke fica
+ * uniforme e nada estica. A altura é fixa em px (`heightPx`).
  *
- * Sem dependências externas, sem estado. O elemento raiz é o próprio <svg>
- * com `data-slot="line-chart"`, aceitando className/props padrão de um SVG.
- *
- * Segue a mesma filosofia do Sparkline (SVG puro, classes Tailwind para cores,
- * normalização local min/max), adicionando eixos, grid, múltiplas séries e
- * legenda.
+ * Hover: uma camada de colunas invisíveis captura o mouse por índice do eixo X;
+ * ao passar, destaca o ponto (guia vertical + markers) e mostra um tooltip-card
+ * com o rótulo X e o valor de cada série naquele ponto.
  */
 
 import * as React from "react"
@@ -21,66 +17,37 @@ import * as React from "react"
 import { cn } from "@/shared/lib/utils"
 
 export interface LineSeries {
-  /** Rótulo exibido na legenda. */
+  /** Rótulo exibido na legenda/tooltip. */
   label: string
   /** Série de valores numéricos. */
   data: number[]
-  /** Classe Tailwind da cor da linha. Default: "stroke-primary". */
+  /** Classe Tailwind da cor da linha (ex.: "stroke-chart-1"). Default: "stroke-primary". */
   className?: string
 }
 
-export interface LineChartProps
-  extends Omit<
-    React.SVGProps<SVGSVGElement>,
-    "children" | "width" | "height"
-  > {
+export interface LineChartProps {
   /** Série(s) de valores a traçar. Cada uma vira uma polyline. */
   series: LineSeries[]
-  /** Rótulos do eixo X (comprimento deve bater com `series[].data.length`). */
+  /** Rótulos do eixo X (1 por ponto). */
   xLabels?: string[]
-  /** Altura renderizada via className. Default: "h-48". */
-  height?: string
+  /** Altura do gráfico em px. Default: 280. */
+  heightPx?: number
   /** Se true, preenche área abaixo de cada linha. Default: true. */
   showArea?: boolean
   /** Se true, desenha linhas de grid tracejadas. Default: true. */
   showGrid?: boolean
   /** Se true, renderiza bloco de legenda abaixo do SVG. Default: true. */
   showLegend?: boolean
-  /** Largura do viewBox (sistema de coordenadas). Default: 600. */
-  width?: number
-  /** Altura do viewBox (sistema de coordenadas). Default: 200. */
-  viewBoxHeight?: number
-  /** Formata os rótulos numéricos do eixo Y (ex.: "R$ 2,6 mi"). Sem ele, número cru. */
+  /** Formata os rótulos do eixo Y (compacto, ex.: "2,6 mi"). */
   yValueFormatter?: (value: number) => string
+  /** Formata o valor no TOOLTIP (completo, ex.: "R$ 2.609.946,73"). Default: yValueFormatter ou número. */
+  valueFormatter?: (value: number) => string
+  className?: string
 }
 
-/* -------------------------------------------------------------------------- */
-/* Helpers internos                                                            */
-/* -------------------------------------------------------------------------- */
+const PAD = { left: 52, right: 16, top: 16, bottom: 28 }
 
-const PADDING_LEFT = 36
-const PADDING_BOTTOM = 24
-const PADDING_TOP = 12
-const PADDING_RIGHT = 12
-
-function buildPoints(
-  data: number[],
-  min: number,
-  span: number,
-  w: number,
-  h: number,
-): string[] {
-  const innerW = w - PADDING_LEFT - PADDING_RIGHT
-  const innerH = h - PADDING_TOP - PADDING_BOTTOM
-  const step = data.length > 1 ? innerW / (data.length - 1) : innerW
-  return data.map((p, i) => {
-    const x = PADDING_LEFT + i * step
-    const y = PADDING_TOP + innerH - ((p - min) / span) * innerH
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-}
-
-function yAxisTicks(min: number, max: number, count = 4): number[] {
+function niceTicks(min: number, max: number, count = 4): number[] {
   const span = Math.max(max - min, 1)
   const step = span / count
   return Array.from({ length: count + 1 }, (_, i) =>
@@ -88,162 +55,209 @@ function yAxisTicks(min: number, max: number, count = 4): number[] {
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Componente                                                                  */
-/* -------------------------------------------------------------------------- */
-
 function LineChart({
   series,
   xLabels,
-  height = "h-48",
+  heightPx = 280,
   showArea = true,
   showGrid = true,
   showLegend = true,
-  width = 600,
-  viewBoxHeight = 200,
   yValueFormatter,
+  valueFormatter,
   className,
-  ...props
 }: LineChartProps) {
-  const w = width
-  const h = viewBoxHeight
-  const innerW = w - PADDING_LEFT - PADDING_RIGHT
-  const innerH = h - PADDING_TOP - PADDING_BOTTOM
+  const wrapRef = React.useRef<HTMLDivElement>(null)
+  const [w, setW] = React.useState(800)
+  const [hoverIdx, setHoverIdx] = React.useState<number | null>(null)
 
-  // Normalização global: min/max de todas as séries juntas
+  React.useEffect(() => {
+    const el = wrapRef.current
+    // ResizeObserver não existe no ambiente de teste (jsdom): usa largura default.
+    if (!el || typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0
+      if (width > 0) setW(width)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const h = heightPx
+  const innerW = Math.max(w - PAD.left - PAD.right, 1)
+  const innerH = Math.max(h - PAD.top - PAD.bottom, 1)
+
   const allValues = series.flatMap((s) => s.data)
   const max = allValues.length > 0 ? Math.max(...allValues) : 0
-  const min = allValues.length > 0 ? Math.min(...allValues) : 0
+  const min = Math.min(0, allValues.length > 0 ? Math.min(...allValues) : 0)
   const span = Math.max(max - min, 1)
 
-  const ticks = yAxisTicks(min, max)
-  const tickStep = allValues.length > 1 ? innerW / (allValues.length - 1) : innerW
-  void tickStep
+  const xCount = series[0]?.data.length ?? 0
+  const xAt = (i: number) =>
+    PAD.left + (xCount > 1 ? (i / (xCount - 1)) * innerW : innerW / 2)
+  const yAt = (v: number) => PAD.top + innerH - ((v - min) / span) * innerH
+
+  const ticks = niceTicks(min, max)
+  const fmtTip = valueFormatter ?? yValueFormatter ?? ((v: number) => String(v))
 
   return (
     <div className="flex flex-col gap-2">
-      <svg
-        data-slot="line-chart"
-        viewBox={`0 0 ${w} ${h}`}
-        className={cn("w-full", height, className)}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label="Gráfico de linha"
-        {...props}
+      <div
+        ref={wrapRef}
+        className={cn("relative w-full", className)}
+        style={{ height: h }}
+        onMouseLeave={() => setHoverIdx(null)}
       >
-        {/* Grid horizontal tracejado + ticks do eixo Y */}
-        {showGrid &&
-          ticks.map((tick, i) => {
-            const y =
-              PADDING_TOP + innerH - ((tick - min) / span) * innerH
+        <svg
+          data-slot="line-chart"
+          width={w}
+          height={h}
+          viewBox={`0 0 ${w} ${h}`}
+          role="img"
+          aria-label="Gráfico de linha"
+        >
+          {/* Grid + ticks Y */}
+          {showGrid &&
+            ticks.map((tick, i) => {
+              const y = yAt(tick)
+              return (
+                <g key={`grid-${i}`}>
+                  <line
+                    x1={PAD.left}
+                    y1={y}
+                    x2={w - PAD.right}
+                    y2={y}
+                    className="stroke-border"
+                    strokeWidth={1}
+                    strokeDasharray="4 4"
+                  />
+                  <text
+                    x={PAD.left - 8}
+                    y={y + 3}
+                    textAnchor="end"
+                    className="fill-muted-foreground text-[10px]"
+                  >
+                    {yValueFormatter ? yValueFormatter(tick) : tick}
+                  </text>
+                </g>
+              )
+            })}
+
+          {/* Labels X */}
+          {xLabels?.map((label, i) => (
+            <text
+              key={`xlabel-${i}`}
+              x={xAt(i)}
+              y={h - 8}
+              textAnchor="middle"
+              className="fill-muted-foreground text-[10px]"
+            >
+              {label}
+            </text>
+          ))}
+
+          {/* Guia vertical no hover */}
+          {hoverIdx != null && (
+            <line
+              x1={xAt(hoverIdx)}
+              y1={PAD.top}
+              x2={xAt(hoverIdx)}
+              y2={PAD.top + innerH}
+              className="stroke-muted-foreground/40"
+              strokeWidth={1}
+            />
+          )}
+
+          {/* Séries: área + linha + markers */}
+          {series.map((s, si) => {
+            const stroke = s.className ?? "stroke-primary"
+            const fill = stroke.replace("stroke-", "fill-")
+            const linePts = s.data.map((v, i) => `${xAt(i)},${yAt(v)}`).join(" ")
+            const areaPts = `${xAt(0)},${PAD.top + innerH} ${linePts} ${xAt(
+              s.data.length - 1,
+            )},${PAD.top + innerH}`
             return (
-              <g key={`grid-${i}`}>
-                <line
-                  x1={PADDING_LEFT}
-                  y1={y}
-                  x2={w - PADDING_RIGHT}
-                  y2={y}
-                  className="stroke-border"
-                  strokeWidth={0.5}
-                  strokeDasharray="4 4"
+              <g key={`series-${si}`}>
+                {showArea && (
+                  <polygon points={areaPts} className={cn(fill, "opacity-10")} />
+                )}
+                <polyline
+                  points={linePts}
+                  fill="none"
+                  className={stroke}
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
-                <text
-                  x={PADDING_LEFT - 6}
-                  y={y + 3}
-                  textAnchor="end"
-                  className="fill-muted-foreground text-[8px]"
-                >
-                  {yValueFormatter ? yValueFormatter(tick) : tick}
-                </text>
+                {s.data.map((v, i) => (
+                  <circle
+                    key={i}
+                    cx={xAt(i)}
+                    cy={yAt(v)}
+                    r={hoverIdx === i ? 4.5 : 2.5}
+                    className={cn(fill, "stroke-background")}
+                    strokeWidth={1.5}
+                  />
+                ))}
               </g>
             )
           })}
+        </svg>
 
-        {/* Eixo X labels */}
-        {xLabels &&
-          xLabels.map((label, i) => {
-            const seriesLen = series[0]?.data.length ?? xLabels.length
-            const step =
-              seriesLen > 1 ? innerW / (seriesLen - 1) : innerW
-            const x = PADDING_LEFT + i * step
-            return (
-              <text
-                key={`xlabel-${i}`}
-                x={x}
-                y={h - 6}
-                textAnchor="middle"
-                className="fill-muted-foreground text-[8px]"
-              >
-                {label}
-              </text>
-            )
-          })}
+        {/* Camada de captura de hover (1 coluna por índice X) */}
+        <div className="absolute inset-0 flex">
+          {Array.from({ length: xCount }).map((_, i) => (
+            <div
+              key={i}
+              className="h-full flex-1"
+              onMouseEnter={() => setHoverIdx(i)}
+            />
+          ))}
+        </div>
 
-        {/* Linha do eixo X */}
-        <line
-          x1={PADDING_LEFT}
-          y1={PADDING_TOP + innerH}
-          x2={w - PADDING_RIGHT}
-          y2={PADDING_TOP + innerH}
-          className="stroke-border"
-          strokeWidth={0.5}
-        />
-
-        {/* Linha do eixo Y */}
-        <line
-          x1={PADDING_LEFT}
-          y1={PADDING_TOP}
-          x2={PADDING_LEFT}
-          y2={PADDING_TOP + innerH}
-          className="stroke-border"
-          strokeWidth={0.5}
-        />
-
-        {/* Séries (polylines + área) */}
-        {series.map((s, si) => {
-          const pts = buildPoints(s.data, min, span, w, h)
-          const linePoints = pts.join(" ")
-          const strokeClass = s.className ?? "stroke-primary"
-          const areaPoints = `${PADDING_LEFT},${PADDING_TOP + innerH} ${linePoints} ${PADDING_LEFT + innerW},${PADDING_TOP + innerH}`
-          const areaFillClass = strokeClass.replace(
-            "stroke-",
-            "fill-",
-          )
-          return (
-            <g key={`series-${si}`}>
-              {showArea && (
-                <polygon points={areaPoints} className={cn(areaFillClass, "opacity-10")} />
-              )}
-              <polyline
-                points={linePoints}
-                fill="none"
-                className={cn(strokeClass)}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </g>
-          )
-        })}
-      </svg>
+        {/* Tooltip-card */}
+        {hoverIdx != null && xCount > 0 && (
+          <div
+            className="pointer-events-none absolute z-10 min-w-32 -translate-x-1/2 rounded-lg border border-border bg-popover p-2 text-xs shadow-md"
+            style={{
+              left: `${Math.min(Math.max(xAt(hoverIdx), 70), w - 70)}px`,
+              top: PAD.top,
+            }}
+          >
+            <div className="mb-1 font-medium text-popover-foreground">
+              {xLabels?.[hoverIdx] ?? `#${hoverIdx + 1}`}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {series.map((s, si) => (
+                <div key={si} className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "inline-block h-2 w-2 shrink-0 rounded-full",
+                      s.className?.replace("stroke-", "bg-") ?? "bg-primary",
+                    )}
+                  />
+                  <span className="text-muted-foreground">{s.label}</span>
+                  <span className="ml-auto font-medium tabular-nums text-popover-foreground">
+                    {fmtTip(s.data[hoverIdx] ?? 0)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Legenda */}
       {showLegend && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
           {series.map((s, i) => (
-            <div
-              key={`legend-${i}`}
-              className="flex items-center gap-1.5"
-            >
+            <div key={`legend-${i}`} className="flex items-center gap-1.5">
               <span
                 className={cn(
                   "inline-block h-2 w-2 rounded-full",
                   s.className?.replace("stroke-", "bg-") ?? "bg-primary",
                 )}
               />
-              <span className="text-muted-foreground text-xs">
-                {s.label}
-              </span>
+              <span className="text-xs text-muted-foreground">{s.label}</span>
             </div>
           ))}
         </div>

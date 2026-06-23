@@ -1,14 +1,13 @@
 /**
- * BarChart — gráfico de barras VERTICAIS minimalista, feito só com divs.
+ * BarChart — gráfico de barras VERTICAIS minimalista, com TOOLTIP no hover.
  *
- * Cada barra tem altura proporcional ao maior valor da série (normalização
- * local). A coluna usa um trilho `relative flex-1` (altura resolvida pelo
- * flex) e a barra é `absolute bottom-0` com `height: <pct>%` — assim a altura
- * percentual tem um containing block com altura definida (corrige o bug em que
- * `height:%` colapsava para 0 dentro de um flex `items-end`).
+ * Cada coluna é um trilho `relative flex-1` (altura resolvida pelo flex) e a
+ * barra é `absolute bottom-0` com `height: <pct>%` — assim a altura percentual
+ * tem um containing block com altura definida. O root usa `items-stretch` para
+ * as colunas esticarem à altura total (senão colapsam e a barra some).
  *
- * `valueFormatter` (opcional) formata o valor exibido no topo da barra e no
- * `title` (tooltip nativo). Sem ele, nenhum valor é mostrado.
+ * Hover: ao passar o mouse numa coluna, ela destaca e mostra um tooltip-card
+ * com o rótulo + valor formatado (`valueFormatter`).
  */
 
 import * as React from "react"
@@ -40,21 +39,24 @@ function BarChart({
   className,
   ...props
 }: BarChartProps) {
+  const [hoverIdx, setHoverIdx] = React.useState<number | null>(null)
   const max = Math.max(...series.map((s) => s.value), 1)
   return (
     <div
       data-slot="bar-chart"
-      className={cn("flex h-48 items-stretch gap-1.5", className)}
+      className={cn("relative flex h-56 items-stretch gap-1.5", className)}
+      onMouseLeave={() => setHoverIdx(null)}
       {...props}
     >
       {series.map((s, i) => {
         const pct = Math.max((s.value / max) * 100, s.value > 0 ? 2 : 0)
         const formatted = valueFormatter ? valueFormatter(s.value) : undefined
+        const active = hoverIdx === i
         return (
           <div
             key={`${s.label}-${i}`}
             className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
-            title={formatted ? `${s.label}: ${formatted}` : s.label}
+            onMouseEnter={() => setHoverIdx(i)}
           >
             {showValues && formatted ? (
               <span className="w-full truncate text-center text-[10px] font-medium tabular-nums text-foreground">
@@ -65,11 +67,19 @@ function BarChart({
             <div className="relative flex w-full flex-1 items-end">
               <div
                 className={cn(
-                  "absolute bottom-0 w-full rounded-t-md transition-[height] duration-500",
+                  "absolute bottom-0 w-full rounded-t-md transition-[height,opacity] duration-500",
                   accent,
+                  active ? "opacity-100" : "opacity-85",
                 )}
                 style={{ height: `${pct}%` }}
               />
+              {/* Tooltip-card no hover */}
+              {active && formatted ? (
+                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-2 py-1 text-xs shadow-md">
+                  <div className="font-medium text-popover-foreground">{s.label}</div>
+                  <div className="tabular-nums text-muted-foreground">{formatted}</div>
+                </div>
+              ) : null}
             </div>
             <span className="w-full truncate text-center text-[10px] text-muted-foreground">
               {s.label}

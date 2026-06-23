@@ -4,7 +4,7 @@
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { LineChart, type LineSeries } from '@/components/ui/line-chart';
-import { formatCompactNumberBR } from '@/shared/lib/format';
+import { formatCompactNumberBR, formatBRL } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -53,6 +53,7 @@ export const Component: BlockComponent<LineProps, SeriesData> = ({ props, data }
       xLabels={xLabels}
       showArea={props.area !== false}
       yValueFormatter={(v) => formatCompactNumberBR(v)}
+      valueFormatter={(v) => formatBRL(v)}
     />
   );
 };

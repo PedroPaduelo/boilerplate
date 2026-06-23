@@ -1,5 +1,6 @@
 /**
- * DonutChart — donut/anel genérico em SVG, montado a partir de arcos.
+ * DonutChart — donut/anel genérico em SVG, montado a partir de arcos, com
+ * suporte a HOVER controlado pelo pai (destaque do arco ativo).
  *
  * Desenha uma trilha de fundo (`stroke-muted`) e, por cima, um arco por
  * segmento cujo comprimento é proporcional ao seu `value` sobre o total. A
@@ -7,9 +8,9 @@
  * "stroke-primary"). As dimensões (`size`/`thickness`) controlam o diâmetro
  * e a espessura do anel; o vão central fica livre para um rótulo absoluto.
  *
- * Extraído da composição `saas-dashboard-pro`. Sem dependências novas, sem
- * estado. O elemento raiz é o próprio <svg> com `data-slot="donut-chart"`,
- * aceitando className/props padrão de um SVG.
+ * Hover: o pai controla `activeIndex` e recebe `onSegmentHover`. O arco ativo
+ * engrossa (destaque) e os demais esmaecem — o pai usa o índice para mostrar
+ * o detalhe no centro / destacar a legenda.
  */
 
 import * as React from "react"
@@ -32,12 +33,18 @@ export interface DonutChartProps
   size?: number
   /** Espessura do anel em px. Default: 24. */
   thickness?: number
+  /** Índice do segmento em destaque (hover controlado pelo pai). */
+  activeIndex?: number | null
+  /** Callback de hover por segmento (índice ou null ao sair). */
+  onSegmentHover?: (index: number | null) => void
 }
 
 function DonutChart({
   segments,
   size = 168,
   thickness = 24,
+  activeIndex = null,
+  onSegmentHover,
   className,
   style,
   ...props
@@ -45,15 +52,12 @@ function DonutChart({
   const total = segments.reduce((acc, s) => acc + s.value, 0) || 1
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
-  // Pré-computa dash + offset de cada arco de forma PURA (sem mutar variável
-  // durante o render — react-hooks/immutability). O offset acumulado é a soma
-  // dos arcos anteriores.
   const arcs = segments.map((seg, i) => {
     const dash = (seg.value / total) * circumference
     const offset = segments
       .slice(0, i)
       .reduce((acc, s) => acc + (s.value / total) * circumference, 0)
-    return { seg, dash, offset, key: `${seg.label}-${i}` }
+    return { seg, dash, offset, key: `${seg.label}-${i}`, index: i }
   })
   return (
     <svg
@@ -63,6 +67,7 @@ function DonutChart({
       style={{ width: size, height: size, ...style }}
       role="img"
       aria-label="Distribuição"
+      onMouseLeave={() => onSegmentHover?.(null)}
       {...props}
     >
       <circle
@@ -74,20 +79,31 @@ function DonutChart({
         strokeWidth={thickness}
       />
       <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-        {arcs.map(({ seg, dash, offset, key }) => (
-          <circle
-            key={key}
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            className={seg.className}
-            strokeWidth={thickness}
-            strokeDasharray={`${dash.toFixed(2)} ${(circumference - dash).toFixed(2)}`}
-            strokeDashoffset={(-offset).toFixed(2)}
-            strokeLinecap="butt"
-          />
-        ))}
+        {arcs.map(({ seg, dash, offset, key, index }) => {
+          const isActive = activeIndex === index
+          const dim = activeIndex != null && !isActive
+          return (
+            <circle
+              key={key}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              className={cn(
+                seg.className,
+                "cursor-pointer transition-[stroke-width,opacity] duration-200",
+                dim && "opacity-40",
+              )}
+              strokeWidth={isActive ? thickness + 5 : thickness}
+              strokeDasharray={`${dash.toFixed(2)} ${(circumference - dash).toFixed(2)}`}
+              strokeDashoffset={(-offset).toFixed(2)}
+              strokeLinecap="butt"
+              onMouseEnter={() => onSegmentHover?.(index)}
+            >
+              <title>{`${seg.label}: ${seg.value.toLocaleString("pt-BR")}`}</title>
+            </circle>
+          )
+        })}
       </g>
     </svg>
   )
