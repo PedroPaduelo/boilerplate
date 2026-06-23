@@ -15,7 +15,15 @@ type SeriesPoint = { x: string | number; y: number | null; series?: string };
 export const Component: BlockComponent<Record<string, never>, SeriesData> = ({ data }) => {
   const points = (data ?? []) as SeriesPoint[];
   const series = points.map((p) => ({ label: String(p.x), value: p.y ?? 0 }));
-  return <HBarChart series={series} valueFormatter={(v) => formatCompactNumberBR(v)} />;
+  // accent explícito: alinha com os demais "irmãos" do grupo (line/area/donut/scatter)
+  // que recebem cor da paleta de chart, em vez do default `bg-primary` do UI base.
+  return (
+    <HBarChart
+      series={series}
+      accent="bg-chart-1"
+      valueFormatter={(v) => formatCompactNumberBR(v)}
+    />
+  );
 };
 
 export const definition = defineBlock<Record<string, never>, SeriesData>({

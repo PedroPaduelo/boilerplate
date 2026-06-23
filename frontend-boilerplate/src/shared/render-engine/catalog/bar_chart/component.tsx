@@ -5,6 +5,7 @@
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart } from '@/components/ui/bar-chart';
+import { HBarChart } from '@/components/ui/h-bar-chart';
 import { formatCompactBRL } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
@@ -30,6 +31,17 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
     label: String(d.x),
     value: d.y ?? 0,
   }));
+  // `orientation: "horizontal"` re-aproveita o `HBarChart` (mesma "família" do
+  // DS, mesmo accent e mesmo formatter). Vertical é o default.
+  if (props.orientation === 'horizontal') {
+    return (
+      <HBarChart
+        series={series}
+        accent={props.accent ?? 'bg-chart-1'}
+        valueFormatter={(v) => formatCompactBRL(v)}
+      />
+    );
+  }
   return (
     <BarChart
       series={series}
