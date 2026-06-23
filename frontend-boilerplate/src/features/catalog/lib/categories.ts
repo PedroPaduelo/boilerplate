@@ -76,15 +76,6 @@ export const CATEGORY_BY_TYPE: Record<string, Category> = {
   invoice_table: 'tabelas',
   leaderboard: 'tabelas',
 
-  // 🗂️ Listas & Conteúdo
-  connection_list: 'listas',
-  favorites_list: 'listas',
-  user_list: 'listas',
-  query_history: 'listas',
-  team_section: 'listas',
-  work_experience: 'listas',
-  features_section: 'listas',
-
   // 🧱 Layout & Containers (aceitam children)
   section: 'layout',
   collapsible_block: 'layout',
