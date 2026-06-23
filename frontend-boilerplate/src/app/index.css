@@ -154,14 +154,22 @@
     height: 100%;
   }
   /* Trava scroll no documento: o shell cuida do scroll interno (main/sidebar).
-     Sem isso, html fica com overflow:visible e o scroll "vaza" para o viewport,
-     mesmo com body { overflow:hidden }, fazendo a sidebar inteira descer. */
+     Sem isso, html/body ficam com overflow:visible/auto (default) e o scroll
+     "vaza" para o viewport, fazendo a sidebar inteira descer. !important
+     para vencer regras de Tailwind reset / libs de UI que tentam restaurar
+     overflow no body. */
   html {
-    @apply font-sans overflow-hidden;
+    @apply font-sans;
+    overflow: hidden !important;
+    height: 100% !important;
   }
   body {
     @apply bg-background text-foreground antialiased;
-    overflow: hidden;
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+  #root {
+    height: 100%;
   }
 
   code,
