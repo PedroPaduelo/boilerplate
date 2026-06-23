@@ -547,7 +547,7 @@ export function BlockDetailDialog({ entry, onOpenChange }: BlockDetailDialogProp
     <Dialog open={!!entry} onOpenChange={onOpenChange}>
       {/* ENTREGA 1: modal 70vw × 70vh (era max-w-5xl max-h-90vh). Equilibra as
           duas dimensões para abrir mais confortável no playground. */}
-      <DialogContent className="max-h-[75vh] max-w-[80vw] w-[80vw] gap-0 overflow-hidden p-0">
+      <DialogContent className="max-h-[85vh] max-w-[90vw] w-[90vw] gap-0 overflow-hidden p-0">
         {entry ? (
           <BlockDetailContent key={dialogKey} entry={entry} />
         ) : null}
@@ -743,7 +743,7 @@ function BlockDetailContent({ entry }: { entry: CatalogEntry }) {
   }, [dataError, dataText, entry.shape, manifest.type]);
 
   return (
-    <div className="grid h-[75vh] grid-cols-1 md:grid-cols-2">
+    <div className="grid h-[85vh] grid-cols-1 md:grid-cols-2">
       {/* ============================== ESQUERDA — PREVIEW ============================== */}
       <div className="flex min-h-0 flex-col border-b border-border/60 bg-muted/20 md:border-b-0 md:border-r">
         <DialogHeader className="px-5 pt-5 pb-3">
