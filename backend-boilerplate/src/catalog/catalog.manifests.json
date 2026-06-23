@@ -1,7 +1,7 @@
 {
   "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
   "catalogVersion": 1,
-  "count": 48,
+  "count": 49,
   "blocks": [
     {
       "type": "__example",
@@ -1614,6 +1614,43 @@
         "showGridLines": true
       },
       "maxRows": 5000,
+      "version": "1.0.0"
+    },
+    {
+      "type": "section",
+      "kind": "layout",
+      "name": "Seção (Container)",
+      "description": "Container hierárquico: agrupa sub-blocos num card com header (título + subtítulo) e corpo em grid de 12 colunas. Permite composição: seção dentro de seção, sumário executivo, etc.",
+      "source": "custom",
+      "propsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Título da seção (header)."
+          },
+          "subtitle": {
+            "type": "string",
+            "description": "Subtítulo / descrição curta."
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "card",
+              "framed"
+            ],
+            "description": "Estilo visual do container. Default: 'card'."
+          }
+        }
+      },
+      "defaultProps": {
+        "title": "Seção",
+        "variant": "card"
+      },
       "version": "1.0.0"
     },
     {

@@ -6,6 +6,7 @@
 import type { TableData } from '@dashboards/contracts';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/ui/data-table';
+import { formatNumberBR, formatDate as fmtDate, toNumber } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -21,8 +22,16 @@ type Row = Record<string, unknown>;
 
 function formatCell(value: unknown, type?: Column['type']): string {
   if (value == null) return '—';
-  if (type === 'number' && typeof value === 'number') return value.toLocaleString('pt-BR');
+  if (type === 'number') {
+    // `numeric` do Postgres chega como string — coage antes de formatar.
+    const n = toNumber(value);
+    return n != null ? formatNumberBR(n, 2) : String(value);
+  }
   if (type === 'boolean') return value ? 'Sim' : 'Não';
+  if (type === 'date') {
+    const d = fmtDate(value);
+    return d ?? String(value);
+  }
   return String(value);
 }
 

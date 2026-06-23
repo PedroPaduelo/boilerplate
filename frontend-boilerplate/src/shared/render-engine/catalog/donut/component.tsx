@@ -5,6 +5,7 @@
 import type { CategoricalData } from '@dashboards/contracts';
 import { DonutChart } from '@/components/ui/donut-chart';
 import { cn } from '@/shared/lib/utils';
+import { formatCompactBRL, formatPercentBR } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -34,34 +35,44 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({ props, 
     value: d.value ?? 0,
     className: STROKE_PALETTE[i % STROKE_PALETTE.length],
   }));
+  const total = items.reduce((acc, d) => acc + (d.value ?? 0), 0) || 1;
   const showLegend = props.showLegend !== false;
 
   return (
     <div data-slot="block-donut" className="flex flex-wrap items-center gap-6">
-      <div className="relative">
+      <div className="relative shrink-0">
         <DonutChart segments={segments} />
-        {props.centerLabel ? (
-          <span className="absolute inset-0 flex items-center justify-center text-sm font-medium text-foreground">
-            {props.centerLabel}
+        <span className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[11px] text-muted-foreground">Total</span>
+          <span className="text-sm font-semibold tabular-nums text-foreground">
+            {props.centerLabel ?? formatCompactBRL(total)}
           </span>
-        ) : null}
+        </span>
       </div>
       {showLegend ? (
-        <ul data-slot="block-donut-legend" className="flex flex-col gap-1.5">
-          {items.map((d, i) => (
-            <li key={d.label} className="flex items-center gap-2 text-sm">
-              <span
-                className={cn(
-                  'inline-block size-2.5 rounded-full',
-                  BG_PALETTE[i % BG_PALETTE.length],
-                )}
-              />
-              <span className="text-muted-foreground">{d.label}</span>
-              <span className="ml-auto font-medium tabular-nums text-foreground">
-                {d.value ?? 0}
-              </span>
-            </li>
-          ))}
+        <ul data-slot="block-donut-legend" className="flex min-w-0 flex-1 flex-col gap-1.5">
+          {items.map((d, i) => {
+            const value = d.value ?? 0;
+            return (
+              <li key={`${d.label}-${i}`} className="flex items-center gap-2 text-sm">
+                <span
+                  className={cn(
+                    'inline-block size-2.5 shrink-0 rounded-full',
+                    BG_PALETTE[i % BG_PALETTE.length],
+                  )}
+                />
+                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={d.label}>
+                  {d.label}
+                </span>
+                <span className="shrink-0 font-medium tabular-nums text-foreground">
+                  {formatCompactBRL(value)}
+                </span>
+                <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                  {formatPercentBR(value / total)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </div>

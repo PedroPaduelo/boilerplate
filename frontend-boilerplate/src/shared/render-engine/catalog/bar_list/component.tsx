@@ -4,6 +4,7 @@
  */
 import type { CategoricalData } from '@dashboards/contracts';
 import { BarListTremor } from '@/components/ui/bar-list-tremor';
+import { formatCompactBRL } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -22,7 +23,7 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({ props
     <BarListTremor
       data={rows}
       sortOrder={props.sortOrder ?? 'descending'}
-      valueFormatter={(v) => v.toLocaleString('pt-BR')}
+      valueFormatter={(v) => formatCompactBRL(v)}
     />
   );
 };

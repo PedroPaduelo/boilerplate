@@ -4,6 +4,7 @@
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart } from '@/components/ui/bar-chart';
+import { formatCompactBRL } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -28,7 +29,13 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({ props, data })
     label: String(d.x),
     value: d.y ?? 0,
   }));
-  return <BarChart series={series} accent={props.accent ?? 'bg-chart-1'} />;
+  return (
+    <BarChart
+      series={series}
+      accent={props.accent ?? 'bg-chart-1'}
+      valueFormatter={(v) => formatCompactBRL(v)}
+    />
+  );
 };
 
 export const definition = defineBlock<BarProps, SeriesData>({

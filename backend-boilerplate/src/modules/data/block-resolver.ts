@@ -50,6 +50,8 @@ interface RawBlock {
   type?: unknown;
   props?: { chartId?: unknown } & Record<string, unknown>;
   dataBinding?: RawBinding;
+  /** COMPOSIÇÃO RECURSIVA: children (containers como `section`). */
+  blocks?: RawBlock[];
 }
 
 interface RawLayout {
@@ -82,6 +84,10 @@ function normalizeBinding(raw: unknown): ResolvedBlock['binding'] | null {
 /**
  * Resolve todos os blocos com dados de um layout. Retorna um `ResolvedBlock` por
  * bloco que tenha dados (direto ou via chart); blocos narrativos são omitidos.
+ *
+ * Suporta COMPOSIÇÃO RECURSIVA: blocos-container (ex.: `section`) têm `blocks`
+ * (children) que também podem ter dataBinding/chartId. A árvore inteira é
+ * percorrida em profundidade (DFS).
  */
 export async function resolveBlocks(
   layout: unknown,
@@ -94,47 +100,67 @@ export async function resolveBlocks(
 
   for (const row of rows) {
     for (const block of row.blocks ?? []) {
-      if (typeof block.id !== 'string') continue;
-      const blockId = block.id;
-      const chartId =
-        block.props && typeof block.props.chartId === 'string'
-          ? block.props.chartId
-          : undefined;
+      await processBlock(block, mode, ctx, deps, out);
+    }
+  }
 
-      let binding = normalizeBinding(block.dataBinding);
-      let type = typeof block.type === 'string' ? block.type : '';
+  return out;
+}
 
-      // (2) vínculo via chart referenciado
-      if (!binding && chartId) {
-        const chart = await deps.loadChart(chartId);
-        if (!chart || !canViewArtifact(chart, ctx)) {
-          out.push(errorBlock(blockId, type, 'forbidden_chart', 'referenced chart not accessible'));
-          continue;
-        }
-        type = chart.catalogType;
-        const chartBinding =
-          mode === 'published' ? chart.publishedDataBinding : chart.draftDataBinding;
-        binding = normalizeBinding(chartBinding);
-        if (!binding) {
-          out.push(
-            errorBlock(blockId, type, 'no_binding', `chart has no ${mode} data binding`),
-          );
-          continue;
-        }
-      }
+/**
+ * Processa UM bloco: resolve seu binding (se tiver) e, se for container
+ * (`block.blocks`), desce recursivamente nos children.
+ */
+async function processBlock(
+  block: RawBlock,
+  mode: DataMode,
+  ctx: ActorContext,
+  deps: ResolveDeps,
+  out: ResolvedBlock[],
+): Promise<void> {
+  if (typeof block.id !== 'string') {
+    // Mesmo sem id, se for container, desce nos children (best-effort).
+    for (const child of block.blocks ?? []) {
+      await processBlock(child, mode, ctx, deps, out);
+    }
+    return;
+  }
 
-      // bloco narrativo (sem dados) → ignora
-      if (!binding) continue;
+  const blockId = block.id;
+  const chartId =
+    block.props && typeof block.props.chartId === 'string'
+      ? block.props.chartId
+      : undefined;
 
-      // revalida visibilidade da CONNECTION referenciada
-      const conn = await deps.loadConnection(binding.connectionId);
-      if (!conn || !canViewArtifact(conn, ctx)) {
+  let binding = normalizeBinding(block.dataBinding);
+  let type = typeof block.type === 'string' ? block.type : '';
+
+  // (2) vínculo via chart referenciado
+  if (!binding && chartId) {
+    const chart = await deps.loadChart(chartId);
+    if (!chart || !canViewArtifact(chart, ctx)) {
+      out.push(errorBlock(blockId, type, 'forbidden_chart', 'referenced chart not accessible'));
+    } else {
+      type = chart.catalogType;
+      const chartBinding =
+        mode === 'published' ? chart.publishedDataBinding : chart.draftDataBinding;
+      binding = normalizeBinding(chartBinding);
+      if (!binding) {
         out.push(
-          errorBlock(blockId, type, 'forbidden_connection', 'referenced connection not accessible'),
+          errorBlock(blockId, type, 'no_binding', `chart has no ${mode} data binding`),
         );
-        continue;
       }
+    }
+  }
 
+  // Tem binding válido → revalida visibilidade da CONNECTION e coleta
+  if (binding) {
+    const conn = await deps.loadConnection(binding.connectionId);
+    if (!conn || !canViewArtifact(conn, ctx)) {
+      out.push(
+        errorBlock(blockId, type, 'forbidden_connection', 'referenced connection not accessible'),
+      );
+    } else {
       out.push({
         blockId,
         type,
@@ -145,7 +171,10 @@ export async function resolveBlocks(
     }
   }
 
-  return out;
+  // COMPOSIÇÃO RECURSIVA: desce nos children (containers como `section`)
+  for (const child of block.blocks ?? []) {
+    await processBlock(child, mode, ctx, deps, out);
+  }
 }
 
 function errorBlock(

@@ -9,6 +9,13 @@ export interface KpiCardProps
   label: string
   /** Valor numérico exibido com AnimatedNumber. */
   value: number
+  /**
+   * Valor JÁ FORMATADO (string). Quando presente, é renderizado ESTÁTICO no
+   * lugar do AnimatedNumber — ideal para valores grandes/monetários onde o
+   * efeito slot-machine fica ilegível (ex.: "R$ 2,61 bi"). `prefix`/`suffix`
+   * são ignorados nesse caso (já embutidos no display).
+   */
+  displayValue?: string
   /** Prefixo antes do valor (ex.: "$"). */
   prefix?: string
   /** Sufixo após o valor (ex.: ".3%"). */
@@ -31,6 +38,7 @@ export interface KpiCardProps
 function KpiCard({
   label,
   value,
+  displayValue,
   prefix,
   suffix,
   delta,
@@ -61,11 +69,17 @@ function KpiCard({
         ) : null}
       </div>
       <div className="flex items-baseline gap-1 text-3xl font-semibold tracking-tight text-foreground">
-        {prefix ? <span>{prefix}</span> : null}
-        <AnimatedNumber value={value} />
-        {suffix ? (
-          <span className="text-2xl text-muted-foreground">{suffix}</span>
-        ) : null}
+        {displayValue !== undefined ? (
+          <span className="tabular-nums">{displayValue}</span>
+        ) : (
+          <>
+            {prefix ? <span>{prefix}</span> : null}
+            <AnimatedNumber value={value} />
+            {suffix ? (
+              <span className="text-2xl text-muted-foreground">{suffix}</span>
+            ) : null}
+          </>
+        )}
       </div>
       {delta !== undefined ? (
         <div className="flex items-center gap-1.5 text-xs">

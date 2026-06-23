@@ -50,6 +50,8 @@ export interface LineChartProps
   width?: number
   /** Altura do viewBox (sistema de coordenadas). Default: 200. */
   viewBoxHeight?: number
+  /** Formata os rótulos numéricos do eixo Y (ex.: "R$ 2,6 mi"). Sem ele, número cru. */
+  yValueFormatter?: (value: number) => string
 }
 
 /* -------------------------------------------------------------------------- */
@@ -99,6 +101,7 @@ function LineChart({
   showLegend = true,
   width = 600,
   viewBoxHeight = 200,
+  yValueFormatter,
   className,
   ...props
 }: LineChartProps) {
@@ -150,7 +153,7 @@ function LineChart({
                   textAnchor="end"
                   className="fill-muted-foreground text-[8px]"
                 >
-                  {tick}
+                  {yValueFormatter ? yValueFormatter(tick) : tick}
                 </text>
               </g>
             )

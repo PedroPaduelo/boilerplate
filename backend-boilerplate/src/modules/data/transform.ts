@@ -92,7 +92,11 @@ export function applyTransform(
     }
 
     case 'table': {
-      const columns = result.columns.map((c) => ({ key: c.name, label: c.name }));
+      const columns = result.columns.map((c) => ({
+        key: c.name,
+        label: c.name,
+        type: pgTypeToColumnType(c.dataTypeID),
+      }));
       return { columns, rows };
     }
 
@@ -104,4 +108,38 @@ export function applyTransform(
 /** Primeiro nome de coluna do resultado, ou um fallback se não houver colunas. */
 function firstColumnName(result: QueryResultShape, fallback: string): string {
   return result.columns[0]?.name ?? fallback;
+}
+
+/**
+ * Mapeia o OID do tipo Postgres (pg_type) para o `type` do contrato de tabela
+ * ('string' | 'number' | 'date' | 'boolean') — assim o FE formata cada célula
+ * (números em PT-BR, datas, booleanos) sem precisar formatar no SQL.
+ *
+ * OIDs estáveis do catálogo do Postgres (não mudam entre versões).
+ */
+function pgTypeToColumnType(oid: number): 'string' | 'number' | 'date' | 'boolean' {
+  switch (oid) {
+    // inteiros / floats / numeric / money / oid
+    case 20: // int8 (bigint)
+    case 21: // int2 (smallint)
+    case 23: // int4 (integer)
+    case 26: // oid
+    case 700: // float4
+    case 701: // float8
+    case 790: // money
+    case 1700: // numeric
+      return 'number';
+    // datas / horários
+    case 1082: // date
+    case 1083: // time
+    case 1114: // timestamp
+    case 1184: // timestamptz
+    case 1266: // timetz
+      return 'date';
+    // booleano
+    case 16: // bool
+      return 'boolean';
+    default:
+      return 'string';
+  }
 }

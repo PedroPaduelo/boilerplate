@@ -4,6 +4,7 @@
  */
 import type { ScalarData } from '@dashboards/contracts';
 import { KpiCard } from '@/components/ui/kpi-card';
+import { formatKpiValue } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -15,18 +16,12 @@ type KpiProps = {
   showDelta?: boolean;
 };
 
-/** Unidades monetárias conhecidas viram prefixo; demais viram sufixo. */
-const CURRENCY_PREFIX: Record<string, string> = {
-  BRL: 'R$ ',
-  USD: '$ ',
-  EUR: '€ ',
-};
-
 export const Component: BlockComponent<KpiProps, ScalarData> = ({ props, data }) => {
   const value = data?.value ?? 0;
   const unit = data?.unit;
-  const prefix = unit ? CURRENCY_PREFIX[unit] : undefined;
-  const suffix = unit && !prefix ? unit : undefined;
+  // Valor formatado PT-BR (compacto para moeda/magnitudes altas) — renderizado
+  // ESTÁTICO no card (sem slot-machine, que fica ilegível em bilhões).
+  const displayValue = formatKpiValue(value, unit);
   const showDelta = props.showDelta !== false;
   // dataContract trata `delta` como fração (0.12 = +12%); o KpiCard espera %.
   const delta =
@@ -36,8 +31,7 @@ export const Component: BlockComponent<KpiProps, ScalarData> = ({ props, data })
     <KpiCard
       label={data?.label ?? manifest.name}
       value={value}
-      prefix={prefix}
-      suffix={suffix}
+      displayValue={displayValue}
       delta={delta}
     />
   );

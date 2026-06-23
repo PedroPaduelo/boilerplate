@@ -53,7 +53,7 @@ function DonutChart({
     const offset = segments
       .slice(0, i)
       .reduce((acc, s) => acc + (s.value / total) * circumference, 0)
-    return { seg, dash, offset }
+    return { seg, dash, offset, key: `${seg.label}-${i}` }
   })
   return (
     <svg
@@ -74,9 +74,9 @@ function DonutChart({
         strokeWidth={thickness}
       />
       <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-        {arcs.map(({ seg, dash, offset }) => (
+        {arcs.map(({ seg, dash, offset, key }) => (
           <circle
-            key={seg.label}
+            key={key}
             cx={size / 2}
             cy={size / 2}
             r={radius}
