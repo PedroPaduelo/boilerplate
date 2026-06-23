@@ -21,16 +21,27 @@
  *
  * Não depende mais das cores do Tremor (`tremor-utils`): só `recharts` + `cn`.
  *
- * Cor única (Turno 5 — `accent` global): aceita `accent` (classe Tailwind
- * `bg-chart-N`/`fill-chart-N`/`stroke-chart-N`/`primary`) e/ou `style`
- * (CSSProperties) GLOBAIS para forçar uma cor ÚNICA em todas as séries —
- * sobrescreve a paleta cíclica por categoria. Útil para `palette: 'single'`
- * (todas as categorias com a mesma cor) ou para cor custom (hex/rgb/hsl/
- * gradient) no playground. Quando AMBOS vierem: `style` vence `accent`
- * (atributos de apresentação inline > classes CSS). Cobre:
- *   - `accent: 'chart-1'` → className `fill-chart-1 stroke-chart-1 bg-chart-1`
- *   - `style={{ color: '#ff0000' }}` → aplicado no container (afeta gradientes
- *     e `var(--chart-1)`) E cada série fica `fill: currentColor` via classe.
+ * Cor única (`accent` / `customColor` global): força uma cor ÚNICA em todas
+ * as séries — sobrescreve a paleta cíclica por categoria. Útil para
+ * `palette: 'single'`. Dois caminhos, conforme a NATUREZA da cor:
+ *   - `accent` = classe Tailwind / enum DS (`bg-chart-N` / `fill-chart-N` /
+ *     `primary`): derivamos `fill-…`/`stroke-…` e aplicamos como CLASSE nos
+ *     pontos (o CSS do tema resolve `var(--color-chart-N)`).
+ *   - `customColor` = cor CSS LITERAL (`#40E0D0`, `rgb(...)`, `hsl(...)`):
+ *     passada como prop NATIVA do recharts `<Scatter fill=… stroke=…>`. Um
+ *     símbolo SVG pinta com `fill`/`stroke`, NÃO com `background` — por isso
+ *     `customColor` (e não `style.background`) é o que pinta os pontos.
+ *     Também colore a bolinha da legenda/tooltip (via `backgroundColor`
+ *     inline). Quando `customColor` é uma cor literal, NÃO aplicamos as
+ *     classes `fill-/stroke-` (elas não devem competir com o atributo).
+ *
+ * Limitação: GRADIENTE em `customColor` (`linear-gradient(...)`) não é
+ * aplicável ao `fill` de um símbolo SVG (exigiria `<defs><linearGradient>` +
+ * `fill="url(#id)"`). Nesse caso os pontos caem no fallback `chart-1` — sem
+ * quebrar. Gradiente só funciona em blocos HTML (barras).
+ *
+ * `style` continua disponível como passthrough do container (`<div>`); não é
+ * mais o mecanismo de cor dos pontos.
  */
 import * as React from "react"
 import {
@@ -135,10 +146,17 @@ export interface ScatterChartTremorProps
    */
   accent?: string
   /**
-   * Estilo inline GLOBAL aplicado a TODAS as séries (vence `accent`).
-   * Use para cores CSS custom (hex/rgb/hsl/gradient) que NÃO existem
-   * no enum do DS. Também aplicado no container do chart via `style`,
-   * afetando `currentColor` (usado em defs de gradiente e afins).
+   * Cor CSS LITERAL (`#40E0D0`, `rgb(...)`, `hsl(...)`, `var(--chart-1)`)
+   * aplicada a TODAS as séries — caminho para cores custom que NÃO existem
+   * no enum do DS. Passada como prop nativa do recharts `<Scatter fill=…
+   * stroke=…>` (símbolos SVG pintam com fill/stroke, não com background).
+   * Tem precedência sobre `accent` (a cor literal vence a classe). Gradiente
+   * NÃO é suportado nos pontos (ver header) — cai no fallback `chart-1`.
+   */
+  customColor?: string
+  /**
+   * Estilo inline do CONTAINER (`<div>`). Passthrough padrão do HTML — NÃO é
+   * o mecanismo de cor dos pontos (use `accent`/`customColor` para isso).
    */
   style?: React.CSSProperties
 }
@@ -153,7 +171,8 @@ const defaultFormatter = (num: number): string =>
 
 interface ScatterTooltipProps {
   categoryLabel: string
-  dotClassName: string
+  dotClassName?: string
+  dotStyle?: React.CSSProperties
   xLabel: string
   yLabel: string
   xValue: number
@@ -164,6 +183,7 @@ interface ScatterTooltipProps {
 const ScatterTooltip = ({
   categoryLabel,
   dotClassName,
+  dotStyle,
   xLabel,
   yLabel,
   xValue,
@@ -175,6 +195,7 @@ const ScatterTooltip = ({
       <span
         aria-hidden="true"
         className={cn("size-2.5 shrink-0 rounded-full", dotClassName)}
+        style={dotStyle}
       />
       <span className="font-medium text-popover-foreground">{categoryLabel}</span>
     </div>
@@ -201,12 +222,13 @@ const ScatterTooltip = ({
 
 interface LegendItemProps {
   name: string
-  dotClassName: string
+  dotClassName?: string
+  dotStyle?: React.CSSProperties
   onClick?: (name: string) => void
   activeLegend?: string
 }
 
-const LegendItem = ({ name, dotClassName, onClick, activeLegend }: LegendItemProps) => {
+const LegendItem = ({ name, dotClassName, dotStyle, onClick, activeLegend }: LegendItemProps) => {
   const interactive = !!onClick
   const isDimmed = !!activeLegend && activeLegend !== name
   return (
@@ -227,6 +249,7 @@ const LegendItem = ({ name, dotClassName, onClick, activeLegend }: LegendItemPro
           dotClassName,
           isDimmed ? "opacity-40" : "opacity-100",
         )}
+        style={dotStyle}
       />
       <p
         className={cn(
@@ -267,17 +290,24 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
       height = "h-80",
       className,
       accent,
+      customColor,
       style,
       ...other
     } = props
 
     const axisFormatter = axisValueFormatter ?? valueFormatter
 
-    // Modo SINGLE-ACCENT: quando `accent` ou `style` for passado, força todas
-    // as categorias a usarem a MESMA cor (derivada do `accent` resolvido
-    // ou do `style.fill`/`style.stroke`). Default: cicla a paleta por
-    // categoria (multi).
-    const isSingleAccent = accent != null || style != null
+    // Modo SINGLE-ACCENT: quando `accent` (classe) ou `customColor` (cor
+    // literal) for passado, força todas as categorias a usarem a MESMA cor.
+    // Default: cicla a paleta por categoria (multi).
+    const isSingleAccent = accent != null || customColor != null
+
+    // Cor LITERAL aplicável ao `fill`/`stroke` do símbolo SVG. Gradiente NÃO
+    // é aplicável a `fill` de símbolo (precisaria de `<defs>` + url ref) →
+    // ignoramos a cor literal nesse caso (cai no fallback chart-1; ver header).
+    const isGradient = customColor != null && /gradient/i.test(customColor)
+    const literalColor =
+      customColor != null && !isGradient ? customColor : undefined
 
     // Resolve `accent` (string livre) em classes Tailwind (fill-…/stroke-…/
     // bg-…) quando for enum do DS. Aceita:
@@ -315,12 +345,19 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
     }, [categories, isSingleAccent])
 
     // Helper: dotClassName para a categoria (bolinha da legenda + tooltip).
-    // Em single-accent, usa accentBgClass; senão usa CHART_BG[idx].
-    const dotClassOf = (cat: string): string => {
+    // Em single-accent com classe, usa accentBgClass; com cor literal não há
+    // classe (a cor vai no inline style — ver dotStyleOf); senão CHART_BG[idx].
+    const dotClassOf = (cat: string): string | undefined => {
+      if (literalColor) return undefined
       if (isSingleAccent && accentBgClass) return accentBgClass
       const idx = colorIndex.get(cat) ?? 0
       return CHART_BG[idx]
     }
+
+    // Helper: inline style da bolinha — só quando a cor é LITERAL (custom),
+    // já que aí não há classe Tailwind que pinte o `background` do dot.
+    const dotStyleOf = (): React.CSSProperties | undefined =>
+      literalColor ? { backgroundColor: literalColor } : undefined
 
     // Estado: legenda ativa (item clicado → dim das outras categorias).
     const [activeLegend, setActiveLegend] = React.useState<string | undefined>(undefined)
@@ -409,6 +446,7 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
                   <ScatterTooltip
                     categoryLabel={cat}
                     dotClassName={dotClassOf(cat)}
+                    dotStyle={dotStyleOf()}
                     xLabel={xAxisLabel}
                     yLabel={yAxisLabel}
                     xValue={Number(raw[x] ?? 0)}
@@ -430,6 +468,7 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
                           key={cat}
                           name={cat}
                           dotClassName={dotClassOf(cat)}
+                          dotStyle={dotStyleOf()}
                           onClick={handleClickLegendItem}
                           activeLegend={activeLegend}
                         />
@@ -445,27 +484,33 @@ const ScatterChartTremor = React.forwardRef<HTMLDivElement, ScatterChartTremorPr
               return (
                 <Scatter
                   key={cat}
-                  // Em single-accent, sobrescreve as classes Tailwind pelas
-                  // derivadas de `accent` (fill-/stroke-/bg-…). Se só
-                  // `style` foi passado, mantém a palette e deixa o
-                  // `style` inline (via prop abaixo) cuidar da cor.
+                  // Ordem de precedência da cor:
+                  //  1) `literalColor` (cor CSS custom) → NÃO aplica classe
+                  //     `fill-/stroke-` (deixa o atributo nativo `fill`/
+                  //     `stroke` do recharts pintar — abaixo);
+                  //  2) `accent` (classe) em single-accent → `fill-/stroke-…`;
+                  //  3) default → paleta cíclica `CHART_FILL/CHART_STROKE`.
                   className={cn(
-                    isSingleAccent && accentFillClass
-                      ? accentFillClass
-                      : CHART_FILL[idx],
-                    isSingleAccent && accentStrokeClass
-                      ? accentStrokeClass
-                      : CHART_STROKE[idx],
+                    literalColor
+                      ? undefined
+                      : isSingleAccent && accentFillClass
+                        ? accentFillClass
+                        : CHART_FILL[idx],
+                    literalColor
+                      ? undefined
+                      : isSingleAccent && accentStrokeClass
+                        ? accentStrokeClass
+                        : CHART_STROKE[idx],
                   )}
+                  // Cor LITERAL via props nativas do recharts. O símbolo SVG
+                  // pinta com `fill`/`stroke` — é o que faz a cor custom
+                  // (#40E0D0 etc.) funcionar de verdade nos pontos.
+                  fill={literalColor}
+                  stroke={literalColor}
                   fillOpacity={fillOpacity(cat)}
                   name={cat}
                   data={seriesData}
                   isAnimationActive={showAnimation}
-                  // `style` por série: propaga o style global; o recharts
-                  // aplica nos elementos internos (circle/symbol). Como
-                  // `style.fill`/`style.stroke` são atributos de apresentação
-                  // inline, vencem as classes Tailwind acima.
-                  style={style}
                 />
               )
             })}

@@ -2,25 +2,37 @@
  * Bloco `scatter_chart` (shape 'series', x/y numéricos) — usa o Vitrine
  * `ScatterChartTremor`. Cada ponto {x,y,series?} vira {x,y,category}.
  *
- * Prop de COR (Turno 5 — canônico): `accent` aceita enum DS + string custom
- * (resolvido por `resolveAccent()` em `lib/accent.ts`):
- *   - enum DS (chart-1..5 | 'primary') → classe Tailwind `fill-chart-N`/
- *     `stroke-chart-N` (recharts espalha nos pontos);
- *   - classe Tailwind (bg-purple-500) → derivamos `fill-purple-500`/
- *     `stroke-purple-500` e aplicamos como classes;
- *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style` inline (atributo
- *     de apresentação que vence a classe CSS no SVG).
- * Modo de aplicação:
- *   - `palette: 'multi'` (default) → cicla CHART_PALETTE por categoria;
- *     `accent` vira fallback (1 categoria só OU single-mode).
- *   - `palette: 'single'` → TODAS as categorias com `accent` (1 cor).
+ * Prop de COR (canônico — alinhado ao `h_bar_chart`): `accent` aceita enum DS
+ * + string custom (resolvido por `resolveAccent()` em `lib/accent.ts`):
+ *   - enum DS (chart-1..5 | 'primary') → classe Tailwind (`bg-chart-N`); a UI
+ *     base deriva `fill-chart-N`/`stroke-chart-N` e aplica nos pontos;
+ *   - classe Tailwind (`bg-purple-500`) → idem, deriva `fill-`/`stroke-`;
+ *   - cor CSS crua (`#40E0D0`, `rgb()`) → passada como COR LITERAL para o
+ *     `<Scatter fill=…>`/`stroke=` do recharts (que aceita string CSS direto).
+ *     **Por que não `style.background`**: o scatter é SVG — um símbolo SVG não
+ *     tem `background`; ele pinta com `fill`/`stroke`. O caminho do `h_bar`
+ *     (barras = `<div>` com `background`) NÃO funciona aqui — era a causa do
+ *     bug "cor custom não aplica". Por isso convertemos o `background` que o
+ *     `resolveAccent()` devolve numa cor literal (`customColor`) e a UI base a
+ *     repassa como prop nativa do `<Scatter>`.
+ *
+ * Modo de aplicação (igual ao `h_bar_chart` — ver header de referência):
+ *   - `palette: 'single'` → TODAS as categorias com `accent` (1 cor), seja
+ *     enum/classe ou cor custom literal.
+ *   - `palette: 'multi'` (default) → cicla a paleta (chart-1..5) por categoria;
+ *     o `accent` custom é IGNORADO (a paleta cíclica do DS vence).
  *   - `palette: 'none'` → sem distinção (deixa a palette cíclica padrão).
+ *
+ * Limitação conhecida: GRADIENTE (`linear-gradient(...)`) NÃO é aplicável ao
+ * `fill` de um símbolo SVG (precisaria de um `<linearGradient>` em `<defs>` +
+ * `fill="url(#id)"`). Em `palette: 'single'` + gradiente, os pontos caem no
+ * fallback `chart-1` (não quebra) — gradiente só funciona em blocos HTML
+ * (barras). Use uma cor sólida (`#40E0D0`, `rgb(...)`) no scatter.
  *
  * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas:
  *  - SEMPRE a 1ª: "{count} pontos em {n} séries" — total de observações.
  *  - OPCIONAL 2ª: "Maior correlação: ({x}, {y})" — top ponto por y.
  */
-import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
 import {
   ScatterChartTremor,
@@ -55,23 +67,31 @@ export const Component: BlockComponent<ScatterProps, SeriesData> = ({ props, dat
     category: p.series ?? 'Série',
   }));
 
-  // `resolveAccent()` devolve { className } (Tailwind `bg-…`) ou
-  // { style: { background } } (CSS). O UI base deriva fill/stroke/bg
-  // do bare (`bg-chart-1` → `fill-chart-1 stroke-chart-1 bg-chart-1`).
+  // `resolveAccent()` devolve { className } (Tailwind `bg-…`) p/ enum/classe
+  // ou { style: { background } } (CSS) p/ cor crua. O UI base deriva
+  // fill/stroke/bg do bare da classe (`bg-chart-1` → `fill-chart-1 …`).
   const resolvedAccent = resolveAccent(props.accent);
   const palette = props.palette ?? 'multi';
   const isSingle = palette === 'single';
 
-  // Modo single: passa `accent` (classe) E `style` (CSS custom) globais.
-  // O UI base decide: se `style` setado, ele vence a classe.
-  // Modo multi/none: nenhum accent global (categoria cicla palette).
+  // Modo SINGLE + enum/classe Tailwind → passa a classe; a UI base deriva
+  // `fill-…`/`stroke-…` p/ os pontos (CSS do tema vence o atributo default).
+  // Modo multi/none → nenhum accent global (categoria cicla a paleta).
   const accentClass: string | undefined =
     isSingle && resolvedAccent.kind === 'class'
       ? resolvedAccent.className
       : undefined;
-  const accentStyle: CSSProperties | undefined =
+
+  // Modo SINGLE + cor CSS crua → COR LITERAL p/ o `<Scatter fill=…>`. O
+  // `resolveAccent()` empacota a cor crua em `style.background` (semântica de
+  // <div>/barra HTML); o scatter é SVG e precisa de `fill`/`stroke`, então
+  // desempacotamos a cor e a entregamos como `customColor` (string literal).
+  // É a CORREÇÃO do bug "cor custom não funciona": antes mandávamos
+  // `style={{ background }}` que o símbolo SVG ignora, e a classe
+  // `fill-chart-1` (fallback) vencia → todos os pontos ficavam chart-1.
+  const customColor: string | undefined =
     isSingle && resolvedAccent.kind === 'style'
-      ? resolvedAccent.style
+      ? (resolvedAccent.style.background as string | undefined)
       : undefined;
 
   return (
@@ -86,7 +106,7 @@ export const Component: BlockComponent<ScatterProps, SeriesData> = ({ props, dat
       axisValueFormatter={(v) => formatCompactNumberBR(v)}
       height="h-64"
       accent={accentClass}
-      style={accentStyle}
+      customColor={customColor}
     />
   );
 };
