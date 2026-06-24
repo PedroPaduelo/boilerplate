@@ -54,6 +54,14 @@ COPY --link backend-boilerplate/package*.json ./
 # Install production dependencies only
 RUN npm ci --omit=dev --ignore-scripts
 
+# Os módulos 'ajv' e 'ajv-formats' estão no node_modules do backend, mas o
+# shared/contracts (file:../shared/contracts) precisa encontrá-los via
+# /app/shared/contracts/node_modules. Copiamos eles pra lá para resolver
+# o require do dist/index.cjs.
+RUN mkdir -p /app/shared/contracts/node_modules && \
+    cp -r node_modules/ajv /app/shared/contracts/node_modules/ajv && \
+    cp -r node_modules/ajv-formats /app/shared/contracts/node_modules/ajv-formats
+
 # Copy Prisma schema and migrations
 COPY --link backend-boilerplate/prisma ./prisma/
 
