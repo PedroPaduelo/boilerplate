@@ -96,12 +96,16 @@ export const envSchema = z.object({
   // Quantos jobs de execução de query o worker BullMQ processa EM PARALELO por
   // dashboard/published. Mantenha <= PG_RUNNER_POOL_MAX (ver nota acima). Valor
   // conservador por padrão para não martelar o Postgres externo com muitas
-  // queries pesadas simultâneas.
-  QUERY_EXEC_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(4),
+  // queries pesadas simultâneas. 6 aproveita melhor o pool (8) no carregamento
+  // do dashboard publicado, deixando folga para o snapshot/preview.
+  QUERY_EXEC_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(6),
   // Tempo (ms) que uma conexão ociosa do pool externo é mantida antes de fechar.
   PG_RUNNER_IDLE_TIMEOUT_MS: z.coerce.number().int().nonnegative().default(30000),
-  // Timeout (ms) para estabelecer a conexão TCP com o Postgres externo.
-  PG_RUNNER_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  // Timeout (ms) para adquirir uma conexão do pool (e estabelecer o TCP). 30s:
+  // em PICOS de concorrência (várias fontes pedindo conexão — worker + preview +
+  // snapshot), as execuções ESPERAM a vez no pool em vez de FALHAR com
+  // "timeout exceeded when trying to connect". O pool do pg é o limitador global.
+  PG_RUNNER_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
 });
 
 export type Env = z.infer<typeof envSchema>;

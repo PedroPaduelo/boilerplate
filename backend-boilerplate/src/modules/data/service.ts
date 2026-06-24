@@ -17,6 +17,8 @@ import {
 import type { Connection as PrismaConnection } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '@/http/routes/_errors';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/env';
+import { mapWithConcurrency } from '@/lib/concurrency';
 import type { ActorContext } from '@/lib/rbac';
 import { canViewArtifact } from '@/lib/visibility';
 import { getCatalogDataShape } from '@/lib/catalog';
@@ -142,6 +144,10 @@ export async function assembleBatch(
   runtime: BatchRuntime,
 ): Promise<Record<string, BlockDataResult>> {
   const blocks: Record<string, BlockDataResult> = {};
+  // Blocos do modo DRAFT executam INLINE — coletados aqui para rodar EM PARALELO
+  // (limite = pool) no fim, em vez de série (for-await), que tornava o
+  // preview/edição lento (~N×Tquery).
+  const inline: { blockId: string; block: ResolvedBlock; job: QueryExecJobData }[] = [];
 
   for (const block of resolved) {
     if (block.error || !block.binding) {
@@ -169,7 +175,7 @@ export async function assembleBatch(
     };
 
     if (mode === 'draft') {
-      blocks[block.blockId] = await runtime.executeInline(block, job);
+      inline.push({ blockId: block.blockId, block, job });
       continue;
     }
 
@@ -189,6 +195,18 @@ export async function assembleBatch(
 
     await runtime.enqueue(job);
     blocks[block.blockId] = { blockId: block.blockId, state: 'queued' };
+  }
+
+  // modo draft: executa os blocos inline EM PARALELO (limite = pool) — NUNCA mais
+  // que o pool de conexões (senão jobs excedentes morreriam por connection timeout).
+  if (inline.length > 0) {
+    const limit = Math.max(1, Math.min(env.PG_RUNNER_POOL_MAX, inline.length));
+    const results = await mapWithConcurrency(inline, limit, (it) =>
+      runtime.executeInline(it.block, it.job),
+    );
+    inline.forEach((it, i) => {
+      blocks[it.blockId] = results[i];
+    });
   }
 
   return blocks;

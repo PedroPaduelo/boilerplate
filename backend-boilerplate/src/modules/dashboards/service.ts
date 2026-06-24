@@ -33,6 +33,7 @@ import { Prisma, type Dashboard } from '@prisma/client';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/http/routes/_errors';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
+import { mapWithConcurrency } from '@/lib/concurrency';
 import { runQuery } from '@/lib/pg-runner';
 import type { ActorContext } from '@/lib/rbac';
 import { redisService } from '@/lib/redis';
@@ -526,29 +527,6 @@ export async function materializePublishedDataPayload(
     generatedAt: new Date().toISOString(),
     blocks,
   };
-}
-
-/**
- * Executa `fn` sobre `items` com no máximo `limit` execuções simultâneas.
- * Preserva a ordem dos resultados. Usado para materializar o snapshot do
- * publish sem estourar o pool de conexões nem rodar tudo em série.
- */
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let cursor = 0;
-  const n = Math.max(1, Math.min(limit, items.length || 1));
-  async function worker(): Promise<void> {
-    while (cursor < items.length) {
-      const i = cursor++;
-      results[i] = await fn(items[i]);
-    }
-  }
-  await Promise.all(Array.from({ length: n }, () => worker()));
-  return results;
 }
 
 /**
