@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"publish_dashboard","arguments":{"dashboardId":"cmqs5v684001dny0pt7obo9ch"}}}
