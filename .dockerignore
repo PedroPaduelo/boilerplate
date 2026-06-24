@@ -1,0 +1,69 @@
+# Dependencies
+**/node_modules/
+
+# Build outputs
+**/dist/
+**/build/
+
+# EXCEÇÃO CRÍTICA: o dist de shared/contracts É versionado e É necessário no build
+!shared/contracts/dist/
+!shared/contracts/dist/**
+
+# Environment files — never bake secrets into the image
+**/.env
+**/.env.*
+**/.env.local
+!**/.env.example
+
+# IDE
+**/.vscode/
+**/.idea/
+*.swp
+*.swo
+
+# Logs
+**/*.log
+**/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Tests / coverage
+**/coverage/
+**/*.test.ts
+**/*.spec.ts
+**/__tests__/
+**/tests/
+
+# Temp
+**/temp/
+**/*.tmp
+**/tmp/
+
+# Uploads
+uploads/
+
+# Meta (não vai pra imagem)
+_meta/
+
+# Docs
+docs/
+
+# CI
+**/.github/
+**/.gitlab-ci.yml
+
+# Misc
+**/.cache/
+**/.vite/
+**/*.tsbuildinfo
+
+# Docker files internos dos subdiretórios (o context agora é a raiz)
+backend-boilerplate/.dockerignore
+frontend-boilerplate/.dockerignore

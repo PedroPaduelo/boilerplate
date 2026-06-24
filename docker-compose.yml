@@ -1,0 +1,175 @@
+# =============================================================================
+# Docker Compose — boilerplate auditorIA (monorepo)
+# =============================================================================
+# Sobe front-end, back-end, Postgres e Redis em containers separados.
+#
+# USO:
+#   docker compose up -d                    # sobe tudo
+#   docker compose up -d frontend backend   # só apps (DB/Redis externos)
+#   docker compose build --no-cache backend # rebuild só do backend
+#
+# No EasyPanel: cada service vira um "App" separado.
+#   - Build Context = raiz do monorepo (este diretório)
+#   - Dockerfile Path = backend-boilerplate/Dockerfile OU frontend-boilerplate/Dockerfile
+#
+# VARIÁVEIS DE AMBIENTE: copie .env.example para .env e ajuste os valores.
+# O backend precisa de DATABASE_URL, REDIS_URL, JWT_SECRET, etc.
+# O frontend precisa de VITE_API_URL (URL pública do backend).
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # BACKEND (Fastify + Prisma + BullMQ)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: backend-boilerplate/Dockerfile
+    container_name: boilerplate-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      BASE_URL: "${BACKEND_BASE_URL:-http://localhost:4000}"
+
+      # Database
+      DATABASE_URL: "${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/boilerplate?schema=public}"
+
+      # Redis
+      REDIS_URL: "${REDIS_HOST:-redis}"
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+
+      # JWT
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET is required}"
+
+      # CORS
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5173,http://localhost:4000}"
+
+      # Connection encryption
+      CONNECTION_ENC_KEY: "${CONNECTION_ENC_KEY:?CONNECTION_ENC_KEY is required}"
+
+      # pg-runner guardrails
+      PG_RUNNER_STATEMENT_TIMEOUT_MS: "${PG_RUNNER_STATEMENT_TIMEOUT_MS:-30000}"
+      PG_RUNNER_MAX_ROWS: "${PG_RUNNER_MAX_ROWS:-50000}"
+      PG_RUNNER_POOL_MAX: "${PG_RUNNER_POOL_MAX:-8}"
+      PG_RUNNER_IDLE_TIMEOUT_MS: "${PG_RUNNER_IDLE_TIMEOUT_MS:-30000}"
+      PG_RUNNER_CONNECT_TIMEOUT_MS: "${PG_RUNNER_CONNECT_TIMEOUT_MS:-30000}"
+      QUERY_EXEC_WORKER_CONCURRENCY: "${QUERY_EXEC_WORKER_CONCURRENCY:-6}"
+
+      # Data cache
+      DATA_CACHE_DEFAULT_TTL: "${DATA_CACHE_DEFAULT_TTL:-300}"
+      DATA_LAYOUT_CACHE_TTL: "${DATA_LAYOUT_CACHE_TTL:-3600}"
+
+      # MCP
+      MCP_API_KEY: "${MCP_API_KEY:-}"
+      MCP_SERVICE_USER_ID: "${MCP_SERVICE_USER_ID:-}"
+      MCP_SERVICE_USER_EMAIL: "${MCP_SERVICE_USER_EMAIL:-}"
+
+      # Export (PDF)
+      EXPORT_PRINT_BASE_URL: "${EXPORT_PRINT_BASE_URL:-http://frontend:5173}"
+      EXPORT_BRAND: "${EXPORT_BRAND:-Prefeitura}"
+      EXPORT_TOKEN_TTL_SECONDS: "${EXPORT_TOKEN_TTL_SECONDS:-300}"
+      EXPORT_NAV_TIMEOUT_MS: "${EXPORT_NAV_TIMEOUT_MS:-30000}"
+      EXPORT_READY_TIMEOUT_MS: "${EXPORT_READY_TIMEOUT_MS:-30000}"
+      EXPORT_RESULT_TTL_SECONDS: "${EXPORT_RESULT_TTL_SECONDS:-600}"
+
+      # Swagger
+      SWAGGER_USER: "${SWAGGER_USER:-admin}"
+      SWAGGER_PASSWORD: "${SWAGGER_PASSWORD:-changeme}"
+
+      # Upload
+      UPLOAD_DIR: "${UPLOAD_DIR:-/app/backend-boilerplate/uploads}"
+      MAX_FILE_SIZE: "${MAX_FILE_SIZE:-104857600}"
+    volumes:
+      - backend_uploads:/app/backend-boilerplate/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1));"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    networks:
+      - boilerplate-net
+
+  # ---------------------------------------------------------------------------
+  # FRONTEND (Vite build + nginx serve)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend-boilerplate/Dockerfile
+      args:
+        # VITE_API_URL é injetado no BUILD do Vite (static, não troca em runtime)
+        VITE_API_URL: "${FRONTEND_API_URL:-http://localhost:4000}"
+    container_name: boilerplate-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    networks:
+      - boilerplate-net
+
+  # ---------------------------------------------------------------------------
+  # POSTGRES
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: boilerplate-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      POSTGRES_DB: "${POSTGRES_DB:-boilerplate}"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - boilerplate-net
+
+  # ---------------------------------------------------------------------------
+  # REDIS
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: boilerplate-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - boilerplate-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_uploads:
+
+networks:
+  boilerplate-net:
+    driver: bridge
