@@ -87,13 +87,27 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
       // Persiste mensagem do usuário
       await addMessage(conv.id, { role: 'user', content: userMessage });
 
-      // Inicia SSE
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      });
+      // Inicia SSE — seta headers via reply.header() antes de usar hijack().
+      // O Fastify processa esses headers (incluindo CORS do plugin) quando
+      // chamamos reply.hijack(), que congela os headers e transfere o controle
+      // do socket para nós.
+      reply.header('Content-Type', 'text/event-stream');
+      reply.header('Cache-Control', 'no-cache');
+      reply.header('Connection', 'keep-alive');
+      reply.header('X-Accel-Buffering', 'no');
+      reply.hijack();
+
+      // Como hijack() congela mas NÃO escreve os headers, precisamos forçar
+      // os headers CORS manualmente (o hook onSend não roda após hijack).
+      const origin = request.headers.origin;
+      if (origin) {
+        reply.raw.setHeader('Access-Control-Allow-Origin', origin);
+        reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
+        reply.raw.setHeader('Vary', 'Origin');
+      }
+
+      // Agora escreve os headers HTTP + body direto no socket
+      reply.raw.writeHead(200, reply.getHeaders() as Record<string, string | string[]>);
 
       const send = (event: string, data: Record<string, unknown>) => {
         reply.raw.write(`event: ${event}\n`);
