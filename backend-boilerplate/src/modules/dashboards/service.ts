@@ -32,6 +32,7 @@ import {
 import { Prisma, type Dashboard } from '@prisma/client';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/http/routes/_errors';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/env';
 import { runQuery } from '@/lib/pg-runner';
 import type { ActorContext } from '@/lib/rbac';
 import { redisService } from '@/lib/redis';
@@ -473,29 +474,30 @@ export async function materializePublishedDataPayload(
     resolveShape: (type) => getCatalogDataShape(type),
   });
 
-  const blocks: Record<string, BlockDataResult> = {};
-  for (const block of resolved) {
+  // Executa os blocos EM PARALELO com limite de concorrência (= pool do
+  // pg-runner) em vez de serial — derruba o tempo total de ~N×Tquery para
+  // ~ceil(N/limite)×Tquery. NUNCA dispara mais que o pool (senão jobs
+  // excedentes morreriam por connection timeout — mesmo invariante do worker).
+  const limit = Math.max(1, Math.min(env.PG_RUNNER_POOL_MAX, resolved.length || 1));
+  const entries = await mapWithConcurrency(resolved, limit, async (block) => {
     if (block.error || !block.binding) {
-      if (block.error) {
-        blocks[block.blockId] = {
-          blockId: block.blockId,
-          state: 'error',
-          error: block.error,
-        };
-      }
-      // bloco sem binding (narrativo) → omitido, render-engine renderiza direto
-      continue;
+      // bloco sem binding (narrativo) → omitido; com erro de resolução → error.
+      return block.error
+        ? ([block.blockId, { blockId: block.blockId, state: 'error', error: block.error }] as const)
+        : null;
     }
     const conn = block.connectionRecord as
       | Parameters<typeof toPgRunnerConnection>[0]
       | undefined;
     if (!conn) {
-      blocks[block.blockId] = {
-        blockId: block.blockId,
-        state: 'error',
-        error: { code: 'connection_not_found', message: 'connection not resolved' },
-      };
-      continue;
+      return [
+        block.blockId,
+        {
+          blockId: block.blockId,
+          state: 'error',
+          error: { code: 'connection_not_found', message: 'connection not resolved' },
+        },
+      ] as const;
     }
     const paramsValues = resolveParamsValues(block.binding.params, undefined);
     const result = await executeBlockData(
@@ -510,7 +512,12 @@ export async function materializePublishedDataPayload(
       },
       { runQuery },
     );
-    blocks[block.blockId] = result;
+    return [block.blockId, result] as const;
+  });
+
+  const blocks: Record<string, BlockDataResult> = {};
+  for (const entry of entries) {
+    if (entry) blocks[entry[0]] = entry[1] as BlockDataResult;
   }
 
   return {
@@ -521,32 +528,109 @@ export async function materializePublishedDataPayload(
   };
 }
 
-/** Copia draftLayout→publishedLayout, MATERIALIZA snapshot de dados e invalida cache. */
+/**
+ * Executa `fn` sobre `items` com no máximo `limit` execuções simultâneas.
+ * Preserva a ordem dos resultados. Usado para materializar o snapshot do
+ * publish sem estourar o pool de conexões nem rodar tudo em série.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const n = Math.max(1, Math.min(limit, items.length || 1));
+  async function worker(): Promise<void> {
+    while (cursor < items.length) {
+      const i = cursor++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: n }, () => worker()));
+  return results;
+}
+
+/**
+ * Publica o dashboard: copia draftLayout→publishedLayout, seta
+ * `publishedAt`+`status=PUBLISHED` e invalida o cache — e responde NA HORA.
+ *
+ * O SNAPSHOT de dados (`publishedDataPayload`, que só serve para a página
+ * pública anônima `/public/:token`) é materializado em BACKGROUND (paralelo),
+ * NÃO bloqueando a resposta do publish. Por quê: materializar inline executava
+ * todas as queries do dashboard em série (~N×Tquery), o que estourava o timeout
+ * do cliente (MCP/HTTP) em dashboards densos — publish "dava erro" mesmo
+ * funcionando. Agora o publish é O(1): promove o layout e dispara o snapshot.
+ *
+ * O dashboard AUTENTICADO não depende deste snapshot (busca dados pelo
+ * batch/worker sob demanda), então o usuário vê tudo imediatamente. O link
+ * público herda o snapshot assim que o background termina (segundos depois);
+ * até lá, mantém o snapshot da publicação anterior (na 1ª publicação, vazio).
+ */
 export async function publishDashboard(
   dashboard: Dashboard,
   ctx: ActorContext,
 ): Promise<Dashboard> {
   // garante que o draft atual é um layout válido antes de promover.
   assertValidLayout(dashboard.draftLayout);
-  // materializa o snapshot de dados (executa todos os dataBinding inline).
-  // `dashboardId` é preenchido pelo update abaixo; usamos string vazia aqui.
-  const payloadDraft = await materializePublishedDataPayload(
-    dashboard.draftLayout as unknown as DashboardLayout,
-    ctx,
-  );
-  const payload: typeof payloadDraft = { ...payloadDraft, dashboardId: dashboard.id };
+
+  // Snapshot INICIAL: preserva o da publicação anterior (link público não fica
+  // vazio durante a rematerialização); na 1ª publicação, inicializa vazio.
+  const initialPayload =
+    dashboard.publishedDataPayload != null
+      ? (dashboard.publishedDataPayload as Prisma.InputJsonValue)
+      : ({
+          dashboardId: dashboard.id,
+          mode: 'published',
+          generatedAt: new Date().toISOString(),
+          blocks: {},
+        } as unknown as Prisma.InputJsonValue);
 
   const updated = await prisma.dashboard.update({
     where: { id: dashboard.id },
     data: {
       publishedLayout: dashboard.draftLayout as Prisma.InputJsonValue,
-      publishedDataPayload: payload as unknown as Prisma.InputJsonValue,
+      publishedDataPayload: initialPayload,
       publishedAt: new Date(),
       status: 'PUBLISHED',
     },
   });
   await invalidatePublishedLayoutCache(dashboard.id);
+
+  // Materializa o snapshot em BACKGROUND (fire-and-forget; nunca derruba o
+  // processo nem o publish). Atualiza `publishedDataPayload` quando termina.
+  void rematerializePublishedSnapshot(
+    dashboard.id,
+    dashboard.draftLayout as unknown as DashboardLayout,
+    ctx,
+  );
+
   return updated;
+}
+
+/**
+ * Materializa o snapshot do dashboard em segundo plano e grava em
+ * `publishedDataPayload`. Tolerante a falhas: erro vira log, não exceção
+ * (o publish já respondeu). Exportada para testes que queiram aguardar.
+ */
+export async function rematerializePublishedSnapshot(
+  dashboardId: string,
+  layout: DashboardLayout,
+  ctx: ActorContext,
+): Promise<void> {
+  try {
+    const payloadDraft = await materializePublishedDataPayload(layout, ctx);
+    const payload = { ...payloadDraft, dashboardId };
+    await prisma.dashboard.update({
+      where: { id: dashboardId },
+      data: { publishedDataPayload: payload as unknown as Prisma.InputJsonValue },
+    });
+  } catch (err) {
+    console.error(
+      `[dashboards] background snapshot materialize failed for ${dashboardId}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 /** Zera publishedLayout E publishedDataPayload (DbNull), volta status=DRAFT e invalida o cache. */
