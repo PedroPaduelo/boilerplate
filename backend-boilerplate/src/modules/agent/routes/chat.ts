@@ -171,10 +171,18 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
                 }
               }
               if (step.toolResults) {
-                for (const tr of step.toolResults) {
+                // Correlação call↔result por ÍNDICE: o AI SDK entrega
+                // `toolCalls` e `toolResults` no MESMO step na MESMA ordem
+                // (anthropic-dev-sdk). O `tr.toolCallId` que vem do TypedToolResult
+                // também bate, mas correlacionar pelo call de mesmo índice torna
+                // o invariante EXPLÍCITO e robusto a mudanças do SDK que possam
+                // quebrar o shape do result.
+                step.toolResults.forEach((tr, idx) => {
+                  const matchingCall = step.toolCalls?.[idx];
+                  const toolCallId = matchingCall?.toolCallId ?? tr.toolCallId;
                   send('tool_step', {
                     toolName: tr.toolName,
-                    toolCallId: tr.toolCallId,
+                    toolCallId,
                     output: tr.output,
                     phase: 'result',
                   });
@@ -185,7 +193,7 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
                       send('chart', { messageId: currentMessageId, chart: out });
                     }
                   }
-                }
+                });
               }
               if (step.usage) {
                 send('usage', step.usage);

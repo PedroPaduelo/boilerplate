@@ -47,14 +47,21 @@ export function createSseSink(reply: FastifyReply): AgentSink {
 
       // Tool results
       if (step.toolResults) {
-        for (const tr of step.toolResults) {
+        // Correlação call↔result por ÍNDICE: o AI SDK entrega `toolCalls` e
+        // `toolResults` no MESMO step na MESMA ordem. O `tr.toolCallId` que vem
+        // do TypedToolResult também bate, mas correlacionar pelo call de mesmo
+        // índice torna o invariante EXPLÍCITO e robusto a mudanças do SDK que
+        // possam quebrar o shape do result.
+        step.toolResults.forEach((tr, idx) => {
+          const matchingCall = step.toolCalls?.[idx];
+          const toolCallId = matchingCall?.toolCallId ?? tr.toolCallId;
           send('tool_step', {
-            toolCallId: tr.toolCallId,
+            toolCallId,
             toolName: tr.toolName,
             output: tr.output,
             phase: 'result',
           });
-        }
+        });
       }
 
       // Usage
