@@ -235,5 +235,4 @@ function ChartWidget({
 export {
   ChartWidget,
   type ChartWidgetProps,
-  type ChartWidgetTakeaway,
 }

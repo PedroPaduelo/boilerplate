@@ -2,8 +2,6 @@
  * API de conversas do agent — CRUD + chat SSE.
  */
 import { apiClient } from '@/shared/lib/api-client';
-import { env } from '@/shared/lib/env';
-import { useAuthStore } from '@/features/auth/store';
 
 export interface Conversation {
   id: string;

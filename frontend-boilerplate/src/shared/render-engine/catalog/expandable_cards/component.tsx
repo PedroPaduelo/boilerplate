@@ -14,7 +14,6 @@ import type { Block } from '@dashboards/contracts';
 import { ExpandableCards } from '@/components/ui/expandable-cards';
 import type {
   ExpandableCardItem,
-  ExpandableCardsGap,
 } from '@/components/ui/expandable-cards-types';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
@@ -23,7 +22,7 @@ import { fixture } from './fixture';
 
 type ExpandableCardsBlockProps = {
   columns?: number;
-  gap?: ExpandableCardsGap;
+  gap?: 'sm' | 'md' | 'lg';
 };
 
 /** Converte um catalogType (`bar_chart`) num rótulo legível (`Bar Chart`). */

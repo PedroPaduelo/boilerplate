@@ -30,7 +30,7 @@ export interface ChatMessageBubbleProps {
   streaming?: boolean;
 }
 
-function ChatMessageBubbleImpl({ message, streaming }: ChatMessageBubbleProps) {
+function ChatMessageBubbleImpl({ message }: ChatMessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (

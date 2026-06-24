@@ -3,7 +3,7 @@
  * com animação de entrada e ícones contextuais por ferramenta.
  */
 import {
-  Wrench, CheckCircle2, Loader2,
+  CheckCircle2, Loader2,
   Database, Search, FileChartColumn, Sparkles,
   LayoutDashboard, FileEdit, FileCheck2, FilePlus2,
   type LucideIcon,
@@ -40,7 +40,6 @@ export function ToolStepsList({ steps }: { steps: ToolStep[] }) {
     <div className="mt-2 flex flex-col gap-1">
       {steps.map((step, idx) => {
         const meta = TOOL_META[step.toolName];
-        const Icon = meta?.icon ?? Wrench;
         const label = meta?.label ?? step.toolName;
         const isDone = step.phase === 'result';
 

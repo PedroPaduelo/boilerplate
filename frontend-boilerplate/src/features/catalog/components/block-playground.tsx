@@ -938,12 +938,12 @@ export function BlockPlayground({
   // ---------- preview ----------
   const block = useMemo(() => {
     const trimmedQuery = previewQuery.trim();
-    const out: Record<string, unknown> = {
+    const out = {
       id: manifest.type,
       type: manifest.type,
       span: 12,
       props: propsDraft,
-    };
+    } as Record<string, unknown> & { id: string; type: string; span: number };
     if (previewTitle.trim()) out.title = previewTitle.trim();
     if (previewSubtitle.trim()) out.subtitle = previewSubtitle.trim();
     if (showSql && trimmedQuery) {

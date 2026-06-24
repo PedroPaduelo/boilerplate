@@ -11,6 +11,7 @@
  */
 import type { ComponentType, ReactNode } from 'react';
 import type {
+  Block,
   BlockManifest,
   ScalarData,
   SeriesData,

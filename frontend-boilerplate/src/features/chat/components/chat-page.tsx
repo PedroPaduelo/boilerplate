@@ -10,15 +10,15 @@ import { Bot, MessageSquare, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
-import { agentApi, type Conversation } from '../api';
+import { agentApi, type Conversation, type ChatMessageRecord } from '../api';
 import { HttpChatTransport } from '../transport/http-transport';
-import type { ChatEvent, ChatMessage, ChatRole } from '../transport';
+import type { ChatMessage, ChatRole } from '../transport';
 import { ChatMessageList } from './chat-message-list';
 import { ChatInput } from './chat-input';
 import { ThinkingBubble } from './thinking-indicator';
 import { ToolStepsList } from './tool-steps-list';
 
-function dbMessageToUi(m: Conversation['messages'] extends (infer T)[] ? T : never): ChatMessage {
+function dbMessageToUi(m: ChatMessageRecord): ChatMessage {
   return {
     id: m.id,
     role: (m.role === 'user' ? 'user' : 'assistant') as ChatRole,
