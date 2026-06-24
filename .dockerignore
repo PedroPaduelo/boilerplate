@@ -1,63 +1,7 @@
-# Dependencies
 **/node_modules/
-
-# Build outputs (mas preserva shared/contracts/dist que é versionado)
-backend-boilerplate/dist/
-frontend-boilerplate/dist/
-frontend-boilerplate/.vite/
-
-# Environment files — never bake secrets into the image
-**/.env
-**/.env.*
-!**/.env.example
-
-# IDE
-**/.vscode/
-**/.idea/
-*.swp
-*.swo
-
-# Logs
-**/*.log
-**/logs/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Git
-.git/
-.gitignore
-.gitattributes
-
-# Tests / coverage
 **/coverage/
-**/*.test.ts
-**/*.spec.ts
-**/__tests__/
-**/tests/
-
-# Temp
-**/temp/
-**/*.tmp
-
-# Uploads
-uploads/
-
-# Meta
+.git/
 _meta/
-
-# Docs
 docs/
-
-# CI
-**/.github/
-**/.gitlab-ci.yml
-
-# Misc
-**/.cache/
+uploads/
 **/*.tsbuildinfo
-
-# Docker files internos dos subdiretórios
-backend-boilerplate/.dockerignore
-frontend-boilerplate/.dockerignore
