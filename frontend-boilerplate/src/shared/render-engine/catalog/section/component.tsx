@@ -3,6 +3,14 @@
  * de filhos (já renderizados) via `children`; este componente só desenha o
  * shell (DashboardPanel com header + corpo) e coloca `children` dentro.
  *
+ * ESPAÇAMENTO (após fix de duplicação de header):
+ *   - variant="card" (default): `bodyClassName="pt-0"` — o `DashboardPanel`
+ *     já tem `p-5` no card variant (respiro uniforme nas 4 bordas) + um
+ *     `mb-4` entre o header e o `children`. O `pt-0` aqui evita o DUPLO
+ *     respiro vertical entre header e corpo (5px do `mb-4` ficam ok).
+ *   - variant="framed": header tem `border-b px-4 py-2.5` e o corpo é flush;
+ *     mantemos `p-4` no body para o grid interno respirar.
+ *
  * Quando sem `children` (galeria do catálogo), mostra um placeholder com 3
  * mini-cards de exemplo pra ilustrar a composição.
  */
@@ -24,7 +32,7 @@ const Component: BlockComponent<SectionProps> = ({ props, children }) => {
       title={props.title ?? 'Seção'}
       description={props.subtitle}
       variant={props.variant ?? 'card'}
-      bodyClassName={props.variant === 'framed' ? 'p-4' : 'pt-2'}
+      bodyClassName={props.variant === 'framed' ? 'p-4' : 'pt-0'}
     >
       {children ?? <SectionPlaceholder />}
     </DashboardPanel>

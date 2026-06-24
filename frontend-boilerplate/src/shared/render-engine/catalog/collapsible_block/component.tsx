@@ -6,6 +6,12 @@
  * filhos (já renderizados) via `children`; este componente só desenha o shell
  * (borda + header) e coloca `children` dentro do corpo colapsável.
  *
+ * ESPAÇAMENTO: o `CollapsibleSection` (UI base) já põe `px-2 pb-2` no corpo.
+ * O `contentClassName` aqui adiciona `pt-2` (respiro entre o header e o
+ * primeiro filho) e `px-2 pb-3` (mantém lateral e aumenta o respiro inferior
+ * do último filho). O `gap-4` entre filhos vem do `childGrid` do
+ * `BlockRenderer` (grid de 12 colunas).
+ *
  * Sem filhos (galeria do catálogo), mostra um placeholder ilustrativo com
  * mini-cards no corpo para comunicar o conceito.
  */
@@ -23,7 +29,7 @@ export const Component: BlockComponent<CollapsibleBlockProps> = ({ props, childr
       <CollapsibleSection
         title={props.title ?? 'Seção'}
         defaultOpen={props.defaultOpen ?? true}
-        contentClassName="px-2 pb-3 pt-1"
+        contentClassName="px-2 pb-3 pt-2"
       >
         {children ?? <CollapsiblePlaceholder />}
       </CollapsibleSection>

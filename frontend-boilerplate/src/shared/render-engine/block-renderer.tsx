@@ -262,7 +262,7 @@ export function BlockRenderer({
         data-block-type={block.type}
         data-block-state="success"
         data-block-container="true"
-        className={className}
+        className={cn('min-w-0', className)}
       >
         <Component
           props={props}
