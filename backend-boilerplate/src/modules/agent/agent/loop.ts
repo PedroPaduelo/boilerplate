@@ -36,18 +36,20 @@ export interface RunAgentResult {
 }
 
 export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
+  // Constrói messages com cache breakpoints (sem o system, que vai separado)
   const messages = buildMessages(
-    opts.systemPrompt,
+    '', // system vazio — passamos como parâmetro separado
     opts.convo,
     opts.cacheBreakpoint,
     opts.cacheOptions,
-  );
+  ).slice(1); // remove o system message do início do array
 
   const startedAt = Date.now();
   let stepIdx = 0;
 
   const result = await generateText({
     model: opts.model,
+    system: opts.systemPrompt,
     messages,
     tools: opts.tools,
     temperature: opts.temperature,
