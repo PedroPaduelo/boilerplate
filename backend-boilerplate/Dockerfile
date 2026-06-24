@@ -1,57 +1,60 @@
 # Build stage
-# Build context deve ser a RAIZ do monorepo (não backend-boilerplate/).
-# EasyPanel: Build Context = root, Dockerfile Path = backend-boilerplate/Dockerfile
+# ⚠️  BUILD CONTEXT deve ser a RAIZ do monorepo (não backend-boilerplate/).
+#
+# No EasyPanel:
+#   Build Context  = /  (raiz do repositório)
+#   Dockerfile     = backend-boilerplate/Dockerfile
+#
 FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# 1. Copia o contracts primeiro (dependência file: do package.json)
-COPY shared/contracts/package.json ./shared/contracts/package.json
-COPY shared/contracts/dist ./shared/contracts/dist
-COPY shared/contracts/src ./shared/contracts/src
-COPY shared/contracts/tsconfig.json ./shared/contracts/tsconfig.json
-
-# 2. Copia os arquivos do backend
-COPY backend-boilerplate/package*.json ./backend-boilerplate/
-COPY backend-boilerplate/tsconfig.json ./backend-boilerplate/
-COPY backend-boilerplate/tsup.config.ts ./backend-boilerplate/
-COPY backend-boilerplate/tsconfig.catalog.json ./backend-boilerplate/
-COPY backend-boilerplate/prisma ./backend-boilerplate/prisma
-COPY backend-boilerplate/scripts ./backend-boilerplate/scripts
-COPY backend-boilerplate/src ./backend-boilerplate/src
 
 WORKDIR /app/backend-boilerplate
 
-# Install all dependencies (including dev deps needed for the build)
-# file:../shared/contracts resolve corretamente: ../ = /app/
+# Copia o contracts (dependência file:../shared/contracts)
+COPY --link shared/contracts/package.json /app/shared/contracts/package.json
+COPY --link shared/contracts/dist /app/shared/contracts/dist
+COPY --link shared/contracts/src /app/shared/contracts/src
+COPY --link shared/contracts/tsconfig.json /app/shared/contracts/tsconfig.json
+
+# Copia os arquivos do backend
+COPY --link backend-boilerplate/package*.json ./
+COPY --link backend-boilerplate/tsconfig.json ./
+COPY --link backend-boilerplate/tsup.config.ts ./
+COPY --link backend-boilerplate/tsconfig.catalog.json ./
+COPY --link backend-boilerplate/prisma ./prisma/
+COPY --link backend-boilerplate/scripts ./scripts/
+COPY --link backend-boilerplate/src ./src/
+
+# Install all dependencies (file:../shared/contracts resolve: /app/shared/contracts)
 RUN npm ci
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build the application
+# Build
 RUN npm run build
 
+# ---------------------------------------------------------------------------
 # Production stage
+# ---------------------------------------------------------------------------
 FROM node:20-alpine AS production
 
-WORKDIR /app
+WORKDIR /app/backend-boilerplate
 
 ENV NODE_ENV=production
 ENV PORT=4000
 
-# Estrutura de diretórios igual ao monorepo para resolver file:../shared/contracts.
-# WORKDIR = /app/backend-boilerplate, ../shared/contracts = /app/shared/contracts.
-COPY shared/contracts/package.json ./shared/contracts/package.json
-COPY shared/contracts/dist ./shared/contracts/dist
+# Copia contracts (file:../shared/contracts precisa resolver no npm ci)
+COPY --link shared/contracts/package.json /app/shared/contracts/package.json
+COPY --link shared/contracts/dist /app/shared/contracts/dist
 
-COPY backend-boilerplate/package*.json ./backend-boilerplate/
-COPY backend-boilerplate/prisma ./backend-boilerplate/prisma
-
-WORKDIR /app/backend-boilerplate
+# Copia package files do backend
+COPY --link backend-boilerplate/package*.json ./
 
 # Install production dependencies only
 RUN npm ci --omit=dev
+
+# Copy Prisma schema and migrations
+COPY --link backend-boilerplate/prisma ./prisma/
 
 # Generate Prisma client (runtime)
 RUN npx prisma generate
@@ -59,18 +62,14 @@ RUN npx prisma generate
 # Copy built application from the builder
 COPY --from=builder /app/backend-boilerplate/dist ./dist
 
-# Create uploads directory owned by the non-root user
-RUN mkdir -p /app/backend-boilerplate/uploads && chown -R node:node /app
+# Create uploads directory
+RUN mkdir -p ./uploads && chown -R node:node /app
 
-# Drop root privileges — run as the unprivileged "node" user (ships with the base image)
 USER node
 
-# Expose port
 EXPOSE 4000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD node -e "require('http').get('http://localhost:4000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1));"
 
-# Start the application
 CMD ["node", "dist/server.js"]

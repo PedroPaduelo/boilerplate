@@ -1,18 +1,14 @@
 # Dependencies
 **/node_modules/
 
-# Build outputs
-**/dist/
-**/build/
-
-# EXCEÇÃO CRÍTICA: o dist de shared/contracts É versionado e É necessário no build
-!shared/contracts/dist/
-!shared/contracts/dist/**
+# Build outputs (mas preserva shared/contracts/dist que é versionado)
+backend-boilerplate/dist/
+frontend-boilerplate/dist/
+frontend-boilerplate/.vite/
 
 # Environment files — never bake secrets into the image
 **/.env
 **/.env.*
-**/.env.local
 !**/.env.example
 
 # IDE
@@ -44,12 +40,11 @@ Thumbs.db
 # Temp
 **/temp/
 **/*.tmp
-**/tmp/
 
 # Uploads
 uploads/
 
-# Meta (não vai pra imagem)
+# Meta
 _meta/
 
 # Docs
@@ -61,9 +56,8 @@ docs/
 
 # Misc
 **/.cache/
-**/.vite/
 **/*.tsbuildinfo
 
-# Docker files internos dos subdiretórios (o context agora é a raiz)
+# Docker files internos dos subdiretórios
 backend-boilerplate/.dockerignore
 frontend-boilerplate/.dockerignore

@@ -1,50 +1,45 @@
 # syntax=docker/dockerfile:1.7
 #
-# Build context deve ser a RAIZ do monorepo (não frontend-boilerplate/).
-# EasyPanel: Build Context = root, Dockerfile Path = frontend-boilerplate/Dockerfile
+# ⚠️  BUILD CONTEXT deve ser a RAIZ do monorepo (não frontend-boilerplate/).
+#
+# No EasyPanel:
+#   Build Context  = /  (raiz do repositório)
+#   Dockerfile     = frontend-boilerplate/Dockerfile
+#
 
 # ===== Stage 1: build =====
 FROM node:22-alpine AS build
 
-WORKDIR /app
-
-# Copia o contracts primeiro (dependência file: do package.json)
-COPY shared/contracts/package.json ./shared/contracts/package.json
-COPY shared/contracts/dist ./shared/contracts/dist
-COPY shared/contracts/src ./shared/contracts/src
-COPY shared/contracts/tsconfig.json ./shared/contracts/tsconfig.json
-
-# Copia os arquivos do frontend para instalar deps e buildar
-COPY frontend-boilerplate/package*.json ./frontend-boilerplate/
-COPY frontend-boilerplate/tsconfig.json ./frontend-boilerplate/
-COPY frontend-boilerplate/tsconfig.app.json ./frontend-boilerplate/tsconfig.app.json
-COPY frontend-boilerplate/tsconfig.node.json ./frontend-boilerplate/tsconfig.node.json
-COPY frontend-boilerplate/vite.config.ts ./frontend-boilerplate/
-COPY frontend-boilerplate/nginx.conf ./frontend-boilerplate/
-COPY frontend-boilerplate/index.html ./frontend-boilerplate/
-COPY frontend-boilerplate/src ./frontend-boilerplate/src
-COPY frontend-boilerplate/public ./frontend-boilerplate/public
-COPY frontend-boilerplate/scripts ./frontend-boilerplate/scripts
-
 WORKDIR /app/frontend-boilerplate
 
-# Cache deps separadamente pra aproveitar o cache do Docker
-RUN npm ci
+# Copia contracts (dependência file:../shared/contracts)
+COPY --link shared/contracts/package.json /app/shared/contracts/package.json
+COPY --link shared/contracts/dist /app/shared/contracts/dist
+COPY --link shared/contracts/src /app/shared/contracts/src
+COPY --link shared/contracts/tsconfig.json /app/shared/contracts/tsconfig.json
 
-# VITE_API_URL é injetado no BUILD do Vite (variável de build-time, não de runtime)
+# Copia arquivos do frontend
+COPY --link frontend-boilerplate/package*.json ./
+COPY --link frontend-boilerplate/tsconfig.json ./
+COPY --link frontend-boilerplate/tsconfig.app.json ./
+COPY --link frontend-boilerplate/tsconfig.node.json ./
+COPY --link frontend-boilerplate/vite.config.ts ./
+COPY --link frontend-boilerplate/index.html ./
+COPY --link frontend-boilerplate/src ./src/
+COPY --link frontend-boilerplate/public ./public/
+
+# VITE_API_URL é injetado no BUILD do Vite (build-time, não runtime)
 ARG VITE_API_URL=http://localhost:4000
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build (devDeps necessárias pro vite build)
+# Instala dependências e builda
+RUN npm ci
 RUN npm run build
 
 # ===== Stage 2: serve =====
 FROM nginx:alpine AS serve
 
-# nginx.conf customizado com SPA fallback (try_files $uri /index.html)
-COPY frontend-boilerplate/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Static assets do Vite build
+COPY --link frontend-boilerplate/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/frontend-boilerplate/dist /usr/share/nginx/html
 
 EXPOSE 5173
