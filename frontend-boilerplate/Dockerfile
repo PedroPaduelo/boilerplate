@@ -32,8 +32,8 @@ COPY --link frontend-boilerplate/public ./public/
 ARG VITE_API_URL=http://localhost:4000
 ENV VITE_API_URL=$VITE_API_URL
 
-# Instala dependências e builda
-RUN npm ci
+# Instala dependências e builda (--ignore-scripts pula husky/prepare)
+RUN npm ci --ignore-scripts
 RUN npm run build
 
 # ===== Stage 2: serve =====

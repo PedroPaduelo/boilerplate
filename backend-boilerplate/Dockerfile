@@ -25,7 +25,8 @@ COPY --link backend-boilerplate/scripts ./scripts/
 COPY --link backend-boilerplate/src ./src/
 
 # Install all dependencies (file:../shared/contracts resolve: /app/shared/contracts)
-RUN npm ci
+# --ignore-scripts pula husky/prepare (não precisa no build Docker)
+RUN npm ci --ignore-scripts
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -51,7 +52,7 @@ COPY --link shared/contracts/dist /app/shared/contracts/dist
 COPY --link backend-boilerplate/package*.json ./
 
 # Install production dependencies only
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy Prisma schema and migrations
 COPY --link backend-boilerplate/prisma ./prisma/
