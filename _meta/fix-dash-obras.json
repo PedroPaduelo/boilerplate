@@ -1,0 +1,141 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "update_dashboard",
+    "arguments": {
+      "dashboardId": "cmqsc0y4p000pny0p1aluwtl7",
+      "draftLayout": {
+        "filters": [],
+        "rows": [
+          {
+            "id": "row_1782321518751",
+            "blocks": [
+              {
+                "id": "k1",
+                "span": 4,
+                "type": "kpi",
+                "props": {
+                  "chartId": "cmqsc0ly9000fny0p2md7x66p",
+                  "label": "Tabelas com obra",
+                  "icon": "FileText",
+                  "accent": "chart-1",
+                  "valueFormat": "number"
+                }
+              },
+              {
+                "id": "k2",
+                "span": 4,
+                "type": "kpi",
+                "props": {
+                  "chartId": "cmqsc0lyh000lny0pgktjv40v",
+                  "label": "Tabelas com dados",
+                  "icon": "CheckCircle2",
+                  "accent": "chart-3",
+                  "valueFormat": "number"
+                }
+              },
+              {
+                "id": "k3",
+                "span": 4,
+                "type": "kpi",
+                "props": {
+                  "chartId": "cmqsc0lyb000hny0pmx5r3aqj",
+                  "label": "Obras distintas",
+                  "icon": "Building2",
+                  "accent": "chart-4",
+                  "valueFormat": "number"
+                }
+              }
+            ]
+          },
+          {
+            "id": "row_1782321538487",
+            "blocks": [
+              {
+                "id": "bar1",
+                "span": 12,
+                "type": "h_bar_chart",
+                "props": {
+                  "chartId": "cmqsc0lyd000jny0pj2ofg3ls",
+                  "accent": "chart-2",
+                  "palette": "single",
+                  "valueFormat": "number"
+                }
+              }
+            ]
+          },
+          {
+            "id": "row_1782324122170",
+            "blocks": [
+              {
+                "id": "tab1b",
+                "span": 12,
+                "type": "data_table",
+                "props": {
+                  "chartId": "cmqsc0lyk000nny0pbgqy0upj",
+                  "filterPlaceholder": "Buscar por CD_OBRA ou descricao"
+                }
+              }
+            ]
+          },
+          {
+            "id": "row-callout",
+            "blocks": [
+              {
+                "id": "blk-call",
+                "span": 12,
+                "type": "callout",
+                "props": {
+                  "variant": "warning",
+                  "title": "Escopo: apenas schema SCH - schema compras bloqueado",
+                  "description": "O cadastro-mestre de obras esta provavelmente no schema compras (comobras, comregobra, acompanhamento_obra), mas o acesso retornou permission denied. Este painel reflete SOMENTE o schema SCH, onde o cadastro esta disperso em 27 tabelas de eventos. Para o cadastro completo, solicite acesso ao schema compras a TI.",
+                  "showIcon": true
+                }
+              }
+            ]
+          },
+          {
+            "id": "row-alerts",
+            "blocks": [
+              {
+                "id": "blk-alert-1",
+                "span": 6,
+                "type": "alert",
+                "props": {
+                  "variant": "info",
+                  "title": "Ultima obra com situacao: CD_OBRA 482025 - 31/05/2025",
+                  "description": "Conforme OBRA_SITUACAO. A obra 482025 (CONFECCAO DE UNIFORMES) teve situacao registrada em 31/05/2025 (publicada no DO em 27/05/2025)."
+                }
+              },
+              {
+                "id": "blk-alert-2",
+                "span": 6,
+                "type": "alert",
+                "props": {
+                  "variant": "warning",
+                  "title": "Ultima medicao lancada: jun/2023 - lacuna de 2 anos",
+                  "description": "A obra 172023 (1a Medicao) tem a medicao mais recente em 16/06/2023. Apos essa data, nenhuma obra do SCH teve medicao lancada."
+                }
+              }
+            ]
+          },
+          {
+            "id": "row-metodo",
+            "blocks": [
+              {
+                "id": "blk-rich",
+                "span": 12,
+                "type": "rich_text",
+                "props": {
+                  "markdown": "## Metodologia e limitacoes\n\n**Fonte**: banco Postgres sch (schema SCH, usuario FiscalizaIA). Encoding LATIN1.\n\n**Tabelas**: 27 tabelas com \"obra\" no nome. 9 tem registros (OBRAPLAN 24, UNIDADES_OBRA 17, OBRAACOM 12, OBRA_SITUACAO 8, OBRA_RESPONSAVEL 7, OBRAS_LDO 7, LOG_ENVIO_SISOBRA 5, FASEOBRA 3, MEDICAO_OBRA_NL 2). 18 vazias.\n\n**Chave**: CD_OBRA (bigint em OBRAPLAN, integer nas demais). Nao existe tabela-mestre OBRA/CADOBRA no SCH.\n\n**Limitacoes**:\n- Schema compras (cadastro-mestre) retornou permission denied.\n- Nao ha coluna DT_CADASTRO. Datas inferidas de OBRAPLAN.DT_INICIO, OBRAACOM.DT_MEDICAO, OBRA_SITUACAO.DT_SITUACAO.\n- Obras distintas = UNION de 4 tabelas com CD_OBRA."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

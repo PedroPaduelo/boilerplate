@@ -146,9 +146,13 @@ function ChartWidget({
         ) : null}
       </div>
 
-      {/* Body */}
-      <div className="px-4 py-3">
-        {loading ? <Skeleton className="h-40 w-full" /> : children}
+      {/* Body — min-h-0 garante que o ChartWidget não force a altura
+          do cell do grid (necessário em bento_grid com autoRows) e o
+          skeleton usa h-56 (224px) p/ alinhar com a altura NATURAL dos
+          charts (donut 168px + folga, bar/line h-56 224px), evitando
+          layout shift quando os dados chegam. */}
+      <div className="min-h-0 px-4 py-3">
+        {loading ? <Skeleton className="h-56 w-full" /> : children}
       </div>
 
       {/* Takeaways (1 linha por item, lampada + texto). Itens com
