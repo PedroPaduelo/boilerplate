@@ -54,13 +54,20 @@ COPY --link backend-boilerplate/package*.json ./
 # Install production dependencies only
 RUN npm ci --omit=dev --ignore-scripts
 
-# Os módulos 'ajv' e 'ajv-formats' estão no node_modules do backend, mas o
-# shared/contracts (file:../shared/contracts) precisa encontrá-los via
-# /app/shared/contracts/node_modules. Copiamos eles pra lá para resolver
-# o require do dist/index.cjs.
+# O 'shared/contracts/dist/index.cjs' faz require('ajv') + 'ajv-formats', e
+# o Node resolve a partir de /app/shared/contracts/. Como esse diretório NÃO tem
+# node_modules próprio (é um pacote 'file:'), copiamos manualmente TODAS as deps
+# transitivas do ajv para dentro de shared/contracts/node_modules/.
+#
+# IMPORTANTE: sempre que adicionar uma dep nova no schema do contracts que precise
+# de imports em runtime (ajv, lodash, etc.), adicionar o nome neste loop.
 RUN mkdir -p /app/shared/contracts/node_modules && \
-    cp -r node_modules/ajv /app/shared/contracts/node_modules/ajv && \
-    cp -r node_modules/ajv-formats /app/shared/contracts/node_modules/ajv-formats
+    for pkg in ajv ajv-formats fast-deep-equal fast-uri json-schema-traverse require-from-string uri-js punycode; do \
+      if [ -d "node_modules/$pkg" ]; then \
+        cp -r "node_modules/$pkg" "/app/shared/contracts/node_modules/$pkg"; \
+        echo "copied: $pkg"; \
+      fi; \
+    done
 
 # Copy Prisma schema and migrations
 COPY --link backend-boilerplate/prisma ./prisma/
