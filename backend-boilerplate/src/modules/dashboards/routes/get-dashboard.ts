@@ -8,7 +8,7 @@ import {
   idParamSchema,
   serializeDashboard,
 } from '../schema';
-import { requireDashboardForView, resolveLayout } from '../service';
+import { enrichLayoutsChartTitles, requireDashboardForView, resolveLayout } from '../service';
 
 export async function getDashboardRoute(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -28,7 +28,24 @@ export async function getDashboardRoute(app: FastifyInstance) {
       const ctx = await loadActorContext(request);
       const dashboard = await requireDashboardForView(request.params.id, ctx);
       const { mode, layout } = resolveLayout(dashboard, request.query.mode ?? 'draft');
-      return reply.send({ ...serializeDashboard(dashboard), mode, layout });
+      const serialized = serializeDashboard(dashboard);
+      // Enriquece os layouts servidos com o TÍTULO do chart referenciado por
+      // cada bloco (props.chartId), para o header do gráfico no FE mostrar o
+      // título real em vez do nome genérico do tipo de bloco. UMA busca no
+      // banco cobre os três layouts. O FE renderiza draftLayout/publishedLayout.
+      const [enrichedLayout, draftLayout, publishedLayout] =
+        await enrichLayoutsChartTitles([
+          layout,
+          serialized.draftLayout,
+          serialized.publishedLayout,
+        ]);
+      return reply.send({
+        ...serialized,
+        draftLayout,
+        publishedLayout,
+        mode,
+        layout: enrichedLayout,
+      });
     },
   );
 }

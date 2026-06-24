@@ -54,6 +54,8 @@ const SELF_CONTAINED = new Set<string>([
   'metric_glow',
   'stat_tile',
   'signal_card',
+  // funnel_stage desenha o próprio card colapsável (header + barra + tabela).
+  'funnel_stage',
 ]);
 
 function resolveState(
@@ -137,6 +139,23 @@ function showSqlOf(block: Block): boolean {
   const raw = (block as { showSql?: unknown }).showSql;
   if (typeof raw === 'boolean') return raw;
   return true;
+}
+
+/**
+ * Resolve o título exibido no header do bloco-gráfico. Prioridade:
+ *  1. `block.title` (o backend o preenche com o título do Chart referenciado;
+ *     o autor também pode definir um título custom no bloco);
+ *  2. `block.props.title` (rede de segurança — ex.: título setado via props);
+ *  3. `fallback` (nome genérico do tipo de bloco, ex.: "Barras Horizontais").
+ */
+function resolveBlockTitle(block: Block, fallback: string): string {
+  const title = (block as { title?: unknown }).title;
+  if (typeof title === 'string' && title.trim().length > 0) return title;
+  const propsTitle = (block.props as { title?: unknown } | undefined)?.title;
+  if (typeof propsTitle === 'string' && propsTitle.trim().length > 0) {
+    return propsTitle;
+  }
+  return fallback;
 }
 
 export function BlockRenderer({
@@ -287,7 +306,7 @@ export function BlockRenderer({
         className={className}
       >
         <ChartWidget
-          title={block.title ?? def.manifest.name}
+          title={resolveBlockTitle(block, def.manifest.name)}
           chartType={def.manifest.name}
           query={block.dataBinding?.query}
           durationMs={durationOf(ownResult)}

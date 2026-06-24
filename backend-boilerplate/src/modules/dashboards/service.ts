@@ -98,6 +98,113 @@ export function collectChartRefs(layout: DashboardLayout): string[] {
   return [...ids];
 }
 
+// =============================================================================
+// Enriquecimento do layout com o TÍTULO do chart referenciado
+// =============================================================================
+//
+// PROBLEMA: o render-engine do FE desenha o header de cada bloco-gráfico com
+// `block.title ?? def.manifest.name`. Como o layout salvo NÃO carrega o título
+// do Chart (ele referencia só o `props.chartId`), o header caía no NOME GENÉRICO
+// do tipo de bloco ("Barras Horizontais", "Donut", "Tabela Rica") em vez do
+// título real do chart ("N1 — Momento Lançamento", etc.).
+//
+// SOLUÇÃO: ao servir o layout (GET /dashboards/:id), preenchemos `block.title`
+// com o título do Chart referenciado QUANDO ele estiver ausente — sem tocar o
+// contrato nem o dado salvo. Um `block.title` explícito (definido pelo autor)
+// SEMPRE vence. Percorre a árvore recursivamente (containers `block.blocks`).
+
+/** Coleta chartIds de um layout cru, descendo recursivamente em containers. */
+function collectChartRefsDeep(layout: unknown): string[] {
+  const ids = new Set<string>();
+  const visitBlock = (block: unknown): void => {
+    if (!block || typeof block !== 'object') return;
+    const b = block as { props?: { chartId?: unknown }; blocks?: unknown };
+    const chartId = b.props?.chartId;
+    if (typeof chartId === 'string' && chartId.length > 0) ids.add(chartId);
+    const children = Array.isArray(b.blocks) ? b.blocks : [];
+    for (const child of children) visitBlock(child);
+  };
+  const rows = Array.isArray((layout as { rows?: unknown }).rows)
+    ? ((layout as { rows: unknown[] }).rows)
+    : [];
+  for (const row of rows) {
+    const blocks = Array.isArray((row as { blocks?: unknown }).blocks)
+      ? ((row as { blocks: unknown[] }).blocks)
+      : [];
+    for (const block of blocks) visitBlock(block);
+  }
+  return [...ids];
+}
+
+/**
+ * Devolve uma CÓPIA do layout com `block.title` preenchido a partir do
+ * `titleById` (chartId → título) para os blocos que referenciam um chart e
+ * ainda não têm título. Recursivo. Layouts nulos/inválidos são retornados como
+ * estão (defensivo — não quebra o serve).
+ */
+function injectChartTitles(layout: unknown, titleById: Map<string, string>): unknown {
+  if (!layout || typeof layout !== 'object') return layout;
+
+  const enrichBlock = (block: unknown): unknown => {
+    if (!block || typeof block !== 'object') return block;
+    const b = block as Record<string, unknown> & {
+      props?: { chartId?: unknown };
+      blocks?: unknown;
+      title?: unknown;
+    };
+    let next: Record<string, unknown> = b;
+
+    const chartId = b.props?.chartId;
+    const hasTitle = typeof b.title === 'string' && b.title.trim().length > 0;
+    if (typeof chartId === 'string' && !hasTitle) {
+      const title = titleById.get(chartId);
+      if (title) next = { ...next, title };
+    }
+
+    if (Array.isArray((next as { blocks?: unknown }).blocks)) {
+      next = {
+        ...next,
+        blocks: ((next as { blocks: unknown[] }).blocks).map(enrichBlock),
+      };
+    }
+    return next;
+  };
+
+  const l = layout as { rows?: unknown };
+  const rows = Array.isArray(l.rows) ? l.rows : [];
+  return {
+    ...(layout as Record<string, unknown>),
+    rows: rows.map((row) => {
+      if (!row || typeof row !== 'object') return row;
+      const r = row as Record<string, unknown> & { blocks?: unknown };
+      const blocks = Array.isArray(r.blocks) ? r.blocks : [];
+      return { ...r, blocks: blocks.map(enrichBlock) };
+    }),
+  };
+}
+
+/**
+ * Enriquece UM OU MAIS layouts (ex.: o resolvido + draftLayout + publishedLayout
+ * de uma mesma resposta) com o título do Chart referenciado, fazendo UMA ÚNICA
+ * busca no banco para todos os chartIds. Mantém a ordem da entrada.
+ */
+export async function enrichLayoutsChartTitles(layouts: unknown[]): Promise<unknown[]> {
+  const ids = new Set<string>();
+  for (const layout of layouts) {
+    for (const id of collectChartRefsDeep(layout)) ids.add(id);
+  }
+  if (ids.size === 0) return layouts;
+
+  const charts = await prisma.chart.findMany({
+    where: { id: { in: [...ids] } },
+    select: { id: true, title: true },
+  });
+  if (charts.length === 0) return layouts;
+
+  const titleById = new Map(charts.map((c) => [c.id, c.title]));
+  return layouts.map((layout) => injectChartTitles(layout, titleById));
+}
+
 /** Garante que TODOS os `chartId` referenciados pelo layout existem. */
 export async function assertChartRefsExist(layout: DashboardLayout): Promise<void> {
   const ids = collectChartRefs(layout);
