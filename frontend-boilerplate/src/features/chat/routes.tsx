@@ -4,11 +4,11 @@ import { PageLoader } from '@/shared/components/page-loader';
 import { RequireRole } from '@/features/auth/components/require-role';
 
 /**
- * Rotas da feature `chat` (T-H) — chat embutido com o agente (MOCKADO).
+ * Rotas da feature `chat` — chat com o agente de IA integrado.
  *
- * `/chat` exige `artifacts:manage` (espelha o item da sidebar): só quem pode
- * criar/editar artefatos usa o chat e o "adicionar a um dashboard". A T-H2 troca
- * o transporte mock pela API externa real — esta rota não muda.
+ * /chat exige `artifacts:manage`.
+ * O agente usa as tools do MCP (list_connections, run_query, create_chart, etc.)
+ * e tem acesso aos dados do sistema com RBAC do usuário autenticado.
  */
 const ChatPage = lazy(() =>
   import('./components/chat-page').then((m) => ({ default: m.ChatPage })),

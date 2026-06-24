@@ -81,7 +81,22 @@ export type ChatEvent =
   | { type: 'text_delta'; messageId: string; delta: string }
   | { type: 'chart'; messageId: string; chart: ChatChartPayload }
   | { type: 'message_end'; messageId: string }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | {
+      type: 'tool_step';
+      messageId?: string;
+      toolName: string;
+      toolCallId: string;
+      phase: 'call' | 'result';
+      args?: Record<string, unknown>;
+      output?: unknown;
+    }
+  | {
+      type: 'usage';
+      inputTokens?: number;
+      outputTokens?: number;
+      cachedInputTokens?: number;
+    };
 
 export interface SendMessageOptions {
   /** Permite abortar o stream (botão "parar" / desmontagem). */

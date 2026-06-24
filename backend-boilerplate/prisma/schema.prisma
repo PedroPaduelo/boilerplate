@@ -8,8 +8,7 @@
 //   - SEM histórico de versões: só DRAFT + PUBLISHED nos artefatos (Chart,
 //     Dashboard). Não há ChartVersion/DashboardVersion.
 //   - SEM AuditLog no MVP.
-//   - SEM ChatThread/ChatMessage: o agente de IA roda EXTERNO e consome nosso
-//     MCP. O chat é responsabilidade da F3 (mockado) e da F2 (MCP server).
+//   - Chat/Conversas persistidas (Conversation + ChatMessage).
 //   - Catálogo de blocos vive EM CÓDIGO (não em tabela). Só o tipo é
 //     persistido como string (catalogType).
 //   - Cache vive no Redis (não vira tabela).
@@ -80,11 +79,12 @@ model User {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  memberships DepartmentMembership[]
-  connections Connection[]
-  charts      Chart[]
-  dashboards  Dashboard[]
-  shareLinks  ShareLink[]
+  memberships    DepartmentMembership[]
+  connections    Connection[]
+  charts         Chart[]
+  dashboards     Dashboard[]
+  shareLinks     ShareLink[]
+  conversations  Conversation[]
 
   @@map("users")
 }
@@ -254,4 +254,42 @@ model ShareLink {
   createdBy User @relation(fields: [createdById], references: [id])
 
   @@map("share_links")
+}
+
+// =============================================================================
+// CHAT / AGENTE DE IA
+// =============================================================================
+
+/// Conversa (sessão de chat). Cada conversa acumula mensagens e tem um título.
+/// O userId é o dono da conversa (quem está conversando com o agente).
+model Conversation {
+  id        String    @id @default(cuid())
+  title     String    @default("Nova conversa")
+  userId    String    @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@map("conversations")
+}
+
+/// Mensagem de uma conversa. role = user|assistant|tool.
+/// content é o texto da mensagem. toolData guarda metadados (tool calls, chart payloads, etc).
+/// tokensIn/tokensOut guardam consumo de tokens por mensagem (para análise de custo).
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role           String
+  content        String   @db.Text
+  toolData       Json?    @map("tool_data")
+  tokensIn       Int?     @map("tokens_in")
+  tokensOut      Int?     @map("tokens_out")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("chat_messages")
 }

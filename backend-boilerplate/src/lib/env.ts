@@ -105,7 +105,13 @@ export const envSchema = z.object({
   // em PICOS de concorrência (várias fontes pedindo conexão — worker + preview +
   // snapshot), as execuções ESPERAM a vez no pool em vez de FALHAR com
   // "timeout exceeded when trying to connect". O pool do pg é o limitador global.
+  // pg-runner connect timeout
   PG_RUNNER_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+
+  // Agent de IA (motor do agente integrado)
+  ANTHROPIC_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().url().optional().or(z.literal('')),
+  AI_MODEL: z.string().default('claude-sonnet-4-20250514'),
 });
 
 export type Env = z.infer<typeof envSchema>;
