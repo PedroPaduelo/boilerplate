@@ -11,6 +11,7 @@
 import { Worker, type Job } from 'bullmq';
 import { connectionRedisConfigWorker } from '@/services/jobs/connection-redis-config';
 import { redisInstance, redisService } from '@/lib/redis';
+import { env } from '@/lib/env';
 import { runQuery } from '@/lib/pg-runner';
 import { socketManager } from '@/socket/manager/socket-manager';
 import { loadPgConnection } from '../connection-loader';
@@ -40,6 +41,16 @@ export function ensureQueryExecWorker(): Worker<QueryExecJobData> | null {
   if (redisInstance.isDegraded()) return null;
   if (workerInstance) return workerInstance;
 
+  // INVARIANTE: nunca processar mais jobs em paralelo do que há conexões no pool
+  // do pg-runner. Cada job segura 1 conexão por toda a query; se a concorrência
+  // exceder PG_RUNNER_POOL_MAX, os jobs excedentes estouram o connectionTimeout
+  // ("timeout exceeded when trying to connect"). O clamp protege contra
+  // mau-config (concorrência > pool) por construção.
+  const concurrency = Math.max(
+    1,
+    Math.min(env.QUERY_EXEC_WORKER_CONCURRENCY, env.PG_RUNNER_POOL_MAX),
+  );
+
   workerInstance = new Worker<QueryExecJobData>(
     QUERY_EXEC_QUEUE,
     async (job: Job<QueryExecJobData>) => {
@@ -48,7 +59,7 @@ export function ensureQueryExecWorker(): Worker<QueryExecJobData> | null {
     },
     {
       connection: connectionRedisConfigWorker,
-      concurrency: 5,
+      concurrency,
     },
   );
 
@@ -58,7 +69,9 @@ export function ensureQueryExecWorker(): Worker<QueryExecJobData> | null {
   workerInstance.on('error', (err) => {
     console.error('❌ query-exec worker error:', err.message);
   });
-  console.log('🚀 query-exec worker started (data module)');
+  console.log(
+    `🚀 query-exec worker started (data module) — concurrency=${concurrency}, poolMax=${env.PG_RUNNER_POOL_MAX}`,
+  );
 
   return workerInstance;
 }

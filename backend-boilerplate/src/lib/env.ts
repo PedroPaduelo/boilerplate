@@ -77,11 +77,27 @@ export const envSchema = z.object({
 
   // pg-runner — guardrails de execução de query contra bancos externos.
   // Timeout (ms) aplicado no Postgres remoto via `SET LOCAL statement_timeout`.
-  PG_RUNNER_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  // Default 30s: dashboards ANALÍTICOS sobre tabelas grandes (milhões de linhas
+  // sem índice no filtro) legitimamente levam 8-15s; um teto de 15s causava
+  // falso-timeout. O row cap (PG_RUNNER_MAX_ROWS) e a transação read-only
+  // protegem contra runaway. Queries bem escritas (agregação/FILTER, sem
+  // COUNT(DISTINCT)/GROUP BY redundante) ficam bem abaixo deste teto.
+  PG_RUNNER_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   // Limite máximo de linhas retornadas (row cap) — o runner para de buscar após isto.
   PG_RUNNER_MAX_ROWS: z.coerce.number().int().positive().default(50000),
   // Tamanho máximo do pool por conexão externa.
-  PG_RUNNER_POOL_MAX: z.coerce.number().int().positive().default(3),
+  // IMPORTANTE: deve ser >= QUERY_EXEC_WORKER_CONCURRENCY. Cada query do worker
+  // segura UMA conexão do pool por toda a sua duração (BEGIN→SET→cursor→ROLLBACK);
+  // se o worker processa N jobs em paralelo, precisa de N conexões livres, senão
+  // os jobs excedentes morrem com "timeout exceeded when trying to connect" (o
+  // pool não é o banco — é client-side). O worker faz o clamp defensivo, mas o
+  // certo é manter este teto >= a concorrência configurada.
+  PG_RUNNER_POOL_MAX: z.coerce.number().int().positive().default(8),
+  // Quantos jobs de execução de query o worker BullMQ processa EM PARALELO por
+  // dashboard/published. Mantenha <= PG_RUNNER_POOL_MAX (ver nota acima). Valor
+  // conservador por padrão para não martelar o Postgres externo com muitas
+  // queries pesadas simultâneas.
+  QUERY_EXEC_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(4),
   // Tempo (ms) que uma conexão ociosa do pool externo é mantida antes de fechar.
   PG_RUNNER_IDLE_TIMEOUT_MS: z.coerce.number().int().nonnegative().default(30000),
   // Timeout (ms) para estabelecer a conexão TCP com o Postgres externo.
