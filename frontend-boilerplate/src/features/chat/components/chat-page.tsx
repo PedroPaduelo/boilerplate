@@ -1,11 +1,8 @@
 /**
  * Tela do Chat — /chat
  *
- * Layout completo:
- * - Sidebar com lista de conversas (criar, selecionar, deletar)
- * - Área principal: mensagens + input
- * - O agente usa HttpChatTransport (POST /agent/chat/:conversationId via SSE)
- * - Persistência total no backend (Conversation + ChatMessage)
+ * Layout: sidebar | (header fixo + scroll de mensagens + input embaixo)
+ * O agente usa HttpChatTransport (POST /agent/chat/:conversationId via SSE)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -18,9 +15,9 @@ import { HttpChatTransport } from '../transport/http-transport';
 import type { ChatEvent, ChatMessage, ChatRole } from '../transport';
 import { ChatMessageList } from './chat-message-list';
 import { ChatInput } from './chat-input';
+import { ThinkingBubble } from './thinking-indicator';
 import { ToolStepsList } from './tool-steps-list';
 
-/** Converte ChatMessageRecord do DB → ChatMessage da UI. */
 function dbMessageToUi(m: Conversation['messages'] extends (infer T)[] ? T : never): ChatMessage {
   return {
     id: m.id,
@@ -39,7 +36,6 @@ function ChatArea({ conversationId }: { conversationId: string }) {
   >([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Carrega histórico quando muda a conversa
   useEffect(() => {
     let cancelled = false;
     agentApi.getConversation(conversationId).then((conv) => {
@@ -58,7 +54,6 @@ function ChatArea({ conversationId }: { conversationId: string }) {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
 
-    // Adiciona mensagem do usuário na UI imediatamente
     const userMsg: ChatMessage = {
       id: `usr_${Date.now()}`,
       role: 'user',
@@ -72,7 +67,6 @@ function ChatArea({ conversationId }: { conversationId: string }) {
 
     const controller = new AbortController();
     abortRef.current = controller;
-
     const transport = new HttpChatTransport({ conversationId });
 
     try {
@@ -83,12 +77,7 @@ function ChatArea({ conversationId }: { conversationId: string }) {
           case 'message_start':
             setMessages((prev) => [
               ...prev,
-              {
-                id: ev.messageId,
-                role: 'assistant',
-                content: '',
-                createdAt: new Date().toISOString(),
-              },
+              { id: ev.messageId, role: 'assistant', content: '', createdAt: new Date().toISOString() },
             ]);
             break;
           case 'text_delta':
@@ -106,12 +95,7 @@ function ChatArea({ conversationId }: { conversationId: string }) {
           case 'tool_step':
             setToolSteps((prev) => [
               ...prev,
-              {
-                toolName: ev.toolName,
-                phase: ev.phase,
-                args: ev.args,
-                output: ev.output,
-              },
+              { toolName: ev.toolName, phase: ev.phase, args: ev.args, output: ev.output },
             ]);
             break;
           case 'error':
@@ -138,33 +122,39 @@ function ChatArea({ conversationId }: { conversationId: string }) {
     setIsStreaming(false);
   }, []);
 
+  // Detecta se tem mensagem do assistant vazia (ainda pensando)
+  const lastMsg = messages[messages.length - 1];
+  const isThinking = isStreaming && lastMsg?.role === 'assistant' && lastMsg.content.length === 0 && !lastMsg.chart;
+
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Área de scroll (mensagens) — flex-1 + overflow + min-h-0 = scroll independente */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
         <ChatMessageList messages={messages} isStreaming={isStreaming} />
+
+        {/* Tool steps em tempo real (dentro do scroll) */}
         {toolSteps.length > 0 && isStreaming ? (
           <ToolStepsList steps={toolSteps} />
         ) : null}
+
+        {/* Bolha de pensamento quando assistant não tem texto ainda */}
+        {isThinking ? <ThinkingBubble toolSteps={toolSteps} /> : null}
+
         {error ? (
-          <div
-            role="alert"
-            className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
-          >
+          <div role="alert" className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
             {error}
           </div>
         ) : null}
       </div>
+
+      {/* Input fixo embaixo */}
       <ChatInput onSend={send} onStop={stop} isStreaming={isStreaming} />
     </div>
   );
 }
 
 function ChatSidebar({
-  conversations,
-  activeId,
-  onSelect,
-  onCreate,
-  onDelete,
+  conversations, activeId, onSelect, onCreate, onDelete,
 }: {
   conversations: Conversation[];
   activeId: string | null;
@@ -182,9 +172,7 @@ function ChatSidebar({
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2">
         {conversations.length === 0 ? (
-          <p className="px-2 py-4 text-xs text-muted-foreground">
-            Nenhuma conversa ainda.
-          </p>
+          <p className="px-2 py-4 text-xs text-muted-foreground">Nenhuma conversa ainda.</p>
         ) : (
           <div className="flex flex-col gap-1">
             {conversations.map((conv) => (
@@ -192,9 +180,7 @@ function ChatSidebar({
                 key={conv.id}
                 className={cn(
                   'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-                  conv.id === activeId
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted text-foreground',
+                  conv.id === activeId ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground',
                 )}
                 onClick={() => onSelect(conv.id)}
               >
@@ -202,10 +188,7 @@ function ChatSidebar({
                 <span className="flex-1 truncate">{conv.title}</span>
                 <button
                   className="opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(conv.id);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
                   aria-label="Deletar conversa"
                 >
                   <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
@@ -228,12 +211,8 @@ export function ChatPage() {
     try {
       const list = await agentApi.listConversations();
       setConversations(list);
-      if (list.length > 0 && !activeId) {
-        setActiveId(list[0].id);
-      }
-    } catch {
-      // ignore
-    }
+      if (list.length > 0 && !activeId) setActiveId(list[0].id);
+    } catch { /* ignore */ }
   }, [activeId]);
 
   useEffect(() => {
@@ -250,9 +229,7 @@ export function ChatPage() {
   const handleDelete = useCallback(async (id: string) => {
     await agentApi.deleteConversation(id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (activeId === id) {
-      setActiveId(null);
-    }
+    if (activeId === id) setActiveId(null);
   }, [activeId]);
 
   return (
@@ -264,10 +241,11 @@ export function ChatPage() {
         onCreate={handleCreate}
         onDelete={handleDelete}
       />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {activeId ? (
           <>
-            <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            {/* Header fixo no topo */}
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Bot className="size-4" />
@@ -276,9 +254,7 @@ export function ChatPage() {
                   <h1 className="text-sm font-semibold text-foreground">
                     {conversations.find((c) => c.id === activeId)?.title ?? 'Chat'}
                   </h1>
-                  <p className="text-xs text-muted-foreground">
-                    Agente de IA com acesso aos seus dados
-                  </p>
+                  <p className="text-xs text-muted-foreground">Agente de IA com acesso aos seus dados</p>
                 </div>
               </div>
               {agentReady === false ? (
@@ -287,11 +263,10 @@ export function ChatPage() {
                   ANTHROPIC_API_KEY não configurada
                 </Badge>
               ) : agentReady === true ? (
-                <Badge variant="secondary">
-                  Agente ativo
-                </Badge>
+                <Badge variant="secondary">Agente ativo</Badge>
               ) : null}
             </header>
+            {/* Área de chat (scroll + input) */}
             <ChatArea conversationId={activeId} />
           </>
         ) : (

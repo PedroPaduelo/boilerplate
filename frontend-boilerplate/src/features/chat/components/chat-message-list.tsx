@@ -1,5 +1,5 @@
 /** Lista rolável das mensagens do chat. */
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { MessageSquare } from 'lucide-react';
 import type { ChatMessage } from '../transport';
 import { ChatMessageBubble } from './chat-message-bubble';
@@ -9,13 +9,11 @@ export interface ChatMessageListProps {
   isStreaming: boolean;
 }
 
-export function ChatMessageList({ messages, isStreaming }: ChatMessageListProps) {
+function ChatMessageListImpl({ messages, isStreaming }: ChatMessageListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
   const lastAssistantId = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
 
-  // Auto-scroll para a última mensagem (efeito é permitido; só DOM, sem setState).
   useEffect(() => {
-    // `scrollIntoView` não existe no jsdom (testes) — guardamos a chamada.
     if (typeof endRef.current?.scrollIntoView === 'function') {
       endRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
@@ -50,3 +48,5 @@ export function ChatMessageList({ messages, isStreaming }: ChatMessageListProps)
     </div>
   );
 }
+
+export const ChatMessageList = memo(ChatMessageListImpl);
