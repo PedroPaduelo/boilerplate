@@ -142,21 +142,39 @@ function showSqlOf(block: Block): boolean {
 }
 
 /**
- * Resolve o título exibido no header do bloco-gráfico. Prioridade:
+ * Título EXPLÍCITO do bloco (sem fallback). Prioridade:
  *  1. `block.title` (o backend o preenche com o título do Chart referenciado;
  *     o autor também pode definir um título custom no bloco);
- *  2. `block.props.title` (rede de segurança — ex.: título setado via props);
- *  3. `fallback` (nome genérico do tipo de bloco, ex.: "Barras Horizontais").
+ *  2. `block.props.title` (rede de segurança — ex.: título setado via props).
+ * Retorna `undefined` quando não há título explícito (o chamador decide o fallback).
  */
-function resolveBlockTitle(block: Block, fallback: string): string {
+function explicitBlockTitle(block: Block): string | undefined {
   const title = (block as { title?: unknown }).title;
   if (typeof title === 'string' && title.trim().length > 0) return title;
   const propsTitle = (block.props as { title?: unknown } | undefined)?.title;
   if (typeof propsTitle === 'string' && propsTitle.trim().length > 0) {
     return propsTitle;
   }
-  return fallback;
+  return undefined;
 }
+
+/** Título do bloco com fallback (ex.: nome genérico do tipo: "Barras Horizontais"). */
+function resolveBlockTitle(block: Block, fallback: string): string {
+  return explicitBlockTitle(block) ?? fallback;
+}
+
+/**
+ * Cards SELF_CONTAINED cujo "título" do card é a prop `label` (ex.: o rótulo
+ * em cima do número do KPI). Para esses, o título do bloco/Chart deve virar o
+ * `label` — senão o card cai no fallback genérico do componente (ex.: "KPI",
+ * "Sinal"). Só injetamos quando o autor NÃO definiu um `label` explícito.
+ */
+const TITLE_AS_LABEL = new Set<string>([
+  'kpi',
+  'metric_glow',
+  'stat_tile',
+  'signal_card',
+]);
 
 export function BlockRenderer({
   block,
@@ -188,6 +206,17 @@ export function BlockRenderer({
     ...((def.manifest.defaultProps as Record<string, unknown>) ?? {}),
     ...((block.props as Record<string, unknown>) ?? {}),
   };
+
+  // Cards SELF_CONTAINED com título-via-`label` (KPI, métricas): se o autor não
+  // setou um `label` explícito, usa o título do bloco/Chart como rótulo do card
+  // — assim o KPI mostra "Universo lançado (N1)" em vez do genérico "KPI".
+  if (
+    TITLE_AS_LABEL.has(block.type) &&
+    (props.label == null || props.label === '')
+  ) {
+    const title = explicitBlockTitle(block);
+    if (title) props.label = title;
+  }
 
   // ----- CONTAINER (composição recursiva: section / bento / ...) -----
   const childBlocks = Array.isArray(block.blocks) ? block.blocks : [];
