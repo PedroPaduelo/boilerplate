@@ -1,6 +1,17 @@
 /**
- * Manifesto do bloco `expandable_cards` (layout) — lista de cards que expandem
- * para um modal de detalhes. Usa o Vitrine `ExpandableCards`.
+ * Manifesto do bloco `expandable_cards` — CONTAINER de layout.
+ *
+ * Cada SUB-BLOCO (`block.blocks`) vira um CARD na grade colapsada; ao clicar, o
+ * card EXPANDE num modal mostrando o sub-bloco renderizado (gráfico/tabela/etc.).
+ * A composição segue o contrato unificado de container — `block.blocks` (a IA
+ * monta a árvore de filhos; mesma sintaxe de `section`/`bento_grid`). As props
+ * deste bloco são de CONFIGURAÇÃO DO LAYOUT (não de conteúdo): `columns`/`gap`.
+ *
+ * Exemplo (IA via MCP) — 3 gráficos como cards expansíveis:
+ *   { type:'expandable_cards', props:{columns:3}, blocks:[
+ *       { type:'bar_chart', title:'Arrecadação', dataBinding:{...} },
+ *       { type:'donut',     title:'Dívida ativa', dataBinding:{...} },
+ *       { type:'line_chart', title:'Evolução',    dataBinding:{...} } ] }
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -8,57 +19,30 @@ export const manifest = {
   type: 'expandable_cards',
   kind: 'layout',
   name: 'Cards Expansíveis',
-  description: 'Lista de cards que expandem para um modal com detalhes ao clicar.',
-  source: 'vitrine:expandable-cards',
+  description:
+    'Container de layout: cada sub-bloco vira um card na grade e EXPANDE para um modal (com o sub-bloco renderizado) ao clicar. Use `block.blocks` para os filhos; o `title` de cada filho rotula o card. Props: columns (1..4), gap.',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
     properties: {
-      cards: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['title'],
-          properties: {
-            title: { type: 'string' },
-            description: { type: 'string' },
-            src: { type: 'string' },
-            ctaText: { type: 'string' },
-            ctaLink: { type: 'string' },
-            content: { type: 'string' },
-          },
-        },
+      columns: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 4,
+        default: 3,
+        description:
+          'Número de colunas da grade de cards colapsados (1..4). Default: 3.',
+      },
+      gap: {
+        type: 'string',
+        enum: ['sm', 'md', 'lg'],
+        default: 'md',
+        description:
+          'Espaçamento entre os cards: sm (compacto), md (default), lg (espaçado).',
       },
     },
   },
-  defaultProps: {
-    cards: [
-      {
-        title: 'Relatório de Arrecadação',
-        description: 'Consolidação mensal',
-        src: 'https://picsum.photos/seed/arrecadacao/200/200',
-        ctaText: 'Abrir',
-        ctaLink: '#',
-        content: 'Receita por tributo, evolução mês a mês e comparação com a meta do exercício.',
-      },
-      {
-        title: 'Dívida Ativa',
-        description: 'Estoque e recuperação',
-        src: 'https://picsum.photos/seed/divida/200/200',
-        ctaText: 'Abrir',
-        ctaLink: '#',
-        content: 'Estoque da dívida ativa, taxa de recuperação e parcelamentos em andamento.',
-      },
-      {
-        title: 'Despesas por Órgão',
-        description: 'Execução orçamentária',
-        src: 'https://picsum.photos/seed/despesas/200/200',
-        ctaText: 'Abrir',
-        ctaLink: '#',
-        content: 'Empenhado, liquidado e pago por secretaria, com saldo orçamentário disponível.',
-      },
-    ],
-  },
-  version: '1.0.0',
+  defaultProps: { columns: 3, gap: 'md' },
+  version: '2.0.0',
 } satisfies BlockManifest;

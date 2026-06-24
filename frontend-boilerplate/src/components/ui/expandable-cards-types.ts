@@ -1,17 +1,21 @@
 import type * as React from "react"
 
-/** Um card do `ExpandableCards`. */
-export type ExpandableCard = {
-  /** Título exibido no card e no modal expandido. */
+/**
+ * Um card do `ExpandableCards` (container de layout).
+ *
+ * Cada item representa UM sub-bloco do dashboard: no estado colapsado mostra o
+ * `title` (+ `subtitle` e um `preview` opcional); ao clicar, expande num modal
+ * com o `content` completo (o sub-bloco renderizado).
+ */
+export type ExpandableCardItem = {
+  /** Chave única do card (id do sub-bloco). */
+  id: string
+  /** Título exibido no card colapsado e no cabeçalho do modal. */
   title: string
-  /** Descrição curta exibida abaixo do título. */
-  description: string
-  /** URL da imagem (thumbnail e cabeçalho do modal). */
-  src: string
-  /** Rótulo do botão de ação. */
-  ctaText: string
-  /** Destino do botão de ação. */
-  ctaLink: string
-  /** Conteúdo expandido — função que retorna nós ou nós diretos. */
-  content: (() => React.ReactNode) | React.ReactNode
+  /** Subtítulo curto (ex.: nome do tipo do bloco). */
+  subtitle?: string
+  /** Preview compacto exibido no card colapsado (miniatura do conteúdo). */
+  preview?: React.ReactNode
+  /** Conteúdo completo renderizado no modal expandido. */
+  content: React.ReactNode
 }
