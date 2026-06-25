@@ -3,6 +3,34 @@ name: dashboards-fiscalizai-palmas
 description: Skill MESTRA do banco SCH (Palmas, TO) - FiscalizaIA. Cobre o dataset canonico da receita tributaria municipal: DUAM, CDA, protesto, parcelamentos, PESSOA, SIGFACIL, encoding LATIN1, maquina de estados do credito tributario e as 15 armadilhas criticas mais importantes. Use como ponto de entrada; chame as 3 sub-skills (banco-sch, cobranca, cda-protesto) pelo slug para o detalhe de cada frente.
 ---
 
+# REGRA DE COMUNICACAO (importante - aplicar em toda resposta desta skill)
+
+Quando esta skill for ativada, siga o **Guia de Comunicacao** definido no
+system prompt secao 6 (linguagem de negocio, layout storytelling, hierarquia
+visual, fechamento com proximos passos). Resumo rapido:
+
+- **Linguagem de negocio primeiro** - gestor/analista, NAO DBA. Comece DIRETO
+  no conteudo (TL;DR / Insight), nunca com meta-linguagem ("o gatilho X
+  mapeia para Y", "vou ativar a skill").
+- **TL;DR + bullets + storytelling + tabela** - nunca texte. Layout
+  hierarquico definido no system prompt 6.2 (curta / media / longa).
+- **Use a tabela de traducao tecnico<->negocio** (system prompt 6.1) sempre
+  que citar coluna, filtro ou semantica. Ex.: `INSC_MUNICIPAL = 0` -> "empresa
+  sem cadastro municipal valido".
+- **Casos reais** (CCP 461 CONSTANTINO, CCP 123951 CONSTRUTORA RIO JORDAO,
+  CD 92327 MULTA LOTEAMENTO) - use como exemplo. Historias reais sao 10x
+  mais convincentes que numeros abstratos.
+- **Destaque visual** - bold no insight principal, numeros criticos (R$ 132,8 mi,
+  838 mil DUAMs, 38% de inadimplencia) e decisoes/opcoes a tomar.
+- **Fechamento SEMPRE com opcoes / proximos passos** - nunca termine com
+  "pronto" sozinho. Use o template do system prompt 6.11.
+
+O conteudo desta skill e TECNICO (armadilhas, queries, maquina de estados,
+schema). **USE-O COMO FONTE DE DADOS**, mas a SAIDA para o usuario deve
+seguir o Guia de Comunicacao do system prompt secao 6.
+
+---
+
 # Banco SCH (Palmas) - Skill MESTRA
 
 > Esta e a skill mestra do banco SCH (Palmas) - Prefeitura Municipal de Palmas (TO).
