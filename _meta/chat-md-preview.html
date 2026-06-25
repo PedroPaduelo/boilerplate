@@ -1,0 +1,160 @@
+<!doctype html>
+<!--
+  Preview estático da renderização de markdown da bolha do assistant (T15).
+  Reproduz os estilos de [data-slot="chat-markdown"] do src/app/index.css
+  com os mesmos tokens do tema (azul shadcn) p/ documentar o resultado visual.
+  Abra no browser; use o botão p/ alternar light/dark.
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat markdown — preview (T15)</title>
+    <style>
+      :root {
+        --radius: 0.625rem;
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.141 0.005 285.823);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.5 0.134 242.749);
+        --muted: oklch(0.967 0.001 286.375);
+        --border: oklch(0.92 0.004 286.32);
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .dark {
+        --background: oklch(0.141 0.005 285.823);
+        --foreground: oklch(0.985 0 0);
+        --card: oklch(0.21 0.006 285.885);
+        --primary: oklch(0.443 0.11 240.79);
+        --muted: oklch(0.274 0.006 286.033);
+        --border: oklch(1 0 0 / 10%);
+      }
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: system-ui, sans-serif;
+      }
+      .toolbar {
+        margin-bottom: 1.5rem;
+      }
+      .bubble {
+        max-width: 760px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        border-radius: 1rem;
+        border-top-left-radius: 0.25rem;
+        padding: 1rem 1rem 0.75rem;
+      }
+
+      /* === estilos copiados de index.css [data-slot="chat-markdown"] === */
+      [data-slot="chat-markdown"] {
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--foreground);
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+      [data-slot="chat-markdown"] > *:first-child { margin-top: 0; }
+      [data-slot="chat-markdown"] > *:last-child { margin-bottom: 0; }
+      [data-slot="chat-markdown"] h1,
+      [data-slot="chat-markdown"] h2,
+      [data-slot="chat-markdown"] h3,
+      [data-slot="chat-markdown"] h4 {
+        font-weight: 600; line-height: 1.3; margin-top: 1.25em; margin-bottom: 0.5em;
+      }
+      [data-slot="chat-markdown"] h1 { font-size: 1.25rem; }
+      [data-slot="chat-markdown"] h2 {
+        font-size: 1.1rem; padding-bottom: 0.25em; border-bottom: 1px solid var(--border);
+      }
+      [data-slot="chat-markdown"] h3 { font-size: 1rem; color: var(--primary); }
+      [data-slot="chat-markdown"] h4 { font-size: 0.9rem; }
+      [data-slot="chat-markdown"] p { margin: 0.5em 0; }
+      [data-slot="chat-markdown"] ul,
+      [data-slot="chat-markdown"] ol { margin: 0.5em 0; padding-left: 1.5em; }
+      [data-slot="chat-markdown"] li { margin: 0.25em 0; }
+      [data-slot="chat-markdown"] ul { list-style: disc; }
+      [data-slot="chat-markdown"] ol { list-style: decimal; }
+      [data-slot="chat-markdown"] strong { font-weight: 600; color: var(--foreground); }
+      [data-slot="chat-markdown"] blockquote {
+        margin: 0.75em 0; padding: 0.5em 1em; border-left: 3px solid var(--primary);
+        background: color-mix(in oklch, var(--primary) 8%, transparent);
+        border-radius: 0 0.5rem 0.5rem 0; color: var(--foreground);
+      }
+      [data-slot="chat-markdown"] blockquote p { margin: 0.25em 0; }
+      [data-slot="chat-markdown"] table {
+        width: 100%; border-collapse: collapse; margin: 0.75em 0; font-size: 0.8rem;
+        display: block; max-width: 100%; overflow-x: auto;
+      }
+      [data-slot="chat-markdown"] thead { background: var(--muted); }
+      [data-slot="chat-markdown"] th {
+        text-align: left; font-weight: 600; padding: 0.5em 0.75em;
+        border: 1px solid var(--border); white-space: nowrap;
+      }
+      [data-slot="chat-markdown"] td {
+        padding: 0.5em 0.75em; border: 1px solid var(--border); vertical-align: top;
+      }
+      [data-slot="chat-markdown"] tbody tr:nth-child(even) {
+        background: color-mix(in oklch, var(--muted) 40%, transparent);
+      }
+      [data-slot="chat-markdown"] :not(pre) > code {
+        background: var(--muted); padding: 0.125em 0.375em; border-radius: 0.25rem;
+        font-size: 0.8125em; font-family: var(--font-mono);
+      }
+      [data-slot="chat-markdown"] pre {
+        margin: 0.75em 0; padding: 0.875em 1em; background: var(--card);
+        border: 1px solid var(--border); border-radius: 0.5rem; overflow-x: auto;
+        font-size: 0.8125rem; line-height: 1.5;
+      }
+      [data-slot="chat-markdown"] pre code {
+        background: transparent; padding: 0; font-size: inherit; font-family: var(--font-mono);
+      }
+      [data-slot="chat-markdown"] hr { margin: 1em 0; border: none; border-top: 1px solid var(--border); }
+      [data-slot="chat-markdown"] a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button onclick="document.body.classList.toggle('dark')">Alternar light/dark</button>
+    </div>
+
+    <div class="bubble">
+      <div data-slot="chat-markdown">
+        <blockquote><p><strong>TL;DR:</strong> A receita cresceu 18% no Q3, puxada pela região Sudeste. Recomendo focar aquisição em SP.</p></blockquote>
+
+        <h2>Análise de receita por região</h2>
+        <p>Aqui está o detalhamento com o <strong>impacto de negócio</strong> de cada região no trimestre:</p>
+
+        <table>
+          <thead>
+            <tr><th>Região</th><th>Receita (R$)</th><th>Var. %</th><th>Impacto de negócio</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Sudeste</td><td>1.240.000</td><td>+22%</td><td>Principal motor de crescimento</td></tr>
+            <tr><td>Sul</td><td>680.000</td><td>+9%</td><td>Estável, margem alta</td></tr>
+            <tr><td>Nordeste</td><td>410.000</td><td>+14%</td><td>Maior potencial de expansão</td></tr>
+            <tr><td>Centro-Oeste</td><td>205.000</td><td>-3%</td><td>Atenção: queda no agro</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Próximos passos</h3>
+        <ul>
+          <li>Aumentar verba de mídia no <strong>Sudeste</strong>;</li>
+          <li>Investigar a queda do <code>Centro-Oeste</code>;</li>
+          <li>Testar campanha de retenção no Sul.</li>
+        </ul>
+
+        <h4>Query usada</h4>
+        <pre><code>SELECT regiao, SUM(valor) AS receita
+FROM vendas
+WHERE quarter = 'Q3'
+GROUP BY regiao
+ORDER BY receita DESC;</code></pre>
+
+        <hr />
+        <p>Quer que eu transforme isso num <a href="#">gráfico de barras</a>?</p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -205,3 +205,179 @@
     scrollbar-width: thin;
   }
 }
+
+/* ==========================================================================
+   Markdown do chat de IA
+   Tailwind v4 sem o plugin @tailwindcss/typography — então estilizamos a
+   markdown renderizada (data-slot="chat-markdown") na unha, usando os tokens
+   do tema (--primary, --muted, --border, --card, etc) p/ funcionar em light/dark.
+   ========================================================================== */
+[data-slot="chat-markdown"] {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--foreground);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Primeiro/último filho sem margem extra (alinha com o padding da bolha) */
+[data-slot="chat-markdown"] > *:first-child {
+  margin-top: 0;
+}
+[data-slot="chat-markdown"] > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings com hierarquia clara */
+[data-slot="chat-markdown"] h1,
+[data-slot="chat-markdown"] h2,
+[data-slot="chat-markdown"] h3,
+[data-slot="chat-markdown"] h4,
+[data-slot="chat-markdown"] h5,
+[data-slot="chat-markdown"] h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+[data-slot="chat-markdown"] h1 {
+  font-size: 1.25rem;
+}
+[data-slot="chat-markdown"] h2 {
+  font-size: 1.1rem;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--border);
+}
+[data-slot="chat-markdown"] h3 {
+  font-size: 1rem;
+  color: var(--primary);
+}
+[data-slot="chat-markdown"] h4,
+[data-slot="chat-markdown"] h5,
+[data-slot="chat-markdown"] h6 {
+  font-size: 0.9rem;
+}
+
+/* Parágrafos */
+[data-slot="chat-markdown"] p {
+  margin: 0.5em 0;
+}
+
+/* Listas */
+[data-slot="chat-markdown"] ul,
+[data-slot="chat-markdown"] ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+[data-slot="chat-markdown"] li {
+  margin: 0.25em 0;
+}
+[data-slot="chat-markdown"] ul {
+  list-style: disc;
+}
+[data-slot="chat-markdown"] ol {
+  list-style: decimal;
+}
+[data-slot="chat-markdown"] li > ul,
+[data-slot="chat-markdown"] li > ol {
+  margin: 0.25em 0;
+}
+
+/* Bold com destaque */
+[data-slot="chat-markdown"] strong {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Blockquote — destaque pro TL;DR e dicas */
+[data-slot="chat-markdown"] blockquote {
+  margin: 0.75em 0;
+  padding: 0.5em 1em;
+  border-left: 3px solid var(--primary);
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--foreground);
+}
+[data-slot="chat-markdown"] blockquote p {
+  margin: 0.25em 0;
+}
+
+/* Tabelas — header destacado, zebra, scroll horizontal */
+[data-slot="chat-markdown"] table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  font-size: 0.8rem;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+[data-slot="chat-markdown"] thead {
+  background: var(--muted);
+}
+[data-slot="chat-markdown"] th {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.5em 0.75em;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+[data-slot="chat-markdown"] td {
+  padding: 0.5em 0.75em;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+[data-slot="chat-markdown"] tbody tr:nth-child(even) {
+  background: color-mix(in oklch, var(--muted) 40%, transparent);
+}
+
+/* Código inline */
+[data-slot="chat-markdown"] :not(pre) > code {
+  background: var(--muted);
+  padding: 0.125em 0.375em;
+  border-radius: 0.25rem;
+  font-size: 0.8125em;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+/* Bloco de código (SQL e afins) */
+[data-slot="chat-markdown"] pre {
+  margin: 0.75em 0;
+  padding: 0.875em 1em;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+[data-slot="chat-markdown"] pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+/* Separador horizontal */
+[data-slot="chat-markdown"] hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* Links */
+[data-slot="chat-markdown"] a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+[data-slot="chat-markdown"] a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Imagens não estouram o container */
+[data-slot="chat-markdown"] img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}

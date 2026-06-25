@@ -19,7 +19,7 @@ function MarkdownContent({ content }: { content: string }) {
   return (
     <div
       data-slot="chat-markdown"
-      className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_pre]:my-2 [&_table]:text-xs [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_strong]:font-semibold"
+      className="min-w-0"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -48,13 +48,19 @@ function ChatMessageBubbleImpl({ message }: ChatMessageBubbleProps) {
         {isUser ? <UserIcon className="size-4" /> : <Bot className="size-4" />}
       </div>
 
-      <div className={cn('flex max-w-[80%] flex-col', isUser ? 'items-end' : 'items-start')}>
+      <div
+        className={cn(
+          'flex min-w-0 flex-col',
+          isUser ? 'max-w-[80%] items-end' : 'max-w-[92%] flex-1 items-start',
+        )}
+      >
         <div
           className={cn(
-            'rounded-2xl px-4 py-2 text-sm',
+            'min-w-0 max-w-full rounded-2xl text-sm',
             isUser
-              ? 'rounded-tr-sm bg-primary text-primary-foreground'
-              : 'rounded-tl-sm bg-muted text-foreground',
+              ? 'rounded-tr-sm bg-primary px-4 py-2 text-primary-foreground'
+              : // Assistant: área mais larga e arejada (card) p/ markdown rica
+                'rounded-tl-sm border border-border bg-card px-4 py-3 text-foreground',
             // Usuário não precisa de markdown (texto puro)
             isUser && 'whitespace-pre-wrap',
           )}
