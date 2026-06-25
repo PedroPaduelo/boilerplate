@@ -1,0 +1,9 @@
+event: message_start
+data: {"messageId":"asg_1782391374513_csayk7"}
+
+event: text_delta
+data: {"messageId":"asg_1782391374513_csayk7","delta":"`dashboards-fiscalizai-banco-sch`, `dashboards-fiscalizai-cda-protesto`, `dashboards-fiscalizai-cobranca`, `dashboards-fiscalizai-palmas`"}
+
+event: usage
+data: {"inputTokens":10060,"inputTokenDetails":{"noCacheTokens":90,"cacheReadTokens":9970,"cacheWriteTokens":0},"outputTokens":48,"outputTokenDetails":{},"totalTokens":10108,"raw":{"input_tokens":90,"output_tokens":48,"cache_creation_input_tokens":0,"cache_read_input_tokens":9970,"service_tier":"standard"},"cachedInputTokens":9970}
+

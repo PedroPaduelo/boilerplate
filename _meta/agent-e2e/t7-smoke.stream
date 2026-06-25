@@ -1,0 +1,9 @@
+event: message_start
+data: {"messageId":"asg_1782346675629_lshi74"}
+
+event: text_delta
+data: {"messageId":"asg_1782346675629_lshi74","delta":"Claro! Estas são as skills que posso ativar via `activate_skill(slug)`:\n\n**Skill mestra (ponto de entrada):**\n- **`construtor-dashboards`** — Guia ponta a ponta do servidor MCP para criar conexões, charts e dashboards. Cobre modelo mental, fluxo em 10 passos e princípios inegociaveis.\n\n**Sub-skills especializadas (ativar sob demanda):**\n- **`dashboards-catalogo`** — Referência dos 43 tipos de bloco do catálogo: quando usar, shape do dataContract e props principais. Ideal na hora de escolher o bloco certo.\n- **`dashboards-query`** — Geração de SQL: convenção de colunas por shape, CAST, case-sensitivity do Postgres, parâmetros posicionais e agregação. Use na etapa de montar queries.\n- **`dashboards-layout`** — Composição de layout: hierarquia dashboard → row → bloco → container, grade de 12 colunas, containers aninhados via `block.blocks`.\n- **`dashboards-mcp-tools`** — Referência das 15 tools MCP: input, output, pré-requisitos e ordem no fluxo.\n- **`dashboards-erros`** — Validação e tratamento de erros: códigos, sub-códigos `detail` e armadilhas comuns (bigint→string, visibility UPPERCASE, case-sensitivity, etc.).\n\nDica: para um pedido novo de dashboard/gráfico/relatório, o fluxo recomendado é começar pela mestra `construtor-dashboards` e ir puxando as sub-skills conforme a etapa (escolha de bloco → SQL → layout → tools → erros). Quer que eu ative alguma?"}
+
+event: usage
+data: {"inputTokens":9538,"inputTokenDetails":{"noCacheTokens":9424,"cacheReadTokens":114,"cacheWriteTokens":0},"outputTokens":344,"outputTokenDetails":{},"totalTokens":9882,"raw":{"input_tokens":9424,"output_tokens":344,"cache_creation_input_tokens":0,"cache_read_input_tokens":114,"service_tier":"standard"},"cachedInputTokens":114}
+

@@ -112,9 +112,29 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_BASE_URL: z.string().url().optional().or(z.literal('')),
   AI_MODEL: z.string().default('claude-sonnet-4-20250514'),
+
+  // WhatsApp via Evolution API (opcional — sem as 3, o endpoint
+  // /webhooks/evolution responde 503 e a integração fica desabilitada).
+  EVOLUTION_API_URL: z.string().url().optional(),
+  EVOLUTION_INSTANCE: z.string().optional(),
+  EVOLUTION_APIKEY: z.string().optional(),
+  // Secret opcional do webhook (header `x-channel-secret`). Se setado, a rota
+  // compara o header com este valor antes de processar. Vazio = sem gate.
+  CHANNELS_WEBHOOK_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/**
+ * As 3 envs obrigatórias da Evolution API estão setadas?
+ *
+ * Centraliza o gate de habilitação: a rota `/webhooks/evolution` usa isto pra
+ * devolver 503 quando a integração não está configurada (fail-closed) e o
+ * `evolutionClient` evita requests que virariam 404/401.
+ */
+export function isEvolutionEnabled(): boolean {
+  return Boolean(env.EVOLUTION_API_URL && env.EVOLUTION_INSTANCE && env.EVOLUTION_APIKEY);
+}
 
 const _env = envSchema.safeParse(process.env);
 

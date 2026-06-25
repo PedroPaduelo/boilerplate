@@ -1,0 +1,17 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "palmas",
+  "data": {
+    "key": {
+      "remoteJid": "5562999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0SAMPLE0001ABCD"
+    },
+    "pushName": "Maria Teste",
+    "message": {
+      "conversation": "Ola! Quero saber o horario de funcionamento da prefeitura."
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1782000000
+  }
+}

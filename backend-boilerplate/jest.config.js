@@ -36,6 +36,12 @@ module.exports = {
     ],
   },
   moduleNameMapper: {
+      // Strip `.js` de imports relativos (estilo node16/ESM exigido por
+      // tsc/tsup no build) para o ts-jest (commonjs) resolver o `.ts` fonte.
+      // Sem isto, qualquer teste que carregue módulos via autoload (que importa
+      // `./routes/chat.js` etc.) quebra com "Cannot find module". Seguro: não
+      // existe arquivo `.js` fonte sendo importado relativamente neste projeto.
+      '^(\\.{1,2}/.*)\\.js$': '$1',
       '^@/(.*)$': '<rootDir>/src/$1',
   },
   collectCoverageFrom: ['src/**/*.ts', '!src/**/@types/**'],

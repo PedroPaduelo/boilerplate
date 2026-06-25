@@ -1,0 +1,3 @@
+event: error
+data: {"message":"Failed after 3 attempts. Last error: Service Unavailable"}
+

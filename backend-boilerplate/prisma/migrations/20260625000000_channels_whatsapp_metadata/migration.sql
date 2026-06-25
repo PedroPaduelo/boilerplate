@@ -1,0 +1,27 @@
+-- =============================================================================
+-- Canal WhatsApp via Evolution API (T1-T4 do canal): adiciona `metadata` JSONB
+-- à tabela `conversations`.
+--
+-- O `metadata` guarda o estado do canal pra cada conversa inbound:
+--   { source: 'whatsapp', phoneNumber, createdAt,
+--     lastInboundMessageId, lastAssistantMessageId, lastReplyAt, pushName }
+--
+-- Conversas criadas pelo app web ficam com `metadata = NULL` (default). A
+-- listagem ADMIN por `source='whatsapp'` (T4) usa este campo como filtro
+-- (Prisma JSON path filter sobre `metadata->>'source'`).
+--
+-- Não criamos tabela `ChannelLink` separada (decisão do briefing): mantém
+-- o MVP enxuto e evita JOIN. O `id` da Conversation no canal WhatsApp é
+-- determinístico (`${epochMs}-${phoneNumber}`), o que dispensa índice
+-- composto.
+--
+-- O índice GIN em `metadata` (jsonb_path_ops) é opcional — sem ele,
+-- queries com `metadata @> '{"source": "whatsapp"}'` fazem seq scan. Pra
+-- o MVP com centenas de conversas, sem índice é OK; em escala (>10k
+-- conversas), adicionar `CREATE INDEX ... USING GIN (metadata
+-- jsonb_path_ops)`. Não adicionamos agora pra manter a migration
+-- minimal.
+-- =============================================================================
+
+-- AlterTable
+ALTER TABLE "conversations" ADD COLUMN "metadata" JSONB;

@@ -1,0 +1,18 @@
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_019efe96d1b97bf38f3f0a91","args":{"draftLayout":{"filters":[],"rows":[]},"title":"Dashboard em Construção"},"phase":"call"}
+
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_019efe96d1b97bf38f3f0a91","output":{"id":"cmqtfnfp20005ny0poq0fqh7w","title":"Dashboard em Construção","ownerId":"cmqo7c8y60000ny2fg7abq34w","departmentId":null,"visibility":"PRIVATE","status":"DRAFT","draftLayout":{"rows":[],"filters":[]},"publishedLayout":null,"publishedAt":null,"createdAt":"2026-06-25T11:42:37.622Z","updatedAt":"2026-06-25T11:42:37.622Z"},"phase":"result"}
+
+event: usage
+data: {"inputTokens":9568,"inputTokenDetails":{"noCacheTokens":9440,"cacheReadTokens":128,"cacheWriteTokens":0},"outputTokens":57,"outputTokenDetails":{},"totalTokens":9625,"raw":{"input_tokens":9440,"output_tokens":57,"cache_creation_input_tokens":0,"cache_read_input_tokens":128,"service_tier":"standard"},"cachedInputTokens":128}
+
+event: message_start
+data: {"messageId":"asg_1782387758880_o7c3in"}
+
+event: text_delta
+data: {"messageId":"asg_1782387758880_o7c3in","delta":"Dashboard criado em rascunho (DRAFT):\n\n- **id:** `cmqtfnfp20005ny0poq0fqh7w`\n- **título:** Dashboard em Construção\n- **visibilidade:** PRIVATE\n- **status:** DRAFT (sem publicar)\n\nQuando quiser, posso inserir charts nele com `add_chart_to_dashboard` ou ajustar o layout com `update_dashboard`."}
+
+event: usage
+data: {"inputTokens":9761,"inputTokenDetails":{"noCacheTokens":9633,"cacheReadTokens":128,"cacheWriteTokens":0},"outputTokens":83,"outputTokenDetails":{},"totalTokens":9844,"raw":{"input_tokens":9633,"output_tokens":83,"cache_creation_input_tokens":0,"cache_read_input_tokens":128,"service_tier":"standard"},"cachedInputTokens":128}
+

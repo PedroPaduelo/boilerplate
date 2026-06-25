@@ -635,7 +635,7 @@
       "type": "collapsible_block",
       "kind": "layout",
       "name": "Seção Colapsável",
-      "description": "Seção com cabeçalho clicável que expande/recolhe o conteúdo.",
+      "description": "Container de layout colapsável: um cabeçalho clicável que expande/recolhe o corpo. Renderiza sub-blocos (gráficos/cards/tabelas) num grid de 12 colunas dentro do corpo. Use `block.blocks` para os filhos (cada filho usa `span` 1..12). Props: title, defaultOpen.",
       "source": "vitrine:collapsible-section",
       "propsSchema": {
         "type": "object",
@@ -645,28 +645,27 @@
         ],
         "properties": {
           "title": {
-            "type": "string"
-          },
-          "body": {
-            "type": "string"
+            "type": "string",
+            "description": "Texto do cabeçalho clicável da seção colapsável."
           },
           "defaultOpen": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": true,
+            "description": "Estado inicial: `true` começa expandido (default), `false` começa recolhido."
           }
         }
       },
       "defaultProps": {
         "title": "Detalhes da apuração",
-        "body": "A consulta considera os lançamentos com vencimento dentro do período selecionado.",
         "defaultOpen": true
       },
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "type": "dashboard_panel",
       "kind": "layout",
       "name": "Painel de Dashboard",
-      "description": "Contêiner de painel com título, descrição e corpo — agrupa conteúdo de um relatório.",
+      "description": "Container de painel: agrupa sub-blocos (KPIs, gráficos, tabelas) num card com header (título + descrição) e corpo em grid de 12 colunas. Use `block.blocks` para os filhos; cada filho usa `span` (largura 1..12). Props: title, description, variant.",
       "source": "vitrine:dashboard-panel",
       "propsSchema": {
         "type": "object",
@@ -676,30 +675,29 @@
         ],
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Título do painel (header)."
           },
           "description": {
-            "type": "string"
-          },
-          "body": {
-            "type": "string"
+            "type": "string",
+            "description": "Descrição / subtítulo curto, abaixo do título."
           },
           "variant": {
             "type": "string",
             "enum": [
               "card",
               "framed"
-            ]
+            ],
+            "description": "Estilo visual do painel. 'card' (default): card com padding e header título/descrição. 'framed': header com borda inferior e corpo flush (denso)."
           }
         }
       },
       "defaultProps": {
         "title": "Arrecadação consolidada",
         "description": "Indicadores do mês corrente",
-        "body": "A receita acumulada superou a meta em 8% no período, puxada pelo ISS e pelo IPTU.",
         "variant": "card"
       },
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "type": "data_table",
@@ -900,73 +898,36 @@
       "type": "expandable_cards",
       "kind": "layout",
       "name": "Cards Expansíveis",
-      "description": "Lista de cards que expandem para um modal com detalhes ao clicar.",
-      "source": "vitrine:expandable-cards",
+      "description": "Container de layout: cada sub-bloco vira um card na grade e EXPANDE para um modal (com o sub-bloco renderizado) ao clicar. Use `block.blocks` para os filhos; o `title` de cada filho rotula o card. Props: columns (1..4), gap.",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "cards": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "title"
-              ],
-              "properties": {
-                "title": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                },
-                "src": {
-                  "type": "string"
-                },
-                "ctaText": {
-                  "type": "string"
-                },
-                "ctaLink": {
-                  "type": "string"
-                },
-                "content": {
-                  "type": "string"
-                }
-              }
-            }
+          "columns": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4,
+            "default": 3,
+            "description": "Número de colunas da grade de cards colapsados (1..4). Default: 3."
+          },
+          "gap": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ],
+            "default": "md",
+            "description": "Espaçamento entre os cards: sm (compacto), md (default), lg (espaçado)."
           }
         }
       },
       "defaultProps": {
-        "cards": [
-          {
-            "title": "Relatório de Arrecadação",
-            "description": "Consolidação mensal",
-            "src": "https://picsum.photos/seed/arrecadacao/200/200",
-            "ctaText": "Abrir",
-            "ctaLink": "#",
-            "content": "Receita por tributo, evolução mês a mês e comparação com a meta do exercício."
-          },
-          {
-            "title": "Dívida Ativa",
-            "description": "Estoque e recuperação",
-            "src": "https://picsum.photos/seed/divida/200/200",
-            "ctaText": "Abrir",
-            "ctaLink": "#",
-            "content": "Estoque da dívida ativa, taxa de recuperação e parcelamentos em andamento."
-          },
-          {
-            "title": "Despesas por Órgão",
-            "description": "Execução orçamentária",
-            "src": "https://picsum.photos/seed/despesas/200/200",
-            "ctaText": "Abrir",
-            "ctaLink": "#",
-            "content": "Empenhado, liquidado e pago por secretaria, com saldo orçamentário disponível."
-          }
-        ]
+        "columns": 3,
+        "gap": "md"
       },
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "type": "flip_words",
@@ -2007,7 +1968,7 @@
       "type": "resizable_panels",
       "kind": "layout",
       "name": "Painéis Redimensionáveis",
-      "description": "Dois painéis lado a lado com divisória arrastável.",
+      "description": "Container de layout em painéis arrastáveis (split). Cada sub-bloco (`block.blocks`) vira um painel; uma divisória entre eles permite redimensionar. Suporta 2+ painéis. Props: direction (horizontal|vertical), defaultSizes (% inicial de cada painel).",
       "source": "vitrine:resizable",
       "propsSchema": {
         "type": "object",
@@ -2018,22 +1979,25 @@
             "enum": [
               "horizontal",
               "vertical"
-            ]
+            ],
+            "default": "horizontal",
+            "description": "Direção do split: `horizontal` = painéis lado a lado (divisória vertical, arrasta na largura); `vertical` = painéis empilhados (divisória horizontal, arrasta na altura). Default: horizontal."
           },
-          "leftLabel": {
-            "type": "string"
-          },
-          "rightLabel": {
-            "type": "string"
+          "defaultSizes": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "description": "Tamanho INICIAL de cada painel, em porcentagem (ex.: [30, 70]). A ordem casa com a ordem de `block.blocks`. Idealmente soma 100. Se ausente (ou tamanho diferente do número de filhos), os painéis são divididos igualmente."
           }
         }
       },
       "defaultProps": {
-        "direction": "horizontal",
-        "leftLabel": "Filtros",
-        "rightLabel": "Resultado"
+        "direction": "horizontal"
       },
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "type": "rich_text",
@@ -2182,20 +2146,24 @@
       "type": "sheet",
       "kind": "layout",
       "name": "Sheet (painel lateral)",
-      "description": "Botão que abre um painel deslizante lateral com título e descrição.",
+      "description": "Container de layout: um BOTÃO que abre um PAINEL LATERAL deslizante. Os sub-blocos (gráficos/detalhe) ficam DENTRO do painel, empilhados — use `block.blocks` para os filhos. Ideal para detalhamento sob demanda sem ocupar espaço na tela. Props: triggerLabel, title, description, side.",
       "source": "vitrine:sheet",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "triggerLabel": {
-            "type": "string"
+            "type": "string",
+            "default": "Abrir painel",
+            "description": "Texto do botão que abre o painel lateral."
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Título exibido no topo do painel."
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Texto descritivo curto exibido sob o título do painel."
           },
           "side": {
             "type": "string",
@@ -2204,7 +2172,9 @@
               "right",
               "bottom",
               "left"
-            ]
+            ],
+            "default": "right",
+            "description": "Lado de onde o painel desliza: right (default), left, top ou bottom."
           }
         }
       },
@@ -2214,7 +2184,7 @@
         "description": "Informações complementares sobre a métrica selecionada.",
         "side": "right"
       },
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "type": "signal_card",

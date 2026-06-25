@@ -390,6 +390,38 @@ async function main() {
     `  ${existingDash ? '↻ atualizado' : '✓ criado'} Dashboard "${exampleDashboard.title}" (status=${exampleDashboard.status}, id=${exampleDashboard.id})`
   );
 
+  // -------------------------------------------------------------------------
+  // WhatsApp System user — "dono" das conversas inbound do canal WhatsApp.
+  //
+  // role=ADMIN: precisa de permissões plenas pra rodar `runAgent` (que
+  // internamente checa artefatos:view). Não é PRA ser uma conta humana
+  // que loga no app — é uma identidade técnica que representa "a
+  // plataforma" nas conversas do canal.
+  //
+  // isActive=false: dupla camada pra garantir que NINGUÉM consegue logar
+  // com essas credenciais mesmo conhecendo a senha (que é um hash
+  // bcrypt de string aleatória — ninguém tem a senha em texto puro).
+  // A `auth` middleware do FE rejeita login de inativos.
+  // -------------------------------------------------------------------------
+  console.log('');
+  console.log('📱 WhatsApp system user:');
+  const randomPassword = await bcryptHash(
+    `wa-system-${Math.random().toString(36).slice(2)}-${Date.now()}`,
+    10,
+  );
+  const waUser = await prisma.user.upsert({
+    where: { email: 'whatsapp-system@platform.internal' },
+    update: {}, // Não alteramos role/isActive — é fixo
+    create: {
+      email: 'whatsapp-system@platform.internal',
+      name: 'WhatsApp System',
+      password: randomPassword,
+      role: 'ADMIN',
+      isActive: false,
+    },
+  });
+  console.log(`  ✓ WhatsApp system user (id=${waUser.id}, role=${waUser.role}, isActive=${waUser.isActive})`);
+
   console.log('');
   console.log('🎉 Seed concluído.');
   console.log('');

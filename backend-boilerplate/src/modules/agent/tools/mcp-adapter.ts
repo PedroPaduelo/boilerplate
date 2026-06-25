@@ -22,10 +22,17 @@ import type { ActorContext } from '@/lib/rbac';
  * como Zod OU como JSON Schema cru — passamos o JSON Schema direto via `schema`.
  */
 function jsonSchemaToZodRaw(_inputSchema: Record<string, unknown>): z.ZodTypeAny {
-  // O AI SDK v6 aceita que passemos o JSON Schema diretamente no `schema` do tool().
-  // Mas como tool() espera Zod, usamos z.any() e validamos no handler.
-  // O handler do MCP já valida com Zod internamente (cada tool tem seu schemaArgs).
-  return z.any().optional();
+  // O handler do MCP valida os args com Zod internamente (cada tool tem seu
+  // schemaArgs), então aqui só precisamos de um schema PERMISSIVO que aceite
+  // qualquer payload do LLM. NÃO use `z.any()`: ele serializa para
+  // `{"anyOf":[{"not":{}},{}]}` (SEM `type`), e a API Anthropic REJEITA tools
+  // cujo `input_schema` não tem `type: "object"` — erro
+  // `tools.0.custom.input_schema.type: Field required` (quebra o chat inteiro).
+  // `z.object({}).passthrough()` serializa para
+  // `{"type":"object","properties":{},"additionalProperties":true}` —
+  // satisfaz o requisito da Anthropic E mantém os args intactos (passthrough)
+  // para o handler validar.
+  return z.object({}).passthrough();
 }
 
 /**

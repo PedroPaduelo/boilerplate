@@ -1,0 +1,33 @@
+event: message_start
+data: {"messageId":"asg_1782388114904_zbj7dd"}
+
+event: text_delta
+data: {"messageId":"asg_1782388114904_zbj7dd","delta":"Vou criar o dashboard conforme solicitado."}
+
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_tLCHwnZMi6Rzi0ucsNoINsuW","args":{},"phase":"call"}
+
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_tLCHwnZMi6Rzi0ucsNoINsuW","output":{"error":"[\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"string\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"title\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"object\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"draftLayout\"\n    ],\n    \"message\": \"Required\"\n  }\n]","code":"internal_error"},"phase":"result"}
+
+event: usage
+data: {"inputTokens":9575,"inputTokenDetails":{"noCacheTokens":9428,"cacheReadTokens":147,"cacheWriteTokens":0},"outputTokens":28,"outputTokenDetails":{},"totalTokens":9603,"raw":{"input_tokens":9428,"output_tokens":28,"cache_creation_input_tokens":0,"cache_read_input_tokens":147,"service_tier":"standard"},"cachedInputTokens":147}
+
+event: text_delta
+data: {"messageId":"asg_1782388114904_zbj7dd","delta":"Preciso dos campos obrigatórios. Vou criar agora:"}
+
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_019efe9c49ae7c729d72d848","args":{"draftLayout":{"filters":[],"rows":[]},"title":"Meu Dashboard"},"phase":"call"}
+
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_019efe9c49ae7c729d72d848","output":{"id":"cmqtfv4780005ny0pmcgku8p1","title":"Meu Dashboard","ownerId":"cmqo7c8y60000ny2fg7abq34w","departmentId":null,"visibility":"PRIVATE","status":"DRAFT","draftLayout":{"rows":[],"filters":[]},"publishedLayout":null,"publishedAt":null,"createdAt":"2026-06-25T11:48:35.972Z","updatedAt":"2026-06-25T11:48:35.972Z"},"phase":"result"}
+
+event: usage
+data: {"inputTokens":9746,"inputTokenDetails":{"noCacheTokens":9618,"cacheReadTokens":128,"cacheWriteTokens":0},"outputTokens":67,"outputTokenDetails":{},"totalTokens":9813,"raw":{"input_tokens":9618,"output_tokens":67,"cache_creation_input_tokens":0,"cache_read_input_tokens":128,"service_tier":"standard"},"cachedInputTokens":128}
+
+event: text_delta
+data: {"messageId":"asg_1782388114904_zbj7dd","delta":"Dashboard criado com sucesso.\n\n**dashboardId:** `cmqtfv4780005ny0pmcgku8p1`\n\n**Resumo:**\n- Título: \"Meu Dashboard\"\n- Status: DRAFT (rascunho, ainda não publicado)\n- Visibilidade: PRIVATE\n- Layout: vazio (sem linhas e sem filtros)\n\nQuando quiser, posso adicionar gráficos a esse dashboard ou publicá-lo."}
+
+event: usage
+data: {"inputTokens":9948,"inputTokenDetails":{"noCacheTokens":9820,"cacheReadTokens":128,"cacheWriteTokens":0},"outputTokens":85,"outputTokenDetails":{},"totalTokens":10033,"raw":{"input_tokens":9820,"output_tokens":85,"cache_creation_input_tokens":0,"cache_read_input_tokens":128,"service_tier":"standard"},"cachedInputTokens":128}
+

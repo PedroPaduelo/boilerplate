@@ -1,0 +1,18 @@
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_019efe982c607331bdd376f2","args":{"draftLayout":{"filters":[],"rows":[]},"title":"Run2 T9"},"phase":"call"}
+
+event: tool_step
+data: {"toolName":"create_dashboard","toolCallId":"call_019efe982c607331bdd376f2","output":{"id":"cmqtfpc57000jny0pikiiegi5","title":"Run2 T9","ownerId":"cmqo7c8y60000ny2fg7abq34w","departmentId":null,"visibility":"PRIVATE","status":"DRAFT","draftLayout":{"rows":[],"filters":[]},"publishedLayout":null,"publishedAt":null,"createdAt":"2026-06-25T11:44:06.332Z","updatedAt":"2026-06-25T11:44:06.332Z"},"phase":"result"}
+
+event: usage
+data: {"inputTokens":9578,"inputTokenDetails":{"noCacheTokens":9450,"cacheReadTokens":128,"cacheWriteTokens":0},"outputTokens":57,"outputTokenDetails":{},"totalTokens":9635,"raw":{"input_tokens":9450,"output_tokens":57,"cache_creation_input_tokens":0,"cache_read_input_tokens":128,"service_tier":"standard"},"cachedInputTokens":128}
+
+event: message_start
+data: {"messageId":"asg_1782387847594_w2di7o"}
+
+event: text_delta
+data: {"messageId":"asg_1782387847594_w2di7o","delta":"Dashboard criado.\n\n- **ID:** `cmqtfpc57000jny0pikiiegi5`\n- **Título:** Run2 T9\n- **Status:** DRAFT (vazio, conforme solicitado)"}
+
+event: usage
+data: {"inputTokens":9770,"inputTokenDetails":{"noCacheTokens":9642,"cacheReadTokens":128,"cacheWriteTokens":0},"outputTokens":46,"outputTokenDetails":{},"totalTokens":9816,"raw":{"input_tokens":9642,"output_tokens":46,"cache_creation_input_tokens":0,"cache_read_input_tokens":128,"service_tier":"standard"},"cachedInputTokens":128}
+

@@ -19,7 +19,29 @@ import {
 export const conversationsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/agent/conversations', async (request, reply) => {
     const userId = await request.getCurrentUserId();
-    const conversations = await listConversations(userId);
+    const role = await request.getCurrentUserRole();
+
+    const query = (request.query ?? {}) as { source?: string; scope?: string };
+
+    // Valida `source` (só aceita 'whatsapp' | 'app'; outros viram undefined).
+    const source =
+      query.source === 'whatsapp' || query.source === 'app' ? query.source : undefined;
+
+    // `scope=all` é restrito a ADMIN. Sem ADMIN → 403 (não cai silenciosamente
+    // pro escopo do usuário, pra evitar confusão de "por que não vejo tudo?").
+    const scopeAll = query.scope === 'all';
+    if (scopeAll && role !== 'ADMIN') {
+      return reply.code(403).send({
+        error: 'forbidden',
+        message: 'scope=all requires ADMIN role',
+      });
+    }
+
+    const conversations = await listConversations(userId, {
+      source,
+      scopeAll,
+      isAdmin: role === 'ADMIN',
+    });
     return reply.send({ conversations });
   });
 

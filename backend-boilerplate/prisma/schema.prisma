@@ -266,6 +266,11 @@ model Conversation {
   id        String    @id @default(cuid())
   title     String    @default("Nova conversa")
   userId    String    @map("user_id")
+  /// Metadados arbitrários em JSON. Hoje: { source: 'whatsapp', phoneNumber,
+  /// createdAt, lastInboundMessageId, lastAssistantMessageId, lastReplyAt,
+  /// pushName } quando a conversa vem do canal WhatsApp. Null para conversas
+  /// criadas pelo app web. Index GIN em `metadata` (migration dedicada).
+  metadata  Json?     @map("metadata")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
