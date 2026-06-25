@@ -98,33 +98,195 @@ export function collectArrayPaths(
 }
 
 /**
+ * Percorre o `inputSchema` de uma tool e devolve a lista de paths RELATIVOS
+ * a `args` que DEVEM ser OBJETOS (não arrays, não strings). NÃO inclui a
+ * raiz `[]` — a raiz é o próprio `args`, que o handler já trata. Suporta
+ * sub-objetos aninhados (recursivo, mas NÃO recursa em $ref).
+ *
+ * Para `create_dashboard` devolve:
+ *   [['draftLayout']]
+ * (porque `draftLayout` é `{type:'object', properties:{filters,rows}}`)
+ *
+ * Para `create_chart` devolve:
+ *   [['draftDataBinding']] (porque draftDataBinding é `type:'object'`)
+ *
+ * Exportada para teste unitário.
+ */
+export function collectObjectPaths(
+  schema: Record<string, unknown> | undefined,
+  prefix: string[] = [],
+): string[][] {
+  if (!schema || typeof schema !== 'object') return [];
+  const out: string[][] = [];
+
+  const properties = schema.properties as Record<string, unknown> | undefined;
+  if (properties && typeof properties === 'object') {
+    for (const [key, propSchema] of Object.entries(properties)) {
+      if (!propSchema || typeof propSchema !== 'object') continue;
+      if ('$ref' in (propSchema as Record<string, unknown>)) continue;
+      const subPrefix = [...prefix, key];
+      const sub = propSchema as Record<string, unknown>;
+      // Conta este nó como path de objeto se o schema declarar `type: 'object'`
+      // E não for declarado como array.
+      if (sub.type === 'object') {
+        out.push(subPrefix);
+      }
+      // Recursa — pode ter sub-objetos mais profundos.
+      const deeper = collectObjectPaths(sub, subPrefix);
+      out.push(...deeper);
+    }
+  }
+  return out;
+}
+
+/**
+ * Navega `obj` seguindo `path` e devolve o nó final. Devolve `undefined` se
+ * algum segmento não puder ser percorrido (sub-objeto ausente, primitivo,
+ * array). NÃO cria novos objetos — só leitura.
+ */
+function getNodeAt(obj: Record<string, unknown>, path: string[]): unknown {
+  let cursor: unknown = obj;
+  for (const key of path) {
+    if (cursor === null || typeof cursor !== 'object' || Array.isArray(cursor)) {
+      return undefined;
+    }
+    cursor = (cursor as Record<string, unknown>)[key];
+  }
+  return cursor;
+}
+
+/**
+ * Navega `obj` seguindo `path` (exceto o último segmento) criando sub-objetos
+ * plain (`{}`) conforme necessário, e seta o valor final em `leafKey`. Se o
+ * pai for null/array/primitivo no meio do caminho, devolve `false` sem mexer.
+ */
+function setNodeAt(
+  obj: Record<string, unknown>,
+  path: string[],
+  value: unknown,
+): boolean {
+  let cursor: Record<string, unknown> = obj;
+  for (let i = 0; i < path.length - 1; i++) {
+    const key = path[i]!;
+    const next = cursor[key];
+    if (next === null || next === undefined) {
+      cursor[key] = {};
+      cursor = cursor[key] as Record<string, unknown>;
+    } else if (typeof next === 'object' && !Array.isArray(next)) {
+      cursor = next as Record<string, unknown>;
+    } else {
+      // Sub-caminho passa por um primitivo ou array — não dá pra navegar.
+      return false;
+    }
+  }
+  cursor[path[path.length - 1]!] = value;
+  return true;
+}
+
+/**
+ * Tenta parsear uma string como JSON e devolver um valor que SATISFAÇA o
+ * predicado `expectedKind` (`'array'` ou `'object'`). Em falha (string vazia
+ * já tratada fora; string não-JSON; JSON inválido; JSON parseado mas do tipo
+ * errado), devolve `null` para o caller decidir se cai pra fallback.
+ *
+ * Para `expectedKind: 'array'`: aceita `[...]` (resultado array) OU
+ * `null`/string vazia → tratado pelo caller.
+ * Para `expectedKind: 'object'`: aceita `{...}` (resultado objeto não-array).
+ */
+function tryParseJsonOfKind(
+  raw: string,
+  expectedKind: 'array' | 'object',
+): unknown | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null; // caller decide (vira [])
+  // Heurística rápida: pula se não começa com o bracket certo.
+  if (expectedKind === 'array' && !trimmed.startsWith('[')) return null;
+  if (expectedKind === 'object' && !trimmed.startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (expectedKind === 'array' && Array.isArray(parsed)) return parsed;
+    if (
+      expectedKind === 'object' &&
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed)
+    ) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Aplica `unwrapItemWrapper` em todos os paths array-esperados do `args`,
- * respeitando o `inputSchema` da tool. MUTA o objeto (é criado dentro da
- * função de cima).
+ * E desempacota strings (`""` ou JSON serializado) em paths array/objeto
+ * esperados do schema da tool. MUTA o objeto (é criado dentro da função
+ * de cima).
+ *
+ * Quatro casos que o Claude às vezes emite (reproduzido em produção via SSE
+ * — ver `_meta/agent-e2e/test-vazio.stream`):
+ *   1. `args.draftLayout.filters = ""` → vira `[]`
+ *   2. `args.draftLayout.rows = ""`    → vira `[]`
+ *   3. `args.draftLayout = "{\"filters\":[],\"rows\":[]}"` → vira objeto
+ *   4. (legado do T4) `args.draftLayout.rows = {item: [...]}` → vira array
+ *
+ * A transformação SÓ roda em paths que o schema declara como array/objeto —
+ * `title`, `connectionId`, etc. (strings esperadas como string) são intocados.
+ *
+ * Ordem: processa `objectPaths` ANTES de `arrayPaths` para que, se um objeto
+ * pai virou `{}` ou objeto parseado, os arrays filhos sejam encontrados.
  *
  * Exportada para teste unitário.
  */
 export function unwrapArrayWrappers(
   args: Record<string, unknown>,
   arrayPaths: string[][],
+  objectPaths: string[][] = [],
 ): Record<string, unknown> {
+  // 1) Desempacota strings em paths de objeto:
+  //    "" → {} (defensivo, embora Zod ainda rejeite — não piora o estado)
+  //    "{...}" → parse para objeto (se resultado for objeto não-array)
+  for (const path of objectPaths) {
+    const node = getNodeAt(args, path);
+    if (typeof node !== 'string') continue;
+    if (node.trim() === '') {
+      setNodeAt(args, path, {});
+      continue;
+    }
+    const parsed = tryParseJsonOfKind(node, 'object');
+    if (parsed !== null) {
+      setNodeAt(args, path, parsed);
+    }
+  }
+
+  // 2) Desempacota strings em paths de array + wrapper {item: T} legado.
   for (const path of arrayPaths) {
-    let cursor: Record<string, unknown> | undefined = args;
-    for (let i = 0; i < path.length - 1; i++) {
-      const next = cursor?.[path[i]!];
-      if (!next || typeof next !== 'object' || Array.isArray(next)) {
-        cursor = undefined;
-        break;
+    const node = getNodeAt(args, path);
+    if (typeof node === 'string') {
+      // "" → []
+      if (node.trim() === '') {
+        setNodeAt(args, path, []);
+        continue;
       }
-      cursor = next as Record<string, unknown>;
+      // "[...]" ou "{...}" → parse (casa se virar array)
+      const parsed = tryParseJsonOfKind(node, 'array');
+      if (parsed !== null && Array.isArray(parsed)) {
+        setNodeAt(args, path, parsed);
+      }
+      continue;
     }
-    if (!cursor) continue;
-    const leafKey = path[path.length - 1]!;
-    const leaf = cursor[leafKey];
-    if (Array.isArray(leaf)) continue; // já é array
-    if (looksLikeItemWrapper(leaf)) {
-      cursor[leafKey] = (leaf as { item: unknown }).item;
+    // Wrapper {item: T} legado (T4)
+    if (
+      node !== null &&
+      typeof node === 'object' &&
+      !Array.isArray(node) &&
+      looksLikeItemWrapper(node)
+    ) {
+      setNodeAt(args, path, (node as { item: unknown }).item);
     }
+    // else: já é array, ou outro tipo → não toca
   }
   return args;
 }
@@ -135,6 +297,9 @@ export function unwrapArrayWrappers(
 function convertMcpTool(mcpTool: ToolDefinition, actor: ActorContext): Tool {
   // Coleta os paths array-esperados UMA VEZ por tool (inputSchema é estático).
   const arrayPaths = collectArrayPaths(mcpTool.inputSchema);
+  // Coleta também os paths objeto-esperados (T9: draftLayout, draftDataBinding
+  // etc. podem chegar como string JSON do LLM).
+  const objectPaths = collectObjectPaths(mcpTool.inputSchema);
 
   return tool({
     description: mcpTool.description,
@@ -142,11 +307,16 @@ function convertMcpTool(mcpTool: ToolDefinition, actor: ActorContext): Tool {
     execute: async (args: unknown) => {
       try {
         // Normalização defensiva: desempacota {item:T} → T nos campos array
-        // esperados do schema da tool. Se o input já é array ou está ausente,
+        // esperados do schema da tool, e strings (vazias ou JSON) em campos
+        // array/objeto esperados. Se o input já é array ou está ausente,
         // não mexe. Não toca em outros campos.
         const safeArgs =
           args !== null && typeof args === 'object' && !Array.isArray(args)
-            ? unwrapArrayWrappers(args as Record<string, unknown>, arrayPaths)
+            ? unwrapArrayWrappers(
+                args as Record<string, unknown>,
+                arrayPaths,
+                objectPaths,
+              )
             : (args ?? {});
         const result = await mcpTool.handler(safeArgs, { actor });
         return result;
