@@ -82,6 +82,54 @@ export function enforceIdentity(replyText: string, userText: string): string {
   return replyText;
 }
 
+/**
+ * Converte markdown comum para a sintaxe nativa do WhatsApp.
+ * - **bold** ou __bold__  -> *bold*  (WhatsApp usa 1 asterisco)
+ * - headings (# / ## / ###) -> *texto* (negrito, sem o #)
+ * - bullets "- " / "* " -> "• " (bullet nativo, mais bonito)
+ * - tabelas markdown -> linhas simples "campo | valor" (best-effort)
+ * - remove HTML tags residuais
+ * - links [texto](url) -> "texto: url"
+ * - colapsa 3+ quebras de linha em 2
+ *
+ * Determinístico: roda sobre o texto final do agente, garantindo que o
+ * WhatsApp renderize negrito/itálico corretamente mesmo que o modelo
+ * insista em markdown.
+ */
+export function mdToWhatsapp(text: string): string {
+  let t = text;
+
+  // 1. Headings (### Titulo / ## Titulo / # Titulo) -> *Titulo* em linha própria
+  t = t.replace(/^#{1,6}\s+(.+?)\s*$/gm, '*$1*');
+
+  // 2. Bold markdown **x** ou __x__ -> *x* (WhatsApp). Cuidado pra não pegar *já-single*.
+  t = t.replace(/\*\*([^*\n]+?)\*\*/g, '*$1*');
+  t = t.replace(/__([^_\n]+?)__/g, '*$1*');
+
+  // 3. Bullets "- " ou "* " no inicio da linha -> "• "
+  t = t.replace(/^[\t ]*[-*]\s+/gm, '\u2022 ');
+
+  // 4. Tabela markdown: remove a linha separadora |---|---| (junto com seu
+  //    newline, pra não deixar linha em branco) e troca pipes por " | " simples
+  //    (best-effort — WhatsApp nao tem tabela; deixa legivel). Usamos [ \t]
+  //    (não \s) pra os regexes NÃO cruzarem quebras de linha.
+  t = t.replace(/^[ \t]*\|?[ \t:|-]*\|[ \t:|-]*$\n?/gm, ''); // linha separadora
+  t = t.replace(/^[ \t]*\|(.+)\|[ \t]*$/gm, (_m, inner) =>
+    inner.split('|').map((c: string) => c.trim()).filter(Boolean).join(' | '),
+  );
+
+  // 5. Remove tags HTML residuais (ex.: <details>, <br>)
+  t = t.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+
+  // 6. Links markdown [texto](url) -> texto: url
+  t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2');
+
+  // 7. Colapsa 3+ quebras de linha em 2
+  t = t.replace(/\n{3,}/g, '\n\n');
+
+  return t.trim();
+}
+
 const WHATSAPP_PROMPT_PATH = path.resolve(
   process.cwd(),
   'src/modules/channels/system-prompt-whatsapp.md',
@@ -232,10 +280,14 @@ export async function processWhatsappMessage(input: ProcessWhatsappMessageInput)
   }
 
   const rawText = (result.text ?? '').trim() || '(sem resposta)';
+  // PÓS-PROCESSADOR DE FORMATAÇÃO: o WhatsApp NÃO renderiza markdown
+  // (`**negrito**`, `# heading`, tabelas). Convertemos pra sintaxe nativa
+  // (`*negrito*`, `• bullet`, etc.) ANTES do guardrail e do truncate.
+  const whatsappFormatted = mdToWhatsapp(rawText);
   // GUARDRAIL DE IDENTIDADE (determinístico, à prova de bypass): substitui a
   // resposta pela frase canônica se vazar termo proibido OU se a pergunta do
   // usuário for de identidade.
-  const guardedText = enforceIdentity(rawText, userText);
+  const guardedText = enforceIdentity(whatsappFormatted, userText);
   const finalText = truncate(guardedText, MAX_CHARS);
 
   // 4) Persiste resposta do assistente.
