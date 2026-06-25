@@ -1,6 +1,10 @@
 /**
  * Indicador de "pensando" — bolha do assistant com animação contextual.
  * Se toolSteps existirem, mostra qual ferramenta está usando.
+ *
+ * O ThinkingBubble é renderizado ABAIXO do último user message e ACIMA da
+ * última mensagem do assistant em streaming. Steps com `fadingOut` (já
+ * concluídos mas ainda animando) são ignorados para não confundir o usuário.
  */
 import { Bot, Loader2, Database, Search, FileChartColumn, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -22,7 +26,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 export interface ThinkingBubbleProps {
-  toolSteps?: Array<{ toolName: string; phase: 'call' | 'result' }>;
+  toolSteps?: Array<{ toolName: string; phase: 'call' | 'result'; fadingOut?: boolean }>;
 
   /** Manter compatibilidade com o indicador antigo (sem props). */
   'data-slot'?: string;
@@ -50,8 +54,11 @@ export function ThinkingIndicator() {
 }
 
 export function ThinkingBubble({ toolSteps = [] }: ThinkingBubbleProps) {
-  // Encontra a última tool em fase de call (ainda executando)
-  const activeTool = [...toolSteps].reverse().find((s) => s.phase === 'call');
+  // Encontra a última tool em fase de call (ainda executando) — ignora fadingOut
+  // para o indicador não mostrar uma ferramenta que já está saindo.
+  const activeTool = [...toolSteps].reverse().find(
+    (s) => s.phase === 'call' && !s.fadingOut,
+  );
   const ToolIcon = activeTool ? (TOOL_ICONS[activeTool.toolName] ?? Loader2) : null;
   const label = activeTool ? (TOOL_LABELS[activeTool.toolName] ?? activeTool.toolName) : null;
 

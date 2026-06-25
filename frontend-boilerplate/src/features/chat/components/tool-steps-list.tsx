@@ -1,6 +1,10 @@
 /**
  * Lista de tool steps — mostra as ferramentas que o agente está usando
  * com animação de entrada e ícones contextuais por ferramenta.
+ *
+ * Os steps entram com fade-in slide-in-from-top-2 (porque agora aparecem ACIMA
+ * da última mensagem do assistant em streaming) e, quando `fadingOut=true`,
+ * saem com fade-out slide-out-to-top-2 antes de serem removidos do estado.
  */
 import {
   CheckCircle2, Loader2,
@@ -11,10 +15,14 @@ import {
 import { cn } from '@/shared/lib/utils';
 
 export interface ToolStep {
+  /** Id estável do tool call no backend (chave natural p/ dedup). */
+  toolCallId: string;
   toolName: string;
   phase: 'call' | 'result';
   args?: unknown;
   output?: unknown;
+  /** Controla o fade-out antes de remover (quando o result chega). */
+  fadingOut?: boolean;
 }
 
 const TOOL_META: Record<string, { icon: LucideIcon; label: string }> = {
@@ -38,19 +46,22 @@ export function ToolStepsList({ steps }: { steps: ToolStep[] }) {
 
   return (
     <div className="mt-2 flex flex-col gap-1">
-      {steps.map((step, idx) => {
+      {steps.map((step) => {
         const meta = TOOL_META[step.toolName];
         const label = meta?.label ?? step.toolName;
         const isDone = step.phase === 'result';
 
         return (
           <div
-            key={idx}
+            key={step.toolCallId}
             className={cn(
-              'flex animate-in fade-in slide-in-from-left-2 duration-300 items-center gap-2 rounded-lg px-3 py-1.5 text-xs',
+              'flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs',
               isDone
                 ? 'bg-green-500/5 text-green-600 dark:text-green-400'
                 : 'bg-primary/5 text-primary',
+              step.fadingOut
+                ? 'animate-out fade-out slide-out-to-top-2 duration-300 fill-mode-forwards'
+                : 'animate-in fade-in slide-in-from-top-2 duration-300',
             )}
           >
             {isDone ? (
