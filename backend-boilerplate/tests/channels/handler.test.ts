@@ -62,7 +62,27 @@ jest.mock('@/lib/env', () => ({
     ANTHROPIC_API_KEY: 'sk-test',
     AI_BASE_URL: '',
     AI_MODEL: 'claude-test',
+    WEB_APP_URL: 'https://fe.test',
   },
+}));
+
+// Tools do MCP + skills: o handler agora dá tools reais ao agente. Mockamos o
+// adapter/skills para isolar a orquestração do handler (não precisamos da
+// árvore inteira de tools/services aqui — isso é coberto pelo mcp-list-share.test).
+const buildMcpToolsMock = jest.fn((..._a: unknown[]) => ({
+  list_dashboards: { __tool: 'list_dashboards' },
+  list_charts: { __tool: 'list_charts' },
+  create_dashboard_share_link: { __tool: 'create_dashboard_share_link' },
+}));
+jest.mock('@/modules/agent/tools/mcp-adapter', () => ({
+  buildMcpToolsForAgent: (...a: unknown[]) => buildMcpToolsMock(...a),
+}));
+
+const loadAllSkillsMock = jest.fn(async (..._a: unknown[]) => [] as unknown[]);
+jest.mock('@/modules/agent/skills/index', () => ({
+  loadAllSkills: (...a: unknown[]) => loadAllSkillsMock(...a),
+  renderSkillsIndex: () => '',
+  createActivateSkillTool: () => ({ __tool: 'activate_skill' }),
 }));
 
 import { processWhatsappMessage } from '@/modules/channels/handler';
@@ -90,6 +110,8 @@ describe('channels/handler — processWhatsappMessage', () => {
     conversationUpdateMock.mockReset().mockResolvedValue({});
     getSystemUserIdMock.mockReset().mockResolvedValue(SYSTEM_USER_ID);
     providerFn.mockClear();
+    buildMcpToolsMock.mockClear();
+    loadAllSkillsMock.mockClear();
   });
 
   it('Caso 1: resposta longa (5000 chars) → trunca a 4000 + " (continua...)" no addMessage e sendText', async () => {
@@ -130,17 +152,28 @@ describe('channels/handler — processWhatsappMessage', () => {
     }));
   });
 
-  it('Caso 4: actor — getWhatsappSystemUserId é resolvido (agente roda como WhatsApp System) e tools={} no runAgent', async () => {
+  it('Caso 4: actor resolvido e runAgent recebe tools REAIS do MCP + activate_skill (maxSteps=15)', async () => {
     runAgentMock.mockResolvedValueOnce({ text: 'ok' });
 
     await processWhatsappMessage(baseInput());
 
     expect(getSystemUserIdMock).toHaveBeenCalled();
-    // runAgent recebeu tools vazio (MVP sem MCP) e o systemPrompt do WhatsApp
+    // o adapter foi chamado com o actor do WhatsApp System (role ADMIN)
+    expect(buildMcpToolsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: SYSTEM_USER_ID, role: 'ADMIN' }),
+    );
+    // runAgent recebeu as tools do MCP + a tool activate_skill, e o systemPrompt
     const runArg = runAgentMock.mock.calls[0][0];
-    expect(runArg.tools).toEqual({});
+    expect(runArg.tools).toEqual(
+      expect.objectContaining({
+        list_dashboards: expect.anything(),
+        list_charts: expect.anything(),
+        create_dashboard_share_link: expect.anything(),
+        activate_skill: expect.anything(),
+      }),
+    );
     expect(typeof runArg.systemPrompt).toBe('string');
-    expect(runArg.maxSteps).toBe(5);
+    expect(runArg.maxSteps).toBe(15);
   });
 
   it('Caso 5: runAgent lança → persiste msg de erro, NÃO chama sendText', async () => {

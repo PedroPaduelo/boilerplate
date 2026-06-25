@@ -41,6 +41,9 @@ export const envSchema = z.object({
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().default(4000),
   BASE_URL: z.string().url().default('http://localhost:4000'),
+  // URL pública do FRONTEND — usada para montar links de compartilhamento de
+  // dashboards (ex.: `${WEB_APP_URL}/public/<token>`) enviados pelo WhatsApp.
+  WEB_APP_URL: z.string().url().default('https://boilerplate-fe-cmqg5udk.cloud.serendiped.com'),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),

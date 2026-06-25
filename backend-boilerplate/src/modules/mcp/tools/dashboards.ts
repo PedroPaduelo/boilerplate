@@ -12,6 +12,8 @@
  * dentro do service — regra não reimplementada aqui.
  */
 import { z } from 'zod';
+import { env } from '@/lib/env';
+import { buildVisibilityWhere } from '@/lib/visibility';
 import {
   addChartBodySchema,
   createDashboardBodySchema,
@@ -22,11 +24,14 @@ import {
   addChartToDashboard,
   createDashboard,
   deleteDashboard,
+  listDashboards,
   publishDashboard,
   requireDashboardForModify,
+  requireDashboardForView,
   unpublishDashboard,
   updateDashboard,
 } from '@/modules/dashboards/service';
+import { createShareLink } from '@/modules/share/service';
 import { assertPermission } from './guard';
 import { enrichBadRequest, type AiErrorRule, type ToolDefinition } from './types';
 
@@ -316,11 +321,146 @@ const unpublishDashboardTool: ToolDefinition = {
   },
 };
 
+// --- list_dashboards --------------------------------------------------------
+
+const listDashboardsArgs = z.object({
+  search: z.string().optional(),
+  status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(20),
+});
+
+const listDashboardsTool: ToolDefinition = {
+  name: 'list_dashboards',
+  description:
+    'OBJETIVO: lista os DASHBOARDS visíveis ao ator (respeita RBAC/visibilidade — PRIVATE/' +
+    'DEPARTMENT/ORG). QUANDO USAR: para descobrir quais dashboards já existem, dar informações ' +
+    'sobre eles (status, quando foram atualizados/publicados) e, em seguida, gerar um link ' +
+    'compartilhável com create_dashboard_share_link. INPUT (todos opcionais): `search` (filtra ' +
+    'por título, case-insensitive), `status` (DRAFT|PUBLISHED), `page` (default 1), `pageSize` ' +
+    '(default 20, máx 100). RETORNA metadados LEVES (sem o layout inteiro): { dashboards: ' +
+    '[{ id, title, status, visibility, updatedAt, publishedAt }], total, page, pageSize, ' +
+    'totalPages }. RBAC: exige artifacts:view.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      search: { type: 'string', description: 'Filtra por título (case-insensitive).' },
+      status: {
+        type: 'string',
+        enum: ['DRAFT', 'PUBLISHED'],
+        description: 'Filtra por status (opcional).',
+      },
+      page: { type: 'integer', minimum: 1, default: 1 },
+      pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    },
+  },
+  handler: async (rawArgs, { actor }) => {
+    assertPermission(actor, 'artifacts:view');
+    const { search, status, page, pageSize } = listDashboardsArgs.parse(rawArgs ?? {});
+    const filters: Record<string, unknown> = {};
+    if (search) filters.title = { contains: search, mode: 'insensitive' };
+    if (status) filters.status = status;
+    const where = { AND: [buildVisibilityWhere(actor), filters] };
+    const { dashboards, total } = await listDashboards({ where, page, pageSize });
+    return {
+      dashboards: dashboards.map((d) => ({
+        id: d.id,
+        title: d.title,
+        status: d.status,
+        visibility: d.visibility,
+        updatedAt: d.updatedAt,
+        publishedAt: d.publishedAt,
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  },
+};
+
+// --- create_dashboard_share_link --------------------------------------------
+
+/** TTL default do link público: 7 dias (em segundos). Conta da 1ª abertura. */
+const SHARE_LINK_DEFAULT_DURATION = 604800;
+/** Limite superior do TTL: 30 dias (espelha MAX_DURATION_SECONDS do módulo share). */
+const SHARE_LINK_MAX_DURATION = 60 * 60 * 24 * 30;
+
+const createShareLinkArgs = z.object({
+  dashboardId: z.string().min(1),
+  durationSeconds: z
+    .number()
+    .int()
+    .min(1)
+    .max(SHARE_LINK_MAX_DURATION)
+    .default(SHARE_LINK_DEFAULT_DURATION),
+});
+
+const createDashboardShareLinkTool: ToolDefinition = {
+  name: 'create_dashboard_share_link',
+  description:
+    'OBJETIVO: gera um LINK PÚBLICO compartilhável de um dashboard (para mandar pro usuário, ' +
+    'ex.: no WhatsApp). O link mostra o layout PUBLICADO do dashboard e o TTL começa a contar ' +
+    'na 1ª abertura. QUANDO USAR: depois de list_dashboards, quando o usuário pedir o link de ' +
+    'um dashboard. INPUT: `dashboardId` (obrigatório); `durationSeconds` (opcional, default ' +
+    '604800 = 7 dias, máx 30 dias). IMPORTANTE: o dashboard precisa estar PUBLISHED para o ' +
+    'link funcionar — se estiver em DRAFT, o retorno traz um `warning` (publique antes com ' +
+    'publish_dashboard). RETORNA: { token, url, dashboardId, durationSeconds, status[, ' +
+    'warning] } onde url = `${WEB_APP_URL}/public/<token>`. RBAC: exige share:create. ' +
+    'ERROS: `not_found` (dashboard inexistente/invisível).',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['dashboardId'],
+    properties: {
+      dashboardId: { type: 'string', description: 'Id do dashboard a compartilhar.' },
+      durationSeconds: {
+        type: 'integer',
+        minimum: 1,
+        maximum: SHARE_LINK_MAX_DURATION,
+        default: SHARE_LINK_DEFAULT_DURATION,
+        description: 'TTL do link em segundos (conta da 1ª abertura). Default 7 dias.',
+      },
+    },
+  },
+  handler: async (rawArgs, { actor }) => {
+    assertPermission(actor, 'share:create');
+    const { dashboardId, durationSeconds } = createShareLinkArgs.parse(rawArgs ?? {});
+    // Carrega o dashboard (404 se invisível) para checar o status antes de gerar
+    // o link — assim avisamos a IA quando ele ainda está em DRAFT.
+    const dashboard = await requireDashboardForView(dashboardId, actor);
+    const link = await createShareLink(actor, {
+      targetType: 'DASHBOARD',
+      targetId: dashboardId,
+      durationSeconds,
+    });
+    const url = `${env.WEB_APP_URL}/public/${link.token}`;
+    const base = {
+      token: link.token,
+      url,
+      dashboardId,
+      durationSeconds,
+      status: dashboard.status,
+    };
+    if (dashboard.status !== 'PUBLISHED') {
+      return {
+        ...base,
+        warning:
+          'O dashboard esta em DRAFT — publique antes (publish_dashboard) para o link funcionar.',
+      };
+    }
+    return base;
+  },
+};
+
 export const dashboardTools: ToolDefinition[] = [
+  listDashboardsTool,
   createDashboardTool,
   updateDashboardTool,
   addChartToDashboardTool,
   publishDashboardTool,
+  createDashboardShareLinkTool,
   deleteDashboardTool,
   unpublishDashboardTool,
 ];

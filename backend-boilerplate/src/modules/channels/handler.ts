@@ -18,10 +18,11 @@
  * SSE aqui — é processamento batch), e forneço `model` via factory
  * `createAnthropicWithExtras` + `env.AI_MODEL`.
  *
- * `actor` é passado indiretamente — `runAgent` puro não usa, mas
- * `getWhatsappSystemUserId` + role='ADMIN' reflete o que o user pediu
- * (tools={} no MVP, então o actor não afeta nada). Documentado aqui
- * pra auditoria.
+ * `actor` é resolvido via `getWhatsappSystemUserId` + role='ADMIN' (o agente
+ * roda em nome do WhatsApp System user). Ele AGORA importa: as tools do MCP
+ * (passadas via `buildMcpToolsForAgent(actor)`) o consomem para impor
+ * RBAC/visibilidade. O WhatsApp deixou de ser MVP-sem-tools — tem as mesmas
+ * tools + skills do chat web (com prompt adaptado ao WhatsApp).
  */
 
 import fs from 'node:fs/promises';
@@ -31,6 +32,12 @@ import { runAgent } from '@/modules/agent/agent/loop';
 import { addMessage, loadConversationHistory } from '@/modules/agent/services/conversation';
 import { createAnthropicWithExtras } from '@/modules/agent/provider/anthropic';
 import { DEFAULT_AGENT_CONFIG } from '@/modules/agent/config/schemas';
+import { buildMcpToolsForAgent } from '@/modules/agent/tools/mcp-adapter';
+import {
+  createActivateSkillTool,
+  loadAllSkills,
+  renderSkillsIndex,
+} from '@/modules/agent/skills/index';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
@@ -138,13 +145,20 @@ export async function processWhatsappMessage(input: ProcessWhatsappMessageInput)
   // (mesmo padrão do `chat.ts` que lê `system-prompt.md`). Cache in-memory
   // simples — o handler é fire-and-forget, não vale a pena re-ler a cada
   // msg. Em prod o `tsx watch` recarrega o processo se o .md mudar.
-  let systemPrompt: string;
+  let basePrompt: string;
   try {
-    systemPrompt = await fs.readFile(WHATSAPP_PROMPT_PATH, 'utf-8');
+    basePrompt = await fs.readFile(WHATSAPP_PROMPT_PATH, 'utf-8');
   } catch (err) {
     logger.error({ err }, 'channels: failed to read whatsapp system prompt — using fallback');
-    systemPrompt = 'Voce e o assistente WhatsApp da plataforma. Responda de forma concisa.';
+    basePrompt = 'Voce e o assistente WhatsApp da plataforma. Responda de forma concisa.';
   }
+
+  // Skills: mesmo mecanismo do chat web (chat.ts) — carrega o índice das skills
+  // disponíveis e o ANEXA ao system prompt. O agente as ativa via a tool
+  // `activate_skill` (adicionada às tools abaixo) quando o assunto pedir.
+  const skills = await loadAllSkills();
+  const skillsIndex = renderSkillsIndex(skills);
+  const systemPrompt = skillsIndex ? `${basePrompt}\n${skillsIndex}` : basePrompt;
 
   // 2) Model factory (mesmo padrão do `chat.ts`).
   if (!env.ANTHROPIC_API_KEY) {
@@ -170,12 +184,12 @@ export async function processWhatsappMessage(input: ProcessWhatsappMessageInput)
   });
   const model = provider(env.AI_MODEL);
 
-  // 3) Roda o agente. `tools: {}` no MVP — sem MCP, sem skills.
-  // `actor` reflete a decisão #8: o agente roda EM NOME do WhatsApp System
-  // user (role ADMIN). O `runAgent` PURO não recebe `actor` na assinatura
-  // (só tools MCP o consomem, e aqui tools={}), então o actor não muda o
-  // comportamento — mas RESOLVEMOS o id (fail-loud se não seedado) e
-  // LOGAMOS pra auditoria de "quem o agente representou".
+  // 3) Roda o agente COM as tools do MCP + skills (igual ao chat web), para ele
+  // ser aderente ao prompt e capaz de listar dashboards/charts, gerar link
+  // público, consultar dados etc. `actor` reflete a decisão #8: o agente roda
+  // EM NOME do WhatsApp System user (role ADMIN). Agora o actor IMPORTA — as
+  // tools MCP o consomem para impor RBAC/visibilidade. RESOLVEMOS o id
+  // (fail-loud se não seedado) e LOGAMOS pra auditoria de "quem representou".
   const actor = {
     userId: await getWhatsappSystemUserId(),
     role: 'ADMIN' as const,
@@ -186,17 +200,23 @@ export async function processWhatsappMessage(input: ProcessWhatsappMessageInput)
     'channels: running agent as whatsapp system actor',
   );
 
+  // Tools: TODAS as tools do MCP (list_dashboards, list_charts, create_dashboard_
+  // share_link, run_query, create_chart, ...) + a tool `activate_skill`.
+  const mcpTools = buildMcpToolsForAgent(actor);
+  const skillTool = { activate_skill: createActivateSkillTool(skills) };
+  const allTools = { ...mcpTools, ...skillTool };
+
   let result: { text: string; usage?: { inputTokens?: number; outputTokens?: number } };
   try {
     result = await runAgent({
       model,
-      tools: {},
+      tools: allTools as never,
       systemPrompt,
       convo: recent as never, // ModelMessage[] do AI SDK
       cacheBreakpoint: DEFAULT_AGENT_CONFIG.cacheBreakpoint,
       cacheOptions: DEFAULT_AGENT_CONFIG.cacheOptions,
       temperature: DEFAULT_AGENT_CONFIG.temperature,
-      maxSteps: 5, // baixo — WhatsApp não tem tools, sem loop infinito
+      maxSteps: 15, // espaço para tool calls + activate_skill
       providerOptions: undefined,
       sink: createBatchSink() as never,
     });

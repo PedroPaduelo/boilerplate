@@ -16,6 +16,7 @@
 import { z } from 'zod';
 import { getCatalogDataShape } from '@/lib/catalog';
 import { runQuery } from '@/lib/pg-runner';
+import { buildVisibilityWhere } from '@/lib/visibility';
 import {
   createChartBodySchema,
   serializeChart,
@@ -24,6 +25,7 @@ import {
 import {
   createChart,
   deleteChart,
+  listCharts,
   publishChart,
   requireChartForModify,
   requireChartForView,
@@ -381,7 +383,70 @@ const unpublishChartTool: ToolDefinition = {
   },
 };
 
+// --- list_charts ------------------------------------------------------------
+
+const listChartsArgs = z.object({
+  search: z.string().optional(),
+  catalogType: z.string().optional(),
+  status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(20),
+});
+
+const listChartsTool: ToolDefinition = {
+  name: 'list_charts',
+  description:
+    'OBJETIVO: lista os CHARTS (gráficos) visíveis ao ator (respeita RBAC/visibilidade — ' +
+    'PRIVATE/DEPARTMENT/ORG). QUANDO USAR: para descobrir quais gráficos já existem (ex.: para ' +
+    'reaproveitar num dashboard via add_chart_to_dashboard, ou dar informações ao usuário). ' +
+    'INPUT (todos opcionais): `search` (filtra por título, case-insensitive), `catalogType` ' +
+    '(tipo de bloco), `status` (DRAFT|PUBLISHED), `page` (default 1), `pageSize` (default 20, ' +
+    'máx 100). RETORNA metadados LEVES (sem props/dataBinding): { charts: [{ id, title, ' +
+    'catalogType, status, visibility, updatedAt }], total, page, pageSize, totalPages }. ' +
+    'RBAC: exige artifacts:view.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      search: { type: 'string', description: 'Filtra por título (case-insensitive).' },
+      catalogType: { type: 'string', description: 'Filtra por tipo de bloco (opcional).' },
+      status: {
+        type: 'string',
+        enum: ['DRAFT', 'PUBLISHED'],
+        description: 'Filtra por status (opcional).',
+      },
+      page: { type: 'integer', minimum: 1, default: 1 },
+      pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    },
+  },
+  handler: async (rawArgs, { actor }) => {
+    assertPermission(actor, 'artifacts:view');
+    const { search, catalogType, status, page, pageSize } = listChartsArgs.parse(rawArgs ?? {});
+    const filters: Record<string, unknown> = {};
+    if (search) filters.title = { contains: search, mode: 'insensitive' };
+    if (catalogType) filters.catalogType = catalogType;
+    if (status) filters.status = status;
+    const where = { AND: [buildVisibilityWhere(actor), filters] };
+    const { charts, total } = await listCharts({ where, page, pageSize });
+    return {
+      charts: charts.map((c) => ({
+        id: c.id,
+        title: c.title,
+        catalogType: c.catalogType,
+        status: c.status,
+        visibility: c.visibility,
+        updatedAt: c.updatedAt,
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  },
+};
+
 export const chartTools: ToolDefinition[] = [
+  listChartsTool,
   createChartTool,
   updateChartTool,
   publishChartTool,
