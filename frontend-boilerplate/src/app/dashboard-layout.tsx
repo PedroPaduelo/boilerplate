@@ -18,6 +18,7 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('sidebar:collapsed') === '1',
   );
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('sidebar:collapsed', collapsed ? '1' : '0');
@@ -38,7 +39,12 @@ export function DashboardLayout() {
 
   return (
     <div className="flex h-screen min-h-0 overflow-hidden bg-background text-foreground">
-      <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+      <AppSidebar
+        collapsed={collapsed}
+        onToggleCollapsed={toggleCollapsed}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
+      />
 
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <DashboardTopbar
@@ -49,6 +55,7 @@ export function DashboardLayout() {
             </span>
           }
           actions={<ThemeToggle />}
+          onMenu={() => setMobileOpen(true)}
         />
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div
