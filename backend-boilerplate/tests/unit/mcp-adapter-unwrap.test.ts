@@ -25,6 +25,7 @@
 import {
   collectArrayPaths,
   collectObjectPaths,
+  collectScalarPaths,
   looksLikeItemWrapper,
   unwrapArrayWrappers,
 } from '@/modules/agent/tools/mcp-adapter';
@@ -474,5 +475,556 @@ describe('T9 — looksLikeItemWrapper (smoke)', () => {
     expect(looksLikeItemWrapper(null)).toBe(false);
     expect(looksLikeItemWrapper(undefined)).toBe(false);
     expect(looksLikeItemWrapper('item')).toBe(false);
+  });
+});
+
+// ============================================================================
+// T10 — string → number/integer/boolean para escalares serializados como string
+// ============================================================================
+//
+// O Claude (LLM) às vezes serializa NÚMEROS e BOOLEANOS como strings em vez
+// de nativos. Reproduzido em `_meta/agent-e2e/test-sequencial.stream`:
+//
+//   args.span = "4"        (string) — esperado `number` (integer)
+//   args.position = "2"    (string) — esperado `number` (integer)
+//   args.showDelta = "true" (string) — esperado `boolean`
+//
+// Zod rejeita com `expected number, received string` e o agent perde 2-4
+// turnos chutar o tipo certo. O T10 estende o adapter para coerce-rr
+// automaticamente, sem mudar o schema da tool.
+//
+// A transformação SÓ roda em paths que o schema declara como
+// `integer`/`number`/`boolean`. Strings normais (title, connectionId) NÃO
+// são tocadas — mesmo que o valor seja "4" ou "true".
+
+// ----------------------------------------------------------------------------
+// collectScalarPaths — paths esperados como integer/number/boolean
+// ----------------------------------------------------------------------------
+
+describe('T10 — collectScalarPaths', () => {
+  it('integers top-level', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        span: { type: 'integer' },
+        position: { type: 'integer' },
+      },
+    };
+    expect(collectScalarPaths(schema)).toEqual([['span'], ['position']]);
+  });
+
+  it('NÃO inclui a raiz []', () => {
+    // Schema root pode teoricamente declarar type=number mas a raiz é o
+    // próprio args — nunca vamos coagir o args inteiro.
+    const schema = { type: 'object', properties: { x: { type: 'string' } } };
+    expect(collectScalarPaths(schema)).toEqual([]);
+  });
+
+  it('integers/booleans aninhados em sub-objeto', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        draftDataBinding: {
+          type: 'object',
+          properties: {
+            ttlSeconds: { type: 'integer' },
+            refresh: { type: 'boolean' },
+          },
+        },
+      },
+    };
+    expect(collectScalarPaths(schema)).toEqual([
+      ['draftDataBinding', 'ttlSeconds'],
+      ['draftDataBinding', 'refresh'],
+    ]);
+  });
+
+  it('múltiplos tipos primitivos no mesmo nível', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        maxRows: { type: 'integer' },
+        ratio: { type: 'number' },
+        showDelta: { type: 'boolean' },
+      },
+    };
+    expect(collectScalarPaths(schema)).toEqual([
+      ['maxRows'],
+      ['ratio'],
+      ['showDelta'],
+    ]);
+  });
+
+  it('strings/arrays/objetos NÃO entram nos scalar paths', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        rows: { type: 'array', items: {} },
+        draftLayout: { type: 'object', properties: {} },
+        span: { type: 'integer' },
+      },
+    };
+    expect(collectScalarPaths(schema)).toEqual([['span']]);
+  });
+
+  it('schema vazio/undefined → []', () => {
+    expect(collectScalarPaths(undefined)).toEqual([]);
+    expect(collectScalarPaths({})).toEqual([]);
+    expect(collectScalarPaths({ type: 'object' })).toEqual([]);
+  });
+
+  it('pula $ref', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        ref: { $ref: '#/$defs/x' },
+        span: { type: 'integer' },
+      },
+    };
+    expect(collectScalarPaths(schema)).toEqual([['span']]);
+  });
+
+  it('add_chart_to_dashboard — schema real: span e position são integers', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        dashboardId: { type: 'string' },
+        chartId: { type: 'string' },
+        rowId: { type: 'string' },
+        span: { type: 'integer', minimum: 1, maximum: 12 },
+        position: { type: 'integer', minimum: 0 },
+        blockId: { type: 'string' },
+      },
+    };
+    const paths = collectScalarPaths(schema);
+    expect(paths).toContainEqual(['span']);
+    expect(paths).toContainEqual(['position']);
+    expect(paths).not.toContainEqual(['dashboardId']);
+    expect(paths).not.toContainEqual(['chartId']);
+  });
+
+  it('não recursa em array items (itens são escalares do banco, não da tool)', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        params: {
+          type: 'array',
+          items: { type: 'integer' },
+        },
+        span: { type: 'integer' },
+      },
+    };
+    // Só conta o `span` top-level. Os items do array `params` não são
+    // campos da tool — são elementos de uma lista.
+    expect(collectScalarPaths(schema)).toEqual([['span']]);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// T10 — coerce strings em paths integer/number
+// ----------------------------------------------------------------------------
+
+describe('T10 — string em path integer/number → number', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      dashboardId: { type: 'string' },
+      chartId: { type: 'string' },
+      span: { type: 'integer', minimum: 1, maximum: 12 },
+      position: { type: 'integer', minimum: 0 },
+    },
+  };
+
+  it('span: "4" → span: 4 (number)', () => {
+    const args: any = {
+      dashboardId: 'd1',
+      chartId: 'c1',
+      span: '4',
+    };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBe(4);
+    expect(typeof args.span).toBe('number');
+  });
+
+  it('position: "2" → position: 2', () => {
+    const args: any = {
+      dashboardId: 'd1',
+      chartId: 'c1',
+      span: 6,
+      position: '2',
+    };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.position).toBe(2);
+  });
+
+  it('string decimal "3.14" → number 3.14 (para path `number`)', () => {
+    const schema2 = {
+      type: 'object',
+      properties: { ratio: { type: 'number' } },
+    };
+    const args: any = { ratio: '3.14' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema2),
+      collectObjectPaths(schema2),
+      collectScalarPaths(schema2),
+    );
+    expect(args.ratio).toBe(3.14);
+    expect(typeof args.ratio).toBe('number');
+  });
+
+  it('string negativo "-1" → number -1', () => {
+    const args: any = { span: '-1' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBe(-1);
+  });
+
+  it('string com whitespace "  4  " → number 4 (trim aplicado)', () => {
+    const args: any = { span: '  4  ' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBe(4);
+  });
+
+  it('valor JÁ nativo (number) → preserva, não duplica conversão', () => {
+    const args: any = { span: 4 };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBe(4);
+    expect(typeof args.span).toBe('number');
+  });
+
+  it('valor indefinido → preserva como undefined (não transforma)', () => {
+    const args: any = { dashboardId: 'd1' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBeUndefined();
+  });
+
+  it('string inválida "abc" → preserva como string (Zod rejeita depois)', () => {
+    // IMPORTANTE: não substituir por undefined — Zod precisa ver a string
+    // para emitir "Expected number, received string".
+    const args: any = { span: 'abc' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBe('abc');
+    expect(typeof args.span).toBe('string');
+  });
+
+  it('string vazia "" → preserva como string (Zod rejeita depois)', () => {
+    const args: any = { span: '' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBe('');
+    expect(typeof args.span).toBe('string');
+  });
+});
+
+// ----------------------------------------------------------------------------
+// T10 — coerce strings em paths boolean
+// ----------------------------------------------------------------------------
+
+describe('T10 — string em path boolean → boolean', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      showDelta: { type: 'boolean' },
+      showSparkline: { type: 'boolean' },
+      label: { type: 'string' },
+    },
+  };
+
+  it('showDelta: "true" → true', () => {
+    const args: any = { showDelta: 'true' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.showDelta).toBe(true);
+    expect(typeof args.showDelta).toBe('boolean');
+  });
+
+  it('showDelta: "false" → false', () => {
+    const args: any = { showDelta: 'false' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.showDelta).toBe(false);
+    expect(typeof args.showDelta).toBe('boolean');
+  });
+
+  it('showDelta: "TRUE" → true (case-insensitive)', () => {
+    const args: any = { showDelta: 'TRUE' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.showDelta).toBe(true);
+  });
+
+  it('showDelta: "False" → false (case-insensitive, mixed case)', () => {
+    const args: any = { showDelta: 'False' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.showDelta).toBe(false);
+  });
+
+  it('showDelta: "  true  " → true (trim aplicado)', () => {
+    const args: any = { showDelta: '  true  ' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.showDelta).toBe(true);
+  });
+
+  it('showDelta JÁ boolean → preserva', () => {
+    const args: any = { showDelta: true };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.showDelta).toBe(true);
+    expect(typeof args.showDelta).toBe('boolean');
+  });
+
+  it('string inválida "yes" → preserva como string (Zod rejeita depois)', () => {
+    const args: any = { showDelta: 'yes' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.showDelta).toBe('yes');
+    expect(typeof args.showDelta).toBe('string');
+  });
+});
+
+// ----------------------------------------------------------------------------
+// T10 — campos string esperados como string NÃO são tocados
+// ----------------------------------------------------------------------------
+
+describe('T10 — strings normais (não escalares) NÃO são tocadas', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      title: { type: 'string' },
+      connectionId: { type: 'string' },
+      visibility: { type: 'string', enum: ['PRIVATE', 'DEPARTMENT', 'ORG'] },
+      span: { type: 'integer' },
+      showDelta: { type: 'boolean' },
+    },
+  };
+
+  it('title permanece string mesmo se valor for "4"', () => {
+    const args: any = { title: '4', span: '4', showDelta: 'true' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    // title: NÃO escala → continua string
+    expect(args.title).toBe('4');
+    expect(typeof args.title).toBe('string');
+    // span: escala (integer) → virou number
+    expect(args.span).toBe(4);
+    // showDelta: escala (boolean) → virou boolean
+    expect(args.showDelta).toBe(true);
+  });
+
+  it('connectionId permanece string mesmo se valor parecer boolean', () => {
+    const args: any = { connectionId: 'true', showDelta: 'true' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.connectionId).toBe('true');
+    expect(typeof args.connectionId).toBe('string');
+    expect(args.showDelta).toBe(true);
+  });
+
+  it('visibility (enum string) permanece string', () => {
+    const args: any = { visibility: 'PRIVATE', span: '4' };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.visibility).toBe('PRIVATE');
+    expect(typeof args.visibility).toBe('string');
+    expect(args.span).toBe(4);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// T10 — combinação: array/object/string + scalar no mesmo args
+// ----------------------------------------------------------------------------
+
+describe('T10 — combinação: array/object + scalar no mesmo args', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      title: { type: 'string' },
+      draftLayout: {
+        type: 'object',
+        properties: {
+          filters: { type: 'array', items: {} },
+          rows: { type: 'array', items: {} },
+        },
+      },
+      span: { type: 'integer' },
+      showDelta: { type: 'boolean' },
+    },
+  };
+
+  it('Tudo bugado: title é OK, draftLayout vazio, span/boolean strings', () => {
+    const args: any = {
+      title: 'OK',
+      draftLayout: '',
+      span: '4',
+      showDelta: 'true',
+    };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    // title preservado
+    expect(args.title).toBe('OK');
+    // draftLayout virou {} (object path, string vazia)
+    expect(args.draftLayout).toEqual({});
+    // span virou number
+    expect(args.span).toBe(4);
+    // showDelta virou boolean
+    expect(args.showDelta).toBe(true);
+  });
+
+  it('Bug do T9 + T10 juntos: draftLayout com filters "", rows [], span "4"', () => {
+    const args: any = {
+      title: 'X',
+      draftLayout: { filters: '', rows: [] },
+      span: '4',
+    };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.draftLayout.filters).toEqual([]);
+    expect(args.draftLayout.rows).toEqual([]);
+    expect(args.span).toBe(4);
+  });
+
+  it('Apenas escalares bugados (draftLayout ausente)', () => {
+    const args: any = {
+      title: 'X',
+      span: '4',
+      showDelta: 'false',
+    };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.title).toBe('X');
+    expect(args.span).toBe(4);
+    expect(args.showDelta).toBe(false);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// T10 — reprodução exata do caso real de test-sequencial.stream
+// ----------------------------------------------------------------------------
+
+describe('T10 — reprodução do bug real do test-sequencial.stream', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      dashboardId: { type: 'string' },
+      chartId: { type: 'string' },
+      span: { type: 'integer', minimum: 1, maximum: 12 },
+      position: { type: 'integer', minimum: 0 },
+    },
+  };
+
+  it('add_chart_to_dashboard com span="4" e position="0" → ambos viram number', () => {
+    // Caso literal de test-sequencial.stream: span veio como string,
+    // agent emitiu 2 tentativas fracassadas antes de desistir.
+    const args: any = {
+      dashboardId: 'cmqtfz6i9000lny0puazbony6',
+      chartId: 'cmqt6f54p001rny0pndh24ore',
+      span: '4',
+    };
+    unwrapArrayWrappers(
+      args,
+      collectArrayPaths(schema),
+      collectObjectPaths(schema),
+      collectScalarPaths(schema),
+    );
+    expect(args.span).toBe(4);
+    expect(typeof args.span).toBe('number');
+    // dashboardId preservado (string esperada como string)
+    expect(args.dashboardId).toBe('cmqtfz6i9000lny0puazbony6');
+    // chartId preservado
+    expect(args.chartId).toBe('cmqt6f54p001rny0pndh24ore');
   });
 });

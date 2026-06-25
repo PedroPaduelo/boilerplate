@@ -140,6 +140,86 @@ export function collectObjectPaths(
 }
 
 /**
+ * Percorre o `inputSchema` de uma tool e devolve a lista de paths RELATIVOS
+ * a `args` que DEVEM ser escalares JSON Schema `integer`, `number` ou
+ * `boolean`. Suporta sub-objetos aninhados (recursivo, mas NÃO recursa em
+ * $ref). Não inclui a raiz `[]` (a raiz é o próprio `args`).
+ *
+ * Para `add_chart_to_dashboard` devolve `[['span'], ['position']]` (integers).
+ * Para `run_query` devolve `[['maxRows']]` (integer).
+ * Não inclui `ttlSeconds` aqui porque ele vive em `draftDataBinding` (e o
+ * percorrimento aninhado vai descer e achá-lo). Strings normais, enums e
+ * arrays NÃO entram — só os tipos primitivos numéricos/booleanos.
+ *
+ * Exportada para teste unitário.
+ */
+export function collectScalarPaths(
+  schema: Record<string, unknown> | undefined,
+  prefix: string[] = [],
+): string[][] {
+  if (!schema || typeof schema !== 'object') return [];
+  const out: string[][] = [];
+
+  // Se ESTE nó declara um tipo escalar, ele É um path terminal.
+  // (Mas só conta quando prefix.length > 0 — a raiz `[]` é o args inteiro,
+  // não é um campo escalar.)
+  if (prefix.length > 0) {
+    if (
+      schema.type === 'integer' ||
+      schema.type === 'number' ||
+      schema.type === 'boolean'
+    ) {
+      out.push(prefix);
+      return out;
+    }
+  }
+
+  const properties = schema.properties as Record<string, unknown> | undefined;
+  if (properties && typeof properties === 'object') {
+    for (const [key, propSchema] of Object.entries(properties)) {
+      if (!propSchema || typeof propSchema !== 'object') continue;
+      if ('$ref' in (propSchema as Record<string, unknown>)) continue;
+      const sub = collectScalarPaths(propSchema as Record<string, unknown>, [
+        ...prefix,
+        key,
+      ]);
+      out.push(...sub);
+    }
+  }
+  return out;
+}
+
+/**
+ * Tenta coercer uma STRING para um valor escalar nativo (`number` ou
+ * `boolean`). Devolve:
+ *   - `true` / `false` para `"true"` / `"false"` (case-insensitive, trim)
+ *   - `Number` parseado se for um número válido (inclui "4", "4.5", "-1")
+ *   - `undefined` se a string não é coercível (vazia, "abc", etc.) — nesse
+ *     caso o caller deve PRESERVAR a string original (não substituir por
+ *     `undefined`) pra Zod poder emitir uma mensagem de erro útil.
+ *
+ * IMPORTANTE: não distingue `integer` vs `number` — sempre devolve `Number`.
+ * Se o tipo esperado era `integer` mas o valor veio como "4.5", Zod vai
+ * validar que é inteiro depois (aqui só fazemos a coerção ampla).
+ */
+function coerceScalar(raw: string): boolean | number | undefined {
+  const trimmed = raw.trim();
+  if (trimmed === '') return undefined;
+
+  // Boolean — case-insensitive (LLMs podem emitir "True", "FALSE", etc.)
+  const lower = trimmed.toLowerCase();
+  if (lower === 'true') return true;
+  if (lower === 'false') return false;
+
+  // Number — usa Number() (aceita inteiros, decimais, negativos, notação
+  // científica). String vazia já foi tratada acima; "abc" → NaN → undefined.
+  const n = Number(trimmed);
+  if (!Number.isNaN(n) && Number.isFinite(n)) return n;
+
+  return undefined;
+}
+
+/**
  * Navega `obj` seguindo `path` e devolve o nó final. Devolve `undefined` se
  * algum segmento não puder ser percorrido (sub-objeto ausente, primitivo,
  * array). NÃO cria novos objetos — só leitura.
@@ -222,21 +302,38 @@ function tryParseJsonOfKind(
 /**
  * Aplica `unwrapItemWrapper` em todos os paths array-esperados do `args`,
  * E desempacota strings (`""` ou JSON serializado) em paths array/objeto
- * esperados do schema da tool. MUTA o objeto (é criado dentro da função
+ * esperados do schema da tool, E COERCE strings em paths integer/number/
+ * boolean esperados do schema. MUTA o objeto (é criado dentro da função
  * de cima).
  *
- * Quatro casos que o Claude às vezes emite (reproduzido em produção via SSE
- * — ver `_meta/agent-e2e/test-vazio.stream`):
+ * Quatro casos que o Claude às vezes emite para arrays/objetos (reproduzido
+ * em produção via SSE — ver `_meta/agent-e2e/test-vazio.stream`):
  *   1. `args.draftLayout.filters = ""` → vira `[]`
  *   2. `args.draftLayout.rows = ""`    → vira `[]`
  *   3. `args.draftLayout = "{\"filters\":[],\"rows\":[]}"` → vira objeto
  *   4. (legado do T4) `args.draftLayout.rows = {item: [...]}` → vira array
  *
- * A transformação SÓ roda em paths que o schema declara como array/objeto —
- * `title`, `connectionId`, etc. (strings esperadas como string) são intocados.
+ * E o caso novo (T10) que o Claude emite para escalares numéricos/booleanos
+ * (reproduzido em `_meta/agent-e2e/test-sequencial.stream`):
+ *   5. `args.span = "4"`              → vira `4` (number)
+ *   6. `args.position = "2"`          → vira `2` (number)
+ *   7. `args.showDelta = "true"`      → vira `true` (boolean, case-insens.)
+ *   8. `args.showDelta = "False"`     → vira `false` (boolean)
+ *
+ * A transformação SÓ roda em paths que o schema declara como
+ * array/object/integer/number/boolean — `title`, `connectionId`, etc.
+ * (strings esperadas como string) são intocados.
  *
  * Ordem: processa `objectPaths` ANTES de `arrayPaths` para que, se um objeto
  * pai virou `{}` ou objeto parseado, os arrays filhos sejam encontrados.
+ * `scalarPaths` roda por ÚLTIMO (não cria estrutura nova — só mexe em
+ * valores já presentes).
+ *
+ * Importante: a coerção escalar NÃO substitui a string por `undefined`
+ * quando a string não é coercível (vazia, "abc"). Ela simplesmente NÃO
+ * toca — preserva a string. Razão: deixar o Zod emitir "Expected number,
+ * received string" com mensagem útil em vez de silenciosamente quebrar a
+ * forma do payload.
  *
  * Exportada para teste unitário.
  */
@@ -244,6 +341,7 @@ export function unwrapArrayWrappers(
   args: Record<string, unknown>,
   arrayPaths: string[][],
   objectPaths: string[][] = [],
+  scalarPaths: string[][] = [],
 ): Record<string, unknown> {
   // 1) Desempacota strings em paths de objeto:
   //    "" → {} (defensivo, embora Zod ainda rejeite — não piora o estado)
@@ -288,6 +386,20 @@ export function unwrapArrayWrappers(
     }
     // else: já é array, ou outro tipo → não toca
   }
+
+  // 3) Coerce strings em paths integer/number/boolean.
+  //    Se o LLM mandou `span: "4"` em vez de `span: 4`, transforma em número.
+  //    Strings não-coercíveis ("abc", "") são preservadas — Zod vai rejeitar
+  //    com mensagem útil em vez de silenciosamente virar undefined.
+  for (const path of scalarPaths) {
+    const node = getNodeAt(args, path);
+    if (typeof node !== 'string') continue;
+    const coerced = coerceScalar(node);
+    if (coerced !== undefined) {
+      setNodeAt(args, path, coerced);
+    }
+  }
+
   return args;
 }
 
@@ -300,6 +412,9 @@ function convertMcpTool(mcpTool: ToolDefinition, actor: ActorContext): Tool {
   // Coleta também os paths objeto-esperados (T9: draftLayout, draftDataBinding
   // etc. podem chegar como string JSON do LLM).
   const objectPaths = collectObjectPaths(mcpTool.inputSchema);
+  // E os paths escalar-esperados (T10: span, position, showDelta, maxRows,
+  // ttlSeconds etc. podem chegar como string em vez de number/boolean).
+  const scalarPaths = collectScalarPaths(mcpTool.inputSchema);
 
   return tool({
     description: mcpTool.description,
@@ -307,15 +422,17 @@ function convertMcpTool(mcpTool: ToolDefinition, actor: ActorContext): Tool {
     execute: async (args: unknown) => {
       try {
         // Normalização defensiva: desempacota {item:T} → T nos campos array
-        // esperados do schema da tool, e strings (vazias ou JSON) em campos
-        // array/objeto esperados. Se o input já é array ou está ausente,
-        // não mexe. Não toca em outros campos.
+        // esperados do schema da tool, strings (vazias ou JSON) em campos
+        // array/objeto esperados, e coage strings em campos
+        // integer/number/boolean esperados. Se o input já é o tipo nativo ou
+        // está ausente, não mexe. Não toca em outros campos.
         const safeArgs =
           args !== null && typeof args === 'object' && !Array.isArray(args)
             ? unwrapArrayWrappers(
                 args as Record<string, unknown>,
                 arrayPaths,
                 objectPaths,
+                scalarPaths,
               )
             : (args ?? {});
         const result = await mcpTool.handler(safeArgs, { actor });
