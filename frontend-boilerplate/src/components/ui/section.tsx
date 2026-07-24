@@ -52,13 +52,16 @@ export function SectionHeader({
         className,
       )}
     >
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {eyebrow ? (
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {eyebrow}
           </p>
         ) : null}
-        <h3 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
+        {/* Título expressivo: escala maior e tracking negativo (-0.02em), o
+            traço que dá o ar "produto premium" em Linear/Vercel/Stripe.
+            `text-balance` evita a última linha órfã em títulos longos. */}
+        <h3 className="text-balance text-2xl font-semibold leading-[1.15] tracking-[-0.02em] sm:text-3xl">
           {title}
         </h3>
         {description ? (
@@ -67,9 +70,7 @@ export function SectionHeader({
           </p>
         ) : null}
       </div>
-      {actions ? (
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
-      ) : null}
+      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </div>
   );
 }

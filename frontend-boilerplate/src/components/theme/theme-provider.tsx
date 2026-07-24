@@ -4,9 +4,7 @@ import { type Theme, ThemeProviderContext } from './theme-context';
 const STORAGE_KEY = 'theme';
 
 function systemTheme(): 'dark' | 'light' {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export function ThemeProvider({
@@ -23,14 +21,20 @@ export function ThemeProvider({
   const resolvedTheme = theme === 'system' ? systemTheme() : theme;
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+    const el = document.documentElement;
+    el.classList.toggle('dark', resolvedTheme === 'dark');
+    // `color-scheme` faz o browser pintar scrollbars, inputs e o autofill com
+    // a paleta certa. Sem isto, no escuro sobram elementos nativos claros.
+    el.style.colorScheme = resolvedTheme;
   }, [resolvedTheme]);
 
   useEffect(() => {
     if (theme !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () =>
+    const onChange = () => {
       document.documentElement.classList.toggle('dark', mq.matches);
+      document.documentElement.style.colorScheme = mq.matches ? 'dark' : 'light';
+    };
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, [theme]);

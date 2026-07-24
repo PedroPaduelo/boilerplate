@@ -22,7 +22,11 @@ import { ErrorBoundary } from './error-boundary';
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      {/* Dark-first: em ferramenta profissional de análise, o escuro dá mais
+          contraste aos gráficos e cansa menos em sessão longa — é o padrão dos
+          consoles de dados em 2026. O toggle continua disponível e a escolha
+          do usuário persiste; o script em index.html aplica antes do paint. */}
+      <ThemeProvider defaultTheme="dark">
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SocketProvider>

@@ -151,6 +151,18 @@ Ao adicionar uma permissão, atualize **os dois lados**.
 
 Tokens em `frontend-boilerplate/src/app/index.css` (light + dark).
 
+**Personalidade:** instrumento profissional — denso, calmo e preciso. A
+referência são ferramentas como Linear, Vercel e Raycast, não páginas de
+marketing. Na prática isso significa: *chrome* mínimo, cor com significado,
+tipografia com tracking apertado e profundidade por borda em vez de sombra.
+
+**Dark-first.** O tema escuro é o padrão (`ThemeProvider defaultTheme="dark"`),
+com um script bloqueante em `index.html` que aplica a classe antes do primeiro
+paint — sem o flash branco típico de dark mode mal implementado. O toggle
+continua disponível e a escolha do usuário persiste em `localStorage.theme`.
+Justificativa: o escuro dá mais contraste às visualizações e cansa menos em
+sessões longas de análise.
+
 **Cor.** A marca é o teal `#00a1b0` ≈ `oklch(0.648 0.111 206.5)`. Ele ancora
 `--primary`, o anel de foco (`--ring`) e a primeira cor de série.
 
@@ -171,7 +183,21 @@ como cor de variação positiva.
 elementos gráficos ≥ 3:1, nos dois temas.
 
 **Tipografia.** Inter (interface) e JetBrains Mono (SQL/código), carregadas em
-`index.html` com fallback completo para fontes de sistema.
+`index.html` com fallback completo para fontes de sistema. Títulos de seção
+usam tracking negativo (`-0.02em`) e `text-balance` — o traço que dá o ar de
+produto premium. Números (datas, contagens, células de tabela) são sempre
+tabulares e, em metadados, monoespaçados, para alinharem entre linhas.
+
+**Elevação.** Sombras curtas e de baixa opacidade; a hierarquia vem do
+contraste de borda. No escuro a sidebar fica no mesmo plano do conteúdo,
+separada por uma hairline — quem se eleva é o cartão, não a navegação.
+
+### Command palette (⌘K)
+
+`features/command-palette` — busca e navegação por teclado sobre dashboards,
+gráficos, conexões e ações (criar dashboard, abrir o agente, trocar tema).
+Construída com `cmdk`, reaproveita as queries já em cache do TanStack Query.
+O gatilho visível na topbar existe para ensinar o atalho passivamente.
 
 ---
 

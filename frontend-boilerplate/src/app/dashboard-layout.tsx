@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { DashboardTopbar } from '@/components/ui';
 import { AppSidebar } from './app-sidebar';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { CommandPalette } from '@/features/command-palette/command-palette';
+import { CommandTrigger } from '@/features/command-palette/command-trigger';
 
 const TITLES: Record<string, string> = {
   '/home': 'Visão geral',
@@ -53,7 +55,12 @@ export function DashboardLayout() {
               {title}
             </span>
           }
-          actions={<ThemeToggle />}
+          actions={
+            <>
+              <CommandTrigger />
+              <ThemeToggle />
+            </>
+          }
           onMenu={() => setMobileOpen(true)}
         />
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -68,6 +75,10 @@ export function DashboardLayout() {
           </div>
         </main>
       </div>
+
+      {/* Montada uma única vez no shell: o atalho ⌘K funciona em toda tela
+          autenticada, e a paleta reaproveita as queries já em cache. */}
+      <CommandPalette />
     </div>
   );
 }

@@ -22,6 +22,32 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
+
+    <!-- Tema aplicado ANTES do primeiro paint (script bloqueante, de propósito).
+         Sem isto o React só decide o tema depois de montar, e quem usa escuro
+         leva um flash branco a cada carregamento — o erro clássico de
+         implementação de dark mode. Mantido inline e minúsculo: vai junto do
+         HTML, sem request extra. A fonte da verdade continua sendo o mesmo
+         `localStorage.theme` que o ThemeProvider lê. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark =
+            stored === 'dark' ? true
+            : stored === 'light' ? false
+            : stored === 'system' ? prefersDark
+            : true; // sem preferência salva → dark-first
+          var el = document.documentElement;
+          el.classList.toggle('dark', isDark);
+          // Faz scrollbars e controles nativos acompanharem o tema.
+          el.style.colorScheme = isDark ? 'dark' : 'light';
+        } catch (e) {
+          /* localStorage bloqueado (modo privado): segue no tema padrão. */
+        }
+      })();
+    </script>
     <script type="module">
       // React Grab — ferramenta de DEV (selecionar elementos e copiar o
       // contexto do componente React pra colar em IA). Só carrega em dev.

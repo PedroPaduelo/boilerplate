@@ -87,6 +87,23 @@ teclado; a dependência `cmdk` já está instalada.
 filtro". Falta aplicar o mesmo cuidado em **Conexões** (que ainda cai numa grade
 vazia sem orientação) e no **workbench** de uma conexão sem tabelas.
 
+### 9. Ampliar a paleta de comandos
+
+A ⌘K hoje navega e cria. Próximos passos naturais, na ordem de valor:
+
+- **Ações contextuais por tela** (publicar/duplicar/compartilhar o artefato
+  aberto), no modelo de "páginas" do Raycast.
+- **Busca em tabelas e colunas** das conexões — hoje só busca artefatos, mas
+  quem investiga costuma procurar `nf_itens` antes de procurar um dashboard.
+- **Perguntar direto da paleta**: digitar uma pergunta e mandar ao agente sem
+  passar pela tela de chat.
+
+### 10. Densidade configurável (confortável / compacta)
+
+A tendência 2026 aponta para alta densidade, mas o ponto ideal varia por
+usuário e por tela. Um toggle que ajusta paddings e altura de linha via um
+token (`--density`) atende os dois públicos sem bifurcar componentes.
+
 ---
 
 ## 🟢 Diferenciais

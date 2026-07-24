@@ -1,10 +1,8 @@
 import { Fragment } from 'react';
 import { AlertTriangle, MoreHorizontal, type LucideIcon } from 'lucide-react';
 import {
-  Badge,
   Button,
   Card,
-  CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -16,11 +14,11 @@ import {
 } from '@/components/ui';
 import { cn, formatDateTime } from '@/shared/lib/utils';
 
-/** Aparência da pílula de status (rascunho/publicado). */
-function statusBadge(status: string) {
+/** Cor do ponto de status. Cor é reservada para SIGNIFICADO, não decoração. */
+function statusDot(status: string) {
   return status === 'PUBLISHED'
-    ? { label: 'Publicado', className: 'bg-chart-2/10 text-chart-2' }
-    : { label: 'Rascunho', className: 'bg-muted text-muted-foreground' };
+    ? { label: 'Publicado', dot: 'bg-chart-2', text: 'text-foreground/70' }
+    : { label: 'Rascunho', dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' };
 }
 
 const VISIBILITY_LABEL: Record<string, string> = {
@@ -42,17 +40,13 @@ export interface ArtifactCardAction {
 
 /**
  * Props para o modo de confirmação inline. Quando setado, o card se
- * TRANSFORMA em um painel de confirmação (sem modal/overlay) com botões
- * "Sim, excluir" e "Cancelar". Resolve definitivamente o bug do
- * `react-remove-scroll` que deixava o `<body>` com `pointer-events: none`
+ * TRANSFORMA em um painel de confirmação (sem modal/overlay), evitando o bug
+ * do `react-remove-scroll` que deixava o `<body>` com `pointer-events: none`
  * após fechar o Radix `AlertDialog`.
  */
 export interface ArtifactCardConfirming {
-  /** Dispara a mutação destrutiva. */
   onConfirm: () => void;
-  /** Fecha o modo de confirmação sem chamar a mutação. */
   onCancel: () => void;
-  /** Desabilita ambos os botões durante a request. */
   isPending?: boolean;
 }
 
@@ -61,38 +55,35 @@ export interface ArtifactCardProps {
   icon: LucideIcon;
   status: string;
   visibility: string;
-  /** Linha de meta primária (ex.: "Meu" ou nome do dono). */
   metaPrimary?: string;
-  /** Linha de meta secundária (ex.: departamento). */
   metaSecondary?: string;
   updatedAt: string;
-  /** Abrir (clique no card / botão Abrir). */
   onOpen: () => void;
-  /** Disparado no hover — usado para prefetch do detalhe. */
   onPrefetch?: () => void;
-  /** Rótulo do botão principal (default "Abrir"). */
   openLabel?: string;
   actions: ArtifactCardAction[];
-  /**
-   * Se definido, o card entra em modo de confirmação inline. O menu, o
-   * badge de status e o botão "Abrir" desaparecem; o card exibe:
-   *   • Ícone de aviso + texto "Excluir {title}?"
-   *   • Botão "Sim, excluir" (variant destructive, disabled se isPending)
-   *   • Botão "Cancelar"
-   */
   confirming?: ArtifactCardConfirming;
 }
 
 /**
- * Card genérico de artefato (dashboard ou gráfico) para as telas de listagem.
- * Presentacional e agnóstico de feature: recebe os dados já mapeados e a lista
- * de ações (já filtradas por RBAC pelo chamador).
+ * Card de artefato (dashboard ou gráfico) das telas de listagem.
  *
- * Suporta DOIS modos mutuamente exclusivos:
- *   1. Normal — exibe o card completo + menu de ações.
- *   2. Confirmação inline — `confirming` está setado. Vira um painel de
- *      confirmação SEM modal/overlay, eliminando o bug do Radix
- *      `AlertDialog` + `react-remove-scroll` que travava a UI após delete.
+ * Decisões de design (derivadas do benchmark com Linear/Vercel e da tendência
+ * 2026 de "minimal chrome, maximum data"):
+ *
+ * 1. O CARD INTEIRO é clicável. Antes, só um botão "Abrir" no rodapé abria o
+ *    artefato — o alvo era pequeno e o card parecia clicável sem ser. Aqui o
+ *    botão do título projeta um `::after` sobre todo o card, o que dá uma
+ *    área de clique grande MANTENDO um único ponto de foco no teclado (o
+ *    padrão de "card com link expandido" usado por GitHub e Linear).
+ * 2. Status vira um PONTO colorido em vez de duas pílulas. Cor passa a
+ *    significar estado, não decorar — grades de pílulas coloridas viraram
+ *    ruído visual e datam a interface.
+ * 3. Sem sombra em repouso: borda hairline e, no hover, a borda assume a cor
+ *    da marca com um leve halo. Elevação por sombra pesada foi substituída
+ *    por contraste de borda (padrão Vercel).
+ * 4. O menu "…" só aparece no hover/foco em telas grandes, reduzindo ruído
+ *    numa grade com dezenas de cards; em toque permanece sempre visível.
  */
 export function ArtifactCard({
   title,
@@ -108,9 +99,7 @@ export function ArtifactCard({
   actions,
   confirming,
 }: ArtifactCardProps) {
-  // MODO DE CONFIRMAÇÃO: substitui TODO o conteúdo do card por um painel
-  // inline. Não usa portal, não usa overlay, não monta nada que precise
-  // cleanup assíncrono.
+  // MODO DE CONFIRMAÇÃO — substitui todo o conteúdo, sem portal nem overlay.
   if (confirming) {
     return (
       <Card
@@ -159,92 +148,116 @@ export function ArtifactCard({
   }
 
   // MODO NORMAL
-  const st = statusBadge(status);
+  const st = statusDot(status);
   const hasMenu = actions.length > 0;
+  const meta = [metaPrimary, metaSecondary].filter(Boolean).join(' · ');
 
   return (
-    <Card
-      className="group gap-4 py-5 transition-shadow hover:shadow-md"
+    <div
+      // Mantém a convenção de slot do design system (`card`): este container
+      // substitui o <Card> anterior e continua sendo, para todos os efeitos,
+      // o elemento "card" — inclusive para quem consulta o DOM.
+      data-slot="card"
+      data-artifact-card=""
       onMouseEnter={onPrefetch}
       onFocus={onPrefetch}
+      className={cn(
+        'group relative flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4',
+        'transition-[border-color,background-color,box-shadow] duration-200',
+        // Halo sutil na cor da marca via color-mix (em vez de sombra pesada).
+        'hover:border-primary/40 hover:bg-accent/40',
+        'hover:shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_12%,transparent)]',
+        'focus-within:border-primary/50',
+      )}
     >
-      <CardHeader className="px-5">
-        <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <Icon className="size-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <CardTitle className="truncate text-base" title={title}>
-              {title}
-            </CardTitle>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {metaPrimary}
-              {metaPrimary && metaSecondary ? ' · ' : ''}
-              {metaSecondary}
-            </p>
-          </div>
-          {hasMenu && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Ações de ${title}`}
-                  className="shrink-0"
-                >
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                {actions.map((action) => (
-                  <Fragment key={action.key}>
-                    {action.separatorBefore && <DropdownMenuSeparator />}
-                    <DropdownMenuItem
-                      variant={action.destructive ? 'destructive' : 'default'}
-                      disabled={action.disabled}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        if (!action.disabled) action.onSelect();
-                      }}
-                    >
-                      <action.icon />
-                      {action.label}
-                    </DropdownMenuItem>
-                  </Fragment>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent className="flex flex-wrap items-center gap-2 px-5">
-        <Badge
-          variant="outline"
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
           className={cn(
-            'gap-1.5 rounded-full border-transparent',
-            st.className,
+            'flex size-8 shrink-0 items-center justify-center rounded-lg',
+            'bg-muted text-muted-foreground transition-colors',
+            'group-hover:bg-primary/10 group-hover:text-primary',
           )}
         >
-          <span className="size-1.5 rounded-full bg-current" />
-          {st.label}
-        </Badge>
-        <Badge
-          variant="outline"
-          className="rounded-full border-border/70 text-muted-foreground"
-        >
-          {VISIBILITY_LABEL[visibility] ?? visibility}
-        </Badge>
-      </CardContent>
+          <Icon className="size-4" />
+        </span>
 
-      <CardFooter className="justify-between gap-2 px-5">
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <div className="min-w-0 flex-1">
+          {/* O ::after cobre o card inteiro = área de clique grande com um
+              único ponto de tabulação. O menu fica acima via z-10. */}
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`${openLabel} ${title}`}
+            className={cn(
+              'block max-w-full truncate text-left text-sm font-medium leading-tight text-foreground',
+              'after:absolute after:inset-0 after:rounded-xl after:content-[""]',
+              'outline-none focus-visible:underline focus-visible:decoration-primary focus-visible:underline-offset-4',
+            )}
+            title={title}
+          >
+            {title}
+          </button>
+          {meta ? (
+            <p className="mt-1 truncate text-xs text-muted-foreground">{meta}</p>
+          ) : null}
+        </div>
+
+        {hasMenu && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Ações de ${title}`}
+                className={cn(
+                  'relative z-10 -mr-1 -mt-1 shrink-0 text-muted-foreground',
+                  'md:opacity-0 md:transition-opacity',
+                  'md:group-hover:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100',
+                )}
+              >
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {actions.map((action) => (
+                <Fragment key={action.key}>
+                  {action.separatorBefore && <DropdownMenuSeparator />}
+                  <DropdownMenuItem
+                    variant={action.destructive ? 'destructive' : 'default'}
+                    disabled={action.disabled}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      if (!action.disabled) action.onSelect();
+                    }}
+                  >
+                    <action.icon />
+                    {action.label}
+                  </DropdownMenuItem>
+                </Fragment>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {/* Rodapé de metadados: status por PONTO + visibilidade + data em mono
+          (números tabulares alinham entre cards vizinhos na grade). */}
+      <div className="flex items-center gap-2 text-xs">
+        <span className={cn('flex items-center gap-1.5', st.text)}>
+          <span className={cn('size-1.5 rounded-full', st.dot)} aria-hidden />
+          {st.label}
+        </span>
+        <span className="text-border" aria-hidden>
+          |
+        </span>
+        <span className="truncate text-muted-foreground">
+          {VISIBILITY_LABEL[visibility] ?? visibility}
+        </span>
+        <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/80">
           {formatDateTime(updatedAt)}
         </span>
-        <Button variant="outline" size="sm" onClick={onOpen}>
-          {openLabel}
-        </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

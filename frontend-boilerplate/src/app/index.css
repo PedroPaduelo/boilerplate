@@ -66,14 +66,18 @@
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.648 0.111 206.5);
 
-  --shadow-2xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
-  --shadow-xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
-  --shadow: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-md: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 2px 4px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-lg: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 4px 6px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 8px 10px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-2xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.25);
+  /* Elevação discreta: sombras curtas e de baixa opacidade, no espírito do
+     Geist/Vercel (`0 1px 2px #00000029`). Ferramenta profissional ganha
+     profundidade por CONTRASTE DE BORDA, não por sombra difusa — sombra
+     pesada envelhece a interface e some no tema escuro. */
+  --shadow-2xs: 0 1px 2px 0px oklch(0 0 0 / 0.04);
+  --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.06);
+  --shadow-sm: 0 1px 2px 0px oklch(0 0 0 / 0.08);
+  --shadow: 0 1px 2px 0px oklch(0 0 0 / 0.08), 0 1px 1px -0.5px oklch(0 0 0 / 0.04);
+  --shadow-md: 0 2px 4px -1px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.06);
+  --shadow-lg: 0 8px 16px -4px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.06);
+  --shadow-xl: 0 16px 32px -8px oklch(0 0 0 / 0.14), 0 4px 8px -4px oklch(0 0 0 / 0.08);
+  --shadow-2xl: 0 24px 48px -12px oklch(0 0 0 / 0.22);
 }
 
 .dark {
@@ -103,7 +107,11 @@
   --chart-3: oklch(0.82 0.145 80);
   --chart-4: oklch(0.7 0.16 288);
   --chart-5: oklch(0.72 0.17 14);
-  --sidebar: oklch(0.21 0.006 285.885);
+  /* Sidebar no MESMO plano do conteúdo (antes era mais clara que o fundo, o
+     que a fazia parecer flutuar sobre a página). Nav e conteúdo dividem a
+     superfície e são separados por uma borda hairline — o cartão é que se
+     eleva, não a navegação. */
+  --sidebar: oklch(0.141 0.005 285.823);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.7 0.105 205);
   --sidebar-primary-foreground: oklch(0.2 0.035 210);
@@ -112,14 +120,16 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.648 0.111 206.5);
 
-  --shadow-2xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
-  --shadow-xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
-  --shadow: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-md: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 2px 4px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-lg: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 4px 6px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 8px 10px -1px oklch(0.00 0 0 / 0.10);
-  --shadow-2xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.25);
+  /* No escuro a sombra quase não existe (não há luz para bloquear): a
+     profundidade vem da borda hairline clara sobre o fundo quase preto. */
+  --shadow-2xs: 0 1px 2px 0px oklch(0 0 0 / 0.2);
+  --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.25);
+  --shadow-sm: 0 1px 2px 0px oklch(0 0 0 / 0.3);
+  --shadow: 0 1px 2px 0px oklch(0 0 0 / 0.3), 0 1px 1px -0.5px oklch(0 0 0 / 0.2);
+  --shadow-md: 0 2px 4px -1px oklch(0 0 0 / 0.35), 0 1px 2px -1px oklch(0 0 0 / 0.25);
+  --shadow-lg: 0 8px 16px -4px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.3);
+  --shadow-xl: 0 16px 32px -8px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.35);
+  --shadow-2xl: 0 24px 48px -12px oklch(0 0 0 / 0.7);
 }
 
 @theme inline {

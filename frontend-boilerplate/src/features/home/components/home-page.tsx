@@ -26,7 +26,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import { Button, KpiCard, Section, SectionHeader, Skeleton } from '@/components/ui';
+import { Button, Section, SectionHeader, Skeleton } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/store';
 import { hasPermission } from '@/shared/lib/rbac';
 import { cn, formatDate } from '@/shared/lib/utils';
@@ -48,6 +48,56 @@ interface RecentItem {
   title: string;
   updatedAt: string;
   status: string;
+}
+
+/**
+ * Célula de estatística da faixa superior. Número grande em fonte tabular
+ * (alinha entre colunas), rótulo discreto e a linha inteira clicável para a
+ * listagem correspondente — o número é um atalho, não só um enfeite.
+ */
+function Stat({
+  label,
+  value,
+  icon: Icon,
+  hint,
+  tone = 'default',
+  onClick,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  hint?: string;
+  tone?: 'default' | 'warning';
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+        <Icon className="size-4" />
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-2xl font-semibold leading-none tracking-tight tabular-nums text-foreground">
+          {value}
+        </span>
+        <span className="mt-1.5 truncate text-xs text-muted-foreground">
+          {label}
+          {hint ? (
+            <>
+              {' · '}
+              <span className={tone === 'warning' ? 'text-chart-3' : undefined}>
+                {hint}
+              </span>
+            </>
+          ) : null}
+        </span>
+      </span>
+      <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
+  );
 }
 
 /** Lista compacta de artefatos recentes (dashboards ou gráficos). */
@@ -244,49 +294,48 @@ export function HomePage() {
       {/* ---------------------------------------------------------------- */}
       <Section index={1}>
         {isLoadingCounts ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full rounded-xl" />
-            ))}
-          </div>
+          <Skeleton className="h-[5.5rem] w-full rounded-xl" />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <KpiCard
+          /* Faixa de estatísticas em vez de três cards grandes e coloridos.
+             A grade de "stat cards, cada um com seu ícone colorido" é o
+             padrão que datou as dashboards: cor vira decoração e o olho
+             perde a referência. Aqui é UM bloco, divisores hairline, um
+             único accent — e a cor fica reservada para status. */
+          <div className="grid grid-cols-1 divide-y divide-border/70 overflow-hidden rounded-xl border border-border/70 bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <Stat
               label="Dashboards"
-              value={totalDashboards}
+              value={String(totalDashboards)}
               icon={LayoutDashboard}
-              accentClassName="bg-chart-1"
-              hint=""
+              onClick={() => navigate('/dashboards')}
             />
-            <KpiCard
+            <Stat
               label="Gráficos"
-              value={totalCharts}
+              value={String(totalCharts)}
               icon={BarChart3}
-              accentClassName="bg-chart-4"
-              hint=""
+              onClick={() => navigate('/charts')}
             />
             {canUseConnections ? (
-              <KpiCard
-                label="Conexões de dados"
-                value={totalConnections}
-                displayValue={
+              <Stat
+                label="Conexões"
+                value={
                   connectionsQuery.isLoading
                     ? '—'
                     : `${healthyConnections}/${totalConnections}`
                 }
                 icon={Database}
-                accentClassName="bg-chart-2"
-                hint=""
+                hint={
+                  totalConnections === 0
+                    ? 'nenhuma cadastrada'
+                    : `${healthyConnections === totalConnections ? 'todas' : healthyConnections} respondendo`
+                }
+                tone={
+                  totalConnections > 0 && healthyConnections === 0 ? 'warning' : 'default'
+                }
+                onClick={() => navigate('/connections')}
               />
             ) : null}
           </div>
         )}
-        {canUseConnections && !connectionsQuery.isLoading && totalConnections > 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {healthyConnections} de {totalConnections}{' '}
-            {totalConnections === 1 ? 'conexão respondendo' : 'conexões respondendo'}.
-          </p>
-        ) : null}
       </Section>
 
       {/* ---------------------------------------------------------------- */}
