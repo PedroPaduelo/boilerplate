@@ -16,7 +16,7 @@ import type { ActorContext } from '@/lib/rbac';
 
 import { createAnthropicWithExtras, extrasToProviderOptions } from '../provider/anthropic.js';
 import { DEFAULT_AGENT_CONFIG } from '../config/schemas.js';
-import { runAgent } from '../agent/loop.js';
+import { runAgent, type RunAgentResult } from '../agent/loop.js';
 import { buildMcpToolsForAgent } from '../tools/mcp-adapter.js';
 import { loadAllSkills, renderSkillsIndex, createActivateSkillTool } from '../skills/index.js';
 import { addMessage, loadConversationHistory } from '../services/conversation.js';
@@ -122,8 +122,18 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
         }
       };
 
+      // Tudo que já foi ENTREGUE ao browser. Acumulamos aqui (e não só no
+      // retorno do runAgent) para que, se o agente falhar no meio, a resposta
+      // parcial que o usuário viu na tela ainda seja persistida em vez de
+      // virar um "Erro: ..." no histórico.
+      let streamedText = '';
+      let usage: RunAgentResult['usage'];
+      let historyLen = 0;
+      let agentError: { message: string } | null = null;
+
       try {
         const history = await loadConversationHistory(conv.id);
+        historyLen = history.length;
 
         const basePrompt = await getSystemPrompt();
         const skills = await loadAllSkills();
@@ -156,11 +166,15 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
           providerOptions: extrasToProviderOptions(DEFAULT_AGENT_CONFIG.anthropicExtras),
           sink: {
             onLog: (msg, level = 'info') => send('log', { level, message: msg }),
+            // Texto token-a-token vindo do streamText. É AQUI que o texto vai
+            // para a tela — por isso `onStep` NÃO reenvia `step.text` (isso
+            // duplicaria toda a resposta).
+            onTextDelta: (delta) => {
+              ensureMessageStart();
+              streamedText += delta;
+              send('text_delta', { messageId: currentMessageId, delta });
+            },
             onStep: (step) => {
-              if (step.text && step.text.length > 0) {
-                ensureMessageStart();
-                send('text_delta', { messageId: currentMessageId, delta: step.text });
-              }
               if (step.toolCalls) {
                 for (const tc of step.toolCalls) {
                   send('tool_step', {
@@ -221,21 +235,8 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
           },
         });
 
-        // Persiste resposta
-        await addMessage(conv.id, {
-          role: 'assistant',
-          content: result.text || '(sem resposta)',
-          tokensIn: result.usage?.inputTokens,
-          tokensOut: result.usage?.outputTokens,
-        });
-
-        // Auto-título na primeira mensagem
-        if (history.length <= 1 && conv.title === 'Nova conversa') {
-          await prisma.conversation.update({
-            where: { id: conv.id },
-            data: { title: userMessage.slice(0, 60) },
-          });
-        }
+        streamedText = result.fullText || streamedText;
+        usage = result.usage;
       } catch (err: any) {
         // Loga o corpo da resposta da API — sem isto, erros 4xx do provider
         // chegam ao cliente como um "Bad Request" opaco, sem o motivo real.
@@ -248,11 +249,38 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
           send('message_end', { messageId: currentMessageId });
           currentMessageId = null;
         }
-        send('error', { message: err.message ?? 'Agent execution failed' });
+        agentError = { message: err?.message ?? 'Agent execution failed' };
+        send('error', agentError);
+      }
+
+      // Persistência FORA do try do agente, de propósito.
+      //
+      // Antes, `addMessage` e o auto-título ficavam dentro do mesmo try: se o
+      // agente respondesse certinho mas o banco engasgasse, o catch disparava
+      // um evento `error` e a tela mostrava "Não consegui concluir essa
+      // resposta" DEPOIS de uma resposta perfeita. Falha de persistência é
+      // problema nosso — vai pro log, não pra cara do usuário.
+      try {
+        const trimmed = streamedText.trim();
         await addMessage(conv.id, {
           role: 'assistant',
-          content: `Erro: ${err.message ?? 'Agent execution failed'}`,
+          // Se o agente falhou ANTES de emitir qualquer texto, guardamos o
+          // erro (útil pra depurar). Se ele já tinha respondido, guardamos a
+          // resposta — que é o que o usuário viu.
+          content: trimmed || (agentError ? `Erro: ${agentError.message}` : '(sem resposta)'),
+          tokensIn: usage?.inputTokens,
+          tokensOut: usage?.outputTokens,
         });
+
+        // Auto-título na primeira mensagem
+        if (historyLen <= 1 && conv.title === 'Nova conversa') {
+          await prisma.conversation.update({
+            where: { id: conv.id },
+            data: { title: userMessage.slice(0, 60) },
+          });
+        }
+      } catch (persistErr) {
+        request.log.error({ err: persistErr, conversationId: conv.id }, 'agent: falha ao persistir resposta');
       } finally {
         reply.raw.end();
       }

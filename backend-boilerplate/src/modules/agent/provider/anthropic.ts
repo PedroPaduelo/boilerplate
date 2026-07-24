@@ -84,15 +84,63 @@ function convertEdit(edit: Record<string, unknown>): Record<string, unknown> | n
   return { ...edit };
 }
 
+/**
+ * Conserta respostas NÃO-streaming que violam o contrato da Anthropic.
+ *
+ * O proxy à frente do modelo devolve blocos de raciocínio assim:
+ *     { "type": "thinking", "thinking": "..." }
+ * mas o schema Zod do @ai-sdk/anthropic exige `signature: z.string()` nesse
+ * bloco. Sem o campo, o SDK rejeita a resposta inteira com
+ * `APICallError: Invalid JSON response` — mesmo com HTTP 200.
+ *
+ * Preenchemos o `signature` ausente com string vazia. Isso só dispara quando o
+ * upstream JÁ quebrou o contrato (a Anthropic real sempre assina os blocos),
+ * então é inócuo quando se fala com a API oficial.
+ *
+ * Respostas de streaming passam intactas: o schema de streaming não exige
+ * `signature`, e reserializar um SSE aqui quebraria o fluxo incremental.
+ */
+async function normalizeAnthropicResponse(response: Response): Promise<Response> {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) return response;
+
+  const raw = await response.clone().text();
+  let body: any;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return response;
+  }
+
+  if (!Array.isArray(body?.content)) return response;
+
+  let patched = false;
+  for (const block of body.content) {
+    if (block && block.type === 'thinking' && typeof block.signature !== 'string') {
+      block.signature = '';
+      patched = true;
+    }
+  }
+  if (!patched) return response;
+
+  return new Response(JSON.stringify(body), {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
 export function createAnthropicWithExtras(cfg: AnthropicExtrasConfig) {
   return createAnthropic({
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
     fetch: async (input, init) => {
-      if (!init?.body) return fetch(input, init);
+      const passthrough = async () => normalizeAnthropicResponse(await fetch(input, init));
+
+      if (!init?.body) return passthrough();
 
       const url = typeof input === 'string' ? input : input.toString();
-      if (!url.includes('/messages')) return fetch(input, init);
+      if (!url.includes('/messages')) return passthrough();
 
       try {
         const body = JSON.parse(init.body.toString());
@@ -113,14 +161,16 @@ export function createAnthropicWithExtras(cfg: AnthropicExtrasConfig) {
           console.log(JSON.stringify(redactForLog(body), null, 2));
         }
 
-        if (!mutated && !cfg.debug) return fetch(input, init);
+        if (!mutated && !cfg.debug) return passthrough();
 
-        return fetch(input, {
-          ...init,
-          body: JSON.stringify(body),
-        });
+        return normalizeAnthropicResponse(
+          await fetch(input, {
+            ...init,
+            body: JSON.stringify(body),
+          }),
+        );
       } catch {
-        return fetch(input, init);
+        return passthrough();
       }
     },
   });
