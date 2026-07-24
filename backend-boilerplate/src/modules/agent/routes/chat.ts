@@ -151,6 +151,7 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
           cacheBreakpoint: DEFAULT_AGENT_CONFIG.cacheBreakpoint,
           cacheOptions: DEFAULT_AGENT_CONFIG.cacheOptions,
           temperature: DEFAULT_AGENT_CONFIG.temperature,
+          maxOutputTokens: env.AI_MAX_TOKENS,
           maxSteps: DEFAULT_AGENT_CONFIG.maxSteps,
           providerOptions: extrasToProviderOptions(DEFAULT_AGENT_CONFIG.anthropicExtras),
           sink: {
@@ -236,6 +237,13 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
           });
         }
       } catch (err: any) {
+        // Loga o corpo da resposta da API — sem isto, erros 4xx do provider
+        // chegam ao cliente como um "Bad Request" opaco, sem o motivo real.
+        console.error('[agent] provider error:', {
+          message: err?.message,
+          statusCode: err?.statusCode,
+          responseBody: err?.responseBody,
+        });
         if (currentMessageId) {
           send('message_end', { messageId: currentMessageId });
           currentMessageId = null;

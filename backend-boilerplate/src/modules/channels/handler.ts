@@ -264,6 +264,7 @@ export async function processWhatsappMessage(input: ProcessWhatsappMessageInput)
       cacheBreakpoint: DEFAULT_AGENT_CONFIG.cacheBreakpoint,
       cacheOptions: DEFAULT_AGENT_CONFIG.cacheOptions,
       temperature: DEFAULT_AGENT_CONFIG.temperature,
+      maxOutputTokens: env.AI_MAX_TOKENS,
       maxSteps: 15, // espaço para tool calls + activate_skill
       providerOptions: undefined,
       sink: createBatchSink() as never,

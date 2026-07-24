@@ -17,6 +17,9 @@ export interface RunAgentOptions {
   cacheOptions: CacheOptions;
   temperature?: number | undefined;
   maxSteps?: number | undefined;
+  /** Teto de tokens de saída por chamada. Sem isto o provider usa o default do
+   *  modelo (64k no sonnet-4), que estoura o limite de proxies/providers. */
+  maxOutputTokens?: number | undefined;
   providerOptions?: Record<string, any> | undefined;
   sink: AgentSink;
 }
@@ -53,6 +56,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
     messages,
     tools: opts.tools,
     temperature: opts.temperature,
+    maxOutputTokens: opts.maxOutputTokens,
     stopWhen: stepCountIs(opts.maxSteps ?? 30),
     providerOptions: opts.providerOptions,
     onStepFinish: (step) => {
@@ -78,6 +82,18 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
 
   const elapsedMs = Date.now() - startedAt;
   const responseMessages = (result.response?.messages || []) as ModelMessage[];
+
+  // Fecha o ciclo do sink. Sem isto, o caminho de SUCESSO nunca emite
+  // `message_end`/`final` no SSE — e o frontend, que usa `message_end` para
+  // fechar a mensagem, fica preso no estado de "streaming" indefinidamente.
+  // (O caminho de ERRO já emite message_end no catch da rota.)
+  opts.sink.onFinal({
+    finishReason: result.finishReason,
+    steps: result.steps.length,
+    elapsedMs,
+    text: result.text,
+    usage: result.usage as any,
+  });
 
   return {
     finishReason: result.finishReason,

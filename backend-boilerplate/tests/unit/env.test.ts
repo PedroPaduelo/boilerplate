@@ -18,9 +18,14 @@ describe('envSchema', () => {
     const result = envSchema.safeParse(baseEnv());
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.PG_RUNNER_STATEMENT_TIMEOUT_MS).toBe(15000);
+      // 30s (não 15s): o teto foi elevado de propósito em `env.ts` porque
+      // agregações legítimas levam 8-15s e o limite anterior gerava
+      // falso-timeout. A asserção tinha ficado para trás dessa mudança.
+      expect(result.data.PG_RUNNER_STATEMENT_TIMEOUT_MS).toBe(30000);
       expect(result.data.PG_RUNNER_MAX_ROWS).toBe(50000);
-      expect(result.data.PG_RUNNER_POOL_MAX).toBe(3);
+      // 8 (não 3): o pool precisa ser >= QUERY_EXEC_WORKER_CONCURRENCY, pois
+      // cada job do worker segura uma conexão durante toda a query.
+      expect(result.data.PG_RUNNER_POOL_MAX).toBe(8);
     }
   });
 

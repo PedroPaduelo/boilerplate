@@ -91,6 +91,11 @@ or: prisma/migrations/ if the project structure differs)
 mochawesome-report/
 test-results/
 
+# Postgres local de desenvolvimento (cluster criado com initdb dentro do
+# workspace para o ambiente sandbox, que não tem Docker). Dados binários —
+# NUNCA versionar.
+.pgdata/
+
 # Misc
 .cursorrules
 .mcp.json

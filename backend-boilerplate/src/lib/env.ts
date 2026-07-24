@@ -115,6 +115,12 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_BASE_URL: z.string().url().optional().or(z.literal('')),
   AI_MODEL: z.string().default('claude-sonnet-4-20250514'),
+  /// Teto de tokens de SAÍDA por requisição ao modelo. Sem isto, o provider usa
+  /// o default do modelo (claude-sonnet-4 = 64000) e provedores/proxies com teto
+  /// menor rejeitam a chamada com 400 ("max_tokens ... should be less than or
+  /// equal to N"). 32768 é compatível com o proxy interno; ajuste conforme o
+  /// provider em uso.
+  AI_MAX_TOKENS: z.coerce.number().int().positive().default(32768),
 
   // WhatsApp via Evolution API (opcional — sem as 3, o endpoint
   // /webhooks/evolution responde 503 e a integração fica desabilitada).
