@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="/dashboards" replace /> },
+      { index: true, element: <Navigate to="/home" replace /> },
       // Rotas protegidas declaradas por cada feature (listagens, render, etc.).
       ...protectedRoutes,
     ],

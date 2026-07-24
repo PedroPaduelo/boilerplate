@@ -2,17 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { queryKeys, type ApiMode } from '@/shared/lib/query-keys';
-import {
-  artifactQueryOptions,
-  referenceQueryOptions,
-} from '@/shared/lib/query-policies';
+import { artifactQueryOptions, referenceQueryOptions } from '@/shared/lib/query-policies';
 import type { QueryClient } from '@tanstack/react-query';
 import { dashboardsApi } from './api';
-import type {
-  AddChartInput,
-  CreateDashboardInput,
-  UpdateDashboardInput,
-} from './types';
+import type { AddChartInput, CreateDashboardInput, UpdateDashboardInput } from './types';
 
 /**
  * Invalida TODAS as caches de um dashboard específico: o detalhe (draft +
@@ -22,7 +15,9 @@ import type {
  */
 function invalidateDashboard(queryClient: QueryClient, id: string) {
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.detail(id, 'draft') });
-  queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.detail(id, 'published') });
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.dashboards.detail(id, 'published'),
+  });
   // dashboardData(id, mode, hash) → invalida tudo do dashboard por prefixo.
   queryClient.invalidateQueries({ queryKey: ['dashboard-data', id] });
 }
@@ -61,6 +56,33 @@ export function usePrefetchDashboard() {
       queryFn: () => dashboardsApi.getById(id, mode),
       ...artifactQueryOptions(mode),
     });
+}
+
+/**
+ * Cria um dashboard EM BRANCO (rascunho privado) e devolve o registro — o
+ * chamador navega para o editor.
+ *
+ * Antes existia apenas `useDuplicateDashboard` (que usa o mesmo POST), então
+ * não havia nenhum caminho na interface para criar um dashboard do zero: só
+ * dava para duplicar um que já existisse. Em uma conta nova a listagem ficava
+ * num beco sem saída.
+ */
+export function useCreateDashboard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (title?: string) =>
+      dashboardsApi.create({
+        title: title?.trim() || 'Dashboard sem título',
+        draftLayout: { filters: [], rows: [] },
+        visibility: 'PRIVATE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.all });
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao criar dashboard'));
+    },
+  });
 }
 
 export function useDuplicateDashboard() {

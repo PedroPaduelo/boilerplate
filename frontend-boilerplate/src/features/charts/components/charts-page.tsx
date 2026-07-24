@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Blocks, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui';
+import { hasPermission } from '@/shared/lib/rbac';
 import { useAuthStore } from '@/features/auth/store';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useDebounce } from '@/shared/hooks/use-debounce';
@@ -39,15 +41,12 @@ export function ChartsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const currentUserId = useAuthStore((s) => s.user?.id);
 
-  const [filters, setFilters] = useState<ArtifactFilterState>(
-    DEFAULT_ARTIFACT_FILTERS,
-  );
+  const [filters, setFilters] = useState<ArtifactFilterState>(DEFAULT_ARTIFACT_FILTERS);
   const [page, setPage] = useState(1);
 
   const debouncedSearch = useDebounce(filters.search, 300);
   const serverFilters = useMemo(
-    () =>
-      toServerFilters({ ...filters, search: debouncedSearch }, page, PAGE_SIZE),
+    () => toServerFilters({ ...filters, search: debouncedSearch }, page, PAGE_SIZE),
     [filters, debouncedSearch, page],
   );
 
@@ -94,6 +93,18 @@ export function ChartsPage() {
       visibility: 'PRIVATE',
     });
 
+  // Um gráfico nasce de uma PERGUNTA (agente) ou de um bloco do catálogo —
+  // não existe "gráfico em branco", pois ele exige tipo + vínculo de dados.
+  // Por isso os CTAs levam a esses dois caminhos reais em vez de um botão
+  // "Novo gráfico" que não teria para onde ir.
+  const canManage = hasPermission(role, 'artifacts:manage');
+  const askAiButton = canManage ? (
+    <Button onClick={() => navigate('/chat')} className="gap-2">
+      <MessageSquare className="size-4" />
+      Criar com IA
+    </Button>
+  ) : undefined;
+
   return (
     <>
       <ArtifactListView
@@ -101,6 +112,30 @@ export function ChartsPage() {
         title="Gráficos"
         description="Explore, busque e gerencie os gráficos visíveis para você conforme seu papel e visibilidade."
         emptyIcon={BarChart3}
+        headerAction={askAiButton}
+        emptyTitle={
+          canManage ? 'Nenhum gráfico criado ainda' : 'Nenhum gráfico por aqui ainda'
+        }
+        emptyDescription={
+          canManage
+            ? 'Pergunte algo em português ao agente ("faturamento por mês em 2025") e transforme a resposta em um gráfico salvo. Ou explore o catálogo para ver os tipos disponíveis.'
+            : 'Quando alguém publicar ou compartilhar um gráfico com você, ele aparece aqui.'
+        }
+        emptyAction={
+          canManage ? (
+            <>
+              {askAiButton}
+              <Button
+                variant="outline"
+                onClick={() => navigate('/catalog')}
+                className="gap-2"
+              >
+                <Blocks className="size-4" />
+                Ver catálogo
+              </Button>
+            </>
+          ) : undefined
+        }
         noun={{ singular: 'gráfico', plural: 'gráficos' }}
         searchPlaceholder="Buscar gráficos por título…"
         filters={filters}

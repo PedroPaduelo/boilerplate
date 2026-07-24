@@ -5,6 +5,7 @@ import { AppSidebar } from './app-sidebar';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 const TITLES: Record<string, string> = {
+  '/home': 'Visão geral',
   '/dashboards': 'Dashboards',
   '/charts': 'Gráficos',
   '/catalog': 'Catálogo',
@@ -28,9 +29,7 @@ export function DashboardLayout() {
     setCollapsed((c) => !c);
   }
 
-  const activeKey = Object.keys(TITLES).find((k) =>
-    location.pathname.startsWith(k),
-  );
+  const activeKey = Object.keys(TITLES).find((k) => location.pathname.startsWith(k));
   const title = activeKey ? TITLES[activeKey] : 'Painel';
 
   // Rotas "full-bleed": ocupam 100% do espaço (sem padding/max-width/borda).

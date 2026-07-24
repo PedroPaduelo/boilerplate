@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Loader2, MessageSquare, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui';
+import { hasPermission } from '@/shared/lib/rbac';
 import { useAuthStore } from '@/features/auth/store';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useDebounce } from '@/shared/hooks/use-debounce';
@@ -20,6 +22,7 @@ import { buildArtifactCardActions } from '@/shared/components/artifact-action-bu
 import { ShareArtifactDialog } from '@/shared/components/share-artifact-dialog';
 
 import {
+  useCreateDashboard,
   useDashboards,
   useDeleteDashboard,
   useDuplicateDashboard,
@@ -39,17 +42,14 @@ export function DashboardsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const currentUserId = useAuthStore((s) => s.user?.id);
 
-  const [filters, setFilters] = useState<ArtifactFilterState>(
-    DEFAULT_ARTIFACT_FILTERS,
-  );
+  const [filters, setFilters] = useState<ArtifactFilterState>(DEFAULT_ARTIFACT_FILTERS);
   const [page, setPage] = useState(1);
 
   // Busca/status/visibilidade vão ao servidor (paginado); departamento/owner
   // são refinados no cliente sobre a página corrente.
   const debouncedSearch = useDebounce(filters.search, 300);
   const serverFilters = useMemo(
-    () =>
-      toServerFilters({ ...filters, search: debouncedSearch }, page, PAGE_SIZE),
+    () => toServerFilters({ ...filters, search: debouncedSearch }, page, PAGE_SIZE),
     [filters, debouncedSearch, page],
   );
 
@@ -95,6 +95,26 @@ export function DashboardsPage() {
       visibility: 'PRIVATE',
     });
 
+  // Criar → abre direto o editor do rascunho recém-criado (sem etapa extra
+  // de "dar nome antes de existir": o título é editável lá dentro).
+  const create = useCreateDashboard();
+  const canManage = hasPermission(role, 'artifacts:manage');
+  const handleCreate = () =>
+    create.mutate(undefined, {
+      onSuccess: (created) => navigate(`/dashboards/${created.id}/edit`),
+    });
+
+  const newDashboardButton = canManage ? (
+    <Button onClick={handleCreate} disabled={create.isPending} className="gap-2">
+      {create.isPending ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Plus className="size-4" />
+      )}
+      Novo dashboard
+    </Button>
+  ) : undefined;
+
   return (
     <>
       <ArtifactListView
@@ -102,6 +122,30 @@ export function DashboardsPage() {
         title="Dashboards"
         description="Explore, busque e gerencie os dashboards visíveis para você conforme seu papel e visibilidade."
         emptyIcon={LayoutDashboard}
+        headerAction={newDashboardButton}
+        emptyTitle={
+          canManage ? 'Crie seu primeiro dashboard' : 'Nenhum dashboard por aqui ainda'
+        }
+        emptyDescription={
+          canManage
+            ? 'Monte um painel do zero arrastando gráficos, ou peça ao agente para montar um a partir de uma pergunta em português.'
+            : 'Quando alguém publicar ou compartilhar um dashboard com você, ele aparece aqui.'
+        }
+        emptyAction={
+          canManage ? (
+            <>
+              {newDashboardButton}
+              <Button
+                variant="outline"
+                onClick={() => navigate('/chat')}
+                className="gap-2"
+              >
+                <MessageSquare className="size-4" />
+                Montar com IA
+              </Button>
+            </>
+          ) : undefined
+        }
         noun={{ singular: 'dashboard', plural: 'dashboards' }}
         searchPlaceholder="Buscar dashboards por título…"
         filters={filters}
@@ -132,8 +176,7 @@ export function DashboardsPage() {
             publish: () => publish.mutate({ id: d.id, publish: true }),
             unpublish: () => publish.mutate({ id: d.id, publish: false }),
             share: () => setSharing(d),
-            export: () =>
-              toast.info('Exportação em PDF chega em breve (T-J).'),
+            export: () => toast.info('Exportação em PDF chega em breve (T-J).'),
             duplicate: () => handleDuplicate(d),
             delete: () => openDeleteDashboard(d),
           });

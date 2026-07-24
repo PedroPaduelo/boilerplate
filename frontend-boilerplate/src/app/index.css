@@ -6,14 +6,35 @@
 :root {
   --radius: 0.625rem;
 
+  /* ---------------------------------------------------------------------
+     Tipografia — famílias cruas. O `@theme inline` mapeia estes nomes para
+     os tokens do Tailwind (`font-sans`/`font-mono`). Antes havia uma
+     referência CIRCULAR (`--font-heading: var(--font-sans)` +
+     `--font-sans: var(--font-heading)`) que não resolvia para nada, e
+     `--font-mono` era usado em `code/pre` sem nunca ter sido definido.
+     Inter (UI) + JetBrains Mono (SQL/código) carregam em index.html com
+     fallback completo para as fontes de sistema.
+     --------------------------------------------------------------------- */
+  --font-family-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-family-heading:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-family-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
+    'Liberation Mono', monospace;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.5 0.134 242.749);
-  --primary-foreground: oklch(0.977 0.013 236.62);
+  /* Marca auditorIA — teal #00a1b0 ≈ oklch(0.648 0.111 206.5). O primary usa
+     um tom mais profundo para garantir contraste AA com texto branco. */
+  --primary: oklch(0.54 0.098 207);
+  --primary-foreground: oklch(0.99 0.005 207);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.967 0.001 286.375);
@@ -23,20 +44,27 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  --chart-1: oklch(0.828 0.111 230.318);
-  --chart-2: oklch(0.685 0.169 237.323);
-  --chart-3: oklch(0.588 0.158 241.966);
-  --chart-4: oklch(0.5 0.134 242.749);
-  --chart-5: oklch(0.443 0.11 240.79);
+  /* Foco na cor da marca — o anel de foco vira assinatura visual. */
+  --ring: oklch(0.648 0.111 206.5);
+  /* Paleta de séries CATEGÓRICA (antes era uma rampa monocromática de azul,
+     em que séries vizinhas eram quase indistinguíveis). chart-2 é verde de
+     propósito: o KpiCard usa `text-chart-2` como cor de variação POSITIVA. */
+  --chart-1: oklch(0.648 0.111 206.5);
+  /* chart-2 não é só preenchimento de série: o KpiCard o usa como COR DE TEXTO
+     da variação positiva. No claro, um verde de L=0.7 dava 2.5:1 sobre o card
+     (reprova em AA). L=0.56 sobe para ~4.7:1 e segue legível como fill. */
+  --chart-2: oklch(0.54 0.128 162);
+  --chart-3: oklch(0.66 0.14 68);
+  --chart-4: oklch(0.62 0.17 288);
+  --chart-5: oklch(0.62 0.19 15);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.588 0.158 241.966);
-  --sidebar-primary-foreground: oklch(0.977 0.013 236.62);
+  --sidebar-primary: oklch(0.54 0.098 207);
+  --sidebar-primary-foreground: oklch(0.99 0.005 207);
   --sidebar-accent: oklch(0.967 0.001 286.375);
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  --sidebar-ring: oklch(0.648 0.111 206.5);
 
   --shadow-2xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
   --shadow-xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
@@ -55,8 +83,10 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.443 0.11 240.79);
-  --primary-foreground: oklch(0.977 0.013 236.62);
+  /* No dark o primary anterior (L=0.443) era mais ESCURO que o card e sumia.
+     Aqui o teal fica claro e o texto do botão escuro — contraste ~8:1. */
+  --primary: oklch(0.7 0.105 205);
+  --primary-foreground: oklch(0.2 0.035 210);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.274 0.006 286.033);
@@ -66,20 +96,21 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --chart-1: oklch(0.828 0.111 230.318);
-  --chart-2: oklch(0.685 0.169 237.323);
-  --chart-3: oklch(0.588 0.158 241.966);
-  --chart-4: oklch(0.5 0.134 242.749);
-  --chart-5: oklch(0.443 0.11 240.79);
+  --ring: oklch(0.648 0.111 206.5);
+  /* Mesma paleta categórica, com luminância elevada para fundo escuro. */
+  --chart-1: oklch(0.72 0.115 205);
+  --chart-2: oklch(0.76 0.15 162);
+  --chart-3: oklch(0.82 0.145 80);
+  --chart-4: oklch(0.7 0.16 288);
+  --chart-5: oklch(0.72 0.17 14);
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.685 0.169 237.323);
-  --sidebar-primary-foreground: oklch(0.293 0.066 243.157);
+  --sidebar-primary: oklch(0.7 0.105 205);
+  --sidebar-primary-foreground: oklch(0.2 0.035 210);
   --sidebar-accent: oklch(0.274 0.006 286.033);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
+  --sidebar-ring: oklch(0.648 0.111 206.5);
 
   --shadow-2xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
   --shadow-xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
@@ -92,8 +123,9 @@
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: var(--font-heading);
+  --font-sans: var(--font-family-sans);
+  --font-heading: var(--font-family-heading);
+  --font-mono: var(--font-family-mono);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -182,7 +214,11 @@
 
   code,
   pre {
-    font-family: var(--font-mono);
+    font-family: var(--font-family-mono);
+  }
+  /* Números em tabelas/KPIs alinhados verticalmente (leitura de dados). */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
   /* Estiliza a scrollbar das áreas roláveis (main, sidebar nav, etc.) no tema dark. */
   .dark ::-webkit-scrollbar {

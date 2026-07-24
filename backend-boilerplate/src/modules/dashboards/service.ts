@@ -117,6 +117,13 @@ export function collectChartRefs(layout: DashboardLayout): string[] {
 
 /** Coleta chartIds de um layout cru, descendo recursivamente em containers. */
 function collectChartRefsDeep(layout: unknown): string[] {
+  // `publishedLayout` é NULL enquanto o dashboard nunca foi publicado, e o
+  // GET /dashboards/:id passa os três layouts por aqui. Sem esta guarda,
+  // `(null).rows` estourava e QUALQUER dashboard não publicado respondia 500
+  // — quebrando o fluxo criar → editar e também o unpublish. `injectChartTitles`
+  // já fazia essa checagem; aqui faltava.
+  if (!layout || typeof layout !== 'object') return [];
+
   const ids = new Set<string>();
   const visitBlock = (block: unknown): void => {
     if (!block || typeof block !== 'object') return;

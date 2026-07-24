@@ -20,10 +20,19 @@ import type {
  *   (staleTime longo) conforme `query-policies`.
  */
 
-export function useConnections(filters: ConnectionFilters = {}) {
+/**
+ * `options.enabled` permite que telas agregadoras (ex.: a Visão geral) só
+ * disparem a busca quando o papel do usuário tem `connections:use` — sem isso
+ * um VIEWER geraria um 403 previsível a cada carregamento.
+ */
+export function useConnections(
+  filters: ConnectionFilters = {},
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: queryKeys.connections.list(filters as Record<string, unknown>),
     queryFn: () => connectionsApi.list(filters),
+    enabled: options.enabled ?? true,
     ...referenceQueryOptions(),
   });
 }

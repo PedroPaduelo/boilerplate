@@ -99,6 +99,9 @@ vi.mock('../hooks', async () => {
     }),
     usePrefetchDashboard: () => prefetchFn,
     useDuplicateDashboard: () => ({ mutate: vi.fn(), isPending: false }),
+    // Criação de dashboard em branco (botão "Novo dashboard" do cabeçalho e
+    // CTA do estado vazio) — o componente chama o hook em todo render.
+    useCreateDashboard: () => ({ mutate: vi.fn(), isPending: false }),
     // Hook REATIVO: usa useState para isPending/pending, então o
     // ArtifactCard re-renderiza quando `mutate`/`settle` rodam.
     useDeleteDashboard: () => {
@@ -219,9 +222,7 @@ describe('DashboardsPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('menuitem', { name: /Editar/i })).toBeInTheDocument();
     });
-    expect(
-      screen.getByRole('menuitem', { name: /Despublicar/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Despublicar/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Excluir/i })).toBeInTheDocument();
   });
 
@@ -244,9 +245,7 @@ describe('DashboardsPage', () => {
     renderPage();
 
     // Sanidade: card normal NÃO está em modo confirming.
-    const vendasCard = screen
-      .getByText('Vendas Mensais')
-      .closest('[data-slot="card"]')!;
+    const vendasCard = screen.getByText('Vendas Mensais').closest('[data-slot="card"]')!;
     expect(vendasCard.querySelector('[data-confirming="true"]')).toBeNull();
 
     // Abre o menu de ações do primeiro card e clica Excluir.

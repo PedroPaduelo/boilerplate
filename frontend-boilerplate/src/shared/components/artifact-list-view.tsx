@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Search, type LucideIcon } from 'lucide-react';
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Search,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   Button,
   Input,
@@ -12,11 +19,13 @@ import {
   SelectValue,
   Skeleton,
 } from '@/components/ui';
-import type {
-  ArtifactFilterState,
-  OwnerFilter,
-  StatusFilter,
-  VisibilityFilter,
+import {
+  DEFAULT_ARTIFACT_FILTERS,
+  hasActiveFilters,
+  type ArtifactFilterState,
+  type OwnerFilter,
+  type StatusFilter,
+  type VisibilityFilter,
 } from '@/shared/lib/artifact-filters';
 
 export interface ArtifactListDepartment {
@@ -50,6 +59,18 @@ export interface ArtifactListViewProps {
 
   /** Ação opcional do cabeçalho (ex.: "Novo"). */
   headerAction?: ReactNode;
+
+  /**
+   * Estado vazio de PRIMEIRO USO (nenhum filtro ativo e nada criado ainda).
+   * Diferente do "nenhum resultado para este filtro": aqui o usuário não tem
+   * o que ajustar, precisa de um caminho para CRIAR algo. Sem estes props o
+   * componente cai num texto genérico.
+   */
+  emptyTitle?: string;
+  emptyDescription?: string;
+  /** CTA(s) do estado de primeiro uso (ex.: "Novo dashboard"). */
+  emptyAction?: ReactNode;
+
   /** Grid de cards (renderizado no estado de sucesso). */
   children: ReactNode;
 }
@@ -95,10 +116,17 @@ export function ArtifactListView({
   totalPages,
   onPageChange,
   headerAction,
+  emptyTitle,
+  emptyDescription,
+  emptyAction,
   children,
 }: ArtifactListViewProps) {
   const patch = (partial: Partial<ArtifactFilterState>) =>
     onFiltersChange({ ...filters, ...partial });
+
+  // Vazio "por filtro" (dá pra corrigir ajustando a busca) vs vazio de
+  // primeiro uso (não há nada criado — precisa de um CTA, não de um filtro).
+  const filtersActive = hasActiveFilters(filters);
 
   return (
     <div className="flex flex-col gap-8">
@@ -148,15 +176,9 @@ export function ArtifactListView({
 
             <Select
               value={filters.visibility}
-              onValueChange={(v) =>
-                patch({ visibility: v as VisibilityFilter })
-              }
+              onValueChange={(v) => patch({ visibility: v as VisibilityFilter })}
             >
-              <SelectTrigger
-                size="sm"
-                className="w-[160px]"
-                aria-label="Visibilidade"
-              >
+              <SelectTrigger size="sm" className="w-[160px]" aria-label="Visibilidade">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -172,11 +194,7 @@ export function ArtifactListView({
               value={filters.departmentId}
               onValueChange={(v) => patch({ departmentId: v })}
             >
-              <SelectTrigger
-                size="sm"
-                className="w-[170px]"
-                aria-label="Departamento"
-              >
+              <SelectTrigger size="sm" className="w-[170px]" aria-label="Departamento">
                 <SelectValue placeholder="Departamento" />
               </SelectTrigger>
               <SelectContent>
@@ -214,27 +232,65 @@ export function ArtifactListView({
             ))}
           </div>
         ) : isError ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">
-              Não foi possível carregar {noun.plural}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Verifique sua conexão e tente novamente.
-            </p>
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <AlertTriangle className="size-6" />
+            </span>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                Não foi possível carregar {noun.plural}
+              </p>
+              <p className="mx-auto max-w-xs text-xs text-muted-foreground">
+                Pode ser uma instabilidade momentânea de rede ou do servidor.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              <RefreshCw className="size-4" />
+              Tentar de novo
+            </Button>
           </div>
-        ) : isEmpty ? (
+        ) : isEmpty && filtersActive ? (
+          /* Há filtros ativos → o caminho de saída é LIMPAR o filtro. */
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Search className="size-6" />
+            </span>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                Nenhum resultado para esses filtros
+              </p>
+              <p className="mx-auto max-w-xs text-xs text-muted-foreground">
+                Tente outro termo de busca ou remova alguns filtros.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onFiltersChange(DEFAULT_ARTIFACT_FILTERS)}
+            >
+              Limpar filtros
+            </Button>
+          </div>
+        ) : isEmpty ? (
+          /* Primeiro uso: nada criado ainda → oferecer o CAMINHO de criação. */
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <EmptyIcon className="size-6" />
             </span>
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">
-                Nenhum {noun.singular} encontrado
+                {emptyTitle ?? `Nenhum ${noun.singular} por aqui ainda`}
               </p>
-              <p className="mx-auto max-w-xs text-xs text-muted-foreground">
-                Ajuste a busca ou os filtros para encontrar o que procura.
+              <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">
+                {emptyDescription ??
+                  `Assim que você criar ${noun.plural}, eles aparecem nesta lista.`}
               </p>
             </div>
+            {emptyAction ? (
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+                {emptyAction}
+              </div>
+            ) : null}
           </div>
         ) : (
           <>
@@ -244,8 +300,8 @@ export function ArtifactListView({
 
             <div className="mt-5 flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                <span className="tabular-nums">{shownCount}</span> {noun.plural}{' '}
-                nesta página
+                <span className="tabular-nums">{shownCount}</span> {noun.plural} nesta
+                página
               </p>
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">

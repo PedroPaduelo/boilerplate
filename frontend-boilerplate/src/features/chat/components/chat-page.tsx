@@ -16,7 +16,17 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bot, MessageSquare, Plus, Trash2, AlertCircle } from 'lucide-react';
+import {
+  Bot,
+  MessageSquare,
+  Plus,
+  Trash2,
+  AlertCircle,
+  BarChart3,
+  Database,
+  ShieldCheck,
+  TrendingUp,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
@@ -31,6 +41,83 @@ import { ToolStepsList, type ToolStep } from './tool-steps-list';
 
 /** Tempo de fade-out antes de remover um tool step concluído. */
 const TOOL_STEP_FADE_OUT_MS = 600;
+
+/**
+ * Sugestões de partida para uma conversa vazia.
+ *
+ * Interface conversacional sofre do "blank slate": a caixa de texto aceita
+ * qualquer coisa, então o usuário não sabe o que a ferramenta consegue fazer e
+ * trava. As sugestões abaixo demonstram as QUATRO capacidades do agente
+ * (explorar schema, agregar, visualizar e auditar integridade) já no tom de
+ * auditoria do produto.
+ */
+const SUGGESTED_PROMPTS = [
+  {
+    icon: Database,
+    title: 'Entender os dados',
+    prompt: 'Quais tabelas existem na minha conexão e o que cada uma representa?',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Achar anomalias',
+    prompt:
+      'Quais lançamentos fogem do padrão nos últimos 90 dias? Traga os 10 maiores desvios.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Gerar um gráfico',
+    prompt: 'Monte um gráfico de barras com o total por mês no último ano.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Checar integridade',
+    prompt:
+      'Existem registros duplicados ou com campos obrigatórios vazios? Mostre a contagem por tabela.',
+  },
+] as const;
+
+/** Boas-vindas + sugestões clicáveis, exibidas quando a conversa está vazia. */
+function ChatEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-10">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Bot className="size-6" />
+        </span>
+        <div className="space-y-1">
+          <p className="text-base font-semibold text-foreground">
+            O que você quer investigar hoje?
+          </p>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">
+            Pergunte em português. O agente consulta suas conexões, escreve o SQL e
+            devolve a resposta — com o gráfico pronto para salvar.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">
+        {SUGGESTED_PROMPTS.map(({ icon: Icon, title, prompt }) => (
+          <button
+            key={title}
+            type="button"
+            onClick={() => onPick(prompt)}
+            className="group flex items-start gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition hover:border-primary/40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary">
+              <Icon className="size-4" />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-xs font-medium text-foreground">{title}</span>
+              <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                {prompt}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function dbMessageToUi(m: ChatMessageRecord): ChatMessage {
   return {
@@ -48,6 +135,8 @@ function ChatArea({ conversationId }: { conversationId: string }) {
   // toolSteps keyed por toolCallId (dedup por chave natural; manter array
   // ordenado dos mais recentes primeiro para render).
   const [toolSteps, setToolSteps] = useState<ToolStep[]>([]);
+  /** Última pergunta enviada — permite reenviar após uma falha do agente. */
+  const [lastPrompt, setLastPrompt] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
   const fadeOutTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -58,19 +147,23 @@ function ChatArea({ conversationId }: { conversationId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    agentApi.getConversation(conversationId).then((conv) => {
-      if (cancelled) return;
-      const uiMsgs = (conv.messages ?? []).map(dbMessageToUi as any) as ChatMessage[];
-      setMessages(uiMsgs);
-      // Limpa timers pendentes e steps ao trocar de conversa
-      fadeOutTimersRef.current.forEach((t) => clearTimeout(t));
-      fadeOutTimersRef.current.clear();
-      setToolSteps([]);
-      setError(null);
-    }).catch(() => {
-      if (!cancelled) setMessages([]);
-    });
-    return () => { cancelled = true; };
+    agentApi
+      .getConversation(conversationId)
+      .then((conv) => {
+        if (cancelled) return;
+        setMessages((conv.messages ?? []).map(dbMessageToUi));
+        // Limpa timers pendentes e steps ao trocar de conversa
+        fadeOutTimersRef.current.forEach((t) => clearTimeout(t));
+        fadeOutTimersRef.current.clear();
+        setToolSteps([]);
+        setError(null);
+      })
+      .catch(() => {
+        if (!cancelled) setMessages([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [conversationId]);
 
   // Limpa timers pendentes ao desmontar
@@ -82,134 +175,143 @@ function ChatArea({ conversationId }: { conversationId: string }) {
     };
   }, []);
 
-  const send = useCallback(async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || isStreaming) return;
+  const send = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || isStreaming) return;
 
-    const userMsg: ChatMessage = {
-      id: `usr_${Date.now()}`,
-      role: 'user',
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setIsStreaming(true);
-    setError(null);
-    // Cancela timers pendentes e zera steps ao começar nova mensagem
-    fadeOutTimersRef.current.forEach((t) => clearTimeout(t));
-    fadeOutTimersRef.current.clear();
-    setToolSteps([]);
+      const userMsg: ChatMessage = {
+        id: `usr_${Date.now()}`,
+        role: 'user',
+        content: trimmed,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setIsStreaming(true);
+      setError(null);
+      setLastPrompt(trimmed);
+      // Cancela timers pendentes e zera steps ao começar nova mensagem
+      fadeOutTimersRef.current.forEach((t) => clearTimeout(t));
+      fadeOutTimersRef.current.clear();
+      setToolSteps([]);
 
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const transport = new HttpChatTransport({ conversationId });
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const transport = new HttpChatTransport({ conversationId });
 
-    try {
-      for await (const ev of transport.sendMessage([...messages, userMsg], {
-        signal: controller.signal,
-      })) {
-        switch (ev.type) {
-          case 'message_start':
-            setMessages((prev) => [
-              ...prev,
-              { id: ev.messageId, role: 'assistant', content: '', createdAt: new Date().toISOString() },
-            ]);
-            break;
-          case 'text_delta':
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === ev.messageId ? { ...m, content: m.content + ev.delta } : m,
-              ),
-            );
-            break;
-          case 'chart':
-            setMessages((prev) =>
-              prev.map((m) => (m.id === ev.messageId ? { ...m, chart: ev.chart } : m)),
-            );
-            break;
-          case 'tool_step': {
-            // Dedup por toolCallId (mesmo call → mesmo step; result atualiza)
-            const toolCallId = (ev as { toolCallId: string }).toolCallId;
-            setToolSteps((prev) => {
-              const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
-              if (idx === -1) {
-                // Novo step → insere no INÍCIO (mais recente primeiro)
-                return [
-                  {
-                    toolCallId,
-                    toolName: ev.toolName,
-                    phase: ev.phase,
-                    args: ev.args,
-                    output: ev.output,
-                  },
-                  ...prev,
-                ];
-              }
-              // Já existe → atualiza in-place (pode ser um `call` repetido ou um `result`)
-              const next = prev.slice();
-              next[idx] = {
-                toolCallId,
-                toolName: ev.toolName,
-                phase: ev.phase,
-                args: ev.args,
-                output: ev.output,
-                fadingOut: prev[idx].fadingOut, // preserva fadingOut se já estava
-              };
-              return next;
-            });
-
-            if (ev.phase === 'result') {
-              // Marca fadingOut + agenda remoção
+      try {
+        for await (const ev of transport.sendMessage([...messages, userMsg], {
+          signal: controller.signal,
+        })) {
+          switch (ev.type) {
+            case 'message_start':
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: ev.messageId,
+                  role: 'assistant',
+                  content: '',
+                  createdAt: new Date().toISOString(),
+                },
+              ]);
+              break;
+            case 'text_delta':
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === ev.messageId ? { ...m, content: m.content + ev.delta } : m,
+                ),
+              );
+              break;
+            case 'chart':
+              setMessages((prev) =>
+                prev.map((m) => (m.id === ev.messageId ? { ...m, chart: ev.chart } : m)),
+              );
+              break;
+            case 'tool_step': {
+              // Dedup por toolCallId (mesmo call → mesmo step; result atualiza)
+              const toolCallId = (ev as { toolCallId: string }).toolCallId;
               setToolSteps((prev) => {
                 const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
-                if (idx === -1) return prev;
+                if (idx === -1) {
+                  // Novo step → insere no INÍCIO (mais recente primeiro)
+                  return [
+                    {
+                      toolCallId,
+                      toolName: ev.toolName,
+                      phase: ev.phase,
+                      args: ev.args,
+                      output: ev.output,
+                    },
+                    ...prev,
+                  ];
+                }
+                // Já existe → atualiza in-place (pode ser um `call` repetido ou um `result`)
                 const next = prev.slice();
-                next[idx] = { ...next[idx], phase: 'result', fadingOut: true };
+                next[idx] = {
+                  toolCallId,
+                  toolName: ev.toolName,
+                  phase: ev.phase,
+                  args: ev.args,
+                  output: ev.output,
+                  fadingOut: prev[idx].fadingOut, // preserva fadingOut se já estava
+                };
                 return next;
               });
-              // Cancela timer anterior (se houver)
-              const existing = fadeOutTimersRef.current.get(toolCallId);
-              if (existing) clearTimeout(existing);
-              const timer = setTimeout(() => {
-                setToolSteps((prev) => prev.filter((s) => s.toolCallId !== toolCallId));
-                fadeOutTimersRef.current.delete(toolCallId);
-              }, TOOL_STEP_FADE_OUT_MS);
-              fadeOutTimersRef.current.set(toolCallId, timer);
-            } else {
-              // `call` chegou (de novo): cancela qualquer timer pendente de remoção
-              const existing = fadeOutTimersRef.current.get(toolCallId);
-              if (existing) {
-                clearTimeout(existing);
-                fadeOutTimersRef.current.delete(toolCallId);
+
+              if (ev.phase === 'result') {
+                // Marca fadingOut + agenda remoção
+                setToolSteps((prev) => {
+                  const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
+                  if (idx === -1) return prev;
+                  const next = prev.slice();
+                  next[idx] = { ...next[idx], phase: 'result', fadingOut: true };
+                  return next;
+                });
+                // Cancela timer anterior (se houver)
+                const existing = fadeOutTimersRef.current.get(toolCallId);
+                if (existing) clearTimeout(existing);
+                const timer = setTimeout(() => {
+                  setToolSteps((prev) => prev.filter((s) => s.toolCallId !== toolCallId));
+                  fadeOutTimersRef.current.delete(toolCallId);
+                }, TOOL_STEP_FADE_OUT_MS);
+                fadeOutTimersRef.current.set(toolCallId, timer);
+              } else {
+                // `call` chegou (de novo): cancela qualquer timer pendente de remoção
+                const existing = fadeOutTimersRef.current.get(toolCallId);
+                if (existing) {
+                  clearTimeout(existing);
+                  fadeOutTimersRef.current.delete(toolCallId);
+                }
+                // Garante fadingOut=false no call
+                setToolSteps((prev) => {
+                  const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
+                  if (idx === -1) return prev;
+                  const next = prev.slice();
+                  next[idx] = { ...next[idx], fadingOut: false };
+                  return next;
+                });
               }
-              // Garante fadingOut=false no call
-              setToolSteps((prev) => {
-                const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
-                if (idx === -1) return prev;
-                const next = prev.slice();
-                next[idx] = { ...next[idx], fadingOut: false };
-                return next;
-              });
+              break;
             }
-            break;
+            case 'error':
+              setError(ev.message);
+              break;
+            case 'message_end':
+            case 'usage':
+              break;
           }
-          case 'error':
-            setError(ev.message);
-            break;
-          case 'message_end':
-          case 'usage':
-            break;
         }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : 'Falha ao falar com o agente.');
+        }
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null;
+        setIsStreaming(false);
       }
-    } catch (err) {
-      if (!controller.signal.aborted) {
-        setError(err instanceof Error ? err.message : 'Falha ao falar com o agente.');
-      }
-    } finally {
-      if (abortRef.current === controller) abortRef.current = null;
-      setIsStreaming(false);
-    }
-  }, [conversationId, messages, isStreaming]);
+    },
+    [conversationId, messages, isStreaming],
+  );
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -247,6 +349,10 @@ function ChatArea({ conversationId }: { conversationId: string }) {
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Área de scroll (mensagens) — flex-1 + overflow + min-h-0 = scroll independente */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+        {/* Conversa ainda sem mensagens → sugestões de partida. Clicar já
+            dispara o envio (um clique em vez de "preencher e depois enviar"). */}
+        {messages.length === 0 && !isStreaming ? <ChatEmptyState onPick={send} /> : null}
+
         <ChatMessageList messages={pastMessages} isStreaming={false} />
 
         {/* Tool steps ACIMA da última mensagem do assistant em streaming */}
@@ -254,19 +360,48 @@ function ChatArea({ conversationId }: { conversationId: string }) {
 
         {/* Última mensagem do assistant em streaming (renderizada fora do list) */}
         {isLastAssistantStreaming ? (
-          <ChatMessageBubbleStandalone
-            message={lastMsg}
-            streaming
-            fadeIn={!isThinking}
-          />
+          <ChatMessageBubbleStandalone message={lastMsg} streaming fadeIn={!isThinking} />
         ) : null}
 
         {/* Bolha de pensamento quando assistant não tem texto ainda */}
         {isThinking ? <ThinkingBubble toolSteps={toolSteps} /> : null}
 
+        {/* Falha do agente em linguagem de gente. O texto cru do provider
+            (ex.: "Invalid JSON response") não diz NADA ao usuário e ainda
+            sugere que a culpa é dele; fica preservado como detalhe técnico
+            para depuração, atrás de um disclosure. */}
         {error ? (
-          <div role="alert" className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-            {error}
+          <div
+            role="alert"
+            className="mt-3 flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium text-destructive">
+                  Não consegui concluir essa resposta
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  A conversa com o agente foi interrompida. Sua pergunta continua aqui —
+                  pode tentar de novo.
+                </p>
+              </div>
+              {lastPrompt ? (
+                <div>
+                  <Button size="sm" variant="outline" onClick={() => send(lastPrompt)}>
+                    Tentar de novo
+                  </Button>
+                </div>
+              ) : null}
+              <details className="group">
+                <summary className="cursor-pointer list-none text-[11px] text-muted-foreground transition hover:text-foreground">
+                  Detalhes técnicos
+                </summary>
+                <p className="mt-1 break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
+                  {error}
+                </p>
+              </details>
+            </div>
           </div>
         ) : null}
 
@@ -305,7 +440,11 @@ function ChatMessageBubbleStandalone({
 }
 
 function ChatSidebar({
-  conversations, activeId, onSelect, onCreate, onDelete,
+  conversations,
+  activeId,
+  onSelect,
+  onCreate,
+  onDelete,
 }: {
   conversations: Conversation[];
   activeId: string | null;
@@ -323,7 +462,9 @@ function ChatSidebar({
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2">
         {conversations.length === 0 ? (
-          <p className="px-2 py-4 text-xs text-muted-foreground">Nenhuma conversa ainda.</p>
+          <p className="px-2 py-4 text-xs text-muted-foreground">
+            Nenhuma conversa ainda.
+          </p>
         ) : (
           <div className="flex flex-col gap-1">
             {conversations.map((conv) => (
@@ -331,7 +472,9 @@ function ChatSidebar({
                 key={conv.id}
                 className={cn(
                   'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-                  conv.id === activeId ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground',
+                  conv.id === activeId
+                    ? 'bg-primary/10 text-primary'
+                    : 'hover:bg-muted text-foreground',
                 )}
                 onClick={() => onSelect(conv.id)}
               >
@@ -339,7 +482,10 @@ function ChatSidebar({
                 <span className="flex-1 truncate">{conv.title}</span>
                 <button
                   className="opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(conv.id);
+                  }}
                   aria-label="Deletar conversa"
                 >
                   <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
@@ -358,18 +504,42 @@ export function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [agentReady, setAgentReady] = useState<boolean | null>(null);
 
-  const refreshConversations = useCallback(async () => {
-    try {
-      const list = await agentApi.listConversations();
-      setConversations(list);
-      if (list.length > 0 && !activeId) setActiveId(list[0].id);
-    } catch { /* ignore */ }
-  }, [activeId]);
-
+  /**
+   * Carga inicial: conversas + disponibilidade do agente.
+   *
+   * O estado é atualizado DENTRO dos callbacks assíncronos (nunca no corpo do
+   * efeito, o que dispararia renders em cascata) e `setActiveId` usa a forma
+   * funcional. Com isso o efeito deixa de depender de `activeId` e roda uma
+   * única vez — antes precisava silenciar o `exhaustive-deps` justamente por
+   * causa dessa dependência.
+   */
   useEffect(() => {
-    refreshConversations();
-    agentApi.checkHealth().then((h) => setAgentReady(h.configured)).catch(() => setAgentReady(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let cancelled = false;
+
+    agentApi
+      .listConversations()
+      .then((list) => {
+        if (cancelled) return;
+        setConversations(list);
+        setActiveId((current) => current ?? list[0]?.id ?? null);
+      })
+      .catch(() => {
+        /* Sem conversas ainda é um estado válido — a tela mostra o vazio. */
+      });
+
+    agentApi
+      .checkHealth()
+      .then((h) => {
+        if (!cancelled) setAgentReady(h.configured);
+      })
+      .catch(() => {
+        if (!cancelled) setAgentReady(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleCreate = useCallback(async () => {
     const conv = await agentApi.createConversation();
@@ -377,11 +547,14 @@ export function ChatPage() {
     setActiveId(conv.id);
   }, []);
 
-  const handleDelete = useCallback(async (id: string) => {
-    await agentApi.deleteConversation(id);
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (activeId === id) setActiveId(null);
-  }, [activeId]);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await agentApi.deleteConversation(id);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (activeId === id) setActiveId(null);
+    },
+    [activeId],
+  );
 
   return (
     /* calc(100vh - 7.5rem) = 100vh - 56px (topbar h-14) - 64px (py-8 do <main> interno).
@@ -410,7 +583,9 @@ export function ChatPage() {
                   <h1 className="text-sm font-semibold text-foreground">
                     {conversations.find((c) => c.id === activeId)?.title ?? 'Chat'}
                   </h1>
-                  <p className="text-xs text-muted-foreground">Agente de IA com acesso aos seus dados</p>
+                  <p className="text-xs text-muted-foreground">
+                    Agente de IA com acesso aos seus dados
+                  </p>
                 </div>
               </div>
               {agentReady === false ? (
@@ -430,7 +605,9 @@ export function ChatPage() {
             <Bot className="size-12 opacity-40" />
             <div>
               <p className="text-sm font-medium">Selecione ou crie uma conversa</p>
-              <p className="text-xs">O agente de IA tem acesso aos seus dados e ferramentas.</p>
+              <p className="text-xs">
+                O agente de IA tem acesso aos seus dados e ferramentas.
+              </p>
             </div>
             <Button onClick={handleCreate} size="sm">
               <Plus className="size-4" />

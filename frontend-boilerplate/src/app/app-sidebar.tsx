@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Users as UsersIcon,
+  Home,
   LayoutDashboard,
   BarChart3,
   Blocks,
@@ -45,10 +46,21 @@ interface NavItem {
 // Cada item é filtrado por papel/permissão (defesa em profundidade — o backend
 // continua sendo a autoridade; as rotas também usam o guarda `RequireRole`).
 const NAV: NavItem[] = [
-  { id: '/dashboards', label: 'Dashboards', icon: LayoutDashboard, permission: 'artifacts:view' },
+  { id: '/home', label: 'Início', icon: Home, permission: 'artifacts:view' },
+  {
+    id: '/dashboards',
+    label: 'Dashboards',
+    icon: LayoutDashboard,
+    permission: 'artifacts:view',
+  },
   { id: '/charts', label: 'Gráficos', icon: BarChart3, permission: 'artifacts:view' },
   { id: '/catalog', label: 'Catálogo', icon: Blocks, permission: 'artifacts:view' },
-  { id: '/connections', label: 'Conexões', icon: Database, permission: 'connections:use' },
+  {
+    id: '/connections',
+    label: 'Conexões',
+    icon: Database,
+    permission: 'connections:use',
+  },
   { id: '/chat', label: 'Chat', icon: MessageSquare, permission: 'artifacts:manage' },
   { id: '/users', label: 'Usuários', icon: UsersIcon, roles: ['ADMIN'] },
 ];
@@ -286,10 +298,7 @@ export function AppSidebar({
           className="w-72 max-w-[85vw] gap-0 border-r bg-sidebar p-0 text-sidebar-foreground"
         >
           <SheetTitle className="sr-only">Navegação principal</SheetTitle>
-          <AppSidebarContent
-            collapsed={false}
-            hideCollapseToggle
-          />
+          <AppSidebarContent collapsed={false} hideCollapseToggle />
         </SheetContent>
       </Sheet>
     </TooltipProvider>
