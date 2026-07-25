@@ -17,6 +17,7 @@
  *
  * Saída: `{ columns, rows, rowCount, truncated, durationMs }`.
  */
+import { createHash } from 'node:crypto';
 import { Pool, type PoolConfig } from 'pg';
 import Cursor from 'pg-cursor';
 import { env } from '../env';
@@ -95,10 +96,38 @@ export class PgRunnerError extends Error {
 }
 
 // --- pool cache por conexão -------------------------------------------------
-const pools = new Map<string, Pool>();
+/**
+ * Pool em cache + a impressão digital da configuração que o criou.
+ *
+ * A impressão digital existe porque o pool guarda a config (SSL, credenciais,
+ * host) no momento da criação: um `pg.Pool` é IMUTÁVEL. Sem comparar a config,
+ * editar a conexão não tem efeito nenhum enquanto o processo viver.
+ */
+interface CachedPool {
+  pool: Pool;
+  fingerprint: string;
+}
+
+const pools = new Map<string, CachedPool>();
 
 function poolKey(c: PgRunnerConnection): string {
   return c.id ?? `${c.user}@${c.host}:${c.port}/${c.database}`;
+}
+
+/**
+ * Resume tudo que, ao mudar, EXIGE um pool novo.
+ *
+ * A senha entra como hash, não em claro: a chave vive num Map em memória pelo
+ * tempo todo do processo e pode acabar num heap dump. O hash distingue senhas
+ * diferentes sem guardar o segredo.
+ */
+function poolFingerprint(c: PgRunnerConnection): string {
+  const ssl = resolveSsl(c) ? 'ssl:on' : 'ssl:off';
+  const secret = createHash('sha256')
+    .update(c.password ?? '')
+    .digest('hex')
+    .slice(0, 16);
+  return [c.host, c.port, c.database, c.user, ssl, secret].join('|');
 }
 
 function resolveSsl(c: PgRunnerConnection): PoolConfig['ssl'] {
@@ -114,24 +143,35 @@ function resolveSsl(c: PgRunnerConnection): PoolConfig['ssl'] {
 
 function getPool(c: PgRunnerConnection): Pool {
   const key = poolKey(c);
-  let pool = pools.get(key);
-  if (!pool) {
-    pool = new Pool({
-      host: c.host,
-      port: c.port,
-      database: c.database,
-      user: c.user,
-      password: c.password,
-      ssl: resolveSsl(c),
-      max: env.PG_RUNNER_POOL_MAX,
-      idleTimeoutMillis: env.PG_RUNNER_IDLE_TIMEOUT_MS,
-      connectionTimeoutMillis: env.PG_RUNNER_CONNECT_TIMEOUT_MS,
-      allowExitOnIdle: true,
-    });
-    // erros de clientes ociosos não devem derrubar o processo nem vazar dados.
-    pool.on('error', () => {});
-    pools.set(key, pool);
+  const fingerprint = poolFingerprint(c);
+  const cached = pools.get(key);
+
+  if (cached) {
+    if (cached.fingerprint === fingerprint) return cached.pool;
+    // A conexão foi editada (SSL, senha, host, porta, banco ou usuário).
+    // O pool antigo carrega a config ANTIGA e precisa morrer — reaproveitá-lo
+    // fazia a edição parecer ignorada: o caso clássico era criar a conexão com
+    // o default `require`, tomar "The server does not support SSL connections",
+    // trocar para `disable` e continuar tomando o mesmo erro para sempre.
+    pools.delete(key);
+    void cached.pool.end().catch(() => {});
   }
+
+  const pool = new Pool({
+    host: c.host,
+    port: c.port,
+    database: c.database,
+    user: c.user,
+    password: c.password,
+    ssl: resolveSsl(c),
+    max: env.PG_RUNNER_POOL_MAX,
+    idleTimeoutMillis: env.PG_RUNNER_IDLE_TIMEOUT_MS,
+    connectionTimeoutMillis: env.PG_RUNNER_CONNECT_TIMEOUT_MS,
+    allowExitOnIdle: true,
+  });
+  // erros de clientes ociosos não devem derrubar o processo nem vazar dados.
+  pool.on('error', () => {});
+  pools.set(key, { pool, fingerprint });
   return pool;
 }
 
@@ -139,7 +179,7 @@ function getPool(c: PgRunnerConnection): Pool {
 export async function closeAllPools(): Promise<void> {
   const all = [...pools.values()];
   pools.clear();
-  await Promise.all(all.map((p) => p.end().catch(() => {})));
+  await Promise.all(all.map((c) => c.pool.end().catch(() => {})));
 }
 
 // --- helpers ----------------------------------------------------------------
