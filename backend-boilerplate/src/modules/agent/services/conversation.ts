@@ -2,6 +2,7 @@
  * Serviço de conversas — CRUD + persistência de mensagens no banco.
  */
 
+import type { ModelMessage } from 'ai';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
@@ -134,20 +135,102 @@ export async function addMessage(conversationId: string, params: {
   return msg;
 }
 
+/** Uma tool executada num turno, do jeito que fica salva em `toolData`. */
+export interface PersistedToolStep {
+  toolCallId: string;
+  toolName: string;
+  args?: unknown;
+  output?: unknown;
+}
+
 /**
- * Carrega o histórico de mensagens de uma conversa no formato ModelMessage[] do AI SDK.
+ * Teto de caracteres por resultado de tool ao RECARREGAR o histórico.
+ *
+ * Um `get_connection_schema` de banco grande passa de 100 KB. Reinjetar isso
+ * inteiro a cada turno estoura o contexto e custa caro. Truncamos o resultado
+ * mantendo o começo — que é onde estão os identificadores que importam
+ * (connectionId, chartId, nomes de tabela) — e sinalizamos o corte para o
+ * agente saber que pode reconsultar se precisar do resto.
  */
-export async function loadConversationHistory(conversationId: string) {
+const MAX_TOOL_OUTPUT_CHARS = 4000;
+
+function compactToolOutput(output: unknown): string {
+  let texto: string;
+  try {
+    texto = typeof output === 'string' ? output : JSON.stringify(output);
+  } catch {
+    texto = String(output);
+  }
+  if (texto == null) return 'null';
+  if (texto.length <= MAX_TOOL_OUTPUT_CHARS) return texto;
+  return (
+    texto.slice(0, MAX_TOOL_OUTPUT_CHARS) +
+    `\n…[resultado truncado: ${texto.length} caracteres no total. ` +
+    `Chame a tool de novo se precisar do restante.]`
+  );
+}
+
+/**
+ * Carrega o histórico de uma conversa no formato ModelMessage[] do AI SDK,
+ * INCLUINDO as tool calls e seus resultados.
+ *
+ * Por que as tools precisam entrar: sem elas o agente só herda o texto que
+ * escreveu, e perde o que DESCOBRIU — qual connectionId está usando, o schema
+ * que já leu, o chartId que acabou de criar. Na prática ele refazia a
+ * descoberta a cada mensagem (gastando passos, tokens e tempo) ou, pior,
+ * chutava um id de memória e falhava com "a conexão não está respondendo".
+ *
+ * O par assistant(tool-call) -> tool(tool-result) precisa vir COMPLETO e na
+ * ordem: uma tool-call sem o resultado correspondente é rejeitada pela API.
+ */
+export async function loadConversationHistory(
+  conversationId: string,
+): Promise<ModelMessage[]> {
   const messages = await prisma.chatMessage.findMany({
     where: { conversationId },
     orderBy: { createdAt: 'asc' },
   });
 
-  return messages.map((m) => {
+  const history: ModelMessage[] = [];
+
+  for (const m of messages) {
     if (m.role === 'user') {
-      return { role: 'user' as const, content: m.content };
+      history.push({ role: 'user', content: m.content });
+      continue;
     }
-    // assistant
-    return { role: 'assistant' as const, content: m.content };
-  });
+
+    const steps = Array.isArray(m.toolData) ? (m.toolData as unknown as PersistedToolStep[]) : [];
+    // Só reinjetamos passos completos: uma tool-call órfã quebra a requisição.
+    const completos = steps.filter((s) => s && s.toolCallId && s.toolName);
+
+    if (completos.length === 0) {
+      if (m.content) history.push({ role: 'assistant', content: m.content });
+      continue;
+    }
+
+    history.push({
+      role: 'assistant',
+      content: [
+        ...(m.content ? [{ type: 'text' as const, text: m.content }] : []),
+        ...completos.map((s) => ({
+          type: 'tool-call' as const,
+          toolCallId: s.toolCallId,
+          toolName: s.toolName,
+          input: s.args ?? {},
+        })),
+      ],
+    });
+
+    history.push({
+      role: 'tool',
+      content: completos.map((s) => ({
+        type: 'tool-result' as const,
+        toolCallId: s.toolCallId,
+        toolName: s.toolName,
+        output: { type: 'text' as const, value: compactToolOutput(s.output) },
+      })),
+    });
+  }
+
+  return history;
 }

@@ -19,7 +19,11 @@ import { DEFAULT_AGENT_CONFIG } from '../config/schemas.js';
 import { runAgent, type RunAgentResult } from '../agent/loop.js';
 import { buildMcpToolsForAgent } from '../tools/mcp-adapter.js';
 import { loadAllSkills, renderSkillsIndex, createActivateSkillTool } from '../skills/index.js';
-import { addMessage, loadConversationHistory } from '../services/conversation.js';
+import {
+  addMessage,
+  loadConversationHistory,
+  type PersistedToolStep,
+} from '../services/conversation.js';
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -131,6 +135,12 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
       let historyLen = 0;
       let agentError: { message: string } | null = null;
 
+      // Tools executadas neste turno, para persistir junto da resposta. Sem
+      // isto o próximo turno herda só o texto e perde o que o agente
+      // DESCOBRIU (connectionId, schema, chartId recém-criado) — obrigando-o a
+      // refazer a exploração ou a chutar identificadores.
+      const toolSteps = new Map<string, PersistedToolStep>();
+
       try {
         const history = await loadConversationHistory(conv.id);
         historyLen = history.length;
@@ -177,6 +187,11 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
             onStep: (step) => {
               if (step.toolCalls) {
                 for (const tc of step.toolCalls) {
+                  toolSteps.set(tc.toolCallId, {
+                    toolCallId: tc.toolCallId,
+                    toolName: tc.toolName,
+                    args: tc.args,
+                  });
                   send('tool_step', {
                     toolName: tc.toolName,
                     toolCallId: tc.toolCallId,
@@ -195,6 +210,8 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
                 step.toolResults.forEach((tr, idx) => {
                   const matchingCall = step.toolCalls?.[idx];
                   const toolCallId = matchingCall?.toolCallId ?? tr.toolCallId;
+                  const registrado = toolSteps.get(toolCallId);
+                  if (registrado) registrado.output = tr.output;
                   send('tool_step', {
                     toolName: tr.toolName,
                     toolCallId,
@@ -268,6 +285,9 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
           // erro (útil pra depurar). Se ele já tinha respondido, guardamos a
           // resposta — que é o que o usuário viu.
           content: trimmed || (agentError ? `Erro: ${agentError.message}` : '(sem resposta)'),
+          // Só passos COMPLETOS (com resultado): uma tool-call sem o
+          // tool-result correspondente é rejeitada pela API ao recarregar.
+          toolData: [...toolSteps.values()].filter((s) => s.output !== undefined),
           tokensIn: usage?.inputTokens,
           tokensOut: usage?.outputTokens,
         });
