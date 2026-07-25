@@ -11,76 +11,74 @@
  * `data-slot="table-info-panel"`.
  */
 
-import * as React from "react"
-import { Star, StarOff, Table as TableIcon } from "lucide-react"
+import * as React from 'react';
+import { Star, StarOff, Table as TableIcon } from 'lucide-react';
 
-import { cn } from "@/shared/lib/utils"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { StatTile } from "@/components/ui/stat-tile"
+import { cn } from '@/shared/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { StatTile } from '@/components/ui/stat-tile';
 
 export interface TableInfoColumn {
-  name: string
-  type: string
-  nullable?: boolean
-  isPrimary?: boolean
-  isForeign?: boolean
+  name: string;
+  type: string;
+  nullable?: boolean;
+  isPrimary?: boolean;
+  isForeign?: boolean;
 }
 
 export interface TableInfoIndex {
-  name: string
-  type: string
-  columns: string[]
+  name: string;
+  type: string;
+  columns: string[];
 }
 
 export interface TableInfoForeignKey {
-  name: string
-  columns?: string[]
-  references: { schema: string; table: string; column: string }
-  onDelete?: string
+  name: string;
+  columns?: string[];
+  references: { schema: string; table: string; column: string };
+  onDelete?: string;
 }
 
 export interface TableInfoTable {
-  name: string
-  columns: TableInfoColumn[]
-  indexes: TableInfoIndex[]
-  foreignKeys: TableInfoForeignKey[]
-  rowCount?: number
-  sizeMB?: number
-  description?: string
+  name: string;
+  columns: TableInfoColumn[];
+  indexes: TableInfoIndex[];
+  foreignKeys: TableInfoForeignKey[];
+  rowCount?: number;
+  sizeMB?: number;
+  description?: string;
 }
 
-export interface TableInfoPanelProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+export interface TableInfoPanelProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'title'
+> {
   /** Tabela selecionada. `null`/`undefined` mostra o estado vazio. */
-  table?: TableInfoTable | null
+  table?: TableInfoTable | null;
   /** Schema da tabela (prefixo `schema.tabela`). */
-  schemaName?: string
+  schemaName?: string;
   /** Se a tabela está favoritada (controla o ícone/rótulo do botão). */
-  isFavorite?: boolean
+  isFavorite?: boolean;
   /** Toggle de favorito. Quando passado, exibe o botão. */
-  onToggleFavorite?: () => void
+  onToggleFavorite?: () => void;
   /** Clique numa FK (torna as linhas de FK clicáveis). */
-  onNavigateFk?: (ref: {
-    schema: string
-    table: string
-    column: string
-  }) => void
+  onNavigateFk?: (ref: { schema: string; table: string; column: string }) => void;
   /** Mensagem do estado vazio (sem tabela selecionada). */
-  emptyHint?: React.ReactNode
+  emptyHint?: React.ReactNode;
 }
 
 /** Conta compacta: 8_400_000 → "8.4" + "M". */
 function compactCount(n: number): { value: number; suffix?: string } {
-  if (n >= 1_000_000) return { value: Math.round(n / 100_000) / 10, suffix: "M" }
-  if (n >= 1_000) return { value: Math.round(n / 100) / 10, suffix: "k" }
-  return { value: n }
+  if (n >= 1_000_000) return { value: Math.round(n / 100_000) / 10, suffix: 'M' };
+  if (n >= 1_000) return { value: Math.round(n / 100) / 10, suffix: 'k' };
+  return { value: n };
 }
 
 /** Tamanho compacto: 2048 → "2" + " GB", 340 → "340" + " MB". */
 function compactSize(mb: number): { value: number; suffix: string } {
-  if (mb >= 1024) return { value: Math.round(mb / 102.4) / 10, suffix: " GB" }
-  return { value: mb, suffix: " MB" }
+  if (mb >= 1024) return { value: Math.round(mb / 102.4) / 10, suffix: ' GB' };
+  return { value: mb, suffix: ' MB' };
 }
 
 function TableInfoPanel({
@@ -96,11 +94,23 @@ function TableInfoPanel({
   return (
     <div
       data-slot="table-info-panel"
-      className={cn("flex min-h-0 flex-1 flex-col", className)}
+      className={cn('flex min-h-0 flex-1 flex-col', className)}
       {...props}
     >
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-3 p-3">
+      {/* O Radix ScrollArea embrulha o conteúdo num `display: table` (inline)
+          para permitir scroll horizontal. Table box faz shrink-to-fit e cresce
+          até o min-content: nomes longos de FK/índice
+          (`conversations_assigned_to_user_id_users_id_fk`) esticavam o bloco
+          para 386px dentro de um painel de 279px. Como o viewport tem
+          overflow-x hidden, o excedente era CORTADO — sem scroll, sem
+          reticências, texto sumindo na borda da tela.
+
+          `max-width` não resolve (o min-content de uma table box vence), então
+          neutralizamos o display. Este painel é um inspetor de largura fixa: o
+          desejado é truncar com reticências — cada rótulo já tem `title` com o
+          valor completo —, nunca rolar na horizontal. */}
+      <ScrollArea className="flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
+        <div className="flex min-w-0 flex-col gap-3 p-3">
           {table ? (
             <>
               {/* Cabeçalho */}
@@ -114,7 +124,7 @@ function TableInfoPanel({
                     className="truncate text-sm font-semibold"
                     title={schemaName ? `${schemaName}.${table.name}` : table.name}
                   >
-                    {schemaName ? `${schemaName}.` : ""}
+                    {schemaName ? `${schemaName}.` : ''}
                     {table.name}
                   </code>
                 </div>
@@ -128,16 +138,16 @@ function TableInfoPanel({
               {/* Stats (linhas + tamanho) — reusa StatTile */}
               <div className="grid grid-cols-2 gap-2">
                 {(() => {
-                  const rows = compactCount(table.rowCount ?? 0)
+                  const rows = compactCount(table.rowCount ?? 0);
                   return (
                     <StatTile label="Linhas" value={rows.value} suffix={rows.suffix} />
-                  )
+                  );
                 })()}
                 {(() => {
-                  const size = compactSize(table.sizeMB ?? 0)
+                  const size = compactSize(table.sizeMB ?? 0);
                   return (
                     <StatTile label="Tamanho" value={size.value} suffix={size.suffix} />
-                  )
+                  );
                 })()}
               </div>
 
@@ -167,8 +177,16 @@ function TableInfoPanel({
                           {c.name}
                         </span>
                       </span>
+                      {/* `shrink-0` + `truncate` se anulam: sem poder encolher,
+                          o elemento nunca fica menor que o texto e o truncate
+                          não tem o que cortar. O tipo então exigia sua largura
+                          inteira ("timestamp with time zone") e empurrava a
+                          linha para fora do painel — que tem overflow-x hidden
+                          e CORTAVA o conteúdo, sem nem oferecer scroll.
+                          Agora encolhe e trunca, com teto de 45% para o nome da
+                          coluna (a informação principal) manter a prioridade. */}
                       <span
-                        className="shrink-0 truncate text-[10px] text-muted-foreground"
+                        className="min-w-0 max-w-[45%] truncate text-[10px] text-muted-foreground"
                         title={c.type}
                       >
                         {c.type}
@@ -216,12 +234,17 @@ function TableInfoPanel({
                           >
                             {fk.name}
                           </p>
-                          <p className="truncate text-[10px] text-muted-foreground">
+                          {/* Precisa de `title`: o alvo da FK trunca em nomes
+                              longos e sem o tooltip a informação se perde. */}
+                          <p
+                            className="truncate text-[10px] text-muted-foreground"
+                            title={`${fk.references.schema}.${fk.references.table}.${fk.references.column}`}
+                          >
                             → {fk.references.schema}.{fk.references.table}.
                             {fk.references.column}
                           </p>
                         </>
-                      )
+                      );
                       return (
                         <li key={fk.name}>
                           {onNavigateFk ? (
@@ -238,7 +261,7 @@ function TableInfoPanel({
                             </div>
                           )}
                         </li>
-                      )
+                      );
                     })}
                   </ul>
                 </div>
@@ -276,7 +299,7 @@ function TableInfoPanel({
                 </p>
                 <p className="max-w-[200px] text-[10px] text-muted-foreground/70">
                   {emptyHint ??
-                    "Clique numa tabela na árvore ao lado para ver linhas, tamanho, colunas, índices e foreign keys."}
+                    'Clique numa tabela na árvore ao lado para ver linhas, tamanho, colunas, índices e foreign keys.'}
                 </p>
               </div>
             </div>
@@ -284,7 +307,7 @@ function TableInfoPanel({
         </div>
       </ScrollArea>
     </div>
-  )
+  );
 }
 
-export { TableInfoPanel }
+export { TableInfoPanel };
