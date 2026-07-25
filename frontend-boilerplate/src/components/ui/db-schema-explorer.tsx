@@ -18,7 +18,7 @@
  * Lucide glyph for the table row. No `Math.random`, no `Date.now()`.
  */
 
-import * as React from "react"
+import * as React from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -36,18 +36,13 @@ import {
   Layers,
   Eye,
   Zap,
-} from "lucide-react"
+} from 'lucide-react';
 
-import { cn } from "@/shared/lib/utils"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { cn } from '@/shared/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -55,14 +50,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { MiddleTruncation } from "@/components/ui/middle-truncation"
+} from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { MiddleTruncation } from '@/components/ui/middle-truncation';
+import { SqlHighlight } from '@/components/ui/sql-highlight';
 import type {
   DbEngine,
   DbSchemaExplorerProps,
   TableDef,
-} from "@/components/ui/db-schema-explorer-types"
+} from '@/components/ui/db-schema-explorer-types';
 
 /* -------------------------------------------------------------------------- */
 /*                            engine → accent map                             */
@@ -70,61 +66,61 @@ import type {
 
 type EngineAccent = {
   /** Chip background (token) */
-  chipBg: string
+  chipBg: string;
   /** Chip border */
-  chipBorder: string
+  chipBorder: string;
   /** Chip foreground */
-  chipFg: string
+  chipFg: string;
   /** Header dot color (Tailwind literal) */
-  dot: string
+  dot: string;
   /** Folder icon tint (Tailwind literal) */
-  icon: string
+  icon: string;
   /** Label */
-  label: string
-}
+  label: string;
+};
 
 const ENGINE_ACCENTS: Record<DbEngine, EngineAccent> = {
   postgresql: {
-    chipBg: "bg-sky-500/10",
-    chipBorder: "border-sky-500/30",
-    chipFg: "text-sky-700 dark:text-sky-300",
-    dot: "bg-sky-500",
-    icon: "text-sky-600 dark:text-sky-400",
-    label: "PostgreSQL",
+    chipBg: 'bg-sky-500/10',
+    chipBorder: 'border-sky-500/30',
+    chipFg: 'text-sky-700 dark:text-sky-300',
+    dot: 'bg-sky-500',
+    icon: 'text-sky-600 dark:text-sky-400',
+    label: 'PostgreSQL',
   },
   mysql: {
-    chipBg: "bg-amber-500/10",
-    chipBorder: "border-amber-500/30",
-    chipFg: "text-amber-700 dark:text-amber-300",
-    dot: "bg-amber-500",
-    icon: "text-amber-600 dark:text-amber-400",
-    label: "MySQL",
+    chipBg: 'bg-amber-500/10',
+    chipBorder: 'border-amber-500/30',
+    chipFg: 'text-amber-700 dark:text-amber-300',
+    dot: 'bg-amber-500',
+    icon: 'text-amber-600 dark:text-amber-400',
+    label: 'MySQL',
   },
   sqlserver: {
-    chipBg: "bg-rose-500/10",
-    chipBorder: "border-rose-500/30",
-    chipFg: "text-rose-700 dark:text-rose-300",
-    dot: "bg-rose-500",
-    icon: "text-rose-600 dark:text-rose-400",
-    label: "SQL Server",
+    chipBg: 'bg-rose-500/10',
+    chipBorder: 'border-rose-500/30',
+    chipFg: 'text-rose-700 dark:text-rose-300',
+    dot: 'bg-rose-500',
+    icon: 'text-rose-600 dark:text-rose-400',
+    label: 'SQL Server',
   },
   oracle: {
-    chipBg: "bg-rose-500/10",
-    chipBorder: "border-rose-500/30",
-    chipFg: "text-rose-700 dark:text-rose-300",
-    dot: "bg-rose-500",
-    icon: "text-rose-600 dark:text-rose-400",
-    label: "Oracle",
+    chipBg: 'bg-rose-500/10',
+    chipBorder: 'border-rose-500/30',
+    chipFg: 'text-rose-700 dark:text-rose-300',
+    dot: 'bg-rose-500',
+    icon: 'text-rose-600 dark:text-rose-400',
+    label: 'Oracle',
   },
   sqlite: {
-    chipBg: "bg-zinc-500/10",
-    chipBorder: "border-zinc-500/30",
-    chipFg: "text-zinc-700 dark:text-zinc-300",
-    dot: "bg-zinc-500",
-    icon: "text-zinc-600 dark:text-zinc-400",
-    label: "SQLite",
+    chipBg: 'bg-zinc-500/10',
+    chipBorder: 'border-zinc-500/30',
+    chipFg: 'text-zinc-700 dark:text-zinc-300',
+    dot: 'bg-zinc-500',
+    icon: 'text-zinc-600 dark:text-zinc-400',
+    label: 'SQLite',
   },
-}
+};
 
 /* -------------------------------------------------------------------------- */
 /*                            PRNG seeded (decorative)                        */
@@ -136,53 +132,53 @@ const ENGINE_ACCENTS: Record<DbEngine, EngineAccent> = {
  * icon, every render. No `Math.random`, no `Date.now`.
  */
 function mulberry32(seed: number): () => number {
-  let a = seed >>> 0
+  let a = seed >>> 0;
   return function () {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 /** FNV-1a 32-bit hash — converts a string to a stable uint32 seed. */
 function hashString(input: string): number {
-  let h = 0x811c9dc5
+  let h = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i)
-    h = Math.imul(h, 0x01000193)
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
   }
-  return h >>> 0
+  return h >>> 0;
 }
 
-const TABLE_GLYPHS = [Table2, Layers, Hash, ListTree, Database] as const
-type GlyphComponent = React.ComponentType<{ className?: string }>
+const TABLE_GLYPHS = [Table2, Layers, Hash, ListTree, Database] as const;
+type GlyphComponent = React.ComponentType<{ className?: string }>;
 function pickTableGlyph(table: TableDef): GlyphComponent {
-  const rng = mulberry32(hashString(`${table.schema}.${table.name}`))
-  const idx = Math.floor(rng() * TABLE_GLYPHS.length) % TABLE_GLYPHS.length
-  return TABLE_GLYPHS[idx] as GlyphComponent
+  const rng = mulberry32(hashString(`${table.schema}.${table.name}`));
+  const idx = Math.floor(rng() * TABLE_GLYPHS.length) % TABLE_GLYPHS.length;
+  return TABLE_GLYPHS[idx] as GlyphComponent;
 }
 
 /* -------------------------------------------------------------------------- */
 /*                                helpers                                     */
 /* -------------------------------------------------------------------------- */
 
-function pathFor(level: "db" | "schema" | "table", ...parts: string[]): string {
-  return [level, ...parts].join("/")
+function pathFor(level: 'db' | 'schema' | 'table', ...parts: string[]): string {
+  return [level, ...parts].join('/');
 }
 
 function formatNumber(n: number): string {
-  if (n < 1000) return String(n)
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`
-  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  return `${(n / 1_000_000_000).toFixed(1)}B`
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
+  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  return `${(n / 1_000_000_000).toFixed(1)}B`;
 }
 
 function formatSizeMB(mb: number): string {
-  if (mb < 1) return `${Math.round(mb * 1024)} KB`
-  if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`
-  return `${(mb / 1024).toFixed(1)} GB`
+  if (mb < 1) return `${Math.round(mb * 1024)} KB`;
+  if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
+  return `${(mb / 1024).toFixed(1)} GB`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -190,17 +186,17 @@ function formatSizeMB(mb: number): string {
 /* -------------------------------------------------------------------------- */
 
 type TreeRowProps = {
-  level: 0 | 1 | 2
-  expanded: boolean
-  onToggle: () => void
-  selected?: boolean
-  onSelect?: () => void
-  icon: React.ReactNode
-  label: React.ReactNode
-  trailing?: React.ReactNode
-  highlight?: string
-  className?: string
-}
+  level: 0 | 1 | 2;
+  expanded: boolean;
+  onToggle: () => void;
+  selected?: boolean;
+  onSelect?: () => void;
+  icon: React.ReactNode;
+  label: React.ReactNode;
+  trailing?: React.ReactNode;
+  highlight?: string;
+  className?: string;
+};
 
 function TreeRow({
   level,
@@ -214,23 +210,23 @@ function TreeRow({
   highlight,
   className,
 }: TreeRowProps) {
-  const indent = level === 0 ? "pl-1" : level === 1 ? "pl-4" : "pl-7"
+  const indent = level === 0 ? 'pl-1' : level === 1 ? 'pl-4' : 'pl-7';
   return (
     <button
       type="button"
       onClick={() => {
-        onToggle()
-        onSelect?.()
+        onToggle();
+        onSelect?.();
       }}
       data-slot="db-schema-explorer-row"
       data-level={level}
-      data-selected={selected ? "true" : undefined}
+      data-selected={selected ? 'true' : undefined}
       className={cn(
-        "group flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 pr-2 text-left text-sm transition-colors",
+        'group flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 pr-2 text-left text-sm transition-colors',
         indent,
         selected
-          ? "bg-accent text-accent-foreground"
-          : "text-foreground hover:bg-muted/60",
+          ? 'bg-accent text-accent-foreground'
+          : 'text-foreground hover:bg-muted/60',
         className,
       )}
     >
@@ -248,9 +244,7 @@ function TreeRow({
       </span>
       <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
       {trailing ? (
-        <span className="ml-1 shrink-0 text-xs text-muted-foreground">
-          {trailing}
-        </span>
+        <span className="ml-1 shrink-0 text-xs text-muted-foreground">{trailing}</span>
       ) : null}
       {highlight ? (
         <span className="ml-1 hidden shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 sm:inline-block">
@@ -258,7 +252,7 @@ function TreeRow({
         </span>
       ) : null}
     </button>
-  )
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -267,42 +261,38 @@ function TreeRow({
 
 function quoteIdent(engine: DbEngine, ident: string): string {
   // PG/Oracle/MySQL/SQLite: double quote. SQL Server: bracket.
-  if (engine === "sqlserver") return `[${ident.replace(/]/g, "]]")}]`
-  return `"${ident.replace(/"/g, '""')}"`
+  if (engine === 'sqlserver') return `[${ident.replace(/]/g, ']]')}]`;
+  return `"${ident.replace(/"/g, '""')}"`;
 }
 
-function buildCreateTable(
-  engine: DbEngine,
-  schema: string,
-  table: TableDef,
-): string {
-  const qn = (col: string) => quoteIdent(engine, col)
-  const lines: string[] = []
-  const qualified = `${quoteIdent(engine, schema)}.${qn(table.name)}`
-  lines.push(`CREATE TABLE ${qualified} (`)
+function buildCreateTable(engine: DbEngine, schema: string, table: TableDef): string {
+  const qn = (col: string) => quoteIdent(engine, col);
+  const lines: string[] = [];
+  const qualified = `${quoteIdent(engine, schema)}.${qn(table.name)}`;
+  lines.push(`CREATE TABLE ${qualified} (`);
   const colLines = table.columns.map((c) => {
-    const parts: string[] = [`  ${qn(c.name)} ${c.type}`]
-    if (!c.nullable) parts.push("NOT NULL")
-    if (c.defaultValue) parts.push(`DEFAULT ${c.defaultValue}`)
-    return parts.join(" ")
-  })
+    const parts: string[] = [`  ${qn(c.name)} ${c.type}`];
+    if (!c.nullable) parts.push('NOT NULL');
+    if (c.defaultValue) parts.push(`DEFAULT ${c.defaultValue}`);
+    return parts.join(' ');
+  });
   if (table.primaryKey.length > 0) {
     colLines.push(
-      `  CONSTRAINT ${qn(`pk_${table.name}`)} PRIMARY KEY (${table.primaryKey.map(qn).join(", ")})`,
-    )
+      `  CONSTRAINT ${qn(`pk_${table.name}`)} PRIMARY KEY (${table.primaryKey.map(qn).join(', ')})`,
+    );
   }
   for (const fk of table.foreignKeys) {
-    const cols = fk.columns.map(qn).join(", ")
-    const ref = `${quoteIdent(engine, fk.references.schema)}.${qn(fk.references.table)}(${qn(fk.references.column)})`
-    const onDel = fk.onDelete ? ` ON DELETE ${fk.onDelete}` : ""
-    const onUpd = fk.onUpdate ? ` ON UPDATE ${fk.onUpdate}` : ""
+    const cols = fk.columns.map(qn).join(', ');
+    const ref = `${quoteIdent(engine, fk.references.schema)}.${qn(fk.references.table)}(${qn(fk.references.column)})`;
+    const onDel = fk.onDelete ? ` ON DELETE ${fk.onDelete}` : '';
+    const onUpd = fk.onUpdate ? ` ON UPDATE ${fk.onUpdate}` : '';
     colLines.push(
       `  CONSTRAINT ${qn(fk.name)} FOREIGN KEY (${cols}) REFERENCES ${ref}${onDel}${onUpd}`,
-    )
+    );
   }
-  lines.push(colLines.join(",\n"))
-  lines.push(");")
-  return lines.join("\n")
+  lines.push(colLines.join(',\n'));
+  lines.push(');');
+  return lines.join('\n');
 }
 
 /* -------------------------------------------------------------------------- */
@@ -317,7 +307,7 @@ function TypePill({ type }: { type: string }) {
     >
       {type}
     </span>
-  )
+  );
 }
 
 function ColumnsPanel({ table }: { table: TableDef }) {
@@ -338,8 +328,8 @@ function ColumnsPanel({ table }: { table: TableDef }) {
             <TableRow
               key={col.name}
               data-slot="db-schema-explorer-column"
-              data-pk={col.isPrimary ? "true" : undefined}
-              data-fk={col.isForeign ? "true" : undefined}
+              data-pk={col.isPrimary ? 'true' : undefined}
+              data-fk={col.isForeign ? 'true' : undefined}
             >
               <TableCell className="font-mono text-xs font-medium">
                 {col.name}
@@ -356,7 +346,7 @@ function ColumnsPanel({ table }: { table: TableDef }) {
                 <TypePill type={col.type} />
               </TableCell>
               <TableCell className="text-center text-xs text-muted-foreground">
-                {col.nullable ? "—" : "NOT NULL"}
+                {col.nullable ? '—' : 'NOT NULL'}
               </TableCell>
               <TableCell className="font-mono text-[11px] text-muted-foreground">
                 {col.defaultValue ?? <span className="opacity-50">—</span>}
@@ -391,7 +381,7 @@ function ColumnsPanel({ table }: { table: TableDef }) {
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
 
 function IndexesPanel({ table }: { table: TableDef }) {
@@ -400,7 +390,7 @@ function IndexesPanel({ table }: { table: TableDef }) {
       <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
         Nenhum índice declarado para esta tabela.
       </div>
-    )
+    );
   }
   return (
     <div className="rounded-lg border border-border">
@@ -418,7 +408,7 @@ function IndexesPanel({ table }: { table: TableDef }) {
             <TableRow key={idx.name} data-slot="db-schema-explorer-index">
               <TableCell className="font-mono text-xs">{idx.name}</TableCell>
               <TableCell className="font-mono text-[11px] text-foreground">
-                {idx.columns.join(", ")}
+                {idx.columns.join(', ')}
               </TableCell>
               <TableCell className="text-center text-xs">
                 {idx.unique ? (
@@ -437,22 +427,22 @@ function IndexesPanel({ table }: { table: TableDef }) {
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
 
 function ForeignKeysPanel({
   table,
   onJump,
 }: {
-  table: TableDef
-  onJump: (schema: string, table: string) => void
+  table: TableDef;
+  onJump: (schema: string, table: string) => void;
 }) {
   if (table.foreignKeys.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
         Esta tabela não declara chaves estrangeiras.
       </div>
-    )
+    );
   }
   return (
     <div className="rounded-lg border border-border">
@@ -475,7 +465,7 @@ function ForeignKeysPanel({
             >
               <TableCell className="font-mono text-xs">{fk.name}</TableCell>
               <TableCell className="font-mono text-[11px] text-foreground">
-                {fk.columns.join(", ")}
+                {fk.columns.join(', ')}
               </TableCell>
               <TableCell>
                 <button
@@ -486,9 +476,7 @@ function ForeignKeysPanel({
                   data-target-schema={fk.references.schema}
                   data-target-table={fk.references.table}
                 >
-                  <span className="text-muted-foreground">
-                    {fk.references.schema}.
-                  </span>
+                  <span className="text-muted-foreground">{fk.references.schema}.</span>
                   <span>{fk.references.table}</span>
                   <span className="text-muted-foreground">.</span>
                   <span>{fk.references.column}</span>
@@ -506,7 +494,7 @@ function ForeignKeysPanel({
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
 
 function DdlPanel({ ddl }: { ddl: string }) {
@@ -515,9 +503,21 @@ function DdlPanel({ ddl }: { ddl: string }) {
       data-slot="db-schema-explorer-ddl"
       className="rounded-lg border border-border bg-zinc-950 px-4 py-3 font-mono text-[12px] leading-relaxed text-zinc-100"
     >
-      <pre className="m-0 overflow-x-auto whitespace-pre">{ddl}</pre>
+      {/* `whitespace-pre-wrap` preserva a indentação do DDL mas deixa a linha
+          quebrar, em vez de `whitespace-pre` + scroll horizontal: ler DDL
+          rolando de lado é ruim, ainda mais num painel estreito, e a linha do
+          FOREIGN KEY passa fácil de 200 caracteres.
+
+          `[overflow-wrap:anywhere]` cobre o caso que o `break-words` não pega:
+          um único identificador mais largo que o painel (nomes de constraint
+          gerados por ORM chegam a 60+ caracteres sem espaço nenhum) continuaria
+          estourando. O `pl-4 -indent-4` dá recuo de continuação, deixando
+          visível que a linha quebrada é continuação da anterior. */}
+      <pre className="m-0 whitespace-pre-wrap pl-4 -indent-4 [overflow-wrap:anywhere]">
+        <SqlHighlight code={ddl} />
+      </pre>
     </div>
-  )
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -531,135 +531,128 @@ function DbSchemaExplorer({
   className,
   ...props
 }: DbSchemaExplorerProps) {
-  const accent = ENGINE_ACCENTS[database.engine]
+  const accent = ENGINE_ACCENTS[database.engine];
 
-  const [search, setSearch] = React.useState("")
-  const [onlyFk, setOnlyFk] = React.useState(false)
+  const [search, setSearch] = React.useState('');
+  const [onlyFk, setOnlyFk] = React.useState(false);
   const [expanded, setExpanded] = React.useState<Set<string>>(
     () =>
       new Set(
-        database.schemas.flatMap((s) => [
-          pathFor("db"),
-          pathFor("schema", s.name),
-        ]),
+        database.schemas.flatMap((s) => [pathFor('db'), pathFor('schema', s.name)]),
       ),
-  )
-  const [selected, setSelected] = React.useState<{ schema: string; table: string } | null>(
-    () => {
-      const firstWithTables = database.schemas.find((s) => s.tables.length > 0)
-      return firstWithTables
-        ? { schema: firstWithTables.name, table: firstWithTables.tables[0]!.name }
-        : null
-    },
-  )
+  );
+  const [selected, setSelected] = React.useState<{
+    schema: string;
+    table: string;
+  } | null>(() => {
+    const firstWithTables = database.schemas.find((s) => s.tables.length > 0);
+    return firstWithTables
+      ? { schema: firstWithTables.name, table: firstWithTables.tables[0]!.name }
+      : null;
+  });
 
   // Auto-expand/collapse on search clear
-  const searchActive = search.trim().length > 0
+  const searchActive = search.trim().length > 0;
 
   // Filter tables by search + onlyFk
   const visibleSchemas = React.useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim().toLowerCase();
     return database.schemas
       .map((schema) => {
         const tables = schema.tables.filter((t) => {
-          if (onlyFk && t.foreignKeys.length === 0) return false
-          if (q.length === 0) return true
-          if (t.name.toLowerCase().includes(q)) return true
-          if (t.columns.some((c) => c.name.toLowerCase().includes(q))) return true
+          if (onlyFk && t.foreignKeys.length === 0) return false;
+          if (q.length === 0) return true;
+          if (t.name.toLowerCase().includes(q)) return true;
+          if (t.columns.some((c) => c.name.toLowerCase().includes(q))) return true;
           if (t.foreignKeys.some((fk) => fk.references.table.toLowerCase().includes(q))) {
-            return true
+            return true;
           }
-          return false
-        })
-        return { ...schema, tables }
+          return false;
+        });
+        return { ...schema, tables };
       })
-      .filter((schema) => schema.tables.length > 0)
-  }, [database.schemas, search, onlyFk])
+      .filter((schema) => schema.tables.length > 0);
+  }, [database.schemas, search, onlyFk]);
 
-  const visibleTableCount = visibleSchemas.reduce(
-    (acc, s) => acc + s.tables.length,
-    0,
-  )
+  const visibleTableCount = visibleSchemas.reduce((acc, s) => acc + s.tables.length, 0);
 
   // When search is active, force expand all matches
   const isExpanded = React.useCallback(
     (p: string): boolean => {
-      if (searchActive) return true
-      return expanded.has(p)
+      if (searchActive) return true;
+      return expanded.has(p);
     },
     [expanded, searchActive],
-  )
+  );
 
   const toggle = React.useCallback((p: string) => {
     setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(p)) next.delete(p)
-      else next.add(p)
-      return next
-    })
-  }, [])
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  }, []);
 
   const expandAll = React.useCallback(() => {
-    const all = new Set<string>()
-    all.add(pathFor("db"))
+    const all = new Set<string>();
+    all.add(pathFor('db'));
     for (const s of database.schemas) {
-      all.add(pathFor("schema", s.name))
+      all.add(pathFor('schema', s.name));
     }
-    setExpanded(all)
-  }, [database.schemas])
+    setExpanded(all);
+  }, [database.schemas]);
 
   const collapseAll = React.useCallback(() => {
-    setExpanded(new Set([pathFor("db")]))
-  }, [])
+    setExpanded(new Set([pathFor('db')]));
+  }, []);
 
   const handleSelect = React.useCallback(
     (schema: string, table: string) => {
-      setSelected({ schema, table })
-      onTableClick?.({ schema, table })
+      setSelected({ schema, table });
+      onTableClick?.({ schema, table });
     },
     [onTableClick],
-  )
+  );
 
   const handleJump = React.useCallback(
     (schema: string, table: string) => {
       const exists = database.schemas
         .find((s) => s.name === schema)
-        ?.tables.some((t) => t.name === table)
-      if (!exists) return
-      handleSelect(schema, table)
+        ?.tables.some((t) => t.name === table);
+      if (!exists) return;
+      handleSelect(schema, table);
       setExpanded((prev) => {
-        const next = new Set(prev)
-        next.add(pathFor("db"))
-        next.add(pathFor("schema", schema))
-        return next
-      })
+        const next = new Set(prev);
+        next.add(pathFor('db'));
+        next.add(pathFor('schema', schema));
+        return next;
+      });
     },
     [database.schemas, handleSelect],
-  )
+  );
 
   const currentSchema = selected
-    ? database.schemas.find((s) => s.name === selected.schema) ?? null
-    : null
+    ? (database.schemas.find((s) => s.name === selected.schema) ?? null)
+    : null;
   const currentTable: TableDef | null =
     currentSchema && selected
-      ? currentSchema.tables.find((t) => t.name === selected.table) ?? null
-      : null
+      ? (currentSchema.tables.find((t) => t.name === selected.table) ?? null)
+      : null;
   const currentDdl =
     currentSchema && currentTable
       ? buildCreateTable(database.engine, currentSchema.name, currentTable)
-      : null
+      : null;
 
   return (
     <div
       data-slot="db-schema-explorer"
       data-engine={database.engine}
-      data-search-active={searchActive ? "true" : undefined}
-      data-embedded={embedded ? "true" : undefined}
+      data-search-active={searchActive ? 'true' : undefined}
+      data-embedded={embedded ? 'true' : undefined}
       className={cn(
-        "flex w-full min-w-0 flex-col overflow-hidden text-card-foreground",
-        embedded
-          ? "bg-transparent"
-          : "rounded-xl border border-border bg-card shadow-sm",
+        'flex w-full min-w-0 flex-col overflow-hidden text-card-foreground',
+        embedded ? 'bg-transparent' : 'rounded-xl border border-border bg-card shadow-sm',
         className,
       )}
       {...props}
@@ -671,39 +664,38 @@ function DbSchemaExplorer({
             data-slot="db-schema-explorer-header"
             className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-muted/30 px-4 py-3"
           >
-        <div className="flex min-w-0 items-center gap-2">
-          <Database className={cn("size-5 shrink-0", accent.icon)} />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate font-semibold text-foreground text-sm">
-                {database.name}
-              </h3>
-              <span
-                data-slot="db-schema-explorer-engine-chip"
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] font-medium",
-                  accent.chipBg,
-                  accent.chipBorder,
-                  accent.chipFg,
-                )}
-              >
-                <span className={cn("size-1.5 rounded-full", accent.dot)} />
-                {accent.label}
-              </span>
+            <div className="flex min-w-0 items-center gap-2">
+              <Database className={cn('size-5 shrink-0', accent.icon)} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="truncate font-semibold text-foreground text-sm">
+                    {database.name}
+                  </h3>
+                  <span
+                    data-slot="db-schema-explorer-engine-chip"
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] font-medium',
+                      accent.chipBg,
+                      accent.chipBorder,
+                      accent.chipFg,
+                    )}
+                  >
+                    <span className={cn('size-1.5 rounded-full', accent.dot)} />
+                    {accent.label}
+                  </span>
+                </div>
+                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                  {database.host}
+                  {database.port ? `:${database.port}` : ''}
+                  <span className="px-1.5 opacity-50">·</span>v{database.version}
+                  <span className="px-1.5 opacity-50">·</span>
+                  {formatSizeMB(database.sizeMB)}
+                  <span className="px-1.5 opacity-50">·</span>
+                  {formatNumber(database.tables)} tabelas
+                </p>
+              </div>
             </div>
-            <p className="truncate font-mono text-[11px] text-muted-foreground">
-              {database.host}
-              {database.port ? `:${database.port}` : ""}
-              <span className="px-1.5 opacity-50">·</span>
-              v{database.version}
-              <span className="px-1.5 opacity-50">·</span>
-              {formatSizeMB(database.sizeMB)}
-              <span className="px-1.5 opacity-50">·</span>
-              {formatNumber(database.tables)} tabelas
-            </p>
-          </div>
-        </div>
-      </header>
+          </header>
         </>
       )}
 
@@ -725,7 +717,7 @@ function DbSchemaExplorer({
           {search ? (
             <button
               type="button"
-              onClick={() => setSearch("")}
+              onClick={() => setSearch('')}
               aria-label="Limpar busca"
               className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
@@ -780,9 +772,9 @@ function DbSchemaExplorer({
             {/* Database root */}
             <TreeRow
               level={0}
-              expanded={isExpanded(pathFor("db"))}
-              onToggle={() => toggle(pathFor("db"))}
-              icon={<Database className={cn("size-3.5", accent.icon)} />}
+              expanded={isExpanded(pathFor('db'))}
+              onToggle={() => toggle(pathFor('db'))}
+              icon={<Database className={cn('size-3.5', accent.icon)} />}
               label={database.name}
               trailing={
                 <span>
@@ -790,7 +782,7 @@ function DbSchemaExplorer({
                 </span>
               }
             />
-            {isExpanded(pathFor("db")) ? (
+            {isExpanded(pathFor('db')) ? (
               <div className="mt-0.5 space-y-0.5">
                 {visibleSchemas.length === 0 ? (
                   <p className="px-7 py-3 text-[11px] text-muted-foreground">
@@ -798,7 +790,7 @@ function DbSchemaExplorer({
                   </p>
                 ) : null}
                 {visibleSchemas.map((schema) => {
-                  const schemaPath = pathFor("schema", schema.name)
+                  const schemaPath = pathFor('schema', schema.name);
                   return (
                     <React.Fragment key={schema.name}>
                       <TreeRow
@@ -806,14 +798,12 @@ function DbSchemaExplorer({
                         expanded={isExpanded(schemaPath)}
                         onToggle={() => toggle(schemaPath)}
                         icon={<Layers className="size-3.5 text-muted-foreground" />}
-                        label={
-                          <span className="font-mono text-xs">{schema.name}</span>
-                        }
+                        label={<span className="font-mono text-xs">{schema.name}</span>}
                         trailing={
                           <span>
                             {schema.tables.length}
-                            {schema.views ? ` · ${schema.views} views` : ""}
-                            {schema.functions ? ` · ${schema.functions} fns` : ""}
+                            {schema.views ? ` · ${schema.views} views` : ''}
+                            {schema.functions ? ` · ${schema.functions} fns` : ''}
                           </span>
                         }
                       />
@@ -822,8 +812,8 @@ function DbSchemaExplorer({
                           {schema.tables.map((t) => {
                             const isSelected =
                               selected?.schema === schema.name &&
-                              selected?.table === t.name
-                            const Glyph = pickTableGlyph(t)
+                              selected?.table === t.name;
+                            const Glyph = pickTableGlyph(t);
                             return (
                               <TreeRow
                                 key={t.name}
@@ -835,10 +825,10 @@ function DbSchemaExplorer({
                                 icon={
                                   <Glyph
                                     className={cn(
-                                      "size-3.5",
+                                      'size-3.5',
                                       t.foreignKeys.length > 0
                                         ? accent.icon
-                                        : "text-muted-foreground",
+                                        : 'text-muted-foreground',
                                     )}
                                   />
                                 }
@@ -850,9 +840,7 @@ function DbSchemaExplorer({
                                   />
                                 }
                                 trailing={
-                                  <span className="font-mono">
-                                    {t.columns.length}c
-                                  </span>
+                                  <span className="font-mono">{t.columns.length}c</span>
                                 }
                                 highlight={
                                   t.foreignKeys.length > 0
@@ -860,12 +848,12 @@ function DbSchemaExplorer({
                                     : undefined
                                 }
                               />
-                            )
+                            );
                           })}
                         </div>
                       ) : null}
                     </React.Fragment>
-                  )
+                  );
                 })}
               </div>
             ) : null}
@@ -873,10 +861,7 @@ function DbSchemaExplorer({
         </ScrollArea>
 
         {/* Detail pane */}
-        <ScrollArea
-          data-slot="db-schema-explorer-detail"
-          className="h-[36rem] lg:h-auto"
-        >
+        <ScrollArea data-slot="db-schema-explorer-detail" className="h-[36rem] lg:h-auto">
           {currentTable && currentSchema && currentDdl !== null ? (
             <div className="flex flex-col gap-3 p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -884,9 +869,7 @@ function DbSchemaExplorer({
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     <span className="font-mono">{currentSchema.name}</span>
                     <ChevronRight className="size-3" />
-                    <span className="font-mono text-foreground">
-                      {currentTable.name}
-                    </span>
+                    <span className="font-mono text-foreground">{currentTable.name}</span>
                   </div>
                   <h3 className="mt-1 font-mono text-base font-semibold text-foreground">
                     {currentTable.name}
@@ -958,10 +941,7 @@ function DbSchemaExplorer({
                   <IndexesPanel table={currentTable} />
                 </TabsContent>
                 <TabsContent value="fks" className="mt-3">
-                  <ForeignKeysPanel
-                    table={currentTable}
-                    onJump={handleJump}
-                  />
+                  <ForeignKeysPanel table={currentTable} onJump={handleJump} />
                 </TabsContent>
                 <TabsContent value="ddl" className="mt-3">
                   <DdlPanel ddl={currentDdl} />
@@ -977,8 +957,8 @@ function DbSchemaExplorer({
               {visibleTableCount > 0 ? (
                 <p className="text-[11px] text-muted-foreground">
                   {visibleTableCount} tabela
-                  {visibleTableCount !== 1 ? "s" : ""} disponíve
-                  {visibleTableCount !== 1 ? "is" : "l"} na árvore à esquerda.
+                  {visibleTableCount !== 1 ? 's' : ''} disponíve
+                  {visibleTableCount !== 1 ? 'is' : 'l'} na árvore à esquerda.
                 </p>
               ) : null}
             </div>
@@ -986,7 +966,7 @@ function DbSchemaExplorer({
         </ScrollArea>
       </div>
     </div>
-  )
+  );
 }
 
-export { DbSchemaExplorer }
+export { DbSchemaExplorer };
