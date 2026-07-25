@@ -51,6 +51,7 @@ import {
   useRunConnectionQuery,
   useTestConnection,
 } from '../hooks';
+import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { toDatabaseSchema, shortServerVersion } from '../lib/schema-mapper';
 import type { Connection, QueryResult } from '../types';
 import { ConnectionFormDialog } from './connection-form-dialog';
@@ -160,8 +161,11 @@ export function ConnectionDetailPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const { data: connection, isLoading: loadingConn, isError: connError } =
-    useConnection(id);
+  const {
+    data: connection,
+    isLoading: loadingConn,
+    isError: connError,
+  } = useConnection(id);
   const { data: allConnections } = useConnections({ pageSize: 100 });
   const {
     data: schema,
@@ -402,7 +406,9 @@ export function ConnectionDetailPage() {
             disabled={testConnection.isPending}
             className="hidden md:inline-flex"
           >
-            <PlugZap className={cn('size-3.5', testConnection.isPending && 'animate-pulse')} />
+            <PlugZap
+              className={cn('size-3.5', testConnection.isPending && 'animate-pulse')}
+            />
             Testar
           </Button>
           <Button
@@ -455,8 +461,8 @@ export function ConnectionDetailPage() {
       {schema?.truncated ? (
         <div className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
           <AlertTriangle className="size-3.5 shrink-0" />
-          Banco grande: mostrando {schema.tableCount} de {schema.totalTables} tabelas
-          (as demais foram omitidas para manter a performance).
+          Banco grande: mostrando {schema.tableCount} de {schema.totalTables} tabelas (as
+          demais foram omitidas para manter a performance).
         </div>
       ) : null}
 
@@ -563,9 +569,17 @@ export function ConnectionDetailPage() {
               <p className="text-sm font-medium text-foreground">
                 Não foi possível introspeccionar o schema
               </p>
+              {/* O motivo REAL vem no corpo da resposta (ex.: "connect
+                  ECONNREFUSED 1.2.3.4:5432", "password authentication failed",
+                  "The server does not support SSL connections"). Ler
+                  `error.message` de um AxiosError devolve só "Request failed
+                  with status code 400", que não diz nada e deixa o usuário sem
+                  saber se errou host, porta, senha ou SSL. */}
               <p className="max-w-sm text-xs text-muted-foreground">
-                {(schemaErr as Error)?.message ??
-                  'Verifique a conectividade da conexão e tente novamente.'}
+                {getApiErrorMessage(
+                  schemaErr,
+                  'Verifique a conectividade da conexão e tente novamente.',
+                )}
               </p>
               <Button variant="outline" size="sm" onClick={() => refetchSchema()}>
                 <RefreshCw className="size-4" />
@@ -583,7 +597,9 @@ export function ConnectionDetailPage() {
               <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Table2 className="size-6" />
               </span>
-              <p className="text-sm font-medium text-foreground">Nenhuma tabela encontrada</p>
+              <p className="text-sm font-medium text-foreground">
+                Nenhuma tabela encontrada
+              </p>
               <p className="max-w-xs text-xs text-muted-foreground">
                 A introspecção não retornou tabelas para esta conexão.
               </p>
@@ -597,14 +613,18 @@ export function ConnectionDetailPage() {
             table={selectedTable ? toTableInfo(selectedTable) : null}
             schemaName={selectedRef?.schema}
             isFavorite={
-              selectedRef ? favorites.has(favKey(selectedRef.schema, selectedRef.table)) : false
+              selectedRef
+                ? favorites.has(favKey(selectedRef.schema, selectedRef.table))
+                : false
             }
             onToggleFavorite={
               selectedRef
                 ? () => toggleFavorite(selectedRef.schema, selectedRef.table)
                 : undefined
             }
-            onNavigateFk={(ref) => setSelectedRef({ schema: ref.schema, table: ref.table })}
+            onNavigateFk={(ref) =>
+              setSelectedRef({ schema: ref.schema, table: ref.table })
+            }
           />
         </aside>
       </div>
@@ -625,7 +645,11 @@ export function ConnectionDetailPage() {
                 )}
                 aria-hidden
               />
-              {tone === 'online' ? 'conectado' : tone === 'warning' ? 'erro' : 'não testado'}
+              {tone === 'online'
+                ? 'conectado'
+                : tone === 'warning'
+                  ? 'erro'
+                  : 'não testado'}
             </span>
             <span className="hidden shrink-0 items-center gap-1 sm:flex">
               <DatabaseIcon className="size-3" />
@@ -696,8 +720,9 @@ export function ConnectionDetailPage() {
               </Badge>
             </div>
             <DialogDescription>
-              Apenas <code className="font-mono">SELECT</code> / <code className="font-mono">WITH</code>{' '}
-              (read-only). Máx. 100 linhas no preview.
+              Apenas <code className="font-mono">SELECT</code> /{' '}
+              <code className="font-mono">WITH</code> (read-only). Máx. 100 linhas no
+              preview.
             </DialogDescription>
           </DialogHeader>
 

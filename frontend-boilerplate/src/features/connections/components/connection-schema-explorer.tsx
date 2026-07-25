@@ -10,6 +10,7 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { DbSchemaExplorer } from '@/components/ui/db-schema-explorer';
+import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { useConnectionSchema } from '../hooks';
 import { toDatabaseSchema } from '../lib/schema-mapper';
 import type { Connection, ConnectionSchema } from '../types';
@@ -24,10 +25,7 @@ export function SchemaExplorerView({
   connection,
 }: {
   schema: ConnectionSchema;
-  connection: Pick<
-    Connection,
-    'id' | 'name' | 'database' | 'host' | 'port'
-  >;
+  connection: Pick<Connection, 'id' | 'name' | 'database' | 'host' | 'port'>;
 }) {
   const database = useMemo(
     () => toDatabaseSchema(schema, connection),
@@ -40,9 +38,7 @@ export function SchemaExplorerView({
         <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Database className="size-6" />
         </span>
-        <p className="text-sm font-medium text-foreground">
-          Nenhuma tabela encontrada
-        </p>
+        <p className="text-sm font-medium text-foreground">Nenhuma tabela encontrada</p>
         <p className="mx-auto max-w-xs text-xs text-muted-foreground">
           A introspecção não retornou tabelas para esta conexão.
         </p>
@@ -112,9 +108,13 @@ export function ConnectionSchemaDialog({
               <p className="text-sm font-medium text-foreground">
                 Não foi possível carregar o schema
               </p>
+              {/* Mostra o motivo REAL vindo da API, não o "Request failed with
+                  status code 400" genérico do axios. */}
               <p className="mx-auto max-w-sm text-xs text-muted-foreground">
-                {(error as Error)?.message ??
-                  'Verifique a conectividade da conexão e tente novamente.'}
+                {getApiErrorMessage(
+                  error,
+                  'Verifique a conectividade da conexão e tente novamente.',
+                )}
               </p>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
                 Tentar novamente
