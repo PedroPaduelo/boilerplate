@@ -31,6 +31,11 @@ vi.mock('@/features/command-palette/command-trigger', () => ({
   CommandTrigger: () => null,
 }));
 vi.mock('../app-sidebar', () => ({ AppSidebar: () => null }));
+// O shell escuta o socket para refletir o que o agente faz; aqui só se testa
+// o contrato de scroll/altura.
+vi.mock('@/shared/socket/use-agent-live-updates', () => ({
+  useAgentLiveUpdates: () => {},
+}));
 // Depende de contexto de tema; irrelevante para o contrato testado aqui.
 vi.mock('@/components/theme/theme-toggle', () => ({ ThemeToggle: () => null }));
 

@@ -30,6 +30,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { useSocket } from '@/shared/socket';
+import { CHAT_TURN_COMPLETE_EVENT } from '@/shared/socket/use-agent-live-updates';
 import { cn } from '@/shared/lib/utils';
 import { agentApi, type Conversation, type ChatMessageRecord } from '../api';
 import { HttpChatTransport } from '../transport/http-transport';
@@ -139,12 +141,51 @@ function ChatArea({ conversationId }: { conversationId: string }) {
   /** Última pergunta enviada — permite reenviar após uma falha do agente. */
   const [lastPrompt, setLastPrompt] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
+  const { getSocket, connected } = useSocket();
+  /** Espelha `isStreaming` para o listener de socket sem recriá-lo a cada delta. */
+  const isStreamingRef = useRef(false);
+  useEffect(() => {
+    isStreamingRef.current = isStreaming;
+  }, [isStreaming]);
   const fadeOutTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Ref do fim do scroll — alvo do auto-scroll. Aponta pro final da lista
   // renderizada (última assistant OU ThinkingBubble), não dentro de
   // ChatMessageList (que agora só recebe mensagens históricas).
   const endOfScrollRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Recarrega a conversa do servidor.
+   *
+   * É o mesmo caminho usado ao abrir a conversa e ao receber o aviso de que um
+   * turno terminou — por isso vive num callback só.
+   */
+  const reloadConversation = useCallback(async () => {
+    const conv = await agentApi.getConversation(conversationId);
+    setMessages((conv.messages ?? []).map(dbMessageToUi));
+  }, [conversationId]);
+
+  /**
+   * Sair da tela do chat NÃO mata o agente: o SSE morre com a navegação, mas a
+   * execução segue no servidor e a resposta é persistida. Sem escutar este
+   * aviso, quem saía e voltava via a conversa sem a resposta e concluía que o
+   * agente tinha travado.
+   */
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onTurnComplete = (payload: { conversationId: string }) => {
+      if (payload?.conversationId !== conversationId) return;
+      // Ignora enquanto estamos streamando: nesse caso a tela já tem o texto
+      // ao vivo, e recarregar causaria um piscar.
+      if (isStreamingRef.current) return;
+      void reloadConversation();
+    };
+    socket.on(CHAT_TURN_COMPLETE_EVENT, onTurnComplete);
+    return () => {
+      socket.off(CHAT_TURN_COMPLETE_EVENT, onTurnComplete);
+    };
+  }, [getSocket, connected, conversationId, reloadConversation]);
 
   useEffect(() => {
     let cancelled = false;

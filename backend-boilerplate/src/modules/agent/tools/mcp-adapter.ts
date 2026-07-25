@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { TOOLS } from '@/modules/mcp/tools';
 import type { ToolDefinition } from '@/modules/mcp/tools/types';
 import type { ActorContext } from '@/lib/rbac';
+import { notifyArtifactChange } from './notify-artifact-change.js';
 
 /**
  * JSON Schema → Zod schema (simplificado para os casos do MCP).
@@ -443,6 +444,8 @@ function convertMcpTool(mcpTool: ToolDefinition, actor: ActorContext): Tool {
               )
             : (args ?? {});
         const result = await mcpTool.handler(safeArgs, { actor });
+        // Se o agente mexeu num artefato, avisa a tela do usuário na hora.
+        notifyArtifactChange(actor.userId, mcpTool.name, result);
         return result;
       } catch (err: unknown) {
         // Erros do MCP já são estruturados. Retornamos como { error } para o agent.

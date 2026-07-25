@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { DashboardTopbar } from '@/components/ui';
 import { cn } from '@/shared/lib/utils';
+import { useAgentLiveUpdates } from '@/shared/socket/use-agent-live-updates';
 import { AppSidebar } from './app-sidebar';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { CommandPalette } from '@/features/command-palette/command-palette';
@@ -18,6 +19,10 @@ const TITLES: Record<string, string> = {
 };
 
 export function DashboardLayout() {
+  // Montado no shell (uma vez) para valer em QUALQUER tela: dá para pedir um
+  // gráfico no chat, ir para os dashboards e ver o resultado chegar sozinho.
+  useAgentLiveUpdates();
+
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('sidebar:collapsed') === '1',

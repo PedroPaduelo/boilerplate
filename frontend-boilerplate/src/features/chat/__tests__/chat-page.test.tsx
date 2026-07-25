@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/features/auth/store';
 
 /* Mock das listagens do diálogo. */
+// O chat escuta o socket para se recuperar quando o usuário sai e volta.
+vi.mock('@/shared/socket', () => ({
+  useSocket: () => ({ getSocket: () => null, connected: false }),
+}));
+
 vi.mock('@/features/dashboards/hooks', () => ({
   useDashboards: () => ({ data: { dashboards: [] }, isLoading: false }),
 }));
@@ -100,9 +105,12 @@ describe('ChatPage (agent integrado)', () => {
     renderPage();
 
     // A conversa mockada aparece na sidebar
-    await waitFor(() => {
-      const els = screen.getAllByText('Teste');
-      expect(els.length).toBeGreaterThan(0);
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        const els = screen.getAllByText('Teste');
+        expect(els.length).toBeGreaterThan(0);
+      },
+      { timeout: 3000 },
+    );
   });
 });

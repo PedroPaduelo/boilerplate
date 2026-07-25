@@ -17,6 +17,10 @@ import type { ActorContext } from '@/lib/rbac';
 import { createAnthropicWithExtras, extrasToProviderOptions } from '../provider/anthropic.js';
 import { DEFAULT_AGENT_CONFIG } from '../config/schemas.js';
 import { runAgent, type RunAgentResult } from '../agent/loop.js';
+import { socketManager } from '@/socket/manager/socket-manager';
+
+/** Emitido quando um turno do chat termina no servidor (com ou sem erro). */
+export const CHAT_TURN_COMPLETE_EVENT = 'chat:turn-complete';
 import { buildMcpToolsForAgent } from '../tools/mcp-adapter.js';
 import { loadAllSkills, renderSkillsIndex, createActivateSkillTool } from '../skills/index.js';
 import {
@@ -299,6 +303,19 @@ export const chatRoute: FastifyPluginAsync = async (app) => {
             data: { title: userMessage.slice(0, 60) },
           });
         }
+
+        // Avisa por socket que o turno fechou.
+        //
+        // O agente NÃO para quando o usuário sai da tela: o SSE morre com a
+        // navegação, mas a execução continua no servidor e a resposta é
+        // persistida logo acima (verificado abortando o cliente no meio —
+        // a resposta apareceu no banco assim mesmo). O que faltava era o
+        // caminho de volta: sem este aviso, quem saiu e voltou ficava olhando
+        // a conversa sem a resposta, achando que o agente tinha morrido.
+        socketManager.sendToUser(userId, CHAT_TURN_COMPLETE_EVENT, {
+          conversationId: conv.id,
+          failed: agentError !== null,
+        });
       } catch (persistErr) {
         request.log.error({ err: persistErr, conversationId: conv.id }, 'agent: falha ao persistir resposta');
       } finally {

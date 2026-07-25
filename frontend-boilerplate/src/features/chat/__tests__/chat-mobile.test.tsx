@@ -38,6 +38,12 @@ vi.mock('../transport/http-transport', () => ({
   },
 }));
 
+// O chat escuta o socket para se recuperar quando o usuário sai e volta.
+// Aqui só interessa o layout, então basta um socket inerte.
+vi.mock('@/shared/socket', () => ({
+  useSocket: () => ({ getSocket: () => null, connected: false }),
+}));
+
 beforeEach(() => vi.clearAllMocks());
 
 /** A lista fixa (desktop) — deve estar oculta abaixo de `md`. */
