@@ -351,7 +351,12 @@ export function ConnectionDetailPage() {
     : 0;
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col overflow-hidden bg-background text-foreground">
+    /* Sem piso de altura: o `min-h-[600px]` que existia aqui era maior que a
+       área útil em janelas baixas (a partir de ~900px de tela), estourava o
+       <main> e empurrava a barra de status para fora do campo de visão. Como
+       workbench, esta tela ocupa exatamente a altura disponível e deixa os
+       painéis internos absorverem o aperto com o scroll próprio de cada um. */
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
       {/* ===================== TOPBAR ===================== */}
       <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2 lg:gap-3">
         <Button

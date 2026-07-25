@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { DashboardTopbar } from '@/components/ui';
+import { cn } from '@/shared/lib/utils';
 import { AppSidebar } from './app-sidebar';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { CommandPalette } from '@/features/command-palette/command-palette';
@@ -63,11 +64,28 @@ export function DashboardLayout() {
           }
           onMenu={() => setMobileOpen(true)}
         />
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {/* Quem manda no scroll depende do tipo de rota:
+            - páginas normais: o documento cresce e o <main> rola (comportamento
+              clássico de página);
+            - full-bleed (workbench): a PRÓPRIA página gerencia o scroll dos seus
+              painéis internos, então o <main> não pode rolar. Se os dois rolam,
+              aparece o scroll duplo e a barra de status é empurrada para fora.
+
+            O `h-full` do wrapper é o que fecha a CADEIA DE ALTURA. Sem ele o
+            wrapper fica com altura automática, o `h-full` da página não tem
+            contra o que resolver e ela passa a ser dimensionada pelo conteúdo:
+            sobrava buraco vazio em telas altas (182px em 1080) e estourava em
+            telas baixas (146px em 800), levando a barra de status junto. */}
+        <main
+          className={cn(
+            'min-h-0 flex-1',
+            fullBleed ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain',
+          )}
+        >
           <div
             className={
               fullBleed
-                ? 'min-h-0 w-full'
+                ? 'h-full min-h-0 w-full'
                 : 'mx-auto w-full max-w-[1760px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8'
             }
           >
