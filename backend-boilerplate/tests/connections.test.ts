@@ -75,6 +75,27 @@ function externalTarget() {
 const SUFFIX = `t${Date.now()}`;
 const target = externalTarget();
 
+/**
+ * Garante que nenhum campo de senha saiu na serialização de uma conexão.
+ *
+ * NOTA sobre o que NÃO dá pra testar aqui: estes testes precisam de credenciais
+ * REAIS (há testes de conectividade/query mais abaixo), e no `DATABASE_URL` de
+ * desenvolvimento a senha é `postgres` — uma string genérica demais para ser
+ * procurada por substring na resposta. Ela casa com o `username` (`postgres`),
+ * com o nome da conexão do seed (`seed-exemplo-postgres`) e por aí vai. Era
+ * exatamente isso que mantinha estes testes vermelhos: FALSO POSITIVO, não
+ * vazamento (a serialização usa allow-list explícita em `serializeConnection`).
+ *
+ * Um teste de segurança que vive vermelho é pior que teste nenhum — vira ruído
+ * e esconde a regressão real. Então a checagem por VALOR ficou no teste da
+ * senha-sentinela (única, sem colisão possível), e aqui checamos por CAMPO.
+ */
+function esperaSemCamposDeSenha(conn: Record<string, unknown>) {
+  expect(conn.password).toBeUndefined();
+  expect(conn.passwordCipher).toBeUndefined();
+  expect(conn.password_cipher).toBeUndefined();
+}
+
 let app: FastifyInstance;
 
 // ids criados (limpeza no final)
@@ -226,9 +247,7 @@ describe('connections — CRUD + cifragem', () => {
     expect(body.status).toBe('unknown');
     expect(body.ownerId).toBe(userIds[0]);
     // SEGURANÇA: nenhum campo de senha presente.
-    expect(body.password).toBeUndefined();
-    expect(body.passwordCipher).toBeUndefined();
-    expect(JSON.stringify(body)).not.toContain(target.password);
+    esperaSemCamposDeSenha(body);
   });
 
   it('persiste a senha CIFRADA at-rest (decifra para o plaintext original)', async () => {
@@ -247,8 +266,7 @@ describe('connections — CRUD + cifragem', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.id).toBe(connId);
-    expect(body.passwordCipher).toBeUndefined();
-    expect(JSON.stringify(body)).not.toContain(target.password);
+    esperaSemCamposDeSenha(body);
   });
 
   it('GET /connections lista incluindo a conexão do dono', async () => {
@@ -260,7 +278,8 @@ describe('connections — CRUD + cifragem', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.connections.some((c: { id: string }) => c.id === connId)).toBe(true);
-    expect(JSON.stringify(body)).not.toContain(target.password);
+    // Toda conexão da lista — não só a nossa — precisa vir sem campo de senha.
+    for (const conn of body.connections) esperaSemCamposDeSenha(conn);
   });
 
   it('PATCH /connections/:id atualiza e RECIFRA a senha', async () => {
@@ -458,11 +477,74 @@ describe('connections — SEGURANÇA', () => {
       url: '/connections',
       headers: authHeader(ownerToken),
     });
-    expect(get.body).not.toContain(target.password);
-    expect(get.body).not.toContain('passwordCipher');
-    expect(get.body).not.toContain('password_cipher');
-    expect(list.body).not.toContain(target.password);
-    expect(list.body).not.toContain('passwordCipher');
+    esperaSemCamposDeSenha(get.json());
+    for (const conn of list.json().connections) esperaSemCamposDeSenha(conn);
+    // Nem o nome do campo cifrado pode escapar na serialização.
+    for (const res of [get, list]) {
+      expect(res.body).not.toContain('passwordCipher');
+      expect(res.body).not.toContain('password_cipher');
+    }
+  });
+
+  it('senha-sentinela (sem colisão com outros campos) não vaza em nenhuma rota', async () => {
+    // Reforço à prova de colisão: uma senha que não é igual a NENHUM outro
+    // valor da conexão. Se este texto aparecer em qualquer resposta, é
+    // vazamento — sem espaço para dúvida ou falso positivo.
+    const sentinela = `sentinela-${SUFFIX}-nao-deve-vazar`;
+    const criada = await app.inject({
+      method: 'POST',
+      url: '/connections',
+      headers: authHeader(ownerToken),
+      payload: {
+        name: `Conn sentinela ${SUFFIX}`,
+        host: target.host,
+        port: target.port,
+        database: target.database,
+        username: target.username,
+        password: sentinela,
+        sslMode: target.sslMode,
+        visibility: 'PRIVATE',
+      },
+    });
+    expect(criada.statusCode).toBe(201);
+    const id = criada.json().id;
+
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: `/connections/${id}`,
+      headers: authHeader(ownerToken),
+      payload: { description: 'toca no registro sem mexer na senha' },
+    });
+    const get = await app.inject({
+      method: 'GET',
+      url: `/connections/${id}`,
+      headers: authHeader(ownerToken),
+    });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/connections',
+      headers: authHeader(ownerToken),
+    });
+
+    // Em repouso: cifrada, nunca em texto puro.
+    const row = await prisma.connection.findUnique({ where: { id } });
+    expect(row!.passwordCipher).not.toContain(sentinela);
+    expect(decrypt(row!.passwordCipher)).toBe(sentinela);
+
+    for (const res of [criada, patch, get, list]) {
+      // Nem o plaintext...
+      expect(res.body).not.toContain(sentinela);
+      // ...nem o CIFRADO. Vazar o cipher é vazamento igual: é material
+      // sensível e a chave pode ser comprometida depois.
+      expect(res.body).not.toContain(row!.passwordCipher);
+      expect(res.body).not.toContain('passwordCipher');
+    }
+
+    await app.inject({
+      method: 'DELETE',
+      url: `/connections/${id}`,
+      headers: authHeader(ownerToken),
+    });
   });
 });
 
