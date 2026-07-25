@@ -20,12 +20,16 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { auth } from '@/middlewares/auth';
 import { chatRoute } from './routes/chat.js';
+import { chatRunRoute } from './routes/chat-run.js';
 import { conversationsRoutes } from './routes/conversations.js';
 import { healthRoute } from './routes/health.js';
 
 const agentModule: FastifyPluginAsync = async (app) => {
   // Auth (JWT) em todas as rotas do módulo
   await app.register(auth);
+  // Turno por socket, retomável (caminho novo). O SSE em `chatRoute` fica
+  // registrado por compatibilidade, mas a interface usa este.
+  app.register(chatRunRoute);
   app.register(chatRoute);
   app.register(conversationsRoutes);
   app.register(healthRoute);

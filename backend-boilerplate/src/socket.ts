@@ -6,6 +6,7 @@ import { socketManager } from './socket/manager/socket-manager';
 import { registerJoinRoom } from './socket/events/join-room';
 import { registerLeaveRoom } from './socket/events/leave-room';
 import { registerDashboardRoom } from './socket/events/dashboard-room';
+import { registerChatRoom } from './socket/events/chat-room';
 import { registerDisconnect } from './socket/disconnect';
 import { env } from './lib/env';
 
@@ -38,6 +39,7 @@ export function setupSocketIO(app: FastifyInstance) {
       registerJoinRoom(socket);
       registerLeaveRoom(socket);
       registerDashboardRoom(socket);
+      registerChatRoom(socket);
       registerDisconnect(socket);
 
       // Send connection confirmation

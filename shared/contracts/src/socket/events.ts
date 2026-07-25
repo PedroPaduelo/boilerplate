@@ -48,4 +48,46 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.BLOCK_ERROR]: (payload: BlockErrorEvent) => void;
   'artifact:changed': (payload: ArtifactChangedEvent) => void;
   'chat:turn-complete': (payload: ChatTurnCompleteEvent) => void;
+  /**
+   * Pedaços da resposta do agente, na sala `chat:{conversationId}`.
+   * O `seq` é o que torna a resposta RETOMÁVEL: quem volta descarta o que já
+   * tem e continua do número seguinte, sem buraco nem repetição.
+   */
+  'chat:delta': (payload: ChatDeltaEvent) => void;
+  'chat:tool-step': (payload: ChatToolStepEvent) => void;
+  'chat:done': (payload: ChatDoneEvent) => void;
+  'chat:error': (payload: ChatErrorEvent) => void;
+}
+
+export interface ChatDeltaEvent {
+  conversationId: string;
+  runId: string;
+  messageId: string;
+  delta: string;
+  /** Número do pedaço (1, 2, 3…) dentro deste turno. */
+  seq: number;
+}
+
+export interface ChatToolStepEvent {
+  conversationId: string;
+  runId: string;
+  toolCallId: string;
+  toolName: string;
+  phase: 'call' | 'result';
+  args?: unknown;
+  output?: unknown;
+}
+
+export interface ChatDoneEvent {
+  conversationId: string;
+  runId: string;
+  messageId: string;
+  text: string;
+}
+
+export interface ChatErrorEvent {
+  conversationId: string;
+  runId: string;
+  messageId: string;
+  message: string;
 }

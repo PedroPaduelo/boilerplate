@@ -34,8 +34,13 @@ import { useSocket } from '@/shared/socket';
 import { CHAT_TURN_COMPLETE_EVENT } from '@/shared/socket/use-agent-live-updates';
 import { cn } from '@/shared/lib/utils';
 import { agentApi, type Conversation, type ChatMessageRecord } from '../api';
-import { HttpChatTransport } from '../transport/http-transport';
-import type { ChatMessage, ChatRole } from '../transport';
+import {
+  attachToConversation,
+  fetchRunState,
+  startRun,
+} from '../transport/socket-transport';
+import { getApiErrorMessage } from '@/shared/lib/api-error';
+import type { ChatEvent, ChatMessage, ChatRole } from '../transport';
 import { ChatMessageList } from './chat-message-list';
 import { ChatMessageBubble } from './chat-message-bubble';
 import { ChatInput } from './chat-input';
@@ -140,7 +145,6 @@ function ChatArea({ conversationId }: { conversationId: string }) {
   const [toolSteps, setToolSteps] = useState<ToolStep[]>([]);
   /** Última pergunta enviada — permite reenviar após uma falha do agente. */
   const [lastPrompt, setLastPrompt] = useState<string>('');
-  const abortRef = useRef<AbortController | null>(null);
   const { getSocket, connected } = useSocket();
   /** Espelha `isStreaming` para o listener de socket sem recriá-lo a cada delta. */
   const isStreamingRef = useRef(false);
@@ -237,127 +241,179 @@ function ChatArea({ conversationId }: { conversationId: string }) {
       fadeOutTimersRef.current.clear();
       setToolSteps([]);
 
-      const controller = new AbortController();
-      abortRef.current = controller;
-      const transport = new HttpChatTransport({ conversationId });
-
       try {
-        for await (const ev of transport.sendMessage([...messages, userMsg], {
-          signal: controller.signal,
-        })) {
-          switch (ev.type) {
-            case 'message_start':
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: ev.messageId,
-                  role: 'assistant',
-                  content: '',
-                  createdAt: new Date().toISOString(),
-                },
-              ]);
-              break;
-            case 'text_delta':
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === ev.messageId ? { ...m, content: m.content + ev.delta } : m,
-                ),
-              );
-              break;
-            case 'chart':
-              setMessages((prev) =>
-                prev.map((m) => (m.id === ev.messageId ? { ...m, chart: ev.chart } : m)),
-              );
-              break;
-            case 'tool_step': {
-              // Dedup por toolCallId (mesmo call → mesmo step; result atualiza)
-              const toolCallId = (ev as { toolCallId: string }).toolCallId;
-              setToolSteps((prev) => {
-                const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
-                if (idx === -1) {
-                  // Novo step → insere no INÍCIO (mais recente primeiro)
-                  return [
-                    {
-                      toolCallId,
-                      toolName: ev.toolName,
-                      phase: ev.phase,
-                      args: ev.args,
-                      output: ev.output,
-                    },
-                    ...prev,
-                  ];
-                }
-                // Já existe → atualiza in-place (pode ser um `call` repetido ou um `result`)
-                const next = prev.slice();
-                next[idx] = {
-                  toolCallId,
-                  toolName: ev.toolName,
-                  phase: ev.phase,
-                  args: ev.args,
-                  output: ev.output,
-                  fadingOut: prev[idx].fadingOut, // preserva fadingOut se já estava
-                };
-                return next;
-              });
-
-              if (ev.phase === 'result') {
-                // Marca fadingOut + agenda remoção
-                setToolSteps((prev) => {
-                  const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
-                  if (idx === -1) return prev;
-                  const next = prev.slice();
-                  next[idx] = { ...next[idx], phase: 'result', fadingOut: true };
-                  return next;
-                });
-                // Cancela timer anterior (se houver)
-                const existing = fadeOutTimersRef.current.get(toolCallId);
-                if (existing) clearTimeout(existing);
-                const timer = setTimeout(() => {
-                  setToolSteps((prev) => prev.filter((s) => s.toolCallId !== toolCallId));
-                  fadeOutTimersRef.current.delete(toolCallId);
-                }, TOOL_STEP_FADE_OUT_MS);
-                fadeOutTimersRef.current.set(toolCallId, timer);
-              } else {
-                // `call` chegou (de novo): cancela qualquer timer pendente de remoção
-                const existing = fadeOutTimersRef.current.get(toolCallId);
-                if (existing) {
-                  clearTimeout(existing);
-                  fadeOutTimersRef.current.delete(toolCallId);
-                }
-                // Garante fadingOut=false no call
-                setToolSteps((prev) => {
-                  const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
-                  if (idx === -1) return prev;
-                  const next = prev.slice();
-                  next[idx] = { ...next[idx], fadingOut: false };
-                  return next;
-                });
-              }
-              break;
-            }
-            case 'error':
-              setError(ev.message);
-              break;
-            case 'message_end':
-            case 'usage':
-              break;
-          }
-        }
+        // Dispara e pronto: o POST responde na hora (202) e o conteúdo chega
+        // pela sala do socket, que já está escutando. É isso que permite sair
+        // da tela sem interromper a resposta.
+        await startRun(conversationId, trimmed);
       } catch (err) {
-        if (!controller.signal.aborted) {
-          setError(err instanceof Error ? err.message : 'Falha ao falar com o agente.');
-        }
-      } finally {
-        if (abortRef.current === controller) abortRef.current = null;
         setIsStreaming(false);
+        setError(getApiErrorMessage(err, 'Falha ao falar com o agente.'));
       }
     },
-    [conversationId, messages, isStreaming],
+    [conversationId, isStreaming],
   );
 
+  /** Aplica um evento do agente no estado da tela. */
+  const applyEvent = useCallback((ev: ChatEvent) => {
+    {
+      {
+        switch (ev.type) {
+          case 'message_start':
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: ev.messageId,
+                role: 'assistant',
+                content: '',
+                createdAt: new Date().toISOString(),
+              },
+            ]);
+            break;
+          case 'text_delta':
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === ev.messageId ? { ...m, content: m.content + ev.delta } : m,
+              ),
+            );
+            break;
+          case 'chart':
+            setMessages((prev) =>
+              prev.map((m) => (m.id === ev.messageId ? { ...m, chart: ev.chart } : m)),
+            );
+            break;
+          case 'tool_step': {
+            // Dedup por toolCallId (mesmo call → mesmo step; result atualiza)
+            const toolCallId = (ev as { toolCallId: string }).toolCallId;
+            setToolSteps((prev) => {
+              const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
+              if (idx === -1) {
+                // Novo step → insere no INÍCIO (mais recente primeiro)
+                return [
+                  {
+                    toolCallId,
+                    toolName: ev.toolName,
+                    phase: ev.phase,
+                    args: ev.args,
+                    output: ev.output,
+                  },
+                  ...prev,
+                ];
+              }
+              // Já existe → atualiza in-place (pode ser um `call` repetido ou um `result`)
+              const next = prev.slice();
+              next[idx] = {
+                toolCallId,
+                toolName: ev.toolName,
+                phase: ev.phase,
+                args: ev.args,
+                output: ev.output,
+                fadingOut: prev[idx].fadingOut, // preserva fadingOut se já estava
+              };
+              return next;
+            });
+
+            if (ev.phase === 'result') {
+              // Marca fadingOut + agenda remoção
+              setToolSteps((prev) => {
+                const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
+                if (idx === -1) return prev;
+                const next = prev.slice();
+                next[idx] = { ...next[idx], phase: 'result', fadingOut: true };
+                return next;
+              });
+              // Cancela timer anterior (se houver)
+              const existing = fadeOutTimersRef.current.get(toolCallId);
+              if (existing) clearTimeout(existing);
+              const timer = setTimeout(() => {
+                setToolSteps((prev) => prev.filter((s) => s.toolCallId !== toolCallId));
+                fadeOutTimersRef.current.delete(toolCallId);
+              }, TOOL_STEP_FADE_OUT_MS);
+              fadeOutTimersRef.current.set(toolCallId, timer);
+            } else {
+              // `call` chegou (de novo): cancela qualquer timer pendente de remoção
+              const existing = fadeOutTimersRef.current.get(toolCallId);
+              if (existing) {
+                clearTimeout(existing);
+                fadeOutTimersRef.current.delete(toolCallId);
+              }
+              // Garante fadingOut=false no call
+              setToolSteps((prev) => {
+                const idx = prev.findIndex((s) => s.toolCallId === toolCallId);
+                if (idx === -1) return prev;
+                const next = prev.slice();
+                next[idx] = { ...next[idx], fadingOut: false };
+                return next;
+              });
+            }
+            break;
+          }
+          case 'error':
+            setError(ev.message);
+            setIsStreaming(false);
+            break;
+          case 'message_end':
+            setIsStreaming(false);
+            break;
+          case 'usage':
+            break;
+        }
+      }
+    }
+  }, []);
+
+  /**
+   * Liga a tela na conversa e RETOMA o que estiver em andamento.
+   *
+   * Ao (re)abrir: pergunta ao servidor o estado da execução. Se havia um turno
+   * rodando, o texto acumulado entra de uma vez e a escuta continua a partir do
+   * último pedaço — sem buraco e sem repetição. Sair da tela só cancela a
+   * inscrição; o agente segue trabalhando no servidor.
+   */
+  useEffect(() => {
+    let vivo = true;
+    let desligar: (() => void) | null = null;
+
+    void (async () => {
+      let fromSeq = 0;
+      try {
+        const run = await fetchRunState(conversationId);
+        if (!vivo) return;
+        if (run) {
+          fromSeq = run.seq;
+          if (run.status === 'running') {
+            // Reconstrói a bolha com o que já foi produzido enquanto estávamos fora.
+            setMessages((prev) => {
+              const semParcial = prev.filter((m) => m.id !== run.messageId);
+              return [
+                ...semParcial,
+                {
+                  id: run.messageId,
+                  role: 'assistant' as ChatRole,
+                  content: run.text,
+                  createdAt: new Date().toISOString(),
+                },
+              ];
+            });
+            setIsStreaming(true);
+          }
+        }
+      } catch {
+        // Sem estado de execução: segue só escutando o que vier.
+      }
+      if (!vivo) return;
+      desligar = attachToConversation(conversationId, { fromSeq, onEvent: applyEvent });
+    })();
+
+    return () => {
+      vivo = false;
+      desligar?.();
+    };
+  }, [conversationId, applyEvent]);
+
   const stop = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
+    // Só desliga a exibição local: o turno segue no servidor e a resposta
+    // continua sendo persistida (é o que permite voltar e encontrá-la).
     setIsStreaming(false);
   }, []);
 

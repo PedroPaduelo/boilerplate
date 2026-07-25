@@ -1197,6 +1197,44 @@ interface ServerToClientEvents {
     [SOCKET_EVENTS.BLOCK_ERROR]: (payload: BlockErrorEvent) => void;
     'artifact:changed': (payload: ArtifactChangedEvent) => void;
     'chat:turn-complete': (payload: ChatTurnCompleteEvent) => void;
+    /**
+     * Pedaços da resposta do agente, na sala `chat:{conversationId}`.
+     * O `seq` é o que torna a resposta RETOMÁVEL: quem volta descarta o que já
+     * tem e continua do número seguinte, sem buraco nem repetição.
+     */
+    'chat:delta': (payload: ChatDeltaEvent) => void;
+    'chat:tool-step': (payload: ChatToolStepEvent) => void;
+    'chat:done': (payload: ChatDoneEvent) => void;
+    'chat:error': (payload: ChatErrorEvent) => void;
+}
+interface ChatDeltaEvent {
+    conversationId: string;
+    runId: string;
+    messageId: string;
+    delta: string;
+    /** Número do pedaço (1, 2, 3…) dentro deste turno. */
+    seq: number;
+}
+interface ChatToolStepEvent {
+    conversationId: string;
+    runId: string;
+    toolCallId: string;
+    toolName: string;
+    phase: 'call' | 'result';
+    args?: unknown;
+    output?: unknown;
+}
+interface ChatDoneEvent {
+    conversationId: string;
+    runId: string;
+    messageId: string;
+    text: string;
+}
+interface ChatErrorEvent {
+    conversationId: string;
+    runId: string;
+    messageId: string;
+    message: string;
 }
 
 declare const kpiManifest: {
@@ -2119,4 +2157,4 @@ declare const dashboardDataPayloadFixture: {
     };
 };
 
-export { type ApiError, ApiErrorSchema, type ArtifactChangedEvent, type ArtifactStatus, type Block, type BlockData, type BlockDataEvent, BlockDataEventSchema, type BlockDataRequest, BlockDataRequestSchema, type BlockDataResult, BlockDataResultSchema, type BlockErrorEvent, BlockErrorEventSchema, type BlockKind, type BlockManifest, BlockManifestSchema, type BlockQueuedEvent, BlockQueuedEventSchema, type BlockRunningEvent, BlockRunningEventSchema, type BlockState, type CategoricalData, CategoricalDataSchema, type ChatTurnCompleteEvent, ContractValidationError, type CreateDashboardRequest, CreateDashboardRequestSchema, type DashboardConfig, DashboardConfigSchema, type DashboardDataPayload, DashboardDataPayloadSchema, type DashboardDetail, DashboardDetailSchema, type DashboardLayout, DashboardLayoutSchema, type DashboardSummary, DashboardSummarySchema, type DataBinding, type DataBindingParam, type DataShape, type Filter, type FilterType, type Row, SOCKET_EVENTS, type ScalarData, ScalarDataSchema, type SeriesData, SeriesDataSchema, type ServerToClientEvents, type SocketEventName, type TableData, TableDataSchema, type UpdateDashboardRequest, UpdateDashboardRequestSchema, type Visibility, ajv, assertValid, barChartManifest, baseManifests, dashboardConfigFixture, dashboardDataPayloadFixture, dashboardLayoutFixture, dashboardRoom, donutManifest, formatErrors, kpiManifest, lineChartManifest, richTextManifest, tableManifest, titleManifest, validateApiError, validateBlockDataByShape, validateBlockDataEvent, validateBlockDataRequest, validateBlockDataResult, validateBlockErrorEvent, validateBlockManifest, validateBlockQueuedEvent, validateBlockRunningEvent, validateCategoricalData, validateCreateDashboardRequest, validateDashboardConfig, validateDashboardDataPayload, validateDashboardDetail, validateDashboardLayout, validateDashboardSummary, validateScalarData, validateSeriesData, validateTableData, validateUpdateDashboardRequest };
+export { type ApiError, ApiErrorSchema, type ArtifactChangedEvent, type ArtifactStatus, type Block, type BlockData, type BlockDataEvent, BlockDataEventSchema, type BlockDataRequest, BlockDataRequestSchema, type BlockDataResult, BlockDataResultSchema, type BlockErrorEvent, BlockErrorEventSchema, type BlockKind, type BlockManifest, BlockManifestSchema, type BlockQueuedEvent, BlockQueuedEventSchema, type BlockRunningEvent, BlockRunningEventSchema, type BlockState, type CategoricalData, CategoricalDataSchema, type ChatDeltaEvent, type ChatDoneEvent, type ChatErrorEvent, type ChatToolStepEvent, type ChatTurnCompleteEvent, ContractValidationError, type CreateDashboardRequest, CreateDashboardRequestSchema, type DashboardConfig, DashboardConfigSchema, type DashboardDataPayload, DashboardDataPayloadSchema, type DashboardDetail, DashboardDetailSchema, type DashboardLayout, DashboardLayoutSchema, type DashboardSummary, DashboardSummarySchema, type DataBinding, type DataBindingParam, type DataShape, type Filter, type FilterType, type Row, SOCKET_EVENTS, type ScalarData, ScalarDataSchema, type SeriesData, SeriesDataSchema, type ServerToClientEvents, type SocketEventName, type TableData, TableDataSchema, type UpdateDashboardRequest, UpdateDashboardRequestSchema, type Visibility, ajv, assertValid, barChartManifest, baseManifests, dashboardConfigFixture, dashboardDataPayloadFixture, dashboardLayoutFixture, dashboardRoom, donutManifest, formatErrors, kpiManifest, lineChartManifest, richTextManifest, tableManifest, titleManifest, validateApiError, validateBlockDataByShape, validateBlockDataEvent, validateBlockDataRequest, validateBlockDataResult, validateBlockErrorEvent, validateBlockManifest, validateBlockQueuedEvent, validateBlockRunningEvent, validateCategoricalData, validateCreateDashboardRequest, validateDashboardConfig, validateDashboardDataPayload, validateDashboardDetail, validateDashboardLayout, validateDashboardSummary, validateScalarData, validateSeriesData, validateTableData, validateUpdateDashboardRequest };

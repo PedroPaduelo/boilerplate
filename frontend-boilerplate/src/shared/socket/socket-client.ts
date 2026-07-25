@@ -11,6 +11,9 @@ import { useAuthStore } from '@/features/auth/store';
 export interface ClientToServerEvents {
   'dashboard:join': (dashboardId: string) => void;
   'dashboard:leave': (dashboardId: string) => void;
+  /** Sala da conversa: por ela chegam os pedaços da resposta do agente. */
+  'chat:join': (conversationId: string) => void;
+  'chat:leave': (conversationId: string) => void;
 }
 
 /**
