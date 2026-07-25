@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/shared/lib/utils';
 import { agentApi, type Conversation, type ChatMessageRecord } from '../api';
 import { HttpChatTransport } from '../transport/http-transport';
@@ -439,21 +440,39 @@ function ChatMessageBubbleStandalone({
   );
 }
 
-function ChatSidebar({
-  conversations,
-  activeId,
-  onSelect,
-  onCreate,
-  onDelete,
-}: {
+interface ChatSidebarProps {
   conversations: Conversation[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onCreate: () => void;
   onDelete: (id: string) => void;
-}) {
+}
+
+/**
+ * Lista de conversas.
+ *
+ * Some no mobile: com 256px fixos ela ocupava 66% de uma tela de 390px e
+ * espremia o chat a ponto do campo de digitar ficar com 8px de largura. No
+ * celular ela vira drawer, acionada pelo botão de conversas no cabeçalho —
+ * mesmo padrão (`Sheet`) que a navegação principal já usa.
+ */
+function ChatSidebar(props: ChatSidebarProps) {
   return (
-    <div className="flex w-64 shrink-0 flex-col border-r border-border bg-muted/30">
+    <div className="hidden w-64 shrink-0 flex-col border-r border-border bg-muted/30 md:flex">
+      <ChatSidebarContent {...props} />
+    </div>
+  );
+}
+
+function ChatSidebarContent({
+  conversations,
+  activeId,
+  onSelect,
+  onCreate,
+  onDelete,
+}: ChatSidebarProps) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="p-3">
         <Button onClick={onCreate} size="sm" className="w-full">
           <Plus className="size-4" />
@@ -503,6 +522,8 @@ export function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [agentReady, setAgentReady] = useState<boolean | null>(null);
+  /** Drawer da lista de conversas — só existe no mobile. */
+  const [mobileListOpen, setMobileListOpen] = useState(false);
 
   /**
    * Carga inicial: conversas + disponibilidade do agente.
@@ -557,12 +578,15 @@ export function ChatPage() {
   );
 
   return (
-    /* calc(100vh - 7.5rem) = 100vh - 56px (topbar h-14) - 64px (py-8 do <main> interno).
-       Valor escolhido pra caber EXATAMENTE na área visível do <main>: o wrapper
-       anterior (h-[calc(100vh-7rem)] = 112px) deixava 8px de sobra que viravam
-       scroll global do <main>. h-full sem pai com altura fixa estourava ainda
-       mais (crescia com o conteúdo). */
-    <div className="flex h-[calc(100vh-7.5rem)] overflow-hidden rounded-xl border border-border bg-card">
+    /* Altura = viewport - topbar (56px) - respiro vertical do <main>, que é
+       responsivo: py-6 (48px) até lg, py-8 (64px) daí pra cima. Antes havia um
+       único `calc(100vh-7.5rem)` assumindo 64px sempre, o que sobrava 16px no
+       mobile e virava scroll global.
+
+       `dvh` em vez de `vh` porque no celular a barra de endereço entra e sai
+       da tela: com `vh` o composer some atrás dela justamente enquanto se
+       digita. `dvh` acompanha a área realmente visível. */
+    <div className="flex h-[calc(100dvh-6.5rem)] overflow-hidden rounded-xl border border-border bg-card lg:h-[calc(100dvh-7.5rem)]">
       <ChatSidebar
         conversations={conversations}
         activeId={activeId}
@@ -570,31 +594,70 @@ export function ChatPage() {
         onCreate={handleCreate}
         onDelete={handleDelete}
       />
+
+      {/* MOBILE: a mesma lista, em drawer. */}
+      <Sheet open={mobileListOpen} onOpenChange={setMobileListOpen}>
+        <SheetContent side="left" className="w-72 max-w-[85vw] gap-0 p-0">
+          <SheetTitle className="sr-only">Suas conversas</SheetTitle>
+          <ChatSidebarContent
+            conversations={conversations}
+            activeId={activeId}
+            onSelect={(id) => {
+              setActiveId(id);
+              setMobileListOpen(false);
+            }}
+            onCreate={() => {
+              handleCreate();
+              setMobileListOpen(false);
+            }}
+            onDelete={handleDelete}
+          />
+        </SheetContent>
+      </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
         {activeId ? (
           <>
             {/* Header fixo no topo */}
-            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <div className="flex items-center gap-2">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            {/* `min-w-0` + `truncate` em cascata: sem isso o título da conversa
+                e o badge empurravam o cabeçalho para 510px numa tela de 390px. */}
+            <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+              <div className="flex min-w-0 items-center gap-2">
+                {/* Só no mobile: abre a lista de conversas. */}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 md:hidden"
+                  onClick={() => setMobileListOpen(true)}
+                  aria-label="Ver conversas"
+                >
+                  <MessageSquare className="size-4" />
+                </Button>
+                <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:flex">
                   <Bot className="size-4" />
                 </span>
-                <div>
-                  <h1 className="text-sm font-semibold text-foreground">
+                <div className="min-w-0">
+                  <h1 className="truncate text-sm font-semibold text-foreground">
                     {conversations.find((c) => c.id === activeId)?.title ?? 'Chat'}
                   </h1>
-                  <p className="text-xs text-muted-foreground">
+                  {/* Legenda é contexto, não informação — cede espaço primeiro. */}
+                  <p className="hidden truncate text-xs text-muted-foreground sm:block">
                     Agente de IA com acesso aos seus dados
                   </p>
                 </div>
               </div>
               {agentReady === false ? (
-                <Badge variant="destructive" className="gap-1">
-                  <AlertCircle className="size-3" />
-                  ANTHROPIC_API_KEY não configurada
+                <Badge variant="destructive" className="shrink-0 gap-1">
+                  <AlertCircle className="size-3 shrink-0" />
+                  {/* No celular não cabe o nome da variável: vira só o alerta. */}
+                  <span className="hidden sm:inline">
+                    ANTHROPIC_API_KEY não configurada
+                  </span>
+                  <span className="sm:hidden">Agente off</span>
                 </Badge>
               ) : agentReady === true ? (
-                <Badge variant="secondary">Agente ativo</Badge>
+                <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
+                  Agente ativo
+                </Badge>
               ) : null}
             </header>
             {/* Área de chat (scroll + input) */}
