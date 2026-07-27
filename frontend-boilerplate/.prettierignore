@@ -20,3 +20,17 @@ postcss.config.js
 vite.config.ts
 static-server.cjs
 components.json
+
+# Artefatos do design system — escritos por ferramenta, não por gente.
+#
+# `tokens.generated.ts` sai de `scripts/generate-ds-theme.mjs` e o resto do
+# `astryx theme build`. Formatá-los quebra de verdade: o validador compara o
+# arquivo em disco com a saída do gerador para detectar dessincronização, e o
+# Prettier (aspas simples) faz o arquivo divergir do gerador (aspas duplas) a
+# cada commit — o `ds:check` passa a acusar dessincronia falsa.
+src/shared/theme/ds/tokens.generated.ts
+src/shared/theme/ds/auditoria.css
+src/shared/theme/ds/auditoria.js
+src/shared/theme/ds/auditoria.d.ts
+src/shared/theme/ds/auditoria.variants.d.ts
+src/shared/theme/ds/typography-responsive.css
