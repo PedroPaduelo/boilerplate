@@ -140,7 +140,7 @@ export const dsColorTokens: Record<string, DsTokenValue> = {
   "--ds-color-divider": "rgba(145 158 171 / 0.2)",
   "--ds-color-border-paper-outlined": "rgba(145 158 171 / 0.16)",
   "--ds-color-border-input-rest": "rgba(145 158 171 / 0.2)",
-  "--ds-color-border-input-focus": "#1C252E",
+  "--ds-color-border-input-focus": duo("#1C252E", "#FFFFFF"),
   "--ds-color-border-input-error": "#FF5630",
   "--ds-color-border-input-disabled": "rgba(145 158 171 / 0.24)",
   "--ds-color-border-button-outlined-inherit": "rgba(145 158 171 / 0.32)",
@@ -390,6 +390,15 @@ export const dsSpacingTokens = {
   "--ds-spacing-3_5": "28px",
   "--ds-spacing-3_75": "30px",
   "--ds-spacing-4_5": "36px"
+} as const;
+
+/* -------------------------------------------------------------------------- *
+ * Espessura de borda — ficha `08-elevacao-bordas-zindex.md` §4.1.
+ * -------------------------------------------------------------------------- */
+export const dsBorderWidthTokens = {
+  "--ds-border-width-thin": "1px",
+  "--ds-border-width-thick": "2px",
+  "--ds-border-width-ring": "0.75px"
 } as const;
 
 /* -------------------------------------------------------------------------- *
@@ -762,7 +771,7 @@ export const dsTokenProvenance: Readonly<Record<string, string>> = {
   "--ds-color-divider": "frontend/src/theme/core/palette.ts:131",
   "--ds-color-border-paper-outlined": "frontend/src/theme/core/components/paper.tsx:19",
   "--ds-color-border-input-rest": "frontend/src/theme/core/components/textfield.tsx:70",
-  "--ds-color-border-input-focus": "frontend/src/theme/core/components/textfield.tsx:55",
+  "--ds-color-border-input-focus": "frontend/src/theme/core/components/textfield.tsx:55 (resolvido como text.primary nos dois esquemas)",
   "--ds-color-border-input-error": "frontend/src/theme/core/components/textfield.tsx:60",
   "--ds-color-border-input-disabled": "frontend/src/theme/core/components/textfield.tsx:65",
   "--ds-color-border-button-outlined-inherit": "frontend/src/theme/core/components/button.tsx:125",

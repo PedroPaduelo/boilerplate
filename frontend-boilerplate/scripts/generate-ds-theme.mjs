@@ -147,6 +147,21 @@ for (const [key, node] of Object.entries(ds.color.border)) {
   }
 }
 
+/**
+ * Correção de esquema: a borda do campo em FOCO.
+ *
+ * A auditoria registrou `#1C252E` — mas esse é o valor de `text.primary` no
+ * tema CLARO, que é o único que ela mediu (`colorScheme: "light (default)"`).
+ * A regra real do DS é "a borda de foco usa `text.primary`"
+ * (`08-elevacao-bordas-zindex.md` §4.2). Congelar o hex deixaria o campo focado
+ * com contorno quase invisível no escuro — onde `text.primary` é #FFFFFF.
+ *
+ * Reproduzimos a REGRA, não a fotografia dela num único esquema.
+ */
+dsColorTokens['--ds-color-border-input-focus'] = tuple(pair(ds.color.text.primary));
+provenance['--ds-color-border-input-focus'] =
+  `${ds.color.border.inputFocus.source} (resolvido como text.primary nos dois esquemas)`;
+
 /* ========================================================================== *
  * 2. SOMBRAS — escala 0..24 + customShadows, com base fria (#919EAB no claro)
  * ========================================================================== */
@@ -393,6 +408,27 @@ const breakpoints = Object.fromEntries(
 );
 
 /* ========================================================================== *
+ * 4b. ESPESSURA DE BORDA
+ *
+ * O JSON de máquina não capturou este eixo (só as CORES de borda). Os valores
+ * abaixo vêm da ficha `08-elevacao-bordas-zindex.md` §4.1, que os inventaria
+ * um a um com arquivo:linha. Ficam aqui — e não no tema — para que continuem
+ * sendo dado do design system, com origem citada, e não número solto no código.
+ * ========================================================================== */
+
+const borderWidthTokens = {
+  // "espessura padrão de praticamente todo o sistema (divisores, inputs,
+  // outlines, chips, paginação, nav)" — §4.1
+  '--ds-border-width-thin': '1px',
+  // Única borda de 2px do sistema: `Label variant="outlined"`
+  // (frontend/src/components/label/styles.tsx:32,67) — §4.1
+  '--ds-border-width-thick': '2px',
+  // Anel de hover do botão `outlined` — é box-shadow, não border
+  // (frontend/src/theme/core/components/button.tsx:130) — §4.1
+  '--ds-border-width-ring': '0.75px',
+};
+
+/* ========================================================================== *
  * 5. EMISSÃO
  * ========================================================================== */
 
@@ -468,6 +504,11 @@ export const dsOpacityTokens = ${pad(stringify(opacityTokens), 0)} as const;
  * Espaçamento — base 8px. \`--ds-spacing-1_5\` = 12px (multiplicador 1.5).
  * -------------------------------------------------------------------------- */
 export const dsSpacingTokens = ${pad(stringify(spacingTokens), 0)} as const;
+
+/* -------------------------------------------------------------------------- *
+ * Espessura de borda — ficha \`08-elevacao-bordas-zindex.md\` §4.1.
+ * -------------------------------------------------------------------------- */
+export const dsBorderWidthTokens = ${pad(stringify(borderWidthTokens), 0)} as const;
 
 /* -------------------------------------------------------------------------- *
  * Tipografia — 13 variantes do DS. \`size\` em px real.
@@ -577,7 +618,8 @@ const count =
   Object.keys(layoutTokens).length +
   Object.keys(sizeTokens).length +
   Object.keys(opacityTokens).length +
-  Object.keys(spacingTokens).length;
+  Object.keys(spacingTokens).length +
+  Object.keys(borderWidthTokens).length;
 
 console.log(`✔ tokens.generated.ts escrito`);
 console.log(`  ${Object.keys(dsColorTokens).length} tokens de cor`);

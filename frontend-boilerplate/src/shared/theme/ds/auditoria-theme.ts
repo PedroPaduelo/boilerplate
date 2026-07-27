@@ -48,6 +48,7 @@ import {
   dsShadowTokens,
   dsSizeTokens,
   dsSpacingTokens,
+  dsBorderWidthTokens,
   dsTypography,
 } from './tokens.generated';
 
@@ -119,7 +120,17 @@ const typographyTokens = {
 
   '--font-family-body': dsFontFamilies.primary, // Public Sans Variable
   '--font-family-heading': dsFontFamilies.secondary, // Barlow (só h1–h3)
-  '--font-family-code': dsFontFamilies.primary,
+
+  /**
+   * Monoespaçada — ÚNICA lacuna preenchida por fora da auditoria.
+   *
+   * O DS de origem não define família de código: o produto dele não tem editor
+   * de SQL. Este tem (workbench de query, blocos de SQL do agente), e alinhar
+   * dígitos ali é requisito funcional, não estético. Mantida a JetBrains Mono
+   * que o app já usava; a stack de fallback é a mesma do DS, então o texto
+   * degrada para Public Sans se a fonte não carregar.
+   */
+  '--font-family-code': `"JetBrains Mono", ui-monospace, ${dsFontFamilies.primary}`,
 
   '--font-weight-light': dsFontWeights.light,
   '--font-weight-normal': dsFontWeights.regular,
@@ -386,6 +397,7 @@ export const auditoriaTheme = defineTheme({
     ...dsLayoutTokens,
     ...dsSizeTokens,
     ...dsSpacingTokens,
+    ...dsBorderWidthTokens,
     ...dsOpacityTokens,
 
     // 2) slots do Astryx apontando para ela

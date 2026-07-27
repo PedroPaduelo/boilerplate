@@ -234,7 +234,7 @@ const button = {
     color: ref('--ds-color-text-primary'),
     // O botão do Astryx nasce sem borda (`border-width: 0`); o `outlined` do
     // DS tem 1px — que é justamente o `--border-width` do Astryx.
-    borderWidth: ref('--border-width'),
+    borderWidth: ref('--ds-border-width-thin'),
     borderStyle: 'solid',
     borderColor: ref('--ds-color-border-button-outlined-inherit'),
     ':hover:not(:disabled)': {
@@ -788,7 +788,7 @@ const skeleton = {
 const emptyState = {
   base: {
     backgroundColor: alpha('--ds-channel-grey-500', 0.04),
-    borderWidth: ref('--border-width'),
+    borderWidth: ref('--ds-border-width-thin'),
     borderStyle: 'dashed',
     borderColor: alpha('--ds-channel-grey-500', 0.08),
     borderRadius: ref('--radius-container'),
