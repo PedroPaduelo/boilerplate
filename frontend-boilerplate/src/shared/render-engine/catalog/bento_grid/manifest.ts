@@ -21,7 +21,7 @@ export const manifest = {
   name: 'Bento Grid',
   description:
     'Container de layout em mosaico "bento". Renderiza sub-blocos (gráficos/cards/tabelas) num grid; cada filho usa `span` (largura 1..12) e `rowSpan` (altura). Use `block.blocks` para os filhos. Props: columns, gap.',
-  source: 'custom',
+  source: 'astryx:grid',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

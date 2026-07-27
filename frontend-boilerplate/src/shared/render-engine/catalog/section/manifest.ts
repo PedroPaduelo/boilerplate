@@ -15,7 +15,7 @@ export const manifest = {
   name: 'Seção (Container)',
   description:
     'Container hierárquico: agrupa sub-blocos num card com header (título + subtítulo) e corpo em grid de 12 colunas. Permite composição: seção dentro de seção, sumário executivo, etc.',
-  source: 'custom',
+  source: 'astryx:section',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

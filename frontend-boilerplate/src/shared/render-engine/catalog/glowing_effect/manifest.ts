@@ -1,6 +1,11 @@
 /**
  * Manifesto do bloco `glowing_effect` (layout) — borda com brilho que reage ao
- * ponteiro, envolvendo um card. Usa o Vitrine `GlowingEffect`.
+ * ponteiro, envolvendo um card.
+ *
+ * O anel é um COMPONENTE PRÓPRIO do bloco (`./glowing-effect`): o Astryx só
+ * trata hover/foco com estados discretos. `variant` escolhe a paleta —
+ * `default` usa a rampa de data-viz do tema, `white` é monocromático
+ * (`--color-text-primary`). O giro desliga com `prefers-reduced-motion`.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -9,7 +14,7 @@ export const manifest = {
   kind: 'layout',
   name: 'Efeito de Brilho',
   description: 'Borda com brilho que reage ao ponteiro — destaca um card.',
-  source: 'vitrine:glowing-effect',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

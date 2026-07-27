@@ -60,7 +60,8 @@ export const queryKeys = {
   /** Gráficos (T-B charts / T-F listagem / T-G preview). */
   charts: {
     all: ['charts'] as const,
-    list: (filters?: Record<string, unknown>) => ['charts', 'list', filters ?? {}] as const,
+    list: (filters?: Record<string, unknown>) =>
+      ['charts', 'list', filters ?? {}] as const,
     detail: (id: string, mode: ApiMode) => ['charts', 'detail', id, mode] as const,
   },
 
@@ -86,6 +87,14 @@ export const queryKeys = {
    */
   blockData: (blockId: string, filtersHash: string) =>
     ['block-data', blockId, filtersHash] as const,
+
+  /** Conversas do agente e saúde do serviço (chat). */
+  chat: {
+    all: ['chat'] as const,
+    conversations: () => ['chat', 'conversations'] as const,
+    /** `GET /agent/health` — diz se o agente está configurado. */
+    health: () => ['chat', 'health'] as const,
+  },
 
   /** Share público (`GET /public/:token`) — sem auth. */
   share: (token: string) => ['share', token] as const,

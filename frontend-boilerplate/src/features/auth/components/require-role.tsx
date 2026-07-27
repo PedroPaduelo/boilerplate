@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
+import { Center } from '@astryxdesign/core/Center';
+import { Spinner } from '@astryxdesign/core/Spinner';
 import { useAuthStore } from '../store';
-import { Skeleton } from '@/components/ui';
 import { ForbiddenPage } from '@/shared/components/forbidden-page';
 import {
   hasAnyRole,
@@ -42,6 +43,15 @@ export interface RequireRoleProps {
  * Exemplo (somente ADMIN, redirecionando):
  *   <RequireRole roles="ADMIN" fallback="redirect"><Settings /></RequireRole>
  */
+/** Espera da checagem de papel: sem forma de conteúdo conhecida → Spinner. */
+function RoleCheckLoading() {
+  return (
+    <Center axis="both" minHeight="40vh">
+      <Spinner size="lg" label="Verificando suas permissões…" />
+    </Center>
+  );
+}
+
 export function RequireRole({
   children,
   roles,
@@ -53,11 +63,7 @@ export function RequireRole({
 
   // Aguarda hidratação do store (token persistido) antes de decidir.
   if (!isHydrated) {
-    return (
-      <div className="flex h-full min-h-[40vh] items-center justify-center">
-        <Skeleton className="h-8 w-32" />
-      </div>
-    );
+    return <RoleCheckLoading />;
   }
 
   // Sem token: não autenticado → login.
@@ -67,11 +73,7 @@ export function RequireRole({
 
   // Token presente mas user ainda carregando (AuthProvider busca /auth/me).
   if (!user) {
-    return (
-      <div className="flex h-full min-h-[40vh] items-center justify-center">
-        <Skeleton className="h-8 w-32" />
-      </div>
-    );
+    return <RoleCheckLoading />;
   }
 
   const allowedRoles = toRoleList(roles);

@@ -9,7 +9,7 @@ export const manifest = {
   kind: 'chart',
   name: 'Tabela',
   description: 'Dados tabulares crus com colunas tipadas.',
-  source: 'vitrine:data-table',
+  source: 'astryx:table',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

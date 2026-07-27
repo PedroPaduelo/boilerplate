@@ -1,120 +1,168 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
-
-import { Button, Skeleton, Section, SectionHeader } from '@/components/ui';
-import { DbOverviewGrid } from '@/components/ui/db-overview-grid';
-import type {
-  DatabaseInstance,
-  DbEnvironment,
-  DbStatus,
-} from '@/components/ui/db-overview-grid-types';
-import { useAuthStore } from '@/features/auth/store';
+import { useMemo, useState } from 'react';
+import { Plus, Search } from 'lucide-react';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Icon } from '@astryxdesign/core/Icon';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { Skeleton } from '@astryxdesign/core/Skeleton';
+import { Text } from '@astryxdesign/core/Text';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { hasPermission } from '@/shared/lib/rbac';
-
+import { useAuthStore } from '@/features/auth/store';
 import { useConnections } from '../hooks';
 import type { Connection } from '../types';
 import { ConnectionFormDialog } from './connection-form-dialog';
+import { ConnectionsTable } from './connections-table';
+import { DeleteConnectionDialog } from './delete-connection-dialog';
 
-/** Status de conectividade do backend → status visual do tile. */
-function toTileStatus(status: string): DbStatus {
-  const s = (status ?? '').toUpperCase();
-  if (s === 'OK' || s === 'ACTIVE' || s === 'CONNECTED') return 'healthy';
-  if (s === 'ERROR' || s === 'FAILED' || s === 'INACTIVE') return 'offline';
-  return 'degraded';
-}
-
-/** Deriva o "ambiente" a partir do nome/banco (heurística leve). */
-function toTileEnv(conn: Connection): DbEnvironment {
-  const hay = `${conn.name} ${conn.database}`.toLowerCase();
-  if (hay.includes('homolog')) return 'homolog';
-  if (hay.includes('staging') || hay.includes('hml')) return 'staging';
-  if (hay.includes('dev') || hay.includes('local')) return 'dev';
-  return 'prod';
-}
-
-/** Mapeia uma Connection para o shape de tile do DbOverviewGrid. */
-function toInstance(conn: Connection): DatabaseInstance {
-  return {
-    id: conn.id,
-    name: conn.name,
-    role: conn.description || conn.database,
-    env: toTileEnv(conn),
-    engine: 'postgresql',
-    host: conn.host,
-    port: conn.port,
-    version: '',
-    sizeMB: 0,
-    maxConnections: 0,
-    currentConnections: 0,
-    status: toTileStatus(conn.status),
-    queriesPerSec: 0,
-    slowQueriesCount: 0,
-    transactionsPerSec: 0,
-    cacheHitRatio: 0,
-    lastBackupAt: conn.lastTestedAt ?? undefined,
-    topTables: [],
-  };
-}
-
+/**
+ * Lista de conexões. O título da página já vem do shell (`TopNav`), então aqui
+ * fica só o contexto, a busca e a ação primária — título repetido só gastaria
+ * altura.
+ *
+ * Os quatro estados estão cobertos: carregando (`Skeleton`), erro (`Banner`
+ * acionável), vazio (`EmptyState` com a ação certa para o papel do usuário) e
+ * busca sem resultado (`EmptyState` com “limpar busca”).
+ */
 export function ConnectionsPage() {
-  const navigate = useNavigate();
-  const role = useAuthStore((s) => s.user?.role);
+  const role = useAuthStore((state) => state.user?.role);
   // RBAC de UI (espelha o backend): manage = criar/editar/excluir.
   const canManage = hasPermission(role, 'connections:manage');
 
-  const { data, isLoading, isError } = useConnections({ pageSize: 100 });
-  const [formOpen, setFormOpen] = useState(false);
+  const { data, isLoading, isError, error, refetch, isFetching } = useConnections({
+    pageSize: 100,
+  });
+  const [search, setSearch] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Connection | null>(null);
+  const [deleting, setDeleting] = useState<Connection | null>(null);
 
-  const databases = (data?.connections ?? []).map(toInstance);
+  const connections = useMemo(() => data?.connections ?? [], [data]);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return connections;
+    return connections.filter((connection) =>
+      `${connection.name} ${connection.host} ${connection.database}`
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [connections, search]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setIsFormOpen(true);
+  };
+
+  const openEdit = (connection: Connection) => {
+    setEditing(connection);
+    setIsFormOpen(true);
+  };
 
   return (
-    <div className="flex flex-col gap-8">
-      <Section index={0}>
-        <SectionHeader
-          className="mb-0"
-          eyebrow="Dados"
-          title="Conexões"
-          description="Explore as conexões PostgreSQL da plataforma. Clique em um card para abrir o workbench (schema, índices, FKs e query runner)."
+    <VStack gap={4}>
+      <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
+        <Text color="secondary" maxLines={2}>
+          Bancos PostgreSQL disponíveis para a plataforma. Abra uma conexão para explorar
+          schema, índices e chaves — e rodar consultas read-only.
+        </Text>
+        {canManage ? (
+          <Button
+            label="Nova conexão"
+            variant="primary"
+            icon={<Icon icon={Plus} />}
+            onClick={openCreate}
+          />
+        ) : null}
+      </HStack>
+
+      <TextInput
+        label="Buscar conexão"
+        isLabelHidden
+        value={search}
+        onChange={setSearch}
+        placeholder="Nome, host ou banco…"
+        startIcon={Search}
+        hasClear
+        width={360}
+        isDisabled={!isLoading && connections.length === 0}
+        disabledMessage="Nenhuma conexão para filtrar."
+      />
+
+      {isLoading ? (
+        <VStack gap={1} aria-busy="true">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} index={index} width="100%" height={44} radius={2} />
+          ))}
+        </VStack>
+      ) : isError ? (
+        <Banner
+          status="error"
+          title="Não foi possível carregar as conexões"
+          description={getApiErrorMessage(error, 'Tente novamente em instantes.')}
+          endContent={
+            <Button
+              label="Tentar novamente"
+              size="sm"
+              isLoading={isFetching}
+              onClick={() => refetch()}
+            />
+          }
+        />
+      ) : connections.length === 0 ? (
+        <EmptyState
+          headingLevel={2}
+          title="Nenhuma conexão cadastrada"
+          description={
+            canManage
+              ? 'Cadastre uma conexão PostgreSQL somente-leitura para começar a explorar dados.'
+              : 'Peça a um administrador para cadastrar e compartilhar uma conexão com seu departamento.'
+          }
           actions={
             canManage ? (
-              <Button onClick={() => setFormOpen(true)} className="gap-2">
-                <Plus className="size-4" />
-                Nova conexão
-              </Button>
+              <Button
+                label="Nova conexão"
+                variant="primary"
+                icon={<Icon icon={Plus} />}
+                onClick={openCreate}
+              />
             ) : undefined
           }
         />
-      </Section>
-
-      <Section index={1}>
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-64 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : isError ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">
-              Não foi possível carregar as conexões
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Verifique sua conexão e tente novamente.
-            </p>
-          </div>
-        ) : (
-          <DbOverviewGrid
-            databases={databases}
-            sortBy="name"
-            onDatabaseClick={(id) => navigate(`/connections/${id}`)}
-          />
-        )}
-      </Section>
-
-      {canManage && (
-        <ConnectionFormDialog open={formOpen} onOpenChange={setFormOpen} connection={null} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          headingLevel={2}
+          isCompact
+          title="Nenhuma conexão para esta busca"
+          description={`Nada casa com “${search.trim()}”.`}
+          actions={<Button label="Limpar busca" onClick={() => setSearch('')} />}
+        />
+      ) : (
+        <ConnectionsTable
+          connections={filtered}
+          canManage={canManage}
+          onEdit={openEdit}
+          onDelete={setDeleting}
+        />
       )}
-    </div>
+
+      {canManage ? (
+        <>
+          <ConnectionFormDialog
+            isOpen={isFormOpen}
+            onOpenChange={setIsFormOpen}
+            connection={editing}
+          />
+          <DeleteConnectionDialog
+            connection={deleting}
+            isOpen={deleting !== null}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) setDeleting(null);
+            }}
+          />
+        </>
+      ) : null}
+    </VStack>
   );
 }

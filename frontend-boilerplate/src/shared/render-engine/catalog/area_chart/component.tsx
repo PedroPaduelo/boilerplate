@@ -1,44 +1,31 @@
 /**
- * Bloco `area_chart` (shape 'series', x temporal) — usa o Vitrine `AreaChart`
- * (SVG aderente ao tema, irmão do LineChart). Agrupa os pontos por `series`
- * (multi-série) preservando a ordem do eixo X e suporta empilhamento.
+ * Bloco `area_chart` (shape 'series', x temporal) — desenha volume/tendência ao
+ * longo do tempo sobre o `AreaChart` de `@/shared/ui`.
  *
- * Antes usava o `AreaChartTremor` (recharts), que vinha com cores/estilos
- * hardcoded fora do design system; agora a grade, eixos, tooltip e a paleta das
- * séries seguem os tokens do tema (`var(--chart-1..5)`, `border`, `popover`,
- * `muted-foreground`) e funcionam em light/dark.
+ * O que mudou na migração:
+ *  - a plotagem, os eixos, a grade, o tooltip, a legenda e os estados
+ *    (carregando / sem dados) vêm prontos da base — o bloco só ADAPTA o
+ *    contrato de dados (`{x, y, series?}`) para as séries do gráfico;
+ *  - COR: `accent` continua aceitando o vocabulário antigo (`chart-1`,
+ *    `bg-purple-500`, `#40E0D0`), mas é traduzido por `chartAccentColor()` para
+ *    uma cor de token do DS. Cor crua não reconhecida cai na paleta — nunca
+ *    entra hex no desenho;
+ *  - ACESSIBILIDADE: os rótulos do eixo vivem dentro do SVG, então o bloco
+ *    publica os mesmos números como tabela (`ChartDataTable`), visível só para
+ *    leitor de tela.
  *
- * Prop de COR (Turno 5 — canônico): `accent` aceita enum DS + string custom
- * (resolvido por `resolveAccentForStroke()` em `lib/accent.ts`):
- *   - enum DS (chart-1..5 | 'primary') → `var(--chart-N)` no `stroke=` /
- *     `fill=` do polyline/polygon (cor literal no SVG, não classe Tailwind —
- *     o gradiente precisa de cor literal no `stop-color`).
- *   - classe Tailwind (bg-purple-500) → derivamos `purple-500` puro e
- *     aplicamos como CSS color (`stroke="purple-500"`);
- *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.stroke` / `style.fill`
- *     no polyline (atributo de apresentação que vence `stroke=`).
- *
- * Modo de aplicação:
- *   - `palette: 'multi'` (default) → cicla CHART_PALETTE por série, ignorando
- *     `accent` (vira fallback se houver 1 série só).
- *   - `palette: 'single'` → TODAS as séries com `accent`.
- *   - `palette: 'none'` → sem distinção (deixa o default).
- *
- * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas:
- *  - SEMPRE a 1ª: "Pico: {x} ({y})" — ponto de maior valor.
- *  - OPCIONAL 2ª: "Vale: {x} ({y})" — só se houver +1 ponto e o menor > 0.
- * (mesmo formato do line_chart — áreas são linhas preenchidas, mesmo insight
- * de tendência faz sentido).
+ * Modos de paleta (`palette`): `single` fixa a cor de `accent` em todas as
+ * séries; `multi` e `none` deixam a paleta categórica do DS ciclar — é ela que
+ * garante vizinhos distinguíveis.
  */
-import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
-import { AreaChart, type AreaSeries, type AreaChartMode } from '@/components/ui/area-chart';
+import { AreaChart, ChartDataTable, chartAccentColor } from '@/shared/ui';
+import type { ChartSeries } from '@/shared/ui';
 import {
-  formatCompactNumberBR,
   formatBRL,
+  formatCompactNumberBR,
   formatPercentPointsBR,
 } from '@/shared/lib/format';
-import { resolveAccentForStroke } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -51,118 +38,94 @@ type AreaProps = {
   showGridLines?: boolean;
   palette?: 'single' | 'multi' | 'none';
   /**
-   * Cor base da(s) série(s). Aceita enum DS (validado pelo schema), classe
-   * Tailwind (`bg-purple-500`), cor CSS (`#40E0D0`, `var(--chart-1)`,
-   * `linear-gradient(...)`). Resolvido por `resolveAccentForStroke()` em
-   * `lib/accent.ts` — devolve `{ stroke: ... }` ou classe Tailwind.
+   * Cor base da(s) série(s). Aceita o enum do catálogo e os valores antigos
+   * (classe utilitária, cor CSS); `chartAccentColor()` resolve para token do DS.
    */
   accent?: string;
 };
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
-/** Converte SeriesData (long) em séries alinhadas ao eixo X + rótulos do X. */
-export function toAreaSeries(
-  data: SeriesData,
-  options?: {
-    /** Quando setado, força TODAS as séries a usarem essa cor (single-palette). */
-    seriesStyle?: CSSProperties;
-    /** Quando setado, força a cor base (`stroke`/`fill`) da série. */
-    seriesColor?: string;
-  },
-): {
-  series: AreaSeries[];
-  xLabels: string[];
+/**
+ * Converte o formato longo do contrato (`[{x, y, series}]`) em séries alinhadas
+ * ao eixo X. Preserva a ordem de aparição do X — o dado já chega ordenado pela
+ * consulta, e reordenar aqui esconderia um erro de query.
+ */
+export function toAreaSeries(data: SeriesData): {
+  series: ChartSeries[];
+  labels: string[];
 } {
   const points = (data ?? []) as SeriesPoint[];
-  const xOrder: string[] = [];
+  const labels: string[] = [];
   const groups = new Map<string, Map<string, number>>();
+
   for (const point of points) {
-    const seriesName = point.series ?? 'Valor';
+    const name = point.series ?? 'Valor';
     const x = String(point.x);
-    if (!xOrder.includes(x)) xOrder.push(x);
-    if (!groups.has(seriesName)) groups.set(seriesName, new Map());
-    groups.get(seriesName)!.set(x, point.y ?? 0);
+    if (!labels.includes(x)) labels.push(x);
+    if (!groups.has(name)) groups.set(name, new Map());
+    groups.get(name)!.set(x, point.y ?? 0);
   }
-  const series: AreaSeries[] = [...groups.entries()].map(([label, byX]) => {
-    // Modo SINGLE: força cor única (style vence color) em todas as séries.
-    // Modo MULTI: cicla CHART_PALETTE por índice — usa `color: var(--chart-N)`.
-    // Modo NONE: sem distinção (deixa o UI base usar a palette cíclica default).
-    if (options?.seriesStyle) {
-      return {
-        label,
-        data: xOrder.map((x) => byX.get(x) ?? 0),
-        style: options.seriesStyle,
-      };
-    }
-    if (options?.seriesColor) {
-      return {
-        label,
-        data: xOrder.map((x) => byX.get(x) ?? 0),
-        color: options.seriesColor,
-      };
-    }
-    return {
-      label,
-      data: xOrder.map((x) => byX.get(x) ?? 0),
-    };
-  });
-  return { series, xLabels: xOrder };
+
+  const series = [...groups.entries()].map(([label, byX]) => ({
+    label,
+    data: labels.map((x) => byX.get(x) ?? 0),
+  }));
+
+  return { series, labels };
 }
 
-export const Component: BlockComponent<AreaProps, SeriesData> = ({ props, data }) => {
-  // `resolveAccentForStroke()` devolve { stroke: ... } (CSS) ou
-  // `{ className: 'stroke-…' }` (Tailwind). Aqui precisamos de cor LITERAL
-  // (não classe), porque o polyline do SVG usa `stroke={color}` e o
-  // gradiente usa a cor no `stop-color` (classe Tailwind não funciona).
-  const resolvedAccent = resolveAccentForStroke(props.accent);
-  let accentColor: string | undefined;
-  let accentStyle: CSSProperties | undefined;
-  if (resolvedAccent.kind === 'style') {
-    accentStyle = resolvedAccent.style;
-  } else {
-    // classe Tailwind (`stroke-chart-1`) → derivamos o CSS var literal.
-    const cls = resolvedAccent.className; // ex.: 'stroke-chart-1'
-    if (cls.startsWith('stroke-')) {
-      accentColor = `var(--${cls.slice(7)})`; // 'var(--chart-1)'
-    } else {
-      accentColor = cls; // fallback (raro)
-    }
-  }
-
-  const palette = props.palette ?? 'multi';
-  const { series, xLabels } = toAreaSeries(data ?? [], {
-    seriesStyle: palette === 'single' ? accentStyle : undefined,
-    seriesColor:
-      palette === 'single' && !accentStyle ? accentColor : undefined,
-  });
-
-  const mode = (props.type ?? 'default') as AreaChartMode;
+export const Component: BlockComponent<AreaProps, SeriesData> = ({
+  props,
+  data,
+  state,
+  error,
+}) => {
+  const { series, labels } = toAreaSeries(data ?? []);
+  const mode = props.type ?? 'default';
   const isPercent = mode === 'percent';
+
+  // `single` é o único modo que fixa cor: nos outros a paleta do DS cicla.
+  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  const colored = accent ? series.map((item) => ({ ...item, color: accent })) : series;
+
+  const formatValue = (value: number) =>
+    isPercent ? formatPercentPointsBR(value) : formatBRL(value);
+  const formatAxis = (value: number) =>
+    isPercent ? formatPercentPointsBR(value) : formatCompactNumberBR(value);
+
   return (
-    <AreaChart
-      series={series}
-      xLabels={xLabels}
-      mode={mode}
-      fill={props.fill ?? 'gradient'}
-      showLegend={props.showLegend !== false}
-      showGrid={props.showGridLines !== false}
-      // eixo Y: percentual no modo 100%, número compacto PT-BR caso contrário
-      yValueFormatter={(v) => (isPercent ? formatPercentPointsBR(v) : formatCompactNumberBR(v))}
-      // tooltip: valor real (cheio) de cada série, em BRL
-      valueFormatter={(v) => formatBRL(v)}
-    />
+    <>
+      <AreaChart
+        series={colored}
+        labels={labels}
+        mode={mode}
+        fill={props.fill ?? 'gradient'}
+        showLegend={props.showLegend !== false && series.length > 1}
+        showGrid={props.showGridLines !== false}
+        valueFormatter={formatValue}
+        axisFormatter={formatAxis}
+        isLoading={state === 'loading' || state === 'skeleton'}
+        emptyMessage={
+          state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
+        }
+        label={manifest.name}
+      />
+      <ChartDataTable
+        caption={`${manifest.name}: valores por período`}
+        columns={['Período', ...series.map((item) => item.label)]}
+        rows={labels.map((label, index) => [
+          label,
+          ...series.map((item) => formatValue(item.data[index] ?? 0)),
+        ])}
+      />
+    </>
   );
 };
 
 /**
- * Insights de rodapé (canônico — Turno 4): retorna 1 ou 2 frases curtas:
- *  - SEMPRE a 1ª: "Pico: {x} ({y em BRL compacto})" — ponto de maior valor.
- *  - OPCIONAL 2ª: "Vale: {x} ({y em BRL compacto})" — só se houver +1 ponto
- *    E o menor valor for > 0.
- * Retorno `string[]`; o BlockRenderer normaliza p/ o array
- * `{ enabled: true, text }[]` que o ChartWidget consome. PT-BR via
- * `formatCompactNumberBR` (mesma forma do `line_chart`).
+ * Insights de rodapé: pico e vale da série. Retorna `string[]`; o BlockRenderer
+ * normaliza para as linhas de insight da moldura.
  */
 function deriveTakeaway(data: SeriesData): string[] | undefined {
   const points = (data ?? []) as SeriesPoint[];
@@ -171,14 +134,10 @@ function deriveTakeaway(data: SeriesData): string[] | undefined {
   const top = points.reduce((best, p) => ((p.y ?? 0) > (best.y ?? 0) ? p : best));
   if ((top.y ?? 0) <= 0) return undefined;
 
-  const insights: string[] = [
-    `Pico: ${String(top.x)} (${formatCompactNumberBR(top.y ?? 0)})`,
-  ];
+  const insights = [`Pico: ${String(top.x)} (${formatCompactNumberBR(top.y ?? 0)})`];
 
   if (points.length > 1) {
-    const bottom = points.reduce((best, p) =>
-      (p.y ?? 0) < (best.y ?? 0) ? p : best,
-    );
+    const bottom = points.reduce((best, p) => ((p.y ?? 0) < (best.y ?? 0) ? p : best));
     if ((bottom.y ?? 0) > 0 && bottom !== top) {
       insights.push(
         `Vale: ${String(bottom.x)} (${formatCompactNumberBR(bottom.y ?? 0)})`,

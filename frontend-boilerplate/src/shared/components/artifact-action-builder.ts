@@ -9,10 +9,7 @@ import {
   UploadCloud,
   type LucideIcon,
 } from 'lucide-react';
-import type {
-  ArtifactActionKey,
-  ArtifactPermContext,
-} from '@/shared/lib/artifact-rbac';
+import type { ArtifactActionKey, ArtifactPermContext } from '@/shared/lib/artifact-rbac';
 import { availableArtifactActions } from '@/shared/lib/artifact-rbac';
 import type { ArtifactCardAction } from './artifact-card';
 
@@ -34,26 +31,30 @@ const ACTION_META: Record<ArtifactActionKey, ActionMeta> = {
   delete: { label: 'Excluir', icon: Trash2, destructive: true, separatorBefore: true },
 };
 
-export type ArtifactActionHandlers = Partial<
-  Record<ArtifactActionKey, () => void>
->;
+/** Motivo padrão exibido junto de uma ação desabilitada. */
+const DEFAULT_DISABLED_REASON = 'indisponível agora';
+
+export type ArtifactActionHandlers = Partial<Record<ArtifactActionKey, () => void>>;
 
 /**
  * Converte as ações permitidas (por RBAC) em itens prontos para o
  * `ArtifactCard`, ligando cada uma ao handler correspondente. Ações sem handler
- * são ignoradas. `disabledKeys` permite mostrar uma ação desabilitada
- * (ex.: exportar enquanto T-J não entrega o PDF).
+ * são ignoradas. `disabledKeys` mostra a ação DESABILITADA com o motivo no
+ * rótulo (ex.: "Exportar (chega com o PDF)") — some-a-esmo é pior: o usuário
+ * fica procurando um recurso que ele sabe que existe.
  */
 export function buildArtifactCardActions(
   ctx: ArtifactPermContext,
   handlers: ArtifactActionHandlers,
   disabledKeys: ArtifactActionKey[] = [],
+  disabledReason: string = DEFAULT_DISABLED_REASON,
 ): ArtifactCardAction[] {
   const result: ArtifactCardAction[] = [];
   for (const key of availableArtifactActions(ctx)) {
     const handler = handlers[key];
     if (!handler) continue;
     const meta = ACTION_META[key];
+    const disabled = disabledKeys.includes(key);
     result.push({
       key,
       label: meta.label,
@@ -61,7 +62,8 @@ export function buildArtifactCardActions(
       onSelect: handler,
       destructive: meta.destructive,
       separatorBefore: meta.separatorBefore,
-      disabled: disabledKeys.includes(key),
+      disabled,
+      disabledReason: disabled ? disabledReason : undefined,
     });
   }
   return result;

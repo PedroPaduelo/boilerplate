@@ -1,67 +1,81 @@
 /**
- * Bloco `section` — CONTAINER RECURSIVO. O `BlockRenderer` injeta o sub-grid
- * de filhos (já renderizados) via `children`; este componente só desenha o
- * shell (DashboardPanel com header + corpo) e coloca `children` dentro.
+ * Bloco `section` — CONTAINER RECURSIVO. O `BlockRenderer` injeta o sub-grid de
+ * filhos (já renderizados) via `children`; este componente só desenha o shell e
+ * coloca `children` no corpo.
  *
- * ESPAÇAMENTO (após fix de duplicação de header):
- *   - variant="card" (default): `bodyClassName="pt-0"` — o `DashboardPanel`
- *     já tem `p-5` no card variant (respiro uniforme nas 4 bordas) + um
- *     `mb-4` entre o header e o `children`. O `pt-0` aqui evita o DUPLO
- *     respiro vertical entre header e corpo (5px do `mb-4` ficam ok).
- *   - variant="framed": header tem `border-b px-4 py-2.5` e o corpo é flush;
- *     mantemos `p-4` no body para o grid interno respirar.
+ * O shell é uma `Section` do Astryx (região de página — não um Card: cards são
+ * para itens discretos) com um `Layout` interno de duas zonas: cabeçalho e
+ * corpo. Quem cuida do espaçamento entre elas é o próprio `Layout` — sumiu o
+ * ajuste manual de padding (`pt-0`/`p-4`) que existia para compensar o header
+ * duplicado do painel legado.
  *
- * Quando sem `children` (galeria do catálogo), mostra um placeholder com 3
- * mini-cards de exemplo pra ilustrar a composição.
+ * `variant`:
+ *  - `card` (default) — superfície de seção, cabeçalho sem divisor;
+ *  - `framed`         — moldura (divisores nas quatro bordas) + divisor sob o
+ *                       cabeçalho, para leitura densa.
+ *
+ * Sem `children` (galeria do catálogo), mostra o placeholder ilustrativo.
  */
-import { DashboardPanel } from '@/components/ui/dashboard-panel';
+import { Layout, LayoutContent, LayoutHeader } from '@astryxdesign/core/Layout';
+import { Section } from '@astryxdesign/core/Section';
+import type { SectionProps as DsSectionProps } from '@astryxdesign/core/Section';
+import { Text, Heading } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/VStack';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
+import { SectionPlaceholder } from './section-placeholder';
 
-type SectionProps = {
+type SectionVariant = 'card' | 'framed';
+type SectionBlockProps = {
   title?: string;
   subtitle?: string;
-  variant?: 'card' | 'framed';
+  variant?: SectionVariant;
 };
 
-const Component: BlockComponent<SectionProps> = ({ props, children }) => {
+/** Bordas do container na variante `framed` (moldura fechada). */
+const FRAME_DIVIDERS: DsSectionProps['dividers'] = ['top', 'bottom', 'start', 'end'];
+
+const Component: BlockComponent<SectionBlockProps> = ({ props, children }) => {
+  const variant: SectionVariant = props.variant ?? 'card';
+  const isFramed = variant === 'framed';
+
   return (
-    <DashboardPanel
-      title={props.title ?? 'Seção'}
-      description={props.subtitle}
-      variant={props.variant ?? 'card'}
-      bodyClassName={props.variant === 'framed' ? 'p-4' : 'pt-0'}
+    <Section
+      data-slot="section"
+      data-section-variant={variant}
+      variant={isFramed ? 'transparent' : 'section'}
+      dividers={isFramed ? FRAME_DIVIDERS : undefined}
+      padding={0}
     >
-      {children ?? <SectionPlaceholder />}
-    </DashboardPanel>
+      <Layout
+        height="auto"
+        header={
+          <LayoutHeader hasDivider={isFramed}>
+            <VStack gap={0.5}>
+              <Heading level={3} maxLines={1}>
+                {props.title ?? 'Seção'}
+              </Heading>
+              {props.subtitle ? (
+                <Text type="supporting" color="secondary">
+                  {props.subtitle}
+                </Text>
+              ) : null}
+            </VStack>
+          </LayoutHeader>
+        }
+        content={
+          <LayoutContent isScrollable={false}>
+            {children ?? <SectionPlaceholder />}
+          </LayoutContent>
+        }
+      />
+    </Section>
   );
 };
 
-function SectionPlaceholder() {
-  return (
-    <div data-slot="section-placeholder" className="grid grid-cols-12 gap-3">
-      {[
-        { span: 4, label: 'KPI' },
-        { span: 4, label: 'Gráfico' },
-        { span: 4, label: 'Tabela' },
-      ].map((item, i) => (
-        <div
-          key={i}
-          className="col-span-12"
-          style={{ gridColumn: `span ${item.span} / span ${item.span}` }}
-        >
-          <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
-            {item.label}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export const definition = defineBlock<SectionProps>({
+export const definition = defineBlock<SectionBlockProps>({
   type: manifest.type,
   manifest,
   Component,

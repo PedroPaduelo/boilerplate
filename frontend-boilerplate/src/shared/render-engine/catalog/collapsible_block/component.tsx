@@ -1,63 +1,41 @@
 /**
- * Bloco `collapsible_block` — CONTAINER de layout colapsável.
+ * Bloco `collapsible_block` — CONTAINER de layout colapsável: o `Collapsible`
+ * do Astryx dentro de um `Card` (a separação visual recomendada pelo DS para
+ * uma seção colapsável solta).
  *
- * Cabeçalho clicável (via Vitrine `CollapsibleSection`) que expande/recolhe o
- * CORPO, onde ficam os SUB-BLOCOS. O `BlockRenderer` injeta o sub-grid de
- * filhos (já renderizados) via `children`; este componente só desenha o shell
- * (borda + header) e coloca `children` dentro do corpo colapsável.
+ * O `BlockRenderer` injeta o sub-grid de filhos (já renderizados) via
+ * `children`; este componente só desenha o shell (cartão + gatilho) e coloca
+ * `children` no corpo.
  *
- * ESPAÇAMENTO: o `CollapsibleSection` (UI base) já põe `px-2 pb-2` no corpo.
- * O `contentClassName` aqui adiciona `pt-2` (respiro entre o header e o
- * primeiro filho) e `px-2 pb-3` (mantém lateral e aumenta o respiro inferior
- * do último filho). O `gap-4` entre filhos vem do `childGrid` do
- * `BlockRenderer` (grid de 12 colunas).
+ * ESPAÇAMENTO: o `Collapsible` já traz o respiro do gatilho e do corpo pela
+ * densidade do design system — sumiram os `px-2 pb-3 pt-2` que o componente
+ * legado exigia. O `gap` entre filhos continua vindo do `BlockGrid`.
  *
- * Sem filhos (galeria do catálogo), mostra um placeholder ilustrativo com
- * mini-cards no corpo para comunicar o conceito.
+ * Sem filhos (galeria do catálogo), mostra o placeholder ilustrativo.
  */
-import { CollapsibleSection } from '@/components/ui/collapsible-section';
+import { Card } from '@astryxdesign/core/Card';
+import { Collapsible } from '@astryxdesign/core/Collapsible';
+import { Text } from '@astryxdesign/core/Text';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
+import { CollapsiblePlaceholder } from './collapsible-placeholder';
 
 type CollapsibleBlockProps = { title?: string; defaultOpen?: boolean };
 
 export const Component: BlockComponent<CollapsibleBlockProps> = ({ props, children }) => {
   return (
-    <div className="rounded-lg border border-border">
-      <CollapsibleSection
-        title={props.title ?? 'Seção'}
-        defaultOpen={props.defaultOpen ?? true}
-        contentClassName="px-2 pb-3 pt-2"
+    <Card padding={0} data-slot="collapsible-block">
+      <Collapsible
+        trigger={<Text weight="semibold">{props.title ?? 'Seção'}</Text>}
+        defaultIsOpen={props.defaultOpen ?? true}
       >
         {children ?? <CollapsiblePlaceholder />}
-      </CollapsibleSection>
-    </div>
+      </Collapsible>
+    </Card>
   );
 };
-
-/** Placeholder do corpo (sem filhos) — comunica o conceito na galeria. */
-function CollapsiblePlaceholder() {
-  return (
-    <div data-slot="collapsible-placeholder" className="grid grid-cols-12 gap-3">
-      {[
-        { span: 6, label: 'Gráfico' },
-        { span: 6, label: 'Tabela' },
-      ].map((item, i) => (
-        <div
-          key={i}
-          className="col-span-12"
-          style={{ gridColumn: `span ${item.span} / span ${item.span}` }}
-        >
-          <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
-            {item.label}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export const definition = defineBlock<CollapsibleBlockProps>({
   type: manifest.type,

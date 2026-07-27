@@ -7,19 +7,30 @@
  * página não conseguia hidratar blocos de dados). Renderiza o artefato em modo
  * PUBLISHED com o MESMO render-engine (T-I).
  *
- * Bloqueios (mapeados do status HTTP pelo `shareApi`):
- *  - revogado (403) / expirado (410) / inexistente (404) → tela de bloqueio clara.
+ * É a única tela vista por quem NÃO está logado: não há TopNav, SideNav nem
+ * navegação de volta. Por isso a moldura é feita aqui (`PublicShell` cuida do
+ * enquadramento e do scroll — o `<body>` do app é travado) e o `h1` é desta
+ * página, não do shell.
+ *
+ * Bloqueios (mapeados do status HTTP pelo `shareApi`): revogado (403) /
+ * expirado (410) / inexistente (404) → `ShareBlockedScreen`.
  *
  * Sem filtro interativo (read-only), sem ações autenticadas.
  */
+import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import { Ban, Clock, FileQuestion, Lock, ShieldAlert } from 'lucide-react';
-import type { ComponentType } from 'react';
+import { Clock, Lock } from 'lucide-react';
+import { Badge } from '@astryxdesign/core/Badge';
+import { Divider } from '@astryxdesign/core/Divider';
+import { Grid, GridSpan } from '@astryxdesign/core/Grid';
+import { Icon } from '@astryxdesign/core/Icon';
+import { Skeleton } from '@astryxdesign/core/Skeleton';
+import { HStack, VStack } from '@astryxdesign/core/Stack';
+import { Heading, Text } from '@astryxdesign/core/Text';
+import { Timestamp } from '@astryxdesign/core/Timestamp';
 import { DashboardRenderer, BlockRenderer } from '@/shared/render-engine';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { usePublicArtifact, usePublicData } from '../hooks';
-import type { ShareBlockReason } from '../types';
+import { ShareBlockedScreen } from './share-blocked-screen';
 
 export function PublicDashboardView() {
   const { token } = useParams<{ token: string }>();
@@ -29,20 +40,12 @@ export function PublicDashboardView() {
   // dedicada /public/:token/data rejeita CHART com 400). A UI consome SÓ
   // quando a página é de fato um dashboard.
   const isDashboard = data?.targetType === 'DASHBOARD';
-  const { data: dataPayload, isLoading: dataLoading } = usePublicData(
-    token,
-    isDashboard,
-  );
+  const { data: dataPayload, isLoading: dataLoading } = usePublicData(token, isDashboard);
 
   if (isLoading) {
     return (
       <PublicShell>
-        <Skeleton className="mb-4 h-8 w-64" />
-        <div className="grid grid-cols-12 gap-4">
-          <Skeleton className="col-span-4 h-32" />
-          <Skeleton className="col-span-8 h-32" />
-          <Skeleton className="col-span-12 h-48" />
-        </div>
+        <PublicSkeleton />
       </PublicShell>
     );
   }
@@ -51,25 +54,12 @@ export function PublicDashboardView() {
     return <ShareBlockedScreen reason={error?.reason ?? 'error'} />;
   }
 
-  const expires = data.expiresAt ? new Date(data.expiresAt) : null;
-
   return (
     <PublicShell>
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <div className="flex items-center gap-2">
-          <Lock className="size-4 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {data.dashboard?.title ?? data.chart?.title ?? 'Compartilhamento'}
-          </h1>
-          <Badge variant="secondary">Somente leitura</Badge>
-        </div>
-        {expires ? (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="size-3.5" />
-            Acesso disponível até {expires.toLocaleString()}
-          </span>
-        ) : null}
-      </header>
+      <PublicHeader
+        title={data.dashboard?.title ?? data.chart?.title ?? 'Compartilhamento'}
+        expiresAt={data.expiresAt}
+      />
 
       {data.targetType === 'DASHBOARD' && data.dashboard ? (
         // Snapshot pode estar em `data.dashboard.publishedDataPayload` (legado,
@@ -89,87 +79,82 @@ export function PublicDashboardView() {
         // Skeleton sutil só para os blocos de dados enquanto o snapshot chega.
         // O `publishedLayout` (chips de filtro + narrativos) já está visível
         // acima; isto só ocupa o espaço dos blocos de dados.
-        <div data-slot="public-data-skeleton" aria-busy className="mt-4 space-y-3">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
+        <VStack gap={3} data-slot="public-data-skeleton" aria-busy="true">
+          <Skeleton height={128} />
+          <Skeleton height={192} />
+        </VStack>
       ) : null}
 
       {data.targetType === 'CHART' && data.chart ? (
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12">
-            <BlockRenderer
-              block={{
-                id: data.chart.id,
-                type: data.chart.catalogType,
-                span: 12,
-                props: data.chart.publishedProps,
-              }}
-            />
-          </div>
-        </div>
+        <BlockRenderer
+          block={{
+            id: data.chart.id,
+            type: data.chart.catalogType,
+            span: 12,
+            props: data.chart.publishedProps,
+          }}
+        />
       ) : null}
     </PublicShell>
   );
 }
 
-function PublicShell({ children }: { children: React.ReactNode }) {
+/**
+ * Moldura da rota pública. O `<body>` do app é fixo e sem scroll (o shell
+ * autenticado rola por dentro), então aqui a coluna precisa ser o próprio
+ * container rolável — senão o conteúdo longo simplesmente não é alcançável.
+ */
+function PublicShell({ children }: { children: ReactNode }) {
   return (
-    <div className="h-screen overflow-y-auto bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>
-    </div>
+    <VStack height="100%" isScrollable hAlign="center">
+      <VStack width="100%" maxWidth={1152} padding={6} gap={5}>
+        {children}
+      </VStack>
+    </VStack>
   );
 }
 
-const BLOCK_COPY: Record<
-  ShareBlockReason,
-  { icon: ComponentType<{ className?: string }>; title: string; description: string }
-> = {
-  expired: {
-    icon: Clock,
-    title: 'Link expirado',
-    description:
-      'O tempo de acesso a este compartilhamento terminou. Solicite um novo link a quem o enviou.',
-  },
-  revoked: {
-    icon: Ban,
-    title: 'Link revogado',
-    description:
-      'Este link de compartilhamento foi revogado e não está mais disponível.',
-  },
-  not_found: {
-    icon: FileQuestion,
-    title: 'Link não encontrado',
-    description:
-      'Não encontramos este compartilhamento. Verifique se o endereço está correto e completo.',
-  },
-  error: {
-    icon: ShieldAlert,
-    title: 'Não foi possível abrir',
-    description:
-      'Ocorreu um erro ao abrir este compartilhamento. Tente novamente em instantes.',
-  },
-};
-
-export function ShareBlockedScreen({ reason }: { reason: ShareBlockReason }) {
-  const copy = BLOCK_COPY[reason] ?? BLOCK_COPY.error;
-  const Icon = copy.icon;
+function PublicHeader({ title, expiresAt }: { title: string; expiresAt: string | null }) {
   return (
-    <div
-      role="alert"
-      data-slot="share-blocked"
-      data-reason={reason}
-      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center"
-    >
-      <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Icon className="size-8" />
-      </div>
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          {copy.title}
-        </h1>
-        <p className="max-w-md text-sm text-muted-foreground">{copy.description}</p>
-      </div>
-    </div>
+    <VStack gap={3}>
+      <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
+        <HStack gap={2} vAlign="center">
+          <Icon icon={Lock} color="secondary" />
+          <Heading level={1} maxLines={1}>
+            {title}
+          </Heading>
+          <Badge label="Somente leitura" />
+        </HStack>
+
+        {expiresAt ? (
+          <HStack gap={1.5} vAlign="center">
+            <Icon icon={Clock} size="sm" color="secondary" />
+            <Text type="supporting">Acesso disponível até</Text>
+            <Timestamp value={expiresAt} format="date_time" />
+          </HStack>
+        ) : null}
+      </HStack>
+      <Divider />
+    </VStack>
+  );
+}
+
+/** Carregando: a silhueta real da página (título + grade de blocos). */
+function PublicSkeleton() {
+  return (
+    <VStack gap={5} role="status" aria-label="Carregando compartilhamento">
+      <Skeleton width={280} height={32} radius={2} />
+      <Grid columns={12} gap={4}>
+        <GridSpan columns={4}>
+          <Skeleton height={128} index={0} />
+        </GridSpan>
+        <GridSpan columns={8}>
+          <Skeleton height={128} index={1} />
+        </GridSpan>
+        <GridSpan columns={12}>
+          <Skeleton height={192} index={2} />
+        </GridSpan>
+      </Grid>
+    </VStack>
   );
 }

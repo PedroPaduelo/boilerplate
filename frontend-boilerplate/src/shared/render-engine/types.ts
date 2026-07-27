@@ -68,9 +68,9 @@ export type BlockComponent<P = Record<string, unknown>, D = BlockData> = Compone
 
 /**
  * Retorno de `BlockDefinition.deriveTakeaway`. Cada string vira uma linha
- * de insight no rodapé do `ChartWidget`. `string` (legado, 1 item) ainda é
- * aceito por retrocompat — `BlockRenderer` normaliza p/ `string[]` antes de
- * passar pro ChartWidget.
+ * de insight no rodapé da moldura (`BlockFrame`). `string` (legado, 1 item)
+ * ainda é aceito por retrocompat — o `BlockRenderer` normaliza antes de
+ * passar para a moldura.
  */
 export type TakeawayResult = string | string[] | undefined;
 
@@ -90,7 +90,7 @@ export interface BlockDefinition<P = Record<string, unknown>, D = BlockData> {
   /**
    * (Opcional) Deriva 0..N frases curtas de INSIGHT de negócio ("takeaway")
    * a partir dos dados já resolvidos no shape do bloco — exibidas no
-   * rodapé do `ChartWidget`. Retorne:
+   * rodapé da moldura (`BlockFrame`). Retorne:
    *  - `undefined` / vazio → nenhum insight renderizado;
    *  - `string` → 1 linha (retrocompat com a versão 1 linha);
    *  - `string[]` → 1 linha por string (padrão atual — cada string já

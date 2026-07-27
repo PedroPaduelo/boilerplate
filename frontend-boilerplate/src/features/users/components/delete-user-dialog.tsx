@@ -1,27 +1,20 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui';
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { useDeleteUser } from '../hooks/use-users';
+import { userDisplayName } from '../lib/user-labels';
 import type { User } from '../types';
 
-interface DeleteUserDialogProps {
+export interface DeleteUserDialogProps {
   user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function DeleteUserDialog({
-  user,
-  open,
-  onOpenChange,
-}: DeleteUserDialogProps) {
+/**
+ * Confirmação de exclusão. Ação irreversível pede `AlertDialog`: rótulo do botão
+ * diz o que vai acontecer ("Excluir usuário", não "OK") e a descrição nomeia
+ * quem será removido.
+ */
+export function DeleteUserDialog({ user, open, onOpenChange }: DeleteUserDialogProps) {
   const deleteUser = useDeleteUser();
 
   const handleConfirm = () => {
@@ -30,31 +23,19 @@ export function DeleteUserDialog({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta ação não pode ser desfeita. O usuário{' '}
-            <span className="font-medium text-foreground">
-              {user?.name ?? user?.email}
-            </span>{' '}
-            será removido permanentemente.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleteUser.isPending}>
-            Cancelar
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={deleteUser.isPending}
-            className="bg-destructive text-white hover:bg-destructive/90"
-          >
-            {deleteUser.isPending ? 'Excluindo...' : 'Excluir'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <AlertDialog
+      isOpen={open}
+      onOpenChange={onOpenChange}
+      title="Excluir usuário?"
+      description={
+        user
+          ? `Esta ação não pode ser desfeita. ${userDisplayName(user)} será removido permanentemente do workspace.`
+          : 'Esta ação não pode ser desfeita.'
+      }
+      actionLabel="Excluir usuário"
+      cancelLabel="Cancelar"
+      onAction={handleConfirm}
+      isActionLoading={deleteUser.isPending}
+    />
   );
 }

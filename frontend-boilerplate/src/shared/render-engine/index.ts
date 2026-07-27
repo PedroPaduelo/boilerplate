@@ -17,3 +17,5 @@ export { BlockRenderer } from './block-renderer';
 export type { BlockRendererProps } from './block-renderer';
 export { DashboardRenderer } from './dashboard-renderer';
 export type { DashboardRendererProps } from './dashboard-renderer';
+export { BlockFrame } from './block-frame';
+export type { BlockFrameProps, BlockFrameTakeaway } from './block-frame';

@@ -1,6 +1,6 @@
 /**
- * Manifesto do bloco `tooltip_card` (layout) — tooltip rico que segue o cursor.
- * Usa o Vitrine `TooltipCard`.
+ * Manifesto do bloco `tooltip_card` (layout) — dica ancorada ao gatilho.
+ * Renderiza com o `Tooltip` do Astryx (hover E foco por teclado).
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -8,8 +8,8 @@ export const manifest = {
   type: 'tooltip_card',
   kind: 'layout',
   name: 'Tooltip Card',
-  description: 'Tooltip rico que segue o cursor e exibe um card de conteúdo.',
-  source: 'vitrine:tooltip-card',
+  description: 'Tooltip ancorado ao gatilho, exibido no hover ou no foco por teclado.',
+  source: 'astryx:tooltip',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -20,7 +20,8 @@ export const manifest = {
   },
   defaultProps: {
     triggerLabel: 'Detalhes do contribuinte',
-    content: 'CPF/CNPJ, situação cadastral e débitos em aberto do contribuinte selecionado.',
+    content:
+      'CPF/CNPJ, situação cadastral e débitos em aberto do contribuinte selecionado.',
   },
   version: '1.0.0',
 } satisfies BlockManifest;

@@ -21,7 +21,7 @@ export const manifest = {
   name: 'Seção Colapsável',
   description:
     'Container de layout colapsável: um cabeçalho clicável que expande/recolhe o corpo. Renderiza sub-blocos (gráficos/cards/tabelas) num grid de 12 colunas dentro do corpo. Use `block.blocks` para os filhos (cada filho usa `span` 1..12). Props: title, defaultOpen.',
-  source: 'vitrine:collapsible-section',
+  source: 'astryx:collapsible',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

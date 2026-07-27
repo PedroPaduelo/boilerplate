@@ -2,19 +2,22 @@
  * DashboardRenderer — motor de render base (doc 03 / doc 32 §4).
  *
  * Recebe um `DashboardLayout` ({ filters, rows }) + (opcional) o payload de
- * DADOS batch e renderiza a tela: barra de filtros (esqueleto) + grid de
- * rows/blocos (12 colunas, `span` por bloco). Cada bloco é resolvido pelo
- * registry via `BlockRenderer`. Enquanto T-I não implementa os blocos reais,
- * tipos desconhecidos caem no placeholder — a tela inteira renderiza sem crashar.
+ * DADOS batch e renderiza a tela: barra de filtros + linhas de blocos no grid
+ * de 12 colunas. Cada bloco é resolvido pelo registry via `BlockRenderer`;
+ * tipos desconhecidos caem no aviso do próprio bloco, então um layout com um
+ * tipo novo nunca derruba a tela inteira.
  */
 import type {
   DashboardLayout,
   DashboardDataPayload,
   Filter,
   Row,
-  Block,
 } from '@dashboards/contracts';
-import { cn } from '@/shared/lib/utils';
+import { HStack } from '@astryxdesign/core/HStack';
+import { Heading } from '@astryxdesign/core/Text';
+import { Token } from '@astryxdesign/core/Token';
+import { VStack } from '@astryxdesign/core/VStack';
+import { BlockGrid } from './block-grid';
 import { BlockRenderer } from './block-renderer';
 
 export interface DashboardRendererProps {
@@ -22,7 +25,7 @@ export interface DashboardRendererProps {
   /** Payload de dados batch (mapa blockId → resultado). Opcional. */
   data?: DashboardDataPayload;
   /**
-   * Aplica o "frame" (shell `ChartWidget`) nos blocos de visualização. Default
+   * Aplica a moldura (`BlockFrame`) nos blocos de visualização. Default
    * `true` (dashboard real). A GALERIA do catálogo passa `false`.
    */
   framed?: boolean;
@@ -36,51 +39,39 @@ export function DashboardRenderer({
   className,
 }: DashboardRendererProps) {
   return (
-    <div data-slot="dashboard" className={cn('flex flex-col gap-6', className)}>
+    <VStack gap={6} data-slot="dashboard" className={className}>
       {layout.filters.length > 0 ? (
-        <div
-          data-slot="dashboard-filters"
-          className="flex flex-wrap gap-2 rounded-lg border border-border bg-muted/30 p-3"
-        >
-          {layout.filters.map((f: Filter) => (
-            <span
-              key={f.id}
-              data-slot="dashboard-filter"
-              data-filter-type={f.type}
-              className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
-            >
-              {f.label ?? f.id}
-            </span>
+        <HStack gap={2} wrap="wrap" vAlign="center" data-slot="dashboard-filters">
+          {layout.filters.map((filter: Filter) => (
+            <Token
+              key={filter.id}
+              label={filter.label ?? filter.id}
+              description={`Filtro do tipo ${filter.type}`}
+              size="sm"
+              data-testid="dashboard-filter"
+            />
           ))}
-        </div>
+        </HStack>
       ) : null}
 
       {layout.rows.map((row: Row) => (
-        <section key={row.id} data-slot="dashboard-row" className="flex flex-col gap-3">
-          {row.title ? (
-            <h2 className="text-lg font-semibold text-foreground">{row.title}</h2>
-          ) : null}
-          <div className="grid grid-cols-12 gap-4">
-            {row.blocks.map((block: Block) => {
-              const span = block.span ?? 12;
-              return (
-                <div
-                  key={block.id}
-                  data-slot="dashboard-cell"
-                  style={{ gridColumn: `span ${span} / span ${span}` }}
-                >
-                  <BlockRenderer
-                    block={block}
-                    data={data}
-                    result={data?.blocks?.[block.id]}
-                    framed={framed}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        <VStack key={row.id} gap={3} as="section" data-slot="dashboard-row">
+          {row.title ? <Heading level={2}>{row.title}</Heading> : null}
+          <BlockGrid
+            blocks={row.blocks}
+            renderBlock={(block) => (
+              <BlockRenderer
+                block={block}
+                data={data}
+                result={data?.blocks?.[block.id]}
+                framed={framed}
+              />
+            )}
+            slot="dashboard-grid"
+            cellSlot="dashboard-cell"
+          />
+        </VStack>
       ))}
-    </div>
+    </VStack>
   );
 }

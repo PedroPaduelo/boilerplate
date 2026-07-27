@@ -1,11 +1,18 @@
 /**
- * Bloco `flip_words` (título animado) — usa o Vitrine `FlipWords`.
+ * Bloco `flip_words` (título animado, sem dados) — prefixo fixo + palavra que
+ * troca em ciclo.
+ *
+ * O título é `Heading` do DS (nível 3, tipografia do tema); só a troca da
+ * palavra é COMPONENTE PRÓPRIO (`./flip-words`), e ela herda o tamanho do
+ * `Heading` em vez de fixar o seu.
  */
-import { FlipWords } from '@/components/ui/flip-words';
+import { Heading } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/VStack';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
+import { FlipWords } from './flip-words';
 
 type FlipWordsProps = {
   prefix?: string;
@@ -13,15 +20,19 @@ type FlipWordsProps = {
   duration?: number;
 };
 
+const FALLBACK_WORDS = ['claros', 'rápidos', 'acionáveis'];
+const DEFAULT_DURATION_MS = 2200;
+
 export const Component: BlockComponent<FlipWordsProps> = ({ props }) => {
-  const words = props.words?.length ? props.words : ['claros', 'rápidos', 'acionáveis'];
+  const words = props.words?.length ? props.words : FALLBACK_WORDS;
+
   return (
-    <div className="flex min-h-24 items-center justify-center py-4 text-center text-2xl font-semibold text-foreground">
-      <span>
-        {props.prefix ? <span>{props.prefix} </span> : null}
-        <FlipWords words={words} duration={props.duration ?? 2200} className="font-bold text-primary" />
-      </span>
-    </div>
+    <VStack paddingBlock={4} hAlign="center" data-slot="flip-words-block">
+      <Heading level={3} justify="center" textWrap="balance">
+        {props.prefix ? `${props.prefix} ` : null}
+        <FlipWords words={words} durationMs={props.duration ?? DEFAULT_DURATION_MS} />
+      </Heading>
+    </VStack>
   );
 };
 

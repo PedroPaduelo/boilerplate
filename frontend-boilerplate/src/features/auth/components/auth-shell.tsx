@@ -1,73 +1,57 @@
 import type { ReactNode } from 'react';
-import { motion } from 'motion/react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui';
+import { Center } from '@astryxdesign/core/Center';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/Layout';
+import { Heading, Text } from '@astryxdesign/core/Text';
 
-/**
- * Casca visual das telas de autenticação (login/registro).
- *
- * Existe para (a) eliminar a duplicação entre `login.tsx` e `register.tsx`,
- * que eram idênticos exceto por título/descrição, e (b) aplicar a MARCA:
- * antes as duas telas mostravam um quadrado com a letra "W" — resquício do
- * boilerplate — em vez da identidade do auditorIA.
- */
-export function AuthShell({
-  title,
-  description,
-  children,
-  footer,
-}: {
+export interface AuthShellProps {
   title: string;
   description: string;
   children: ReactNode;
   footer: ReactNode;
-}) {
+}
+
+/**
+ * Casca visual das telas de autenticação (login/registro).
+ *
+ * Login e registro são as ÚNICAS rotas fora do shell autenticado — não têm
+ * TopNav nem SideNav —, então a moldura é feita aqui: `Center` resolve o
+ * enquadramento vertical/horizontal e o `Card` delimita o formulário curto
+ * (o caso legítimo de card: um item discreto com fronteira de interação).
+ *
+ * O título do card é `level={1}`: nesta rota não existe outro h1 acima dele,
+ * então a hierarquia do documento começa aqui.
+ */
+export function AuthShell({ title, description, children, footer }: AuthShellProps) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-muted/30 p-4">
-      {/* Halo da cor da marca — dá profundidade sem competir com o formulário. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-32 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="relative w-full max-w-md"
-      >
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <img
-            src="/auditoria-logo.png"
-            alt="auditorIA"
-            className="h-8 w-auto select-none"
-            draggable={false}
-          />
-          <p className="text-sm text-muted-foreground">
+    <Center axis="both" minHeight="100vh">
+      <VStack gap={5} width="100%" maxWidth={420} padding={4}>
+        <VStack gap={2} hAlign="center">
+          {/* Marca: imagem de produto, sem equivalente no DS (mesmo padrão do
+              `SideNavHeading` no shell — dimensão pelo atributo, não por CSS). */}
+          <img src="/auditoria-logo.png" alt="auditorIA" height={32} draggable={false} />
+          <Text type="supporting" display="block" justify="center">
             Pergunte aos seus dados. Receba respostas auditáveis.
-          </p>
-        </div>
+          </Text>
+        </VStack>
 
-        <Card className="rounded-xl border-border/60 shadow-sm">
-          <CardHeader className="items-center text-center">
-            <CardTitle className="text-xl font-semibold tracking-tight sm:text-2xl">
-              {title}
-            </CardTitle>
-            <CardDescription className="text-sm leading-relaxed text-muted-foreground">
-              {description}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card padding={6} width="100%">
+          <VStack gap={5}>
+            <VStack gap={1} hAlign="center">
+              <Heading level={1}>{title}</Heading>
+              <Text type="supporting" display="block" justify="center">
+                {description}
+              </Text>
+            </VStack>
+
             {children}
-            <p className="mt-6 text-center text-xs text-muted-foreground">{footer}</p>
-          </CardContent>
+          </VStack>
         </Card>
-      </motion.div>
-    </div>
+
+        <Text type="supporting" display="block" justify="center">
+          {footer}
+        </Text>
+      </VStack>
+    </Center>
   );
 }

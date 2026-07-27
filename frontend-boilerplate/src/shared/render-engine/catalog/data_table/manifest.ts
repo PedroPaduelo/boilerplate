@@ -1,6 +1,7 @@
 /**
  * Manifesto do bloco `data_table` (shape 'table') — tabela rica com busca,
- * ordenação e paginação. Usa o Vitrine `DataTable` (@tanstack/react-table).
+ * ordenação e paginação. Renderiza com o `Table` do Astryx e seus plugins
+ * headless de ordenação e paginação.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -8,8 +9,9 @@ export const manifest = {
   type: 'data_table',
   kind: 'chart',
   name: 'Tabela Rica',
-  description: 'Tabela com busca, ordenação e paginação (colunas tipadas). Para datasets tabulares.',
-  source: 'vitrine:data-table',
+  description:
+    'Tabela com busca, ordenação e paginação (colunas tipadas). Para datasets tabulares.',
+  source: 'astryx:table',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

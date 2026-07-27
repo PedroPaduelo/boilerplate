@@ -22,7 +22,7 @@ export const manifest = {
   name: 'Painéis Redimensionáveis',
   description:
     'Container de layout em painéis arrastáveis (split). Cada sub-bloco (`block.blocks`) vira um painel; uma divisória entre eles permite redimensionar. Suporta 2+ painéis. Props: direction (horizontal|vertical), defaultSizes (% inicial de cada painel).',
-  source: 'vitrine:resizable',
+  source: 'astryx:layout',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

@@ -1,7 +1,15 @@
+/**
+ * Regressão da tela de dashboard em modo VIEW (`/dashboards/:id`).
+ *
+ * Cobre o contrato que faz a tela existir: layout → grid, batch → hidratação,
+ * socket → atualização incremental e filtro → novo batch. Mais os quatro
+ * estados (carregando, erro, conteúdo e o "sem filtros" da barra).
+ *
+ * Consultas por papel acessível: os nomes de classe são gerados pelo StyleX.
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { Routes, Route } from 'react-router-dom';
 import {
   SOCKET_EVENTS,
   dashboardLayoutFixture,
@@ -9,11 +17,16 @@ import {
   type BlockDataEvent,
   type BlockErrorEvent,
 } from '@dashboards/contracts';
+import { renderWithProviders } from '@/test/render';
 import type { DashboardDetail } from '../types';
 
 /* --------------------------------------------------------------- mocks ----- */
 
 const DASH_ID = dashboardDataPayloadFixture.dashboardId; // 'dash_divida_ativa_2026'
+
+vi.mock('@/shared/hooks/use-app-toast', () => ({
+  useAppToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
+}));
 
 const detail: DashboardDetail = {
   id: DASH_ID,
@@ -21,7 +34,7 @@ const detail: DashboardDetail = {
   ownerId: 'me',
   departmentId: null,
   visibility: 'ORG',
-  status: 'DRAFT', // → effectiveMode = 'draft' (probe e detail coincidem)
+  status: 'DRAFT', // → modo efetivo = 'draft'
   draftLayout: dashboardLayoutFixture as never,
   publishedLayout: null,
   publishedAt: null,
@@ -31,18 +44,26 @@ const detail: DashboardDetail = {
   layout: dashboardLayoutFixture as never,
 };
 
-// useDashboard (probe + detail) sempre devolve o detail pronto.
+/** Estado da query de detalhe, controlável por teste. */
+const query = {
+  data: detail as DashboardDetail | undefined,
+  isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
+};
+
 vi.mock('../hooks', () => ({
-  useDashboard: () => ({ data: detail, isLoading: false, isError: false }),
+  useDashboard: () => query,
 }));
 
-// fetchData do batch — captura os filtros enviados. Tipado via genérico para que
-// `mock.calls` seja uma tupla (id, mode, filters) sem precisar de param não-usado.
+// fetchData do batch — captura os filtros enviados.
 const fetchData = vi.fn<
   (id: string, mode: string, filters: Record<string, unknown>) => Promise<unknown>
 >(async () => dashboardDataPayloadFixture);
 vi.mock('../api', () => ({
-  dashboardsApi: { fetchData: (...args: [string, string, Record<string, unknown>]) => fetchData(...args) },
+  dashboardsApi: {
+    fetchData: (...args: [string, string, Record<string, unknown>]) => fetchData(...args),
+  },
 }));
 
 // Socket fake controlável (mesmo padrão do teste de use-dashboard-realtime).
@@ -76,56 +97,74 @@ vi.mock('@/shared/socket', () => ({
 }));
 
 // Importado depois dos mocks.
-import { DashboardView } from '../components/dashboard-view';
+const { DashboardView } = await import('../components/dashboard-view');
 
 function renderView() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/dashboards/${DASH_ID}`]}>
-        <Routes>
-          <Route path="/dashboards/:id" element={<DashboardView />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithProviders(
+    <Routes>
+      <Route path="/dashboards/:id" element={<DashboardView />} />
+    </Routes>,
+    { route: `/dashboards/${DASH_ID}` },
   );
 }
 
-describe('DashboardView (render por config + batch + socket + filtros)', () => {
-  beforeEach(() => {
-    fetchData.mockClear();
-    socketMock.joinDashboard.mockClear();
-  });
+beforeEach(() => {
+  fetchData.mockClear();
+  socketMock.joinDashboard.mockClear();
+  query.data = detail;
+  query.isLoading = false;
+  query.isError = false;
+});
 
-  it('desenha o layout (filtros + título + blocos com dados das fixtures)', async () => {
+/* -------------------------------------------------------------- testes ----- */
+
+describe('DashboardView — estados da tela', () => {
+  it('carregando: esqueleto no lugar da tela em branco', () => {
+    query.isLoading = true;
+    query.data = undefined;
     renderView();
 
-    // título do dashboard (header)
-    expect(screen.getByText('Dívida Ativa 2026')).toBeInTheDocument();
-    // bloco narrativo title (do layout)
-    expect(screen.getByText('Dívida Ativa — 2026')).toBeInTheDocument();
-    // FilterBar a partir de layout.filters
-    expect(screen.getByText('Período')).toBeInTheDocument();
-    expect(screen.getByText('Situação')).toBeInTheDocument();
+    expect(screen.getByLabelText('Carregando dashboard')).toBeInTheDocument();
+  });
 
-    // o batch foi disparado e os blocos hidratam com os dados da fixture
-    await waitFor(() => expect(fetchData).toHaveBeenCalled());
-    // kpi (scalar) renderiza o label vindo dos dados
-    await waitFor(() =>
-      expect(screen.getByText('Total arrecadado')).toBeInTheDocument(),
+  it('erro: banner acionável com o motivo provável', () => {
+    query.isError = true;
+    query.data = undefined;
+    renderView();
+
+    expect(
+      screen.getByText('Não foi possível carregar este dashboard'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument();
+    // A saída para a listagem continua disponível mesmo no erro.
+    expect(screen.getByRole('link', { name: 'Dashboards' })).toHaveAttribute(
+      'href',
+      '/dashboards',
     );
-    // entrou na sala do dashboard (realtime)
+  });
+});
+
+describe('DashboardView — render por config + batch + socket + filtros', () => {
+  it('desenha o layout (título, filtros e blocos com dados das fixtures)', async () => {
+    renderView();
+
+    expect(
+      screen.getByRole('heading', { name: 'Dívida Ativa 2026' }),
+    ).toBeInTheDocument();
+    // bloco narrativo `title` do layout
+    expect(screen.getByText('Dívida Ativa — 2026')).toBeInTheDocument();
+    // FilterBar montada a partir de layout.filters
+    expect(screen.getByRole('combobox', { name: /Período \(de\)/ })).toBeInTheDocument();
+    expect(screen.getByLabelText('Situação')).toBeInTheDocument();
+
+    await waitFor(() => expect(fetchData).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText('Total arrecadado')).toBeInTheDocument());
     expect(socketMock.joinDashboard).toHaveBeenCalledWith(DASH_ID);
   });
 
   it('socket block:data hidrata um bloco que estava queued', async () => {
     renderView();
-    // espera o payload do batch aplicar (kpi visível) antes de empurrar o socket
-    await waitFor(() =>
-      expect(screen.getByText('Total arrecadado')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('Total arrecadado')).toBeInTheDocument());
 
     // blk_table vem 'queued' na fixture (skeleton) → ainda não há dado
     expect(screen.queryByText('Município X')).not.toBeInTheDocument();
@@ -145,16 +184,12 @@ describe('DashboardView (render por config + batch + socket + filtros)', () => {
     };
     act(() => socketMock.socket.__receive(SOCKET_EVENTS.BLOCK_DATA, ev));
 
-    await waitFor(() =>
-      expect(screen.getByText('Município X')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('Município X')).toBeInTheDocument());
   });
 
   it('socket block:error mostra estado de erro no bloco', async () => {
     renderView();
-    await waitFor(() =>
-      expect(screen.getByText('Total arrecadado')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('Total arrecadado')).toBeInTheDocument());
 
     const ev: BlockErrorEvent = {
       dashboardId: DASH_ID,
@@ -171,17 +206,28 @@ describe('DashboardView (render por config + batch + socket + filtros)', () => {
   it('mudar um filtro re-dispara o batch com os novos filtros', async () => {
     renderView();
     await waitFor(() => expect(fetchData).toHaveBeenCalled());
-    const firstCalls = fetchData.mock.calls.length;
+    const before = fetchData.mock.calls.length;
 
-    // filtro "Situação" (type select → input de texto no MVP)
-    const input = screen.getByLabelText('Situação') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'quitado' } });
+    // filtro "Situação" (type select → campo de texto no MVP)
+    fireEvent.change(screen.getByLabelText('Situação'), { target: { value: 'quitado' } });
 
-    await waitFor(() => {
-      expect(fetchData.mock.calls.length).toBeGreaterThan(firstCalls);
-    });
+    await waitFor(() => expect(fetchData.mock.calls.length).toBeGreaterThan(before));
     const lastCall = fetchData.mock.calls[fetchData.mock.calls.length - 1];
-    // assinatura: (id, mode, filters)
     expect(lastCall[2]).toMatchObject({ f_situacao: 'quitado' });
+  });
+
+  it('limpar filtros volta aos valores padrão do layout', async () => {
+    renderView();
+    const situacao = screen.getByLabelText('Situação') as HTMLInputElement;
+    fireEvent.change(situacao, { target: { value: 'quitado' } });
+    await waitFor(() => expect(situacao.value).toBe('quitado'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }));
+
+    await waitFor(() =>
+      expect((screen.getByLabelText('Situação') as HTMLInputElement).value).not.toBe(
+        'quitado',
+      ),
+    );
   });
 });

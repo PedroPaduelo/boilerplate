@@ -1,40 +1,45 @@
+/**
+ * Página "Gráficos" (`/charts`) — lista o que o usuário pode ver, conforme
+ * papel e visibilidade (o backend já filtra; o RBAC do cliente só esconde ações).
+ *
+ * A lista é uma TABELA: o dado é denso e comparável (status, visibilidade,
+ * contexto, data). Card aqui viraria uma grade de caixas com pouca informação
+ * cada e nenhuma coluna alinhada.
+ *
+ * Os quatro estados: carregando (`Skeleton` com a geometria da tabela), erro
+ * (`Banner` com "Tentar de novo"), vazio (`EmptyState` com caminho de criação)
+ * e desabilitado (ações sem permissão nem aparecem; as que dependem de contexto
+ * mostram o motivo).
+ */
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Blocks, MessageSquare } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
+import { Icon } from '@astryxdesign/core/Icon';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { Pagination } from '@astryxdesign/core/Pagination';
+import { Heading, Text } from '@astryxdesign/core/Text';
 import { useAppToast } from '@/shared/hooks/use-app-toast';
-
-import { Button } from '@/components/ui';
-import { hasPermission } from '@/shared/lib/rbac';
-import { useAuthStore } from '@/features/auth/store';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
-import { useDebounce } from '@/shared/hooks/use-debounce';
-import { useDepartments } from '@/shared/hooks/use-departments';
-import {
-  DEFAULT_ARTIFACT_FILTERS,
-  filterArtifacts,
-  toServerFilters,
-  type ArtifactFilterState,
-} from '@/shared/lib/artifact-filters';
-import type { ApiMode } from '@/shared/lib/query-keys';
-import { ArtifactCard } from '@/shared/components/artifact-card';
-import { ArtifactListView } from '@/shared/components/artifact-list-view';
-import { buildArtifactCardActions } from '@/shared/components/artifact-action-builder';
+import { DEFAULT_ARTIFACT_FILTERS } from '@/shared/lib/artifact-filters';
+import { hasPermission } from '@/shared/lib/rbac';
 import { ShareArtifactDialog } from '@/shared/components/share-artifact-dialog';
-
+import { useAuthStore } from '@/features/auth/store';
 import {
-  useCharts,
   useDeleteChart,
   useDuplicateChart,
   usePrefetchChart,
   usePublishChart,
 } from '../hooks';
+import { CHARTS_PAGE_SIZE, useChartsList } from '../use-charts-list';
+import { buildChartMenuItems } from '../lib/chart-actions';
 import type { Chart } from '../types';
-
-const PAGE_SIZE = 12;
-
-function modeFor(status: string): ApiMode {
-  return status === 'PUBLISHED' ? 'published' : 'draft';
-}
+import { ChartsEmptyState } from './charts-empty-state';
+import { ChartsFilters } from './charts-filters';
+import { ChartsTable, type ChartRow } from './charts-table';
+import { ChartsTableSkeleton } from './charts-table-skeleton';
+import { DeleteChartDialog } from './delete-chart-dialog';
 
 export function ChartsPage() {
   const toast = useAppToast();
@@ -42,157 +47,140 @@ export function ChartsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const currentUserId = useAuthStore((s) => s.user?.id);
 
-  const [filters, setFilters] = useState<ArtifactFilterState>(DEFAULT_ARTIFACT_FILTERS);
-  const [page, setPage] = useState(1);
-
-  const debouncedSearch = useDebounce(filters.search, 300);
-  const serverFilters = useMemo(
-    () => toServerFilters({ ...filters, search: debouncedSearch }, page, PAGE_SIZE),
-    [filters, debouncedSearch, page],
-  );
-
-  const { data, isLoading, isError } = useCharts(serverFilters);
-  const { data: deptData } = useDepartments();
-
+  const list = useChartsList(currentUserId);
   const prefetch = usePrefetchChart();
   const duplicate = useDuplicateChart();
   const remove = useDeleteChart();
   const publish = usePublishChart();
 
   const [sharing, setSharing] = useState<Chart | null>(null);
-  const {
-    deleting: deletingChart,
-    confirmation: deleteConfirmation,
-    openDelete: openDeleteChart,
-  } = useConfirmDelete<Chart>({
+  const { deleting, confirmation, openDelete } = useConfirmDelete<Chart>({
     mutation: remove,
     getId: (c) => c.id,
     getTitle: (c) => c.title,
   });
 
-  const departments = useMemo(
-    () => deptData?.departments.map((d) => ({ id: d.id, name: d.name })) ?? [],
-    [deptData],
-  );
-  const deptName = useMemo(() => {
-    const map = new Map(departments.map((d) => [d.id, d.name]));
-    return (id: string | null) => (id ? (map.get(id) ?? 'Departamento') : null);
-  }, [departments]);
+  const canCreate = hasPermission(role, 'artifacts:manage');
 
-  const shown = useMemo(
-    () => filterArtifacts(data?.charts ?? [], filters, currentUserId),
-    [data, filters, currentUserId],
-  );
-
-  const handleDuplicate = (c: Chart) =>
-    duplicate.mutate({
-      title: `${c.title} (cópia)`,
-      catalogType: c.catalogType,
-      draftProps: c.draftProps,
-      draftDataBinding: c.draftDataBinding,
-      departmentId: c.departmentId,
-      visibility: 'PRIVATE',
-    });
-
-  // Um gráfico nasce de uma PERGUNTA (agente) ou de um bloco do catálogo —
-  // não existe "gráfico em branco", pois ele exige tipo + vínculo de dados.
-  // Por isso os CTAs levam a esses dois caminhos reais em vez de um botão
-  // "Novo gráfico" que não teria para onde ir.
-  const canManage = hasPermission(role, 'artifacts:manage');
-  const askAiButton = canManage ? (
-    <Button onClick={() => navigate('/chat')} className="gap-2">
-      <MessageSquare className="size-4" />
-      Criar com IA
-    </Button>
-  ) : undefined;
-
-  return (
-    <>
-      <ArtifactListView
-        eyebrow="Artefatos"
-        title="Gráficos"
-        description="Explore, busque e gerencie os gráficos visíveis para você conforme seu papel e visibilidade."
-        emptyIcon={BarChart3}
-        headerAction={askAiButton}
-        emptyTitle={
-          canManage ? 'Nenhum gráfico criado ainda' : 'Nenhum gráfico por aqui ainda'
-        }
-        emptyDescription={
-          canManage
-            ? 'Pergunte algo em português ao agente ("faturamento por mês em 2025") e transforme a resposta em um gráfico salvo. Ou explore o catálogo para ver os tipos disponíveis.'
-            : 'Quando alguém publicar ou compartilhar um gráfico com você, ele aparece aqui.'
-        }
-        emptyAction={
-          canManage ? (
-            <>
-              {askAiButton}
-              <Button
-                variant="outline"
-                onClick={() => navigate('/catalog')}
-                className="gap-2"
-              >
-                <Blocks className="size-4" />
-                Ver catálogo
-              </Button>
-            </>
-          ) : undefined
-        }
-        noun={{ singular: 'gráfico', plural: 'gráficos' }}
-        searchPlaceholder="Buscar gráficos por título…"
-        filters={filters}
-        onFiltersChange={(next) => {
-          setFilters(next);
-          setPage(1);
-        }}
-        departments={departments}
-        isLoading={isLoading}
-        isError={isError}
-        isEmpty={shown.length === 0}
-        shownCount={shown.length}
-        page={page}
-        totalPages={data?.totalPages ?? 1}
-        onPageChange={setPage}
-      >
-        {shown.map((c) => {
-          const mode = modeFor(c.status);
-          const ctx = {
+  const rows: ChartRow[] = useMemo(
+    () =>
+      list.charts.map((chart) => ({
+        id: chart.id,
+        chart,
+        title: chart.title,
+        catalogType: chart.catalogType,
+        isPublished: chart.status === 'PUBLISHED',
+        visibility: chart.visibility,
+        context:
+          list.departmentName(chart.departmentId) ??
+          (chart.ownerId === currentUserId ? 'Meu gráfico' : 'Organização'),
+        updatedAt: chart.updatedAt,
+        actions: buildChartMenuItems(
+          {
             role,
             currentUserId,
-            ownerId: c.ownerId,
-            status: c.status,
-          };
-          const actions = buildArtifactCardActions(ctx, {
-            open: () => navigate(`/charts/${c.id}`),
-            edit: () => navigate(`/charts/${c.id}`),
-            publish: () => publish.mutate({ id: c.id, publish: true }),
-            unpublish: () => publish.mutate({ id: c.id, publish: false }),
-            share: () => setSharing(c),
+            ownerId: chart.ownerId,
+            status: chart.status,
+          },
+          {
+            open: () => navigate(`/charts/${chart.id}`),
+            edit: () => navigate(`/charts/${chart.id}`),
+            publish: () => publish.mutate({ id: chart.id, publish: true }),
+            unpublish: () => publish.mutate({ id: chart.id, publish: false }),
+            share: () => setSharing(chart),
             export: () => toast.info('Exportação em PDF chega em breve (T-J).'),
-            duplicate: () => handleDuplicate(c),
-            delete: () => openDeleteChart(c),
-          });
-          return (
-            <ArtifactCard
-              key={c.id}
-              title={c.title}
-              icon={BarChart3}
-              status={c.status}
-              visibility={c.visibility}
-              metaPrimary={c.ownerId === currentUserId ? 'Meu gráfico' : undefined}
-              metaSecondary={deptName(c.departmentId) ?? c.catalogType}
-              updatedAt={c.updatedAt}
-              onOpen={() => navigate(`/charts/${c.id}`)}
-              onPrefetch={() => prefetch(c.id, mode)}
-              actions={actions}
-              confirming={
-                deletingChart?.id === c.id && deleteConfirmation
-                  ? deleteConfirmation
-                  : undefined
-              }
-            />
-          );
-        })}
-      </ArtifactListView>
+            duplicate: () =>
+              duplicate.mutate({
+                title: `${chart.title} (cópia)`,
+                catalogType: chart.catalogType,
+                draftProps: chart.draftProps,
+                draftDataBinding: chart.draftDataBinding,
+                departmentId: chart.departmentId,
+                visibility: 'PRIVATE',
+              }),
+            delete: () => openDelete(chart),
+          },
+        ),
+      })),
+    // `list.departmentName` e os mutations são estáveis por render do hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [list.charts, list.departmentName, role, currentUserId],
+  );
+
+  return (
+    <VStack gap={5}>
+      <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
+        <VStack gap={1}>
+          <Heading level={2}>Gráficos</Heading>
+          <Text type="supporting">
+            Explore, busque e gerencie os gráficos visíveis para você conforme seu papel e
+            visibilidade.
+          </Text>
+        </VStack>
+        {canCreate ? (
+          <Button
+            label="Criar com IA"
+            variant="primary"
+            icon={<Icon icon={MessageSquare} />}
+            onClick={() => navigate('/chat')}
+          />
+        ) : null}
+      </HStack>
+
+      <ChartsFilters
+        filters={list.filters}
+        onChange={list.setFilters}
+        departments={list.departments}
+        hasFilters={list.hasFilters}
+      />
+
+      {list.isLoading ? (
+        <ChartsTableSkeleton />
+      ) : list.isError ? (
+        <Banner
+          status="error"
+          title="Não foi possível carregar os gráficos"
+          description="Pode ser uma instabilidade momentânea de rede ou do servidor."
+          endContent={<Button label="Tentar de novo" size="sm" onClick={list.refetch} />}
+        />
+      ) : rows.length === 0 ? (
+        <ChartsEmptyState
+          hasFilters={list.hasFilters}
+          canCreate={canCreate}
+          // "Limpar filtros" precisa devolver a lista completa: limpar só a
+          // busca deixaria o usuário preso no vazio quando o recorte veio de
+          // um seletor (status, visibilidade, departamento ou dono).
+          onClearFilters={() => list.setFilters(DEFAULT_ARTIFACT_FILTERS)}
+          onAskAi={() => navigate('/chat')}
+          onOpenCatalog={() => navigate('/catalog')}
+        />
+      ) : (
+        <VStack gap={3}>
+          <ChartsTable rows={rows} onPrefetch={(id) => prefetch(id, 'draft')} />
+          <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
+            <Text type="supporting">
+              {rows.length === 1 ? '1 gráfico' : `${rows.length} gráficos`} nesta página
+            </Text>
+            {list.totalPages > 1 ? (
+              <Pagination
+                page={list.page}
+                totalPages={list.totalPages}
+                pageSize={CHARTS_PAGE_SIZE}
+                size="sm"
+                label="Paginação de gráficos"
+                onChange={list.setPage}
+              />
+            ) : null}
+          </HStack>
+        </VStack>
+      )}
+
+      <DeleteChartDialog
+        chart={deleting}
+        isPending={Boolean(confirmation?.isPending)}
+        onCancel={() => confirmation?.onCancel()}
+        onConfirm={() => confirmation?.onConfirm()}
+      />
 
       <ShareArtifactDialog
         key={sharing?.id ?? 'none'}
@@ -202,6 +190,6 @@ export function ChartsPage() {
         targetId={sharing?.id ?? null}
         targetTitle={sharing?.title}
       />
-    </>
+    </VStack>
   );
 }

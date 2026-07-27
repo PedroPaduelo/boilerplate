@@ -1,92 +1,116 @@
 /**
  * Regressão de mobile no chat.
  *
- * Medido num iPhone de 390px de largura, antes:
- *   - a lista de conversas era `w-64` FIXA: 256px, 66% da tela;
- *   - sobrava tão pouco espaço que o campo de digitar ficava com 8px;
- *   - 5 elementos do cabeçalho estouravam a largura (o badge ia até 510px).
- *
- * Depois: lista vira drawer, campo de texto com 264px (68% da tela), zero
- * elementos estourando.
- *
- * jsdom não calcula layout, então o que se trava aqui é o CONTRATO: a lista
- * fixa não pode aparecer no mobile, o acesso a ela precisa existir, e o
- * cabeçalho precisa poder encolher.
+ * Medido num iPhone de 390px de largura, antes: a lista de conversas era fixa
+ * em 256px (66% da tela) e sobrava tão pouco espaço que o campo de digitar
+ * ficava com 8px. O contrato travado aqui é o comportamento, não o pixel:
+ * abaixo de `md` a lista sai do fluxo e passa a ser acionada por um botão.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChatPage } from '../components/chat-page';
+import { renderWithProviders } from '@/test/render';
 
-vi.mock('../api', () => ({
-  agentApi: {
-    listConversations: vi
-      .fn()
-      .mockResolvedValue([
-        { id: 'c1', title: 'Vendas por mês', createdAt: '', updatedAt: '' },
-      ]),
-    createConversation: vi.fn().mockResolvedValue({ id: 'c2', title: 'Nova conversa' }),
-    deleteConversation: vi.fn().mockResolvedValue(undefined),
-    getConversation: vi.fn().mockResolvedValue({ id: 'c1', messages: [] }),
-    checkHealth: vi.fn().mockResolvedValue({ configured: true, model: 'x' }),
-  },
-}));
-
-vi.mock('../transport/http-transport', () => ({
-  HttpChatTransport: class {
-    async *sendMessage() {}
-  },
-}));
-
-// O chat escuta o socket para se recuperar quando o usuário sai e volta.
-// Aqui só interessa o layout, então basta um socket inerte.
 vi.mock('@/shared/socket', () => ({
   useSocket: () => ({ getSocket: () => null, connected: false }),
 }));
 
-beforeEach(() => vi.clearAllMocks());
+vi.mock('../transport/socket-transport', () => ({
+  attachToConversation: () => () => {},
+  fetchRunState: async () => null,
+  startRun: async () => ({ runId: 'run_1' }),
+}));
 
-/** A lista fixa (desktop) — deve estar oculta abaixo de `md`. */
-const listaFixa = (c: HTMLElement) => c.querySelector('.w-64');
+const { agentApi } = vi.hoisted(() => ({
+  agentApi: {
+    listConversations: vi.fn(),
+    createConversation: vi.fn(),
+    getConversation: vi.fn(),
+    deleteConversation: vi.fn(),
+    checkHealth: vi.fn(),
+  },
+}));
+
+vi.mock('../api', () => ({ agentApi }));
+
+import { ChatPage } from '../components/chat-page';
+
+const CONVERSATION = {
+  id: 'c1',
+  title: 'Vendas por mês',
+  userId: 'me',
+  createdAt: '',
+  updatedAt: '',
+};
+
+/** Faz `useMediaQuery('(max-width: 767px)')` responder verdadeiro. */
+function useCompactViewport() {
+  const original = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('max-width: 767px'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = original;
+  };
+}
 
 describe('ChatPage no mobile', () => {
-  it('esconde a lista fixa de conversas abaixo de md (ela comia 66% da tela)', async () => {
-    const { container } = render(<ChatPage />);
-    await waitFor(() => expect(listaFixa(container)).toBeTruthy());
+  let restoreViewport: () => void;
 
-    const cls = listaFixa(container)!.className;
-    expect(cls).toContain('hidden');
-    expect(cls).toContain('md:flex');
+  beforeEach(() => {
+    vi.clearAllMocks();
+    agentApi.listConversations.mockResolvedValue([CONVERSATION]);
+    agentApi.getConversation.mockResolvedValue({ ...CONVERSATION, messages: [] });
+    agentApi.createConversation.mockResolvedValue({ ...CONVERSATION, id: 'c2' });
+    agentApi.deleteConversation.mockResolvedValue(undefined);
+    agentApi.checkHealth.mockResolvedValue({ configured: true, model: 'x' });
+    restoreViewport = useCompactViewport();
   });
 
-  it('oferece o botão que abre a lista no mobile', async () => {
-    render(<ChatPage />);
-    const botao = await screen.findByLabelText('Ver conversas');
+  afterEach(() => restoreViewport());
 
-    expect(botao).toBeInTheDocument();
-    // Só no mobile: no desktop a lista já está à vista.
-    expect(botao.className).toContain('md:hidden');
+  it('tira a lista fixa do fluxo e oferece o botão que a abre', async () => {
+    renderWithProviders(<ChatPage />, { route: '/chat' });
+
+    expect(
+      await screen.findByRole('button', { name: 'Ver conversas' }),
+    ).toBeInTheDocument();
+    // A lista não está visível: seus controles não existem na tela.
+    expect(
+      screen.queryByRole('button', { name: 'Nova conversa' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('abre o drawer com a lista ao tocar no botão', async () => {
+  it('abre o diálogo com a lista ao tocar no botão', async () => {
     const user = userEvent.setup();
-    render(<ChatPage />);
+    renderWithProviders(<ChatPage />, { route: '/chat' });
 
-    await user.click(await screen.findByLabelText('Ver conversas'));
+    await user.click(await screen.findByRole('button', { name: 'Ver conversas' }));
 
-    const drawer = await screen.findByRole('dialog');
-    expect(drawer).toBeInTheDocument();
-    expect(drawer.textContent).toMatch(/Nova conversa/);
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByRole('button', { name: 'Nova conversa' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: 'Vendas por mês' }),
+    ).toBeInTheDocument();
   });
 
-  it('usa dvh e desconto responsivo na altura (vh some atrás da barra do navegador)', async () => {
-    const { container } = render(<ChatPage />);
-    await waitFor(() => expect(listaFixa(container)).toBeTruthy());
+  it('escolher uma conversa fecha o diálogo', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ChatPage />, { route: '/chat' });
 
-    const raiz = container.querySelector('[class*="100dvh"]');
-    expect(raiz).toBeTruthy();
-    // py-6 no mobile (6.5rem) e py-8 a partir de lg (7.5rem).
-    expect(raiz!.className).toContain('h-[calc(100dvh-6.5rem)]');
-    expect(raiz!.className).toContain('lg:h-[calc(100dvh-7.5rem)]');
+    await user.click(await screen.findByRole('button', { name: 'Ver conversas' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Vendas por mês' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import { Center } from '@astryxdesign/core/Center';
+import { Spinner } from '@astryxdesign/core/Spinner';
 import { useAuthStore } from '../store';
-import { Skeleton } from '@/components/ui';
 
 type UserRole = 'ADMIN' | 'USER';
 
@@ -9,17 +10,25 @@ interface ProtectedRouteProps {
   requiredRole?: UserRole;
 }
 
+/**
+ * Espera de sessão: duração desconhecida e sem forma de conteúdo para imitar —
+ * por isso `Spinner` com rótulo visível, não `Skeleton`.
+ */
+function SessionLoading() {
+  return (
+    <Center axis="both" minHeight="100vh">
+      <Spinner size="lg" label="Verificando sua sessão…" />
+    </Center>
+  );
+}
+
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const location = useLocation();
   const { user, token, isHydrated } = useAuthStore();
 
   // Aguarda a rehidratação do store (token persistido) antes de decidir.
   if (!isHydrated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Skeleton className="h-8 w-32" />
-      </div>
-    );
+    return <SessionLoading />;
   }
 
   // Sem token: não autenticado.
@@ -32,11 +41,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   // de redirecionar — em caso de falha, o interceptor faz logout (limpa o token)
   // e o guard acima passa a redirecionar para /login.
   if (!user) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Skeleton className="h-8 w-32" />
-      </div>
-    );
+    return <SessionLoading />;
   }
 
   if (requiredRole && user.role !== requiredRole) {

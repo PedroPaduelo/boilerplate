@@ -1,93 +1,78 @@
 /**
- * Bloco `callout` (narrativo) — usa o Vitrine `CalloutTremor`. O ícone deriva
- * da variante semântica.
+ * Bloco `callout` (narrativo) — banner de destaque semântico: o `Banner` do
+ * Astryx (mesmo componente do `alert`; o que muda é a intenção editorial).
  *
- * ===== COR DA CAIXA × COR DO TEXTO (separadas e independentes) =====
- *  - Sem `boxColor`/`textColor` → o `variant` manda (cores semânticas do DS).
- *  - `boxColor`  → resolvido por `resolveAccent()` e aplicado SÓ na CAIXA
- *    (className `bg-*` OU `style.background`).
- *  - `textColor` → resolvido por `resolveAccent()` e aplicado SÓ no TEXTO. Como
- *    `resolveAccent` devolve cor de FUNDO (`bg-*` / `style.background`),
- *    convertemos para cor de TEXTO (`text-*` / `style.color`) via
- *    `toTextColorParts()`. O ícone usa `currentColor`, então acompanha o texto.
- *  As duas cores são INDEPENDENTES: caixa turquesa + texto branco, por exemplo.
+ * ===== TOM DA CAIXA × TOM DO TEXTO (separados e independentes) =====
+ *  - Sem `boxColor`/`textColor` → o `variant` manda (status semântico do DS).
+ *  - `boxColor`  → resolvido por `resolveBoxTone()` para o `status` do Banner
+ *    (cor da caixa + ícone) — sobrescreve o `variant`.
+ *  - `textColor` → resolvido por `resolveTextTone()` para o `color` do `Text`
+ *    (título + corpo) — independente da caixa.
+ *
+ * Nenhuma cor crua chega ao DOM: valores legados (hex/gradiente/classe
+ * Tailwind) são traduzidos para tokens ou ignorados (ver `tone.ts`).
  */
-import type { CSSProperties } from 'react';
-import { Info, CircleCheck, TriangleAlert, CircleX } from 'lucide-react';
-import { CalloutTremor } from '@/components/ui/callout-tremor';
-import { resolveAccent } from '../../lib/accent';
+import { Banner } from '@astryxdesign/core/Banner';
+import type { BannerStatus } from '@astryxdesign/core/Banner';
+import { Text } from '@astryxdesign/core/Text';
+import type { TextColor } from '@astryxdesign/core/Text';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
+import { resolveBoxTone, resolveTextTone } from './tone';
 
 type CalloutVariant = 'default' | 'info' | 'success' | 'warning' | 'error';
+
 type CalloutProps = {
   variant?: CalloutVariant;
   title?: string;
   description?: string;
-  /** Cor da CAIXA (fundo). Sobrescreve o variant. Independente do texto. */
+  /** Tom da CAIXA. Sobrescreve o variant. Independente do texto. */
   boxColor?: string;
-  /** Cor do TEXTO. Sobrescreve o variant. Independente da caixa. */
+  /** Tom do TEXTO. Sobrescreve o variant. Independente da caixa. */
   textColor?: string;
   /** Mostra o ícone semântico à esquerda do título. Default: true. */
   showIcon?: boolean;
 };
 
-const ICONS: Record<CalloutVariant, React.ComponentType<{ className?: string }>> = {
-  default: Info,
-  info: Info,
-  success: CircleCheck,
-  warning: TriangleAlert,
-  error: CircleX,
+/** Preset semântico do bloco → `status` do Banner. */
+const STATUS_BY_VARIANT: Record<CalloutVariant, BannerStatus> = {
+  default: 'info',
+  info: 'info',
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
 };
 
-/** Partes de cor para a CAIXA (fundo): classe Tailwind `bg-*` OU `style.background`. */
-function toBoxColorParts(
-  color: string | undefined,
-): { className?: string; style?: CSSProperties } {
-  if (color == null || color === '') return {};
-  const r = resolveAccent(color);
-  return r.kind === 'class' ? { className: r.className } : { style: r.style };
-}
-
-/**
- * Partes de cor para o TEXTO: classe Tailwind `text-*` OU `style.color`.
- * `resolveAccent` é orientado a fundo (devolve `bg-*` / `style.background`),
- * então convertemos: `bg-*` → `text-*` e `style.background` → `style.color`.
- */
-function toTextColorParts(
-  color: string | undefined,
-): { className?: string; style?: CSSProperties } {
-  if (color == null || color === '') return {};
-  const r = resolveAccent(color);
-  if (r.kind === 'style') {
-    const background = (r.style as { background?: string }).background;
-    return background ? { style: { color: background } } : {};
-  }
-  // class: troca o prefixo de fundo (`bg-`) por cor de texto (`text-`).
-  return { className: r.className.replace(/(^|\s)bg-/g, '$1text-') };
+/** Aplica o tom de texto só quando ele foi pedido — senão, herda do Banner. */
+function toned(content: string, tone: TextColor | undefined, isTitle: boolean) {
+  if (tone == null) return content;
+  return (
+    <Text color={tone} weight={isTitle ? 'semibold' : 'normal'}>
+      {content}
+    </Text>
+  );
 }
 
 export const Component: BlockComponent<CalloutProps> = ({ props }) => {
-  const variant = props.variant ?? 'success';
+  const variant: CalloutVariant = props.variant ?? 'success';
   const showIcon = props.showIcon ?? true;
-
-  const box = toBoxColorParts(props.boxColor);
-  const text = toTextColorParts(props.textColor);
+  const status = resolveBoxTone(props.boxColor) ?? STATUS_BY_VARIANT[variant] ?? 'info';
+  const textTone = resolveTextTone(props.textColor);
+  const title = props.title ?? 'Observação';
 
   return (
-    <CalloutTremor
-      variant={variant}
-      title={props.title ?? 'Observação'}
-      icon={showIcon ? ICONS[variant] : undefined}
-      boxClassName={box.className}
-      boxStyle={box.style}
-      textClassName={text.className}
-      textStyle={text.style}
-    >
-      {props.description}
-    </CalloutTremor>
+    <Banner
+      data-slot="callout"
+      data-callout-variant={variant}
+      status={status}
+      title={toned(title, textTone, true)}
+      description={
+        props.description ? toned(props.description, textTone, false) : undefined
+      }
+      icon={showIcon ? undefined : false}
+    />
   );
 };
 

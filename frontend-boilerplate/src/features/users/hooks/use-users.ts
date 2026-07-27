@@ -37,6 +37,12 @@ export function useUserStats() {
   });
 }
 
+/**
+ * Criar/atualizar NÃO emitem toast de erro: quem falha é um formulário, e o
+ * diálogo mostra a falha em `Banner` no topo — ao lado dos campos que precisam
+ * ser corrigidos. Toast fica para confirmação de sucesso e para a exclusão
+ * (que não tem formulário onde ancorar a mensagem).
+ */
 export function useCreateUser() {
   const toast = useAppToast();
   const queryClient = useQueryClient();
@@ -46,9 +52,6 @@ export function useCreateUser() {
     onSuccess: () => {
       toast.success('Usuário criado com sucesso!');
       queryClient.invalidateQueries({ queryKey: usersKeys.all });
-    },
-    onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Erro ao criar usuário'));
     },
   });
 }
@@ -63,9 +66,6 @@ export function useUpdateUser() {
       toast.success('Usuário atualizado com sucesso!');
       queryClient.invalidateQueries({ queryKey: usersKeys.all });
       queryClient.invalidateQueries({ queryKey: usersKeys.detail(variables.id) });
-    },
-    onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Erro ao atualizar usuário'));
     },
   });
 }

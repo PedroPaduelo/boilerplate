@@ -1,25 +1,36 @@
+/**
+ * Listagem de dashboards — `/dashboards`.
+ *
+ * A página é o ÚNICO lugar com estado e regra: filtros, paginação, permissões e
+ * as mutações. Toolbar, tabela, vazio e confirmação recebem tudo pronto por
+ * prop, então cada um deles é testável isolado e reutilizável.
+ *
+ * Busca/status/visibilidade vão ao servidor (paginado); departamento/dono são
+ * refinados no cliente sobre a página corrente (a API não os aceita).
+ */
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Loader2, MessageSquare, Plus } from 'lucide-react';
-import { useAppToast } from '@/shared/hooks/use-app-toast';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { Pagination } from '@astryxdesign/core/Pagination';
+import { Heading, Text } from '@astryxdesign/core/Text';
 
-import { Button } from '@/components/ui';
-import { hasPermission } from '@/shared/lib/rbac';
-import { useAuthStore } from '@/features/auth/store';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useDepartments } from '@/shared/hooks/use-departments';
+import { hasPermission } from '@/shared/lib/rbac';
 import {
   DEFAULT_ARTIFACT_FILTERS,
   filterArtifacts,
+  hasActiveFilters,
   toServerFilters,
   type ArtifactFilterState,
 } from '@/shared/lib/artifact-filters';
 import type { ApiMode } from '@/shared/lib/query-keys';
-import { ArtifactCard } from '@/shared/components/artifact-card';
-import { ArtifactListView } from '@/shared/components/artifact-list-view';
-import { buildArtifactCardActions } from '@/shared/components/artifact-action-builder';
 import { ShareArtifactDialog } from '@/shared/components/share-artifact-dialog';
+import { useAuthStore } from '@/features/auth/store';
 
 import {
   useCreateDashboard,
@@ -30,6 +41,15 @@ import {
   usePublishDashboard,
 } from '../hooks';
 import type { Dashboard } from '../types';
+import { buildDashboardActions } from './dashboard-actions';
+import { DashboardsEmptyState } from './dashboards-empty-state';
+import { DashboardsToolbar } from './dashboards-toolbar';
+import {
+  DashboardsTable,
+  DashboardsTableSkeleton,
+  type DashboardRow,
+} from './dashboards-table';
+import { DeleteDashboardDialog } from './delete-dashboard-dialog';
 
 const PAGE_SIZE = 12;
 
@@ -45,29 +65,24 @@ export function DashboardsPage() {
 
   const [filters, setFilters] = useState<ArtifactFilterState>(DEFAULT_ARTIFACT_FILTERS);
   const [page, setPage] = useState(1);
+  const [sharing, setSharing] = useState<Dashboard | null>(null);
 
-  // Busca/status/visibilidade vão ao servidor (paginado); departamento/owner
-  // são refinados no cliente sobre a página corrente.
   const debouncedSearch = useDebounce(filters.search, 300);
   const serverFilters = useMemo(
     () => toServerFilters({ ...filters, search: debouncedSearch }, page, PAGE_SIZE),
     [filters, debouncedSearch, page],
   );
 
-  const { data, isLoading, isError } = useDashboards(serverFilters);
+  const { data, isLoading, isError, refetch } = useDashboards(serverFilters);
   const { data: deptData } = useDepartments();
 
   const prefetch = usePrefetchDashboard();
   const duplicate = useDuplicateDashboard();
   const remove = useDeleteDashboard();
   const publish = usePublishDashboard();
+  const create = useCreateDashboard();
 
-  const [sharing, setSharing] = useState<Dashboard | null>(null);
-  const {
-    deleting: deletingDashboard,
-    confirmation: deleteConfirmation,
-    openDelete: openDeleteDashboard,
-  } = useConfirmDelete<Dashboard>({
+  const { deleting, confirmation, openDelete } = useConfirmDelete<Dashboard>({
     mutation: remove,
     getId: (d) => d.id,
     getTitle: (d) => d.title,
@@ -82,136 +97,126 @@ export function DashboardsPage() {
     return (id: string | null) => (id ? (map.get(id) ?? 'Departamento') : null);
   }, [departments]);
 
-  // Refino cliente (departamento + owner) sobre a página retornada.
   const shown = useMemo(
     () => filterArtifacts(data?.dashboards ?? [], filters, currentUserId),
     [data, filters, currentUserId],
   );
 
-  const handleDuplicate = (d: Dashboard) =>
-    duplicate.mutate({
-      title: `${d.title} (cópia)`,
-      draftLayout: d.draftLayout,
-      departmentId: d.departmentId,
-      visibility: 'PRIVATE',
-    });
-
-  // Criar → abre direto o editor do rascunho recém-criado (sem etapa extra
-  // de "dar nome antes de existir": o título é editável lá dentro).
-  const create = useCreateDashboard();
   const canManage = hasPermission(role, 'artifacts:manage');
+
+  // Criar → abre direto o editor do rascunho recém-criado (o título é editável
+  // lá dentro; pedir nome antes de o artefato existir é uma etapa a mais).
   const handleCreate = () =>
     create.mutate(undefined, {
       onSuccess: (created) => navigate(`/dashboards/${created.id}/edit`),
     });
 
-  const newDashboardButton = canManage ? (
-    <Button onClick={handleCreate} disabled={create.isPending} className="gap-2">
-      {create.isPending ? (
-        <Loader2 className="size-4 animate-spin" />
-      ) : (
-        <Plus className="size-4" />
-      )}
-      Novo dashboard
-    </Button>
-  ) : undefined;
+  const rows: DashboardRow[] = shown.map((d) => ({
+    id: d.id,
+    title: d.title,
+    href: `/dashboards/${d.id}`,
+    status: d.status,
+    visibility: d.visibility,
+    department: deptName(d.departmentId),
+    updatedAt: d.updatedAt,
+    isMine: d.ownerId === currentUserId,
+    onPrefetch: () => prefetch(d.id, modeFor(d.status)),
+    actions: buildDashboardActions(
+      { role, currentUserId, ownerId: d.ownerId, status: d.status },
+      {
+        open: () => navigate(`/dashboards/${d.id}`),
+        edit: () => navigate(`/dashboards/${d.id}/edit`),
+        publish: () => publish.mutate({ id: d.id, publish: true }),
+        unpublish: () => publish.mutate({ id: d.id, publish: false }),
+        share: () => setSharing(d),
+        export: () => toast.info('Exportação em PDF chega em breve (T-J).'),
+        duplicate: () =>
+          duplicate.mutate({
+            title: `${d.title} (cópia)`,
+            draftLayout: d.draftLayout,
+            departmentId: d.departmentId,
+            visibility: 'PRIVATE',
+          }),
+        delete: () => openDelete(d),
+      },
+    ),
+  }));
+
+  const totalPages = data?.totalPages ?? 1;
 
   return (
-    <>
-      <ArtifactListView
-        eyebrow="Artefatos"
-        title="Dashboards"
-        description="Explore, busque e gerencie os dashboards visíveis para você conforme seu papel e visibilidade."
-        emptyIcon={LayoutDashboard}
-        headerAction={newDashboardButton}
-        emptyTitle={
-          canManage ? 'Crie seu primeiro dashboard' : 'Nenhum dashboard por aqui ainda'
-        }
-        emptyDescription={
-          canManage
-            ? 'Monte um painel do zero arrastando gráficos, ou peça ao agente para montar um a partir de uma pergunta em português.'
-            : 'Quando alguém publicar ou compartilhar um dashboard com você, ele aparece aqui.'
-        }
-        emptyAction={
-          canManage ? (
-            <>
-              {newDashboardButton}
-              <Button
-                variant="outline"
-                onClick={() => navigate('/chat')}
-                className="gap-2"
-              >
-                <MessageSquare className="size-4" />
-                Montar com IA
-              </Button>
-            </>
-          ) : undefined
-        }
-        noun={{ singular: 'dashboard', plural: 'dashboards' }}
-        searchPlaceholder="Buscar dashboards por título…"
+    <VStack gap={4}>
+      <VStack gap={1}>
+        <Heading level={2}>Dashboards</Heading>
+        <Text type="supporting">
+          Explore, busque e gerencie os dashboards visíveis para você conforme seu papel e
+          a visibilidade de cada painel.
+        </Text>
+      </VStack>
+
+      <DashboardsToolbar
         filters={filters}
         onFiltersChange={(next) => {
           setFilters(next);
           setPage(1);
         }}
         departments={departments}
-        isLoading={isLoading}
-        isError={isError}
-        isEmpty={shown.length === 0}
-        shownCount={shown.length}
-        page={page}
-        totalPages={data?.totalPages ?? 1}
-        onPageChange={setPage}
-      >
-        {shown.map((d) => {
-          const mode = modeFor(d.status);
-          const ctx = {
-            role,
-            currentUserId,
-            ownerId: d.ownerId,
-            status: d.status,
-          };
-          const actions = buildArtifactCardActions(ctx, {
-            open: () => navigate(`/dashboards/${d.id}`),
-            edit: () => navigate(`/dashboards/${d.id}/edit`),
-            publish: () => publish.mutate({ id: d.id, publish: true }),
-            unpublish: () => publish.mutate({ id: d.id, publish: false }),
-            share: () => setSharing(d),
-            export: () => toast.info('Exportação em PDF chega em breve (T-J).'),
-            duplicate: () => handleDuplicate(d),
-            delete: () => openDeleteDashboard(d),
-          });
-          return (
-            <ArtifactCard
-              key={d.id}
-              title={d.title}
-              icon={LayoutDashboard}
-              status={d.status}
-              visibility={d.visibility}
-              metaPrimary={d.ownerId === currentUserId ? 'Meu dashboard' : undefined}
-              metaSecondary={deptName(d.departmentId) ?? undefined}
-              updatedAt={d.updatedAt}
-              onOpen={() => navigate(`/dashboards/${d.id}`)}
-              onPrefetch={() => prefetch(d.id, mode)}
-              actions={actions}
-              confirming={
-                deletingDashboard?.id === d.id && deleteConfirmation
-                  ? deleteConfirmation
-                  : undefined
-              }
-            />
-          );
-        })}
-      </ArtifactListView>
+        canCreate={canManage}
+        isCreating={create.isPending}
+        onCreate={handleCreate}
+      />
+
+      {isLoading ? (
+        <DashboardsTableSkeleton />
+      ) : isError ? (
+        <Banner
+          status="error"
+          title="Não foi possível carregar os dashboards"
+          description="Pode ser uma instabilidade momentânea de rede ou do servidor."
+          endContent={<Button label="Tentar de novo" onClick={() => void refetch()} />}
+        />
+      ) : rows.length === 0 ? (
+        <DashboardsEmptyState
+          hasFilters={hasActiveFilters(filters)}
+          canCreate={canManage}
+          isCreating={create.isPending}
+          onCreate={handleCreate}
+          onClearFilters={() => {
+            setFilters(DEFAULT_ARTIFACT_FILTERS);
+            setPage(1);
+          }}
+          onAskAgent={() => navigate('/chat')}
+        />
+      ) : (
+        <VStack gap={3}>
+          <DashboardsTable rows={rows} />
+          <HStack vAlign="center" hAlign="between" gap={2}>
+            <Text type="supporting" hasTabularNumbers>
+              {rows.length} {rows.length === 1 ? 'dashboard' : 'dashboards'} nesta página
+            </Text>
+            {totalPages > 1 ? (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                pageSize={PAGE_SIZE}
+                size="sm"
+                onChange={setPage}
+              />
+            ) : null}
+          </HStack>
+        </VStack>
+      )}
+
+      <DeleteDashboardDialog title={deleting?.title} confirmation={confirmation} />
 
       <ShareArtifactDialog
         key={sharing?.id ?? 'none'}
         open={!!sharing}
-        onOpenChange={(o) => !o && setSharing(null)}
+        onOpenChange={(open) => !open && setSharing(null)}
         targetType="DASHBOARD"
         targetId={sharing?.id ?? null}
         targetTitle={sharing?.title}
       />
-    </>
+    </VStack>
   );
 }

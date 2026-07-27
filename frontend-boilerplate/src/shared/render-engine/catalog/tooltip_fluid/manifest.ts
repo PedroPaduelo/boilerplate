@@ -1,6 +1,6 @@
 /**
  * Manifesto do bloco `tooltip_fluid` (layout) — tooltip com animação suave.
- * Usa o Vitrine `TooltipFluid`.
+ * Renderiza com o `Tooltip` do Astryx.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -9,7 +9,7 @@ export const manifest = {
   kind: 'layout',
   name: 'Tooltip Fluido',
   description: 'Tooltip com animação suave exibido ao focar/passar o mouse no gatilho.',
-  source: 'vitrine:tooltip-fluid',
+  source: 'astryx:tooltip',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

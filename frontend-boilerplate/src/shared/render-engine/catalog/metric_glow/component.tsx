@@ -1,91 +1,60 @@
 /**
- * Bloco `metric_glow` (shape 'scalar') — usa o Vitrine `MetricGlowCard`.
+ * Bloco `metric_glow` (shape 'scalar') — métrica única em destaque. Desenha o
+ * próprio cartão (`metric-glow-card.tsx`), por isso não recebe a moldura de
+ * gráfico.
  *
- * Props (padrão canônico do catálogo — ver `h_bar_chart`):
- *  - `label`: sobrescreve o título do card. Vazio → `data.label` → `manifest.name`.
- *  - `valueFormat`: ENUM FECHADO — normalizado por `formatValueByEnum()` de
- *    `format.ts`. Default `'compactBRL'`. SUBSTITUI o `toLocaleString` cru
- *    (ilegível em bilhões) que o bloco usava antes.
- *  - `accent`: cor do brilho/halo. `resolveAccent()` decide se vira classe
- *    Tailwind (chart-N, bg-purple-500) ou `style.background` (#hex, gradient).
- *  - `showDelta`: liga/desliga a variação percentual.
- *  - `deltaPolarity`: `up-good` (subir = verde, default) | `up-bad` (subir =
- *    vermelho). Inverte a lógica de cor da variação.
- *
- * NOTA: a prop `width` ficou de fora desta entrega (decisão pendente).
+ * O que mudou na migração:
+ *  - o cartão foi reescrito sobre o design system: sumiram o halo com cor por
+ *    classe e o verde/vermelho cravados da variação (agora é o selo da base,
+ *    que colore pela leitura de negócio);
+ *  - COR: `accent` continua aceitando o vocabulário antigo e vira token de dado
+ *    do DS — é a cor do halo;
+ *  - o valor continua formatado por `valueFormat` (o `toLocaleString` cru, que
+ *    deixava bilhões ilegíveis, ficou para trás).
  */
-import type { CSSProperties } from 'react';
 import type { ScalarData } from '@dashboards/contracts';
-import { MetricGlowCard } from '@/components/ui/metric-glow-card';
-import { formatValueByEnum, formatPercentBR, type ValueFormat } from '@/shared/lib/format';
-import { resolveAccent } from '../../lib/accent';
+import { chartAccentColor } from '@/shared/ui';
+import { formatValueByEnum, type ValueFormat } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
+import { MetricGlowCard } from './metric-glow-card';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
 
-type DeltaPolarity = 'up-good' | 'up-bad';
-
 type MetricGlowProps = {
-  /** Sobrescreve o título do card. Vazio → `data.label` → `manifest.name`. */
+  /** Sobrescreve o título do card. Vazio → `data.label` → nome do bloco. */
   label?: string;
-  /**
-   * Formato do valor em destaque. ENUM FECHADO — default `'compactBRL'`.
-   * Normalizado para string PT-BR via `formatValueByEnum()`. Substitui o
-   * `toLocaleString` cru antigo.
-   */
+  /** Formato PT-BR do valor em destaque (enum fechado do catálogo). */
   valueFormat?: ValueFormat;
-  /**
-   * Cor do brilho/halo. Aceita enum DS (validado pelo schema), classe
-   * Tailwind, cor CSS. Resolvido por `resolveAccent()`.
-   */
+  /** Cor do halo; resolvida para token de dado do DS. */
   accent?: string;
-  /** Mostra a variação percentual abaixo do valor (default `true`). */
+  /** Mostra a variação percentual. */
   showDelta?: boolean;
-  /**
-   * Semântica de cor da variação. `up-good` (default): positiva = verde.
-   * `up-bad`: positiva = vermelho.
-   */
-  deltaPolarity?: DeltaPolarity;
+  /** Semântica de cor da variação. */
+  deltaPolarity?: 'up-good' | 'up-bad';
 };
 
-export const Component: BlockComponent<MetricGlowProps, ScalarData> = ({ props, data }) => {
+export const Component: BlockComponent<MetricGlowProps, ScalarData> = ({
+  props,
+  data,
+  state,
+}) => {
   const value = data?.value ?? 0;
-  const delta = data?.delta;
 
-  // (valueFormat) substitui o toLocaleString cru — string PT-BR legível.
-  const formattedValue = formatValueByEnum(value, props.valueFormat ?? 'compactBRL');
-
-  // (label) override → data.label → manifest.name.
-  const title = props.label?.trim() || data?.label || manifest.name;
-
-  // (showDelta) liga/desliga a variação; só renderiza se houver delta.
+  // O contrato entrega `delta` como FRAÇÃO (0.125); o selo lê em pontos
+  // percentuais.
   const showDelta = props.showDelta ?? true;
-  const change =
-    showDelta && delta != null
-      ? `${delta >= 0 ? '+' : ''}${formatPercentBR(delta)}`
-      : undefined;
-
-  // (deltaPolarity) inverte a semântica verde/vermelho:
-  //  - up-good: subir é bom  → verde quando delta >= 0.
-  //  - up-bad:  subir é ruim → verde quando delta <= 0.
-  const polarity = props.deltaPolarity ?? 'up-good';
-  const positive = polarity === 'up-bad' ? (delta ?? 0) <= 0 : (delta ?? 0) >= 0;
-
-  // (accent) halo do card — classe Tailwind (bg-…) OU style.background.
-  const resolved = resolveAccent(props.accent);
-  const glowClassName = resolved.kind === 'class' ? resolved.className : undefined;
-  const glowStyle: CSSProperties | undefined =
-    resolved.kind === 'style' ? resolved.style : undefined;
+  const delta =
+    showDelta && data?.delta != null ? Math.round(data.delta * 1000) / 10 : undefined;
 
   return (
     <MetricGlowCard
-      title={title}
-      value={formattedValue}
-      change={change}
-      positive={positive}
-      glowClassName={glowClassName}
-      glowStyle={glowStyle}
+      title={props.label?.trim() || data?.label || manifest.name}
+      value={formatValueByEnum(value, props.valueFormat ?? 'compactBRL')}
+      delta={delta}
+      higherIsBetter={(props.deltaPolarity ?? 'up-good') === 'up-good'}
+      color={chartAccentColor(props.accent)}
+      isLoading={state === 'loading' || state === 'skeleton'}
     />
   );
 };

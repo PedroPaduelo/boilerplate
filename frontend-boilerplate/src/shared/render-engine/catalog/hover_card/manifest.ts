@@ -1,6 +1,6 @@
 /**
  * Manifesto do bloco `hover_card` (layout) — cartão flutuante exibido no hover.
- * Usa o Vitrine `HoverCard`.
+ * Renderiza com o `HoverCard` do Astryx.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -9,7 +9,7 @@ export const manifest = {
   kind: 'layout',
   name: 'Hover Card',
   description: 'Cartão flutuante exibido ao passar o mouse sobre o gatilho.',
-  source: 'vitrine:hover-card',
+  source: 'astryx:hovercard',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

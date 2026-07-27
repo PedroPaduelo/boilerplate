@@ -1,7 +1,8 @@
 /**
  * Manifesto do bloco `invoice_table` (shape 'table') — tabela de itens estilo
- * fatura (descrição × quantidade × valor unitário) com total. Usa o Vitrine
- * `InvoiceTable`. Espera linhas com as colunas `label`, `qty` e `unit`.
+ * fatura (descrição × quantidade × valor unitário) com total no rodapé.
+ * Renderiza com o `Table` do Astryx. Espera linhas com as colunas `label`,
+ * `qty` e `unit`.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -9,8 +10,9 @@ export const manifest = {
   type: 'invoice_table',
   kind: 'chart',
   name: 'Tabela de Fatura',
-  description: 'Itens com quantidade × valor unitário e total no rodapé. Linhas: label, qty, unit.',
-  source: 'vitrine:invoice-table',
+  description:
+    'Itens com quantidade × valor unitário e total no rodapé. Linhas: label, qty, unit.',
+  source: 'astryx:table',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

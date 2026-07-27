@@ -1,14 +1,16 @@
 /**
  * Manifesto do bloco `callout` (narrativo, sem dados) — banner de destaque com
- * variante semântica. Usa o Vitrine `CalloutTremor`.
+ * variante semântica. Renderiza com o `Banner` do Astryx.
  *
- * ===== COR DA CAIXA × COR DO TEXTO (separadas) =====
- *  - `variant` define o PRESET semântico (cores base de caixa + texto + ícone).
- *  - `boxColor` sobrescreve SÓ a cor da CAIXA (fundo).
- *  - `textColor` sobrescreve SÓ a cor do TEXTO (título + corpo + ícone).
- *  As duas são INDEPENDENTES: a caixa pode ser turquesa e o texto branco.
- *  Ambas aceitam enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500)
- *  ou cor CSS crua (#40E0D0, rgb(), gradient) — resolvidas por `resolveAccent()`.
+ * ===== TOM DA CAIXA × TOM DO TEXTO (separados) =====
+ *  - `variant` define o PRESET semântico (severidade: caixa + texto + ícone).
+ *  - `boxColor` sobrescreve SÓ o tom da CAIXA.
+ *  - `textColor` sobrescreve SÓ o tom do TEXTO (título + corpo).
+ *  As duas são INDEPENDENTES. Os valores são TONS do design system
+ *  (info/success/warning/error para a caixa; primary/secondary/accent para o
+ *  texto), não cores cruas: o bloco não pinta hex/gradiente na tela. Nomes de
+ *  cor legados (ex.: "red", "green") ainda são aceitos e caem no tom
+ *  equivalente; o que não tem tom equivalente é ignorado e o `variant` vale.
  *  Os sufixos `Color` fazem o playground exibir o ColorFieldEditor.
  */
 import type { BlockManifest } from '@dashboards/contracts';
@@ -17,8 +19,9 @@ export const manifest = {
   type: 'callout',
   kind: 'text',
   name: 'Callout',
-  description: 'Banner de destaque semântico (info/sucesso/aviso/erro) com título e texto.',
-  source: 'vitrine:callout-tremor',
+  description:
+    'Banner de destaque semântico (info/sucesso/aviso/erro) com título e texto.',
+  source: 'astryx:banner',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -28,7 +31,7 @@ export const manifest = {
         type: 'string',
         enum: ['default', 'info', 'success', 'warning', 'error'],
         description:
-          'Preset semântico que define as cores base da caixa, do texto e do ícone (default | info=azul | success=verde | warning=amarelo | error=vermelho). boxColor/textColor sobrescrevem por cima.',
+          'Preset semântico: define a SEVERIDADE do destaque (default e info = informativo | success = sucesso | warning = atenção | error = erro). Cor da caixa, do texto e do ícone vêm do design system. boxColor/textColor sobrescrevem o tom por cima.',
       },
       title: {
         type: 'string',
@@ -41,12 +44,12 @@ export const manifest = {
       boxColor: {
         type: 'string',
         description:
-          'Cor da CAIXA (fundo). Sobrescreve a cor do variant. INDEPENDENTE do texto. Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), gradient). Vazio = usa a cor do variant.',
+          'TOM da CAIXA (fundo + ícone). Sobrescreve o tom do variant. INDEPENDENTE do texto. Valores: info | success | warning | error (tons do design system). Nomes de cor legados são mapeados para o tom equivalente. Vazio (ou sem tom equivalente) = usa o tom do variant.',
       },
       textColor: {
         type: 'string',
         description:
-          'Cor do TEXTO (título + corpo + ícone). Sobrescreve a cor do variant. INDEPENDENTE da caixa. Mesmo formato de boxColor (enum DS, classe Tailwind ou cor CSS). Vazio = herda a cor do variant.',
+          'TOM do TEXTO (título + corpo). Sobrescreve o tom do variant. INDEPENDENTE da caixa. Valores: primary | secondary | accent | disabled (tons de texto do design system). Nomes de cor legados são mapeados para o tom equivalente. Vazio (ou sem tom equivalente) = herda o tom da caixa.',
       },
       showIcon: {
         type: 'boolean',

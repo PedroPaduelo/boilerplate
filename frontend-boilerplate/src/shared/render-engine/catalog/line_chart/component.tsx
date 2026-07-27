@@ -1,44 +1,21 @@
 /**
- * Bloco `line_chart` (shape 'series', x temporal) — usa o Vitrine `LineChart`.
- * Agrupa os pontos por `series` (multi-linha) preservando a ordem do eixo X.
+ * Bloco `line_chart` (shape 'series', x temporal) — tendência ao longo do
+ * tempo sobre o `LineChart` de `@/shared/ui`.
  *
- * Prop de COR (Turno 5 — canônico): `accent` é enum fechado da paleta do DS
- * (validado pelo schema) MAS o input livre do playground aceita string custom.
- * `resolveAccentForStroke()` em `lib/accent.ts` traduz 1:1:
- *   - enum DS (chart-1..5 | 'primary') → classe Tailwind `stroke-chart-N`
- *     (regra CSS do tema resolve `var(--color-chart-1)`);
- *   - classe Tailwind (bg-purple-500) → deriva `stroke-purple-500`;
- *   - cor CSS crua (#40E0D0, rgb(), linear-gradient(), var(--chart-1))
- *     → `style.stroke` inline no polyline (atributo de apresentação SVG
- *     vence a classe CSS).
- * Modo de aplicação (ENTREGA 1 — espelha o `h_bar_chart`):
- *   - `palette: 'multi'` (default) → cada linha cicla `paletteStrokeClass(i)`
- *     (chart-1..5). O `accent` custom é IGNORADO neste modo (a paleta cíclica
- *     do DS vence); custom só vale em `single`.
- *   - `palette: 'single'` → TODAS as linhas com `accent` (1 cor — style se for
- *     cor CSS custom, className se for enum/classe DS).
- *   - `palette: 'none'` → sem distinção de cor (default `stroke-primary`).
- *
- * Prop `smooth` (ENTREGA 3): repassada ao UI base; `true` desenha curvas
- * suaves (Catmull-Rom via `<path>`), `false` mantém retas (`<polyline>`).
- *
- * Prop `valueFormatter` (opcional, novo Turno 5): permite trocar o formatador
- * do valor exibido no tooltip (default interno `formatBRL`). O bloco normaliza
- * para o caller trocar via prop — sem precisar editar o componente.
- *
- * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas
- * (cada uma vira 1 linha com lâmpada no ChartWidget):
- *  - SEMPRE a 1ª: "Pico: {x} ({y})" — ponto de maior valor.
- *  - OPCIONAL 2ª: "Vale: {x} ({y})" — só se houver +1 ponto e o menor > 0.
+ * O que mudou na migração:
+ *  - eixos, grade, tooltip, legenda e os estados (carregando / sem dados) vêm
+ *    prontos da base; aqui só adaptamos o contrato `{x, y, series?}`;
+ *  - COR: `accent` continua aceitando o vocabulário antigo, mas passa por
+ *    `chartAccentColor()` e vira token de dado do DS. Cor crua não
+ *    reconhecida cai na paleta — nenhum hex atravessa;
+ *  - ACESSIBILIDADE: os rótulos do eixo X vivem dentro do SVG, então o bloco
+ *    publica os mesmos números como tabela (`ChartDataTable`) para leitor de
+ *    tela.
  */
-import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
-import { LineChart, type LineSeries } from '@/components/ui/line-chart';
-import { formatCompactNumberBR, formatBRL } from '@/shared/lib/format';
-import {
-  resolveAccentForStroke,
-  paletteStrokeClass,
-} from '../../lib/accent';
+import { ChartDataTable, LineChart, chartAccentColor } from '@/shared/ui';
+import type { ChartSeries } from '@/shared/ui';
+import { formatBRL, formatCompactNumberBR } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -49,107 +26,86 @@ type LineProps = {
   area?: boolean;
   palette?: 'single' | 'multi' | 'none';
   /**
-   * Cor base da(s) série(s). Aceita:
-   *  - enum DS: 'chart-1'..'chart-5' | 'primary' (validado pelo schema)
-   *  - classe Tailwind: 'bg-purple-500' (custom)
-   *  - cor CSS: '#40E0D0', 'rgb(0,255,0)', 'oklch(...)', 'linear-gradient(...)'
-   *  - bare color: 'purple-500' (vira 'bg-purple-500' por conveniência)
-   * Resolvido por `resolveAccentForStroke()` em `lib/accent.ts` — devolve
-   * `{ className }` (Tailwind) ou `{ style: { stroke } }` (CSS).
+   * Cor base da(s) série(s). Aceita o enum do catálogo e os valores antigos
+   * (classe utilitária, cor CSS); resolvida para token do DS.
    */
   accent?: string;
-  /**
-   * Formatter do valor exibido no tooltip (completo). Default: `formatBRL`
-   * ("R$ 2.609.946,73"). O bloco normaliza para o caller trocar via prop
-   * — sem precisar editar o componente.
-   */
+  /** Override programático do formato do valor no tooltip (fora do schema). */
   valueFormatter?: (value: number) => string;
 };
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
-/** Converte SeriesData (lista de {x,y,series?}) em séries + rótulos do eixo X.
- *  NÃO aplica cor — a coloração (single/multi/none) é feita no Component,
- *  espelhando a lógica do `h_bar_chart`. */
+/**
+ * Achata o formato longo do contrato em séries alinhadas ao eixo X, na ordem
+ * de aparição (a consulta é quem ordena; reordenar aqui esconderia erro dela).
+ */
 export function toLineSeries(data: SeriesData): {
-  series: LineSeries[];
-  xLabels: string[];
+  series: ChartSeries[];
+  labels: string[];
 } {
-  const xOrder: string[] = [];
+  const points = (data ?? []) as SeriesPoint[];
+  const labels: string[] = [];
   const groups = new Map<string, Map<string, number>>();
-  for (const point of data) {
-    const seriesName = point.series ?? 'Série';
+
+  for (const point of points) {
+    const name = point.series ?? 'Série';
     const x = String(point.x);
-    if (!xOrder.includes(x)) xOrder.push(x);
-    if (!groups.has(seriesName)) groups.set(seriesName, new Map());
-    groups.get(seriesName)!.set(x, point.y ?? 0);
+    if (!labels.includes(x)) labels.push(x);
+    if (!groups.has(name)) groups.set(name, new Map());
+    groups.get(name)!.set(x, point.y ?? 0);
   }
-  const series: LineSeries[] = [...groups.entries()].map(([label, byX]) => ({
+
+  const series = [...groups.entries()].map(([label, byX]) => ({
     label,
-    data: xOrder.map((x) => byX.get(x) ?? 0),
+    data: labels.map((x) => byX.get(x) ?? 0),
   }));
-  return { series, xLabels: xOrder };
+
+  return { series, labels };
 }
 
-export const Component: BlockComponent<LineProps, SeriesData> = ({ props, data }) => {
-  // `resolveAccentForStroke()` devolve { className } (Tailwind stroke-…) ou
-  // { style: { stroke } } (CSS). VENCE a classe `className` da série quando
-  // `style` está presente (atributos de apresentação SVG).
-  const resolvedAccent = resolveAccentForStroke(props.accent);
-  const accentClassName: string | undefined =
-    resolvedAccent.kind === 'class' ? resolvedAccent.className : undefined;
-  const accentStyle: CSSProperties | undefined =
-    resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
+export const Component: BlockComponent<LineProps, SeriesData> = ({
+  props,
+  data,
+  state,
+  error,
+}) => {
+  const { series, labels } = toLineSeries(data ?? []);
+  const formatValue = props.valueFormatter ?? formatBRL;
 
-  // valueFormatter flexível: usa a prop se passada, senão default BRL.
-  const valueFormatter = props.valueFormatter ?? formatBRL;
-
-  // Modo de aplicação do accent (ENTREGA 1 — espelha o `h_bar_chart`):
-  //  - palette='single' → TODAS as linhas com o accent (style se cor CSS
-  //    custom, className se enum/classe DS). 1 cor só.
-  //  - palette='multi' (default) → cada linha cicla `paletteStrokeClass(i)`
-  //    (chart-1..5); o accent custom é IGNORADO (a paleta cíclica vence).
-  //    Antes, o accent custom quebrava o ciclo (só a 1ª linha colorida).
-  //  - palette='none' → sem distinção de cor (deixa o default
-  //    `stroke-primary` do UI base — nenhuma className/style por série).
-  const palette = props.palette ?? 'multi';
-
-  const { series, xLabels } = toLineSeries(data ?? []);
-
-  const finalSeries: LineSeries[] = series.map((s, i) => {
-    if (palette === 'multi') {
-      return { ...s, className: paletteStrokeClass(i), style: undefined };
-    }
-    if (palette === 'single') {
-      return accentStyle
-        ? { ...s, style: accentStyle, className: undefined }
-        : { ...s, className: accentClassName, style: undefined };
-    }
-    // palette === 'none'
-    return { ...s, className: undefined, style: undefined };
-  });
+  // `single` é o único modo que fixa cor; nos demais a paleta do DS cicla.
+  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  const colored = accent ? series.map((item) => ({ ...item, color: accent })) : series;
 
   return (
-    <LineChart
-      series={finalSeries}
-      xLabels={xLabels}
-      smooth={props.smooth === true}
-      showArea={props.area !== false}
-      yValueFormatter={(v) => formatCompactNumberBR(v)}
-      valueFormatter={valueFormatter}
-    />
+    <>
+      <LineChart
+        series={colored}
+        labels={labels}
+        isSmooth={props.smooth === true}
+        showArea={props.area !== false}
+        showLegend={series.length > 1}
+        valueFormatter={formatValue}
+        axisFormatter={formatCompactNumberBR}
+        isLoading={state === 'loading' || state === 'skeleton'}
+        emptyMessage={
+          state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
+        }
+        label={manifest.name}
+      />
+      <ChartDataTable
+        caption={`${manifest.name}: valores por período`}
+        columns={['Período', ...series.map((item) => item.label)]}
+        rows={labels.map((label, index) => [
+          label,
+          ...series.map((item) => formatValue(item.data[index] ?? 0)),
+        ])}
+      />
+    </>
   );
 };
 
-/**
- * Insights de rodapé (canônico — Turno 4): retorna 1 ou 2 frases curtas:
- *  - SEMPRE a 1ª: "Pico: {x} ({y em BRL compacto})" — ponto de maior valor.
- *  - OPCIONAL 2ª: "Vale: {x} ({y em BRL compacto})" — só se houver +1 ponto
- *    E o menor valor for > 0.
- * Retorno `string[]`; o BlockRenderer normaliza p/ o array
- * `{ enabled: true, text }[]` que o ChartWidget consome. PT-BR via
- * `formatCompactBRL` (mesmo formatter dos outros blocos).
- */
+/** Insights de rodapé: pico e vale da série. */
 function deriveTakeaway(data: SeriesData): string[] | undefined {
   const points = (data ?? []) as SeriesPoint[];
   if (points.length === 0) return undefined;
@@ -157,14 +113,10 @@ function deriveTakeaway(data: SeriesData): string[] | undefined {
   const top = points.reduce((best, p) => ((p.y ?? 0) > (best.y ?? 0) ? p : best));
   if ((top.y ?? 0) <= 0) return undefined;
 
-  const insights: string[] = [
-    `Pico: ${String(top.x)} (${formatCompactNumberBR(top.y ?? 0)})`,
-  ];
+  const insights = [`Pico: ${String(top.x)} (${formatCompactNumberBR(top.y ?? 0)})`];
 
   if (points.length > 1) {
-    const bottom = points.reduce((best, p) =>
-      (p.y ?? 0) < (best.y ?? 0) ? p : best,
-    );
+    const bottom = points.reduce((best, p) => ((p.y ?? 0) < (best.y ?? 0) ? p : best));
     if ((bottom.y ?? 0) > 0 && bottom !== top) {
       insights.push(
         `Vale: ${String(bottom.x)} (${formatCompactNumberBR(bottom.y ?? 0)})`,

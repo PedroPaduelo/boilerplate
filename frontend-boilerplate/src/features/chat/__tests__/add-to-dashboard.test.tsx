@@ -1,41 +1,53 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { BlockDataResult } from '@dashboards/contracts';
+import { renderWithProviders } from '@/test/render';
 import { useAuthStore } from '@/features/auth/store';
 import type { ChatChartPayload } from '../transport';
 
 /* Mocks das listagens (sem rede). */
+const { dashboardsState, connectionsState } = vi.hoisted(() => ({
+  dashboardsState: {
+    value: {
+      data: {
+        dashboards: [
+          {
+            id: 'dash1',
+            title: 'Painel de Demonstração',
+            ownerId: 'me',
+            status: 'DRAFT',
+            visibility: 'ORG',
+            departmentId: null,
+          },
+        ],
+      },
+      isLoading: false,
+    } as { data?: unknown; isLoading: boolean },
+  },
+  connectionsState: {
+    value: {
+      data: { connections: [{ id: 'conn1', name: 'Postgres Prefeitura' }] },
+      isLoading: false,
+    } as { data?: unknown; isLoading: boolean },
+  },
+}));
+
 vi.mock('@/features/dashboards/hooks', () => ({
-  useDashboards: () => ({
-    data: {
-      dashboards: [
-        {
-          id: 'dash1',
-          title: 'Painel de Demonstração',
-          ownerId: 'me',
-          status: 'DRAFT',
-          visibility: 'ORG',
-          departmentId: null,
-        },
-      ],
-    },
-    isLoading: false,
-  }),
+  useDashboards: () => dashboardsState.value,
 }));
 vi.mock('@/features/connections/hooks', () => ({
-  useConnections: () => ({
-    data: { connections: [{ id: 'conn1', name: 'Postgres Prefeitura' }] },
-    isLoading: false,
-  }),
+  useConnections: () => connectionsState.value,
 }));
 
 /* Mocks da API REAL usada pela mutation. */
-const createChart = vi.fn<(input: unknown) => Promise<{ id: string }>>(
-  async () => ({ id: 'chart_new' }),
-);
+const createChart = vi.fn<(input: unknown) => Promise<{ id: string }>>(async () => ({
+  id: 'chart_new',
+}));
 const addChart = vi.fn<(id: string, input: unknown) => Promise<{ id: string }>>(
-  async () => ({ id: 'dash1' }),
+  async () => ({
+    id: 'dash1',
+  }),
 );
 vi.mock('@/features/charts/api', () => ({
   chartsApi: { create: (input: unknown) => createChart(input) },
@@ -52,18 +64,22 @@ const chart: ChatChartPayload = {
   title: 'Arrecadação por mês',
   catalogType: 'bar_chart',
   props: { orientation: 'vertical' },
-  result: { blockId: 'mock_bar', state: 'success', shape: 'series', data: [] } as BlockDataResult,
-  dataBinding: { connectionId: '__mock__', query: 'SELECT mes, valor FROM x', ttlSeconds: 3600 },
+  result: {
+    blockId: 'mock_bar',
+    state: 'success',
+    shape: 'series',
+    data: [],
+  } as BlockDataResult,
+  dataBinding: {
+    connectionId: '__mock__',
+    query: 'SELECT mes, valor FROM x',
+    ttlSeconds: 3600,
+  },
 };
 
 function renderDialog() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AddToDashboardDialog chart={chart} open onOpenChange={() => {}} />
-    </QueryClientProvider>,
+  return renderWithProviders(
+    <AddToDashboardDialog chart={chart} isOpen onOpenChange={() => {}} />,
   );
 }
 
@@ -71,6 +87,25 @@ describe('AddToDashboardDialog (usa a API REAL)', () => {
   beforeEach(() => {
     createChart.mockClear();
     addChart.mockClear();
+    dashboardsState.value = {
+      data: {
+        dashboards: [
+          {
+            id: 'dash1',
+            title: 'Painel de Demonstração',
+            ownerId: 'me',
+            status: 'DRAFT',
+            visibility: 'ORG',
+            departmentId: null,
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    connectionsState.value = {
+      data: { connections: [{ id: 'conn1', name: 'Postgres Prefeitura' }] },
+      isLoading: false,
+    };
     useAuthStore.setState({
       user: {
         id: 'me',
@@ -88,10 +123,11 @@ describe('AddToDashboardDialog (usa a API REAL)', () => {
   });
 
   it('cria o Chart (POST /charts) e adiciona ao dashboard (POST /dashboards/:id/blocks)', async () => {
+    const user = userEvent.setup();
     renderDialog();
 
-    // defaults efetivos já selecionam dash1 + conn1 → basta confirmar.
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
+    // Defaults efetivos já selecionam dash1 + conn1 → basta confirmar.
+    await user.click(screen.getByRole('button', { name: 'Adicionar' }));
 
     await waitFor(() => expect(createChart).toHaveBeenCalledTimes(1));
 
@@ -110,5 +146,30 @@ describe('AddToDashboardDialog (usa a API REAL)', () => {
     // 2) adiciona ao dashboard com o chartId criado (API CORRETA + payload certo)
     await waitFor(() => expect(addChart).toHaveBeenCalledTimes(1));
     expect(addChart).toHaveBeenCalledWith('dash1', { chartId: 'chart_new' });
+  });
+
+  it('sem dashboard editável, explica o bloqueio e desabilita a ação', () => {
+    dashboardsState.value = { data: { dashboards: [] }, isLoading: false };
+    renderDialog();
+
+    expect(screen.getByText('Nenhum dashboard editável')).toBeInTheDocument();
+    // O botão fica focável com `aria-disabled` para que o tooltip com o motivo
+    // continue alcançável por teclado.
+    expect(screen.getByRole('button', { name: 'Adicionar' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
+  it('enquanto as listagens carregam, mostra esqueleto no lugar dos campos', () => {
+    dashboardsState.value = { data: undefined, isLoading: true };
+    connectionsState.value = { data: undefined, isLoading: true };
+    renderDialog();
+
+    expect(screen.queryByRole('button', { name: /Dashboard/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adicionar' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 });

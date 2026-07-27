@@ -1,9 +1,10 @@
 /**
- * Manifesto do bloco `bar_list` (shape 'categorical') — ranking "Top N". Usa o
- * Vitrine `BarListTremor`. Cada categoria vira uma linha com barra proporcional.
+ * Manifesto do bloco `bar_list` (shape 'categorical') — ranking "Top N". Cada
+ * categoria vira uma linha com barra proporcional ao valor.
  *
- * Props de COR: `accent` aceita enum DS + classe Tailwind + cor CSS (resolvido
- * em runtime por `resolveAccent` no component.tsx).
+ * Nomes e tipos das props são CONTRATO com o backend/agente e seguem iguais. A
+ * prop de cor (`accent`) é resolvida pelo componente para um token de dado do
+ * design system.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
@@ -13,7 +14,7 @@ export const manifest = {
   kind: 'chart',
   name: 'Lista de Barras (ranking)',
   description: 'Ranking de categorias (Top N) — barra proporcional ao valor, ordenada.',
-  source: 'vitrine:bar-list-tremor',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -23,31 +24,31 @@ export const manifest = {
         type: 'string',
         enum: ['ascending', 'descending', 'none'],
         default: 'descending',
-        description: 'Ordem de exibição dos itens: "descending" (default, maior primeiro), "ascending" (menor primeiro) ou "none" (preserva a ordem do dataset).',
+        description:
+          'Ordem de exibição dos itens: "descending" (default, maior primeiro), "ascending" (menor primeiro) ou "none" (preserva a ordem do dataset).',
       },
-      // Modo de paleta (Turno 6 — multi IMPLEMENTADO via BarListTremorItem.barClassName).
+      // Modo de paleta.
       palette: {
         type: 'string',
         enum: ['single', 'multi', 'none'],
         default: 'single',
-        description: 'Modo de paleta: "single" (default) = TODAS as barras com a mesma cor (accent); "multi" = cicla chart-1..5 por item (helper paletteClass(i) via BarListTremorItem.barClassName); "none" = sem distinção (usa o default do UI base).',
+        description:
+          'Modo de paleta: "single" (default) = todas as barras na cor de `accent`; "multi" = cicla a paleta categórica do design system, uma cor por item; "none" = deixa a cor padrão da paleta.',
       },
-      // COR — string livre; resolveAccent() decide se vira classe Tailwind
-      // (chart-N, primary, bg-purple-500) ou style.background (#hex, rgb(),
-      // gradient, oklch(), var(--chart-1)).
+      // COR — enum do catálogo; o componente resolve para token de dado do DS.
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
         default: 'chart-1',
-        description: 'Cor base da barra (só usado em palette="single"). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)).',
+        description:
+          'Cor das barras em palette="single". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
       },
-      // COR DO TEXTO dentro da barra (ENTREGA 2). Opcional — sem valor, a cor
-      // é calculada AUTOMATICAMENTE por contraste (luminância WCAG da cor da
-      // barra → texto escuro em barra clara / claro em barra escura). String
-      // livre só para FORÇAR a cor.
+      // Mantida por compatibilidade de contrato — sem efeito desde que o
+      // rótulo passou a ficar FORA da barra.
       textColor: {
         type: 'string',
-        description: 'Cor do texto que fica DENTRO da barra. Por padrão (vazio) é AUTOMÁTICA por contraste (luminância WCAG da cor da barra → preto em barra clara, branco em barra escura) — sempre legível. Informe só para forçar: cor CSS (#000, rgb(255,255,255), white) ou classe Tailwind (text-white, text-black).',
+        description:
+          'OBSOLETA (mantida por compatibilidade): não tem efeito. O rótulo agora fica FORA da barra e usa as cores de texto do design system, que já garantem contraste sobre qualquer superfície — não há mais texto sobre a cor da barra para corrigir.',
       },
     },
   },

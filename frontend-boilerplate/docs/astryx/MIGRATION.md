@@ -1,18 +1,25 @@
 # Migração da UI → Astryx (XDS)
 
-Contrato único da migração. **Leia antes de tocar em qualquer tela.**
+Contrato único da migração — agora **CONCLUÍDA**. Vale como regra permanente de
+UI: o que está aqui é o que continua valendo para toda tela nova.
 Referência de API: [`./api-reference.md`](./api-reference.md) (74 componentes, gerado da CLI).
+
+Verificação automática: `node scripts/audit-migration.mjs` (0 bloqueantes é a
+condição de merge).
 
 ---
 
-## 1. Objetivo
+## 1. Objetivo — status
 
 Substituir 100% da UI legada (shadcn/Radix/Tremor em `src/components/ui`) por
-componentes do Astryx. Ao final **não pode restar nenhum import de
-`@/components/ui`** — o diretório inteiro é deletado no cutover.
+componentes do Astryx.
 
-Isto é um **redesign**, não um reskin: as features continuam idênticas, a
-apresentação passa a ser a do design system.
+✅ **Cutover feito.** `src/components/` e `src/app/legacy-theme.css` foram
+DELETADOS, e o bridge `@astryxdesign/core/tailwind-theme.css` está ativo. Não
+existe mais nenhum import de `@/components/ui` — e nenhum pode voltar.
+
+Foi um **redesign**, não um reskin: as features continuam idênticas, a
+apresentação passou a ser a do design system.
 
 ---
 
@@ -23,8 +30,29 @@ apresentação passa a ser a do design system.
 2. **Zero valor mágico.** Nenhum `#hex`, `rgb()`, `16px`, `text-gray-500`.
    Só tokens: `var(--color-*)`, `var(--spacing-*)`, `var(--radius-*)`.
    Espaçamento vem das props (`gap={3}`, `padding={4}`), não de `margin`.
-3. **Sem `style={{}}`** em wrappers. Se precisar de layout, use props do
-   componente → `xstyle` (StyleX) → utilities Tailwind com token.
+3. **Sem `style={{}}` para aparência.** Layout e estilo saem, nesta ordem, de:
+   props do componente → utilities Tailwind com token → `style` (só nos dois
+   casos abaixo).
+
+   ⚠️ **`xstyle` não é opção neste app.** O `xstyle` exige `stylex.create()`,
+   que precisa do compilador StyleX no build — e o Vite daqui **não** tem o
+   plugin (só o `@tailwindcss/vite`). A própria doc do DS diz: _"For non-StyleX
+   styling (Tailwind, external CSS), use className instead"_. Escrever
+   `stylex.create()` no app entrega objeto não-compilado e o estilo simplesmente
+   não aplica.
+
+   `style={{}}` é aceito **apenas** nestes dois casos, cada um com comentário de
+   uma linha justificando:
+   - **valor computado em runtime** — geometria/animação que só existe com o
+     dado na mão (`width: ${pct}%`, posição de um beam). É o que o próprio DS
+     faz no `ProgressBar` (`style="width: 40%"`);
+   - **pintura de SVG com token** — `stroke`/`fill`/`stopColor` precisam vir por
+     CSS (`style={{stroke: 'var(--color-border)'}}`), porque atributo de
+     apresentação do SVG **não resolve `var()`**.
+
+   Fora disso — `position: relative`, `height: 100%`, cor, espaçamento,
+   tipografia — é componente do DS ou utility Tailwind com token.
+
 4. **Nunca invente props.** Consulte `api-reference.md` ou
    `npx astryx component <Nome> --dense` antes de usar.
 5. **Imports por subpath:** `import {Button} from '@astryxdesign/core/Button'`.

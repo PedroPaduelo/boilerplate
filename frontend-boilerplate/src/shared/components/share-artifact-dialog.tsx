@@ -1,25 +1,17 @@
 import { useState } from 'react';
-import { Check, Copy, Link2 } from 'lucide-react';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui';
-import {
-  useCreateShare,
-  type ShareTargetType,
-} from '@/shared/hooks/use-share';
+import { Link2 } from 'lucide-react';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
+import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
+import { HStack } from '@astryxdesign/core/HStack';
+import { Icon } from '@astryxdesign/core/Icon';
+import { Selector } from '@astryxdesign/core/Selector';
+import type { SelectorOptionData } from '@astryxdesign/core/Selector';
+import { Text } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/VStack';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
+import { useCreateShare, type ShareTargetType } from '@/shared/hooks/use-share';
 
 interface ShareArtifactDialogProps {
   open: boolean;
@@ -30,16 +22,23 @@ interface ShareArtifactDialogProps {
   targetTitle?: string;
 }
 
-const DURATIONS: { value: string; label: string }[] = [
+const DURATIONS: SelectorOptionData[] = [
   { value: String(60 * 60), label: '1 hora' },
   { value: String(60 * 60 * 24), label: '1 dia' },
   { value: String(60 * 60 * 24 * 7), label: '7 dias' },
   { value: String(60 * 60 * 24 * 30), label: '30 dias' },
 ];
 
+const DEFAULT_DURATION = DURATIONS[2].value;
+
 /**
- * Diálogo genérico de compartilhamento público (dashboards e gráficos). Escolhe
- * a duração, cria o link via `POST /share` e exibe a URL pública para copiar.
+ * Diálogo de compartilhamento público (dashboards e gráficos): escolhe a
+ * validade, cria o link via `POST /share` e mostra a URL para copiar.
+ *
+ * O link aparece em `CodeBlock` e não em um input "somente leitura": é um
+ * valor para ler e copiar, não para editar — um campo editável que não aceita
+ * edição é uma promessa quebrada. O reset entre alvos vem do `key` no
+ * componente pai (remonta limpo), evitando `setState` dentro de efeito.
  */
 export function ShareArtifactDialog({
   open,
@@ -48,27 +47,17 @@ export function ShareArtifactDialog({
   targetId,
   targetTitle,
 }: ShareArtifactDialogProps) {
+  const toast = useAppToast();
   const createShare = useCreateShare();
-  const [duration, setDuration] = useState(DURATIONS[2].value);
+  const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  // O reset entre alvos é feito pelo `key` no componente pai (remonta limpo),
-  // evitando setState dentro de useEffect (regra react-hooks/set-state-in-effect).
 
   const handleCreate = () => {
     if (!targetId) return;
     createShare.mutate(
+      { targetType, targetId, durationSeconds: Number(duration) },
       {
-        targetType,
-        targetId,
-        durationSeconds: Number(duration),
-      },
-      {
-        onSuccess: (link) => {
-          const absolute = `${window.location.origin}${link.url}`;
-          setShareUrl(absolute);
-        },
+        onSuccess: (link) => setShareUrl(`${window.location.origin}${link.url}`),
       },
     );
   };
@@ -77,86 +66,82 @@ export function ShareArtifactDialog({
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      toast.success('Link copiado');
     } catch {
-      setCopied(false);
+      toast.error('Não foi possível copiar o link');
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Link2 className="size-4" />
-            Compartilhar link público
-          </DialogTitle>
-          <DialogDescription>
-            Gere um link de leitura para{' '}
-            <span className="font-medium text-foreground">
-              {targetTitle ?? 'este artefato'}
-            </span>
-            . A contagem do tempo de expiração começa na primeira abertura.
-          </DialogDescription>
-        </DialogHeader>
+    <Dialog isOpen={open} onOpenChange={onOpenChange} width={480}>
+      <DialogHeader
+        title="Compartilhar link público"
+        subtitle={`Link de leitura para ${targetTitle ?? 'este artefato'}. A contagem do tempo de expiração começa na primeira abertura.`}
+        startContent={<Icon icon={Link2} />}
+        onOpenChange={onOpenChange}
+      />
+
+      <VStack gap={4}>
+        {createShare.isError ? (
+          <Banner
+            status="error"
+            title="Não foi possível gerar o link"
+            description="Verifique sua conexão e tente de novo."
+          />
+        ) : null}
 
         {shareUrl ? (
-          <div className="space-y-2">
-            <Label htmlFor="share-url">Link público</Label>
-            <div className="flex gap-2">
-              <Input id="share-url" readOnly value={shareUrl} />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={handleCopy}
-                aria-label="Copiar link"
-              >
-                {copied ? (
-                  <Check className="text-chart-2" />
-                ) : (
-                  <Copy />
-                )}
-              </Button>
-            </div>
-          </div>
+          <VStack gap={2}>
+            <Text type="label">Link público</Text>
+            <CodeBlock
+              code={shareUrl}
+              language="plaintext"
+              container="section"
+              width="100%"
+              isWrapped
+              hasCopyButton={false}
+              data-testid="share-url"
+            />
+          </VStack>
         ) : (
-          <div className="space-y-2">
-            <Label htmlFor="share-duration">Validade do link</Label>
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger id="share-duration" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATIONS.map((d) => (
-                  <SelectItem key={d.value} value={d.value}>
-                    {d.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Selector
+            label="Validade do link"
+            options={DURATIONS}
+            value={duration}
+            onChange={setDuration}
+            width="100%"
+          />
         )}
 
-        <DialogFooter>
+        <HStack gap={2} hAlign="end">
           {shareUrl ? (
-            <Button onClick={() => onOpenChange(false)}>Concluir</Button>
+            <>
+              <Button label="Copiar link" variant="secondary" clickAction={handleCopy} />
+              <Button
+                label="Concluir"
+                variant="primary"
+                onClick={() => onOpenChange(false)}
+              />
+            </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
               <Button
+                label="Cancelar"
+                variant="secondary"
+                onClick={() => onOpenChange(false)}
+              />
+              <Button
+                label={createShare.isPending ? 'Gerando...' : 'Gerar link'}
+                variant="primary"
+                isLoading={createShare.isPending}
+                isDisabled={!targetId}
+                tooltip={targetId ? undefined : 'Selecione um artefato para compartilhar'}
                 onClick={handleCreate}
-                disabled={createShare.isPending || !targetId}
-              >
-                {createShare.isPending ? 'Gerando...' : 'Gerar link'}
-              </Button>
+              />
             </>
           )}
-        </DialogFooter>
-      </DialogContent>
+        </HStack>
+      </VStack>
     </Dialog>
   );
 }

@@ -2,42 +2,39 @@
  * Tela de DETALHE/EDIÇÃO de um gráfico — `/charts/:id`.
  *
  * É a MESMA tela do playground do catálogo (`BlockPlayground`), porém:
- *   - semeada com os dados do gráfico salvo (catalogType + draftProps + título
- *     + query);
- *   - com os DADOS REAIS vindos da execução da query (`POST /charts/:id/data`),
- *     em vez de fixtures;
- *   - com toolbar de ações (Salvar / Publicar) — a edição é persistida no draft.
+ *   - semeada com o gráfico salvo (catalogType + draftProps + título + query);
+ *   - com os DADOS REAIS da execução da query (`POST /charts/:id/data`) em vez
+ *     de fixtures;
+ *   - com barra de ações (Salvar / Publicar) — a edição vai para o draft.
  *
- * Carrega o chart (`GET /charts/:id`, modo draft) + o resultado da query
- * (`useChartData`). O `BlockPlayground` reporta o estado editável via `onChange`;
- * "Salvar" envia `title`/`draftProps`/`draftDataBinding(query)` no PATCH.
+ * O `BlockPlayground` reporta o estado editável por `onChange`; "Salvar" envia
+ * `title`/`draftProps`/`draftDataBinding(query)` no PATCH.
  */
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Save, Send } from 'lucide-react';
-
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useAuthStore } from '@/features/auth/store';
+import { useParams } from 'react-router-dom';
+import { Unplug } from 'lucide-react';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Icon } from '@astryxdesign/core/Icon';
+import { VStack } from '@astryxdesign/core/Layout';
+import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { hasPermission, type Role } from '@/shared/lib/rbac';
+import { useAuthStore } from '@/features/auth/store';
 import { getCatalogEntryByType } from '@/features/catalog/lib/catalog-entries';
-import {
-  BlockPlayground,
-  type PlaygroundSnapshot,
-} from '@/features/catalog/components/block-playground';
-
+import { BlockPlayground } from '@/features/catalog/components/playground';
+import type { PlaygroundSnapshot } from '@/features/catalog/components/playground';
 import { useChart, useChartData, usePublishChart, useUpdateChart } from '../hooks';
+import { ChartDetailToolbar } from './chart-detail-toolbar';
 
 export function ChartDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role) as Role | undefined;
   const currentUserId = useAuthStore((s) => s.user?.id);
 
   const chartQuery = useChart(id, 'draft');
-  const chart = chartQuery.data;
   const dataQuery = useChartData(id, 'draft');
+  const chart = chartQuery.data;
 
   const update = useUpdateChart();
   const publish = usePublishChart();
@@ -77,97 +74,74 @@ export function ChartDetailPage() {
     [dataQuery.data, dataQuery.isFetching, refetchData],
   );
 
-  const isOwnerOrAdmin =
-    !!chart && (role === 'ADMIN' || chart.ownerId === currentUserId);
+  const isOwnerOrAdmin = !!chart && (role === 'ADMIN' || chart.ownerId === currentUserId);
   const canEdit = isOwnerOrAdmin && hasPermission(role, 'artifacts:manage');
   const canPublish = isOwnerOrAdmin && hasPermission(role, 'artifacts:publish');
 
+  const saveBlockedReason = !snapshot
+    ? 'Nada para salvar ainda.'
+    : snapshot.title.trim().length === 0
+      ? 'Informe um título para salvar.'
+      : undefined;
+
   const handleSave = () => {
-    if (!chart || !snapshot) return;
+    if (!chart || !snapshot || saveBlockedReason) return;
     const query = snapshot.query.trim();
-    const draftDataBinding = {
-      ...chart.draftDataBinding,
-      ...(query ? { query } : {}),
-    };
     update.mutate({
       id: chart.id,
       input: {
-        title: snapshot.title.trim() || chart.title,
+        title: snapshot.title.trim(),
         draftProps: snapshot.props,
-        draftDataBinding,
+        draftDataBinding: {
+          ...chart.draftDataBinding,
+          ...(query ? { query } : {}),
+        },
       },
     });
   };
 
-  // ----- estados de carregamento/erro -----
   if (chartQuery.isLoading && !chart) {
-    return <ChartDetailSkeleton onBack={() => navigate('/charts')} />;
+    return (
+      <VStack gap={4} aria-busy="true" aria-label="Carregando gráfico">
+        <Skeleton height={40} radius={2} />
+        <Skeleton height={420} radius={3} index={1} />
+      </VStack>
+    );
   }
 
   if (chartQuery.isError || !chart) {
     return (
-      <div className="flex flex-col gap-4">
-        <BackButton onClick={() => navigate('/charts')} />
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive"
-        >
-          Não foi possível carregar este gráfico. Ele pode não existir ou estar
-          inacessível para o seu perfil.
-        </div>
-      </div>
+      <Banner
+        status="error"
+        title="Não foi possível carregar este gráfico"
+        description="Ele pode não existir ou estar inacessível para o seu perfil."
+        endContent={
+          <Button
+            label="Tentar de novo"
+            size="sm"
+            isLoading={chartQuery.isFetching}
+            onClick={() => void chartQuery.refetch()}
+          />
+        }
+      />
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <BackButton onClick={() => navigate('/charts')} />
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
-              {chart.title}
-            </h1>
-            <Badge variant={chart.status === 'PUBLISHED' ? 'default' : 'secondary'}>
-              {chart.status === 'PUBLISHED' ? 'Publicado' : 'Rascunho'}
-            </Badge>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void dataQuery.refetch()}
-            disabled={dataQuery.isFetching}
-            aria-label="Recarregar dados da query"
-          >
-            <RefreshCw className={dataQuery.isFetching ? 'animate-spin' : undefined} />
-            Atualizar dados
-          </Button>
-          {canEdit ? (
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={update.isPending || !snapshot}
-            >
-              <Save className={update.isPending ? 'animate-pulse' : undefined} />
-              Salvar
-            </Button>
-          ) : null}
-          {canPublish ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => publish.mutate({ id: chart.id, publish: true })}
-              disabled={publish.isPending}
-            >
-              <Send />
-              {chart.status === 'PUBLISHED' ? 'Republicar' : 'Publicar'}
-            </Button>
-          ) : null}
-        </div>
-      </div>
+    <VStack gap={4}>
+      <ChartDetailToolbar
+        title={chart.title}
+        status={chart.status}
+        canEdit={canEdit}
+        canPublish={canPublish}
+        isSaving={update.isPending}
+        isPublishing={publish.isPending}
+        isFetchingData={dataQuery.isFetching}
+        saveBlockedReason={canEdit ? saveBlockedReason : undefined}
+        onSave={handleSave}
+        onPublish={() => publish.mutate({ id: chart.id, publish: true })}
+        onRefreshData={() => void dataQuery.refetch()}
+      />
 
       {entry ? (
         <BlockPlayground
@@ -179,32 +153,13 @@ export function ChartDetailPage() {
           onChange={handleChange}
         />
       ) : (
-        <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-          O tipo de bloco <code className="mx-1">{chart.catalogType}</code> não está
-          disponível no render-engine atual.
-        </div>
+        <EmptyState
+          icon={<Icon icon={Unplug} size="lg" />}
+          title="Tipo de bloco indisponível"
+          description={`O tipo “${chart.catalogType}” não está registrado no render-engine atual, então não dá para editar este gráfico aqui.`}
+          actions={<Button label="Ver catálogo" href="/catalog" variant="primary" />}
+        />
       )}
-    </div>
-  );
-}
-
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button variant="ghost" size="sm" onClick={onClick} aria-label="Voltar para a lista">
-      <ArrowLeft />
-      Gráficos
-    </Button>
-  );
-}
-
-function ChartDetailSkeleton({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <BackButton onClick={onBack} />
-        <Skeleton className="h-9 w-40" />
-      </div>
-      <Skeleton className="h-[calc(100dvh-11rem)] w-full rounded-xl" />
-    </div>
+    </VStack>
   );
 }

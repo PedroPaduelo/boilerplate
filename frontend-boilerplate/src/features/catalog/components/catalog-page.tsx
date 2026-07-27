@@ -4,22 +4,42 @@
  * inspecionar o que existe (os mesmos blocos que o MCP oferece à IA) e o
  * potencial visual de cada um. Read-only, client-side.
  *
- * Organização: 7 categorias semânticas em ABAS (Tabs) + busca textual. A
- * taxonomia vive em `../lib/categories` (camada de UI, isolada do
- * `BlockManifest`/`kind` técnico do render-engine).
+ * Organização: 7 categorias semânticas em abas + busca textual. A taxonomia
+ * vive em `../lib/categories` (camada de UI, isolada do `BlockManifest`/`kind`
+ * técnico do render-engine).
+ *
+ * O registry é síncrono (glob do Vite): não há estado de carregamento. Os
+ * estados cobertos são registry vazio (erro de build/registro → `Banner`) e
+ * busca sem resultado (`EmptyState` com ação para limpar o filtro).
  */
 import { useMemo, useState } from 'react';
 import { Blocks, Search } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/shared/lib/utils';
+import { Badge } from '@astryxdesign/core/Badge';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Grid } from '@astryxdesign/core/Grid';
+import { Icon } from '@astryxdesign/core/Icon';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { Tab, TabList } from '@astryxdesign/core/TabList';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { Heading, Text } from '@astryxdesign/core/Text';
 import { getCatalogEntries, type CatalogEntry } from '../lib/catalog-entries';
 import { CATEGORIES, CATEGORY_LABEL, type Category } from '../lib/categories';
 import { BlockPreviewCard } from './block-preview-card';
 import { BlockDetailDialog } from './block-detail-dialog';
 
 type CategoryFilter = Category | 'all';
+
+function matchesSearch(entry: CatalogEntry, query: string): boolean {
+  if (!query) return true;
+  const { name, type, description } = entry.definition.manifest;
+  return (
+    name.toLowerCase().includes(query) ||
+    type.toLowerCase().includes(query) ||
+    (description ?? '').toLowerCase().includes(query)
+  );
+}
 
 export function CatalogPage() {
   const entries = useMemo(() => getCatalogEntries(), []);
@@ -29,13 +49,12 @@ export function CatalogPage() {
   const [detail, setDetail] = useState<CatalogEntry | null>(null);
 
   // Abas por categoria (apenas as que têm ao menos 1 bloco), com contagem.
-  const categoryFilters = useMemo(() => {
+  const tabs = useMemo(() => {
     const counts = new Map<Category, number>();
     for (const e of entries) counts.set(e.category, (counts.get(e.category) ?? 0) + 1);
-    const present = CATEGORIES.filter((c) => (counts.get(c) ?? 0) > 0);
     return [
       { id: 'all' as CategoryFilter, label: 'Todas', count: entries.length },
-      ...present.map((c) => ({
+      ...CATEGORIES.filter((c) => (counts.get(c) ?? 0) > 0).map((c) => ({
         id: c as CategoryFilter,
         label: CATEGORY_LABEL[c],
         count: counts.get(c) ?? 0,
@@ -44,93 +63,104 @@ export function CatalogPage() {
   }, [entries]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return entries.filter((e) => {
-      if (category !== 'all' && e.category !== category) return false;
-      if (!q) return true;
-      const m = e.definition.manifest;
-      return (
-        m.name.toLowerCase().includes(q) ||
-        m.type.toLowerCase().includes(q) ||
-        (m.description ?? '').toLowerCase().includes(q)
-      );
-    });
+    const query = search.trim().toLowerCase();
+    return entries.filter(
+      (e) => (category === 'all' || e.category === category) && matchesSearch(e, query),
+    );
   }, [entries, category, search]);
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Render engine
-        </p>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Catálogo de componentes
-            </h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
+    <VStack gap={6}>
+      <VStack gap={2}>
+        <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
+          <VStack gap={1}>
+            <Heading level={2}>Catálogo de componentes</Heading>
+            <Text type="supporting">
               Todos os blocos disponíveis para montar relatórios e dashboards — os mesmos
-              que o agente (MCP) usa. Cada um aparece com{' '}
-              <strong className="font-medium text-foreground">dados de exemplo</strong> para
-              você avaliar o potencial.
-            </p>
-          </div>
-          <Badge variant="secondary" className="h-7 gap-1.5 px-3 text-sm">
-            <Blocks className="size-4" />
-            {entries.length} componentes
-          </Badge>
-        </div>
-      </header>
-
-      <div className="space-y-3">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar componente…"
-            className="pl-8"
+              que o agente (MCP) usa. Cada um aparece com dados de exemplo.
+            </Text>
+          </VStack>
+          <Badge
+            variant="neutral"
+            icon={<Icon icon={Blocks} size="sm" />}
+            label={`${entries.length} componentes`}
           />
-        </div>
-        <Tabs
-          value={category}
-          onValueChange={(v) => setCategory(v as CategoryFilter)}
-          className="w-full"
-        >
-          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
-            {categoryFilters.map((f) => (
-              <TabsTrigger key={f.id} value={f.id} className="flex-none">
-                {f.label}
-                <span
-                  className={cn(
-                    'tabular-nums',
-                    category === f.id ? 'opacity-70' : 'text-muted-foreground',
-                  )}
-                >
-                  {f.count}
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+        </HStack>
+      </VStack>
 
-      {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((e) => (
-            <BlockPreviewCard key={e.type} entry={e} onDetails={setDetail} />
-          ))}
-        </div>
+      {entries.length === 0 ? (
+        <Banner
+          status="error"
+          title="Nenhum bloco registrado"
+          description="O registry do render-engine voltou vazio. Recarregue a página; se persistir, o build do catálogo falhou."
+          endContent={
+            <Button
+              label="Recarregar"
+              size="sm"
+              onClick={() => window.location.reload()}
+            />
+          }
+        />
       ) : (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border py-16 text-center">
-          <Blocks className="size-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Nenhum componente encontrado para “{search}”.
-          </p>
-        </div>
+        <>
+          <VStack gap={3}>
+            <TextInput
+              label="Buscar componente"
+              isLabelHidden
+              value={search}
+              placeholder="Buscar componente…"
+              startIcon={Search}
+              hasClear
+              width={320}
+              onChange={setSearch}
+            />
+            <TabList
+              value={category}
+              hasDivider
+              onChange={(value) => setCategory(value as CategoryFilter)}
+            >
+              {tabs.map((t) => (
+                <Tab
+                  key={t.id}
+                  value={t.id}
+                  label={t.label}
+                  endContent={<Badge variant="neutral" label={t.count} />}
+                />
+              ))}
+            </TabList>
+          </VStack>
+
+          {filtered.length > 0 ? (
+            <Grid columns={{ minWidth: 340 }} gap={4}>
+              {filtered.map((entry) => (
+                <BlockPreviewCard key={entry.type} entry={entry} onDetails={setDetail} />
+              ))}
+            </Grid>
+          ) : (
+            <EmptyState
+              icon={<Icon icon={Search} size="lg" />}
+              title="Nenhum componente encontrado"
+              description={
+                search.trim()
+                  ? `Nada casa com “${search.trim()}” nesta categoria.`
+                  : 'Nenhum bloco nesta categoria.'
+              }
+              actions={
+                <Button
+                  label="Limpar filtros"
+                  variant="primary"
+                  onClick={() => {
+                    setSearch('');
+                    setCategory('all');
+                  }}
+                />
+              }
+            />
+          )}
+        </>
       )}
 
-      <BlockDetailDialog entry={detail} onOpenChange={(open) => !open && setDetail(null)} />
-    </div>
+      <BlockDetailDialog entry={detail} onOpenChange={() => setDetail(null)} />
+    </VStack>
   );
 }

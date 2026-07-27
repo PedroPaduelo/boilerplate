@@ -2,12 +2,12 @@ import type {
   DatabaseSchema,
   ForeignKeyDef,
   IndexDef,
-} from '@/components/ui/db-schema-explorer-types';
+} from '../components/db-schema-explorer-types';
 import type { Connection, ConnectionSchema, SchemaTable } from '../types';
 
 const BYTES_PER_MB = 1024 * 1024;
 
-/** Métodos de índice do Postgres → união aceita pelo IndexDef da Vitrine. */
+/** Métodos de índice do Postgres → união aceita pelo IndexDef da UI. */
 function mapIndexType(method: string): IndexDef['type'] {
   switch (method) {
     case 'btree':
@@ -23,7 +23,7 @@ function mapIndexType(method: string): IndexDef['type'] {
   }
 }
 
-/** Ação de FK (texto livre do backend) → união aceita pelo ForeignKeyDef. */
+/** Ação de FK (texto livre do backend) → união aceita pelo ForeignKeyDef da UI. */
 function mapFkAction(action?: string | null): ForeignKeyDef['onDelete'] {
   switch (action) {
     case 'CASCADE':
@@ -89,7 +89,7 @@ function mapTable(table: SchemaTable) {
 
 /**
  * Mapeia a resposta de introspecção RICA do backend (`ConnectionSchema`) para o
- * shape `DatabaseSchema` que o componente Vitrine `DbSchemaExplorer` consome
+ * shape `DatabaseSchema` que o `DbSchemaExplorer` da feature consome
  * (banco → schemas → tabelas → colunas/PK/FK/índices). Preenche tudo que a
  * introspecção enriquecida fornece: PK, FK (com referência), índices, default,
  * comentário, estimativa de linhas, tamanho, versão e tamanho do banco.

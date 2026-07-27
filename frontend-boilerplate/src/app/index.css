@@ -30,23 +30,18 @@
 @import '@astryxdesign/theme-neutral/theme.css';
 
 /* --------------------------------------------------------------------------
-   TRANSIÇÃO — remover no cutover, junto com `legacy-theme.css`.
+   BRIDGE Tailwind ↔ Astryx — ATIVO desde o cutover.
 
-   Enquanto existir tela não migrada, o bridge do Astryx
-   (`@astryxdesign/core/tailwind-theme.css`) NÃO pode ser importado: ele
-   redefine os nomes de cor do Tailwind (primary/secondary/muted/card/border…)
-   e repintaria as telas legadas. Pior: ele não define os nomes que só existem
-   no tema legado (`--color-foreground`, `--color-muted-foreground`,
-   `--color-sidebar*`, `--color-chart-*`), então classes como
-   `text-muted-foreground` e `bg-sidebar` ficariam sem valor.
+   Traduz os tokens do Astryx para os nomes de cor/espaçamento que as utilities
+   do Tailwind consomem. É o que permite escrever `bg-[color:var(--color-…)]` e
+   utilities com token sem manter um segundo vocabulário de cor.
 
-   Ordem do cutover (quando nenhum import de `@/components/ui` restar):
-     1. deletar `src/app/legacy-theme.css` e o import abaixo;
-     2. descomentar o import do bridge;
-     3. `npx astryx doctor` + `npm run build`.
+   Durante a migração ele ficava DESLIGADO: importado junto com o tema legado,
+   redefiniria `primary`/`muted`/`card`/`border` e repintaria as telas que ainda
+   não tinham migrado. Com `src/components/ui` e `legacy-theme.css` deletados,
+   não existe mais tema concorrente — o bridge é a única fonte.
    -------------------------------------------------------------------------- */
-@import './legacy-theme.css';
-/* @import '@astryxdesign/core/tailwind-theme.css'; */
+@import '@astryxdesign/core/tailwind-theme.css';
 
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';

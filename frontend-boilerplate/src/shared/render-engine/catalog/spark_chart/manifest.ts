@@ -1,11 +1,10 @@
 /**
  * Manifesto do bloco `spark_chart` (shape 'series') — minigráfico de tendência
- * (sparkline). Usa o Vitrine `SparkChartTremor`. Consome só os valores `y`.
+ * (sparkline), sem eixos. Consome só os valores `y`.
  *
- * Props de COR: `accent` aceita enum DS + classe Tailwind + cor CSS (resolvido
- * em runtime por `resolveAccentForStroke` no component.tsx) — pinta o TRAÇO/
- * preenchimento da série, nunca o fundo. `palette: 'multi'` aplica um
- * gradiente multicolor (chart-1..5) na série.
+ * Nomes, tipos e defaults das props são CONTRATO com o backend/agente e seguem
+ * iguais. A prop de cor (`accent`) é resolvida pelo componente para um token de
+ * dado do design system e pinta a SÉRIE (traço/preenchimento), nunca o fundo.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
@@ -15,41 +14,42 @@ export const manifest = {
   kind: 'chart',
   name: 'Sparkline',
   description: 'Minigráfico de tendência (sem eixos) — ótimo ao lado de um KPI.',
-  source: 'vitrine:spark-chart-tremor',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
     properties: {
-      // Variante do spark (área, barra ou linha).
+      // Forma do minigráfico.
       type: {
         type: 'string',
         enum: ['area', 'bar', 'line'],
         default: 'area',
-        description: 'Variante do spark chart: "area" (default, com gradiente), "bar" (colunas) ou "line" (linha sem preenchimento).',
+        description:
+          'Forma do minigráfico: "area" (default, linha com preenchimento), "bar" (colunas) ou "line" (só a linha).',
       },
-      // Tipo de curva para area/line.
+      // Curva usada em area/line.
       curveType: {
         type: 'string',
         enum: ['linear', 'monotone', 'step'],
         default: 'monotone',
-        description: 'Curva usada em type="area" e type="line": "linear" (reta entre pontos), "monotone" (suavizada sem overshoot) ou "step" (degraus).',
+        description:
+          'Curva usada em type="area" e type="line": "monotone" (default) suaviza a linha; "linear" e "step" desenham segmentos retos entre os pontos.',
       },
-      // Modo de paleta (ENTREGA 3): 'multi' aplica um GRADIENTE multicolor
-      // (chart-1..5) ao longo da série; 'single'/'none' usam 1 cor (accent).
+      // Modo de paleta.
       palette: {
         type: 'string',
         enum: ['single', 'multi', 'none'],
         default: 'single',
-        description: 'Modo de paleta: "single" (default) = 1 cor (accent) na série; "multi" = GRADIENTE multicolor (chart-1..5) ao longo da série (spark é single-série, então multi vira um arco-íris contínuo, não fatias); "none" = comportamento single.',
+        description:
+          'Modo de paleta: "single" (default) e "none" usam a cor de `accent`; "multi" deixa a primeira cor da paleta do design system — num gráfico de série única a cor não carrega informação, então não há o que ciclar.',
       },
-      // COR DA SÉRIE — string livre; resolveAccentForStroke() decide se vira
-      // classe Tailwind (stroke-chart-N) ou style.stroke (#hex, rgb(),
-      // gradient). Pinta o TRAÇO/preenchimento da série, nunca o fundo.
+      // COR — enum do catálogo; o componente resolve para token de dado do DS.
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
         default: 'chart-1',
-        description: 'Cor da SÉRIE (pinta o traço/preenchimento do gráfico, NÃO o fundo). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), var(--chart-1)). Usada em palette "single"/"none"; em "multi" a paleta multicolor vence.',
+        description:
+          'Cor da SÉRIE (traço e preenchimento; nunca o fundo). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
       },
     },
   },
@@ -64,7 +64,12 @@ export const manifest = {
       { x: '2', y: 8 },
     ],
   },
-  defaultProps: { type: 'area', curveType: 'monotone', palette: 'single', accent: 'chart-1' },
+  defaultProps: {
+    type: 'area',
+    curveType: 'monotone',
+    palette: 'single',
+    accent: 'chart-1',
+  },
   maxRows: 5000,
   version: '1.0.0',
 } satisfies BlockManifest;

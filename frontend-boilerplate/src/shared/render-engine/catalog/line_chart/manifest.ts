@@ -2,8 +2,9 @@
  * Manifesto do bloco `line_chart` — série temporal (shape 'series', x temporal).
  * Alinhado a @dashboards/contracts.
  *
- * Props de COR: `accent` aceita enum DS + classe Tailwind + cor CSS (resolvido
- * em runtime por `resolveAccent`/`resolveAccentForStroke` no component.tsx).
+ * Nomes e tipos das props são CONTRATO com o backend/agente: seguem iguais. A
+ * prop de cor (`accent`) continua aceitando os valores antigos, mas o
+ * componente a resolve para um token de dado do design system.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
@@ -13,37 +14,39 @@ export const manifest = {
   kind: 'chart',
   name: 'Gráfico de Linhas',
   description: 'Série temporal: evolução de um valor ao longo do tempo.',
-  source: 'vitrine:line-chart',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
     properties: {
-      // Suaviza a curva entre pontos (Catmull-Rom → cubic Bézier via <path>).
+      // Suaviza a curva entre pontos.
       smooth: {
         type: 'boolean',
-        description: 'Se true, desenha as linhas como curvas suaves (Catmull-Rom). Se false, segmentos retos (polyline).',
+        description:
+          'Se true, desenha as linhas como curvas suaves; se false, segmentos retos entre os pontos.',
       },
-      // Preenche área abaixo de cada linha (além do traço).
+      // Preenche a área abaixo de cada linha (além do traço).
       area: {
         type: 'boolean',
         default: true,
-        description: 'Se true, preenche área abaixo de cada linha além do traço.',
+        description:
+          'Se true, preenche a área abaixo de cada linha, bem discreta, além do traço.',
       },
-      // Modo de paleta — line chart já aceita multi-série nativamente.
+      // Modo de paleta — o gráfico aceita multi-série nativamente.
       palette: {
         type: 'string',
         enum: ['single', 'multi', 'none'],
         default: 'multi',
-        description: 'Modo de paleta: "multi" (default) = cicla chart-1..5 por série; "single" = força accent em todas; "none" = sem distinção de cor.',
+        description:
+          'Modo de paleta: "multi" (default) e "none" ciclam a paleta categórica do design system, uma cor por série; "single" fixa a cor de `accent` em todas as linhas.',
       },
-      // COR — string livre; resolveAccent() decide se vira classe Tailwind
-      // (chart-N, primary, bg-purple-500) ou style.stroke (#hex, rgb(),
-      // gradient, oklch(), var(--chart-1)).
+      // COR — enum do catálogo; o componente resolve para token de dado do DS.
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
         default: 'chart-1',
-        description: 'Cor base da(s) série(s). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Aplicada como stroke via classe Tailwind ou style.stroke quando CSS custom.',
+        description:
+          'Cor base da(s) série(s), usada quando palette="single". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão.',
       },
     },
   },

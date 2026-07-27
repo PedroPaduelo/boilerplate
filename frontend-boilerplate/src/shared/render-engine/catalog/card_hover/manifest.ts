@@ -1,6 +1,10 @@
 /**
  * Manifesto do bloco `card_hover` (layout) — grade de cards com destaque
- * animado no hover. Usa o Vitrine `HoverEffect` (card-hover-effect).
+ * animado no hover.
+ *
+ * Os cards são do DS (`Grid` + `ClickableCard`); só o halo que desliza entre
+ * eles é COMPONENTE PRÓPRIO (`./card-hover-halo`), porque o Astryx não tem
+ * transição de elemento compartilhado. Ele pinta com `--color-overlay-hover`.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 
@@ -9,7 +13,7 @@ export const manifest = {
   kind: 'layout',
   name: 'Cards com Hover',
   description: 'Grade de cards com destaque animado ao passar o mouse.',
-  source: 'vitrine:card-hover-effect',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -31,8 +35,16 @@ export const manifest = {
   },
   defaultProps: {
     items: [
-      { title: 'Arrecadação', description: 'Receita consolidada por tributo.', link: '#' },
-      { title: 'Dívida ativa', description: 'Estoque e recuperação da dívida ativa.', link: '#' },
+      {
+        title: 'Arrecadação',
+        description: 'Receita consolidada por tributo.',
+        link: '#',
+      },
+      {
+        title: 'Dívida ativa',
+        description: 'Estoque e recuperação da dívida ativa.',
+        link: '#',
+      },
       { title: 'Despesas', description: 'Execução orçamentária por órgão.', link: '#' },
     ],
   },

@@ -1,39 +1,29 @@
 /**
- * Bloco `alert` (narrativo) — usa o Vitrine `Alert`. Título + descrição vêm das
- * props; o ícone deriva da variante semântica.
+ * Bloco `alert` (narrativo) — mensagem persistente em contexto: o `Banner` do
+ * Astryx.
+ *
+ * COR E ÍCONE NÃO SÃO ESCOLHA DO BLOCO: derivam do `status` do Banner (o
+ * contrato semântico do DS). A `variant` do manifesto é apenas traduzida para
+ * esse status — nenhuma cor é declarada aqui.
  *
  * Props (ver manifest):
- *  - `variant`     — default | info | success | warning | error | destructive
- *                    (cor + ícone).
+ *  - `variant`     — default | info | success | warning | error | destructive.
  *  - `title`       — título (required).
  *  - `description` — corpo (opcional).
- *  - `showIcon`    — mostra/oculta o ícone semântico (default true).
- *  - `dismissible` — adiciona um X que fecha o alerta (estado local).
+ *  - `showIcon`    — `false` esvazia o slot do ícone (`icon={false}`), sem
+ *                    esconder o banner.
+ *  - `dismissible` — liga o botão de fechar NATIVO do Banner, que já se
+ *                    auto-oculta ao ser acionado (por isso não há mais estado
+ *                    local de visibilidade neste bloco).
  */
-import { useState } from 'react';
-import {
-  Info,
-  CircleCheck,
-  TriangleAlert,
-  CircleX,
-  CircleAlert,
-  X,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/shared/lib/utils';
+import { Banner } from '@astryxdesign/core/Banner';
+import type { BannerStatus } from '@astryxdesign/core/Banner';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
 
-type AlertVariant =
-  | 'default'
-  | 'info'
-  | 'success'
-  | 'warning'
-  | 'error'
-  | 'destructive';
+type AlertVariant = 'default' | 'info' | 'success' | 'warning' | 'error' | 'destructive';
 
 type AlertProps = {
   variant?: AlertVariant;
@@ -43,42 +33,34 @@ type AlertProps = {
   dismissible?: boolean;
 };
 
-/** Ícone semântico (lucide-react) por variante. */
-const ICON_BY_VARIANT: Record<AlertVariant, LucideIcon> = {
-  default: Info,
-  info: Info,
-  success: CircleCheck,
-  warning: TriangleAlert,
-  error: CircleX,
-  destructive: CircleAlert,
+/**
+ * Variante semântica do bloco → `status` do Banner (que resolve cor + ícone).
+ * `default` cai em `info` (aviso neutro) e `destructive` em `error` — o DS não
+ * separa "erro" de "destrutivo" no Banner: os dois são a mesma severidade.
+ */
+const STATUS_BY_VARIANT: Record<AlertVariant, BannerStatus> = {
+  default: 'info',
+  info: 'info',
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
+  destructive: 'error',
 };
 
 export const Component: BlockComponent<AlertProps> = ({ props }) => {
   const variant: AlertVariant = props.variant ?? 'default';
   const showIcon = props.showIcon ?? true;
-  const dismissible = props.dismissible ?? false;
-  const [visible, setVisible] = useState(true);
-
-  if (!visible) return null;
-
-  const Icon = ICON_BY_VARIANT[variant] ?? Info;
 
   return (
-    <Alert variant={variant} className={cn(dismissible && 'pr-10')}>
-      {showIcon ? <Icon className="size-4" /> : null}
-      <AlertTitle>{props.title ?? 'Aviso'}</AlertTitle>
-      {props.description ? <AlertDescription>{props.description}</AlertDescription> : null}
-      {dismissible ? (
-        <button
-          type="button"
-          aria-label="Fechar alerta"
-          onClick={() => setVisible(false)}
-          className="absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-md text-current opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <X className="size-4" />
-        </button>
-      ) : null}
-    </Alert>
+    <Banner
+      data-slot="alert"
+      data-alert-variant={variant}
+      status={STATUS_BY_VARIANT[variant] ?? 'info'}
+      title={props.title ?? 'Aviso'}
+      description={props.description}
+      icon={showIcon ? undefined : false}
+      isDismissable={props.dismissible ?? false}
+    />
   );
 };
 

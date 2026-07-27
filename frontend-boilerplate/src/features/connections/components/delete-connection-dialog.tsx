@@ -1,62 +1,47 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui';
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { useDeleteConnection } from '../hooks';
 import type { Connection } from '../types';
 
-interface DeleteConnectionDialogProps {
+/**
+ * Confirmação de exclusão — `AlertDialog` (ação destrutiva e irreversível),
+ * nunca um `Dialog` comum: o DS já dá foco no cancelar, papel `alertdialog` e
+ * ação em variante destrutiva.
+ */
+export interface DeleteConnectionDialogProps {
   connection: Connection | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  /** Chamado após exclusão bem-sucedida (ex.: sair do workbench). */
+  onDeleted?: () => void;
 }
 
 export function DeleteConnectionDialog({
   connection,
-  open,
+  isOpen,
   onOpenChange,
+  onDeleted,
 }: DeleteConnectionDialogProps) {
   const deleteConnection = useDeleteConnection();
 
-  const handleConfirm = () => {
+  const handleAction = () => {
     if (!connection) return;
     deleteConnection.mutate(connection.id, {
+      onSuccess: () => onDeleted?.(),
       onSettled: () => onOpenChange(false),
     });
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Excluir conexão?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta ação não pode ser desfeita. A conexão{' '}
-            <span className="font-medium text-foreground">
-              {connection?.name}
-            </span>{' '}
-            será removida permanentemente.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleteConnection.isPending}>
-            Cancelar
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={deleteConnection.isPending}
-            className="bg-destructive text-white hover:bg-destructive/90"
-          >
-            {deleteConnection.isPending ? 'Excluindo...' : 'Excluir'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <AlertDialog
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      title="Excluir conexão?"
+      description={`A conexão “${connection?.name ?? ''}” será removida permanentemente. Dashboards e gráficos que dependem dela deixam de carregar. Esta ação não pode ser desfeita.`}
+      cancelLabel="Cancelar"
+      actionLabel="Excluir conexão"
+      actionVariant="destructive"
+      isActionLoading={deleteConnection.isPending}
+      onAction={handleAction}
+    />
   );
 }

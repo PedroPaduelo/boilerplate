@@ -1,20 +1,25 @@
-import { Search } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
-
 /**
  * Gatilho visível da paleta de comandos.
  *
- * Existe por descoberta: um atalho que ninguém vê não é usado. Mostrar o
- * "⌘K" na topbar ensina o atalho de forma passiva — o usuário clica algumas
- * vezes, memoriza a tecla e passa a usar o teclado (padrão Linear/Vercel).
+ * Existe por descoberta: um atalho que ninguém vê não é usado. Mostrar o "⌘K"
+ * na topbar ensina o atalho de forma passiva — o usuário clica algumas vezes,
+ * memoriza a tecla e passa a usar o teclado.
  *
  * Não abre a paleta diretamente: dispara o MESMO evento de teclado que o
- * listener global escuta, mantendo uma única fonte de verdade para a abertura.
+ * listener global escuta, mantendo uma única fonte de verdade para a abertura
+ * (o gatilho vive na topbar e a paleta no shell — não compartilham estado).
+ *
+ * O `Kbd` resolve `mod` por plataforma (⌘ no macOS, Ctrl no resto), então não
+ * há detecção de sistema operacional aqui.
  */
-export function CommandTrigger({ className }: { className?: string }) {
-  const isMac =
-    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+import { Search } from 'lucide-react';
+import { Button } from '@astryxdesign/core/Button';
+import { Icon } from '@astryxdesign/core/Icon';
+import { Kbd } from '@astryxdesign/core/Kbd';
+import { HStack } from '@astryxdesign/core/Stack';
+import { Text } from '@astryxdesign/core/Text';
 
+export function CommandTrigger() {
   function open() {
     document.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }),
@@ -22,28 +27,19 @@ export function CommandTrigger({ className }: { className?: string }) {
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
+      label="Abrir busca e comandos"
+      icon={<Icon icon={Search} />}
       onClick={open}
-      aria-label="Abrir busca e comandos"
-      className={cn(
-        'group flex items-center gap-2 rounded-lg border border-border/70 bg-muted/40 py-1.5 pl-2.5 pr-1.5',
-        'text-sm text-muted-foreground transition-colors',
-        'hover:border-border hover:bg-muted hover:text-foreground',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        className,
-      )}
     >
-      <Search className="size-4 shrink-0" />
-      <span className="hidden min-w-[7rem] text-left sm:block">Buscar…</span>
-      <kbd
-        className={cn(
-          'hidden shrink-0 items-center gap-0.5 rounded border border-border/70 bg-background px-1.5 py-0.5',
-          'font-mono text-[10px] leading-none text-muted-foreground sm:flex',
-        )}
-      >
-        {isMac ? '⌘' : 'Ctrl'} K
-      </kbd>
-    </button>
+      <HStack gap={2} vAlign="center">
+        <Text type="body" color="secondary">
+          Buscar…
+        </Text>
+        <Kbd keys="mod+k" />
+      </HStack>
+    </Button>
   );
 }

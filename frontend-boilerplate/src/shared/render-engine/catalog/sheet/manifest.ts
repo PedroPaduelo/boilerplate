@@ -1,12 +1,12 @@
 /**
- * Manifesto do bloco `sheet` — CONTAINER de layout (painel lateral deslizante).
+ * Manifesto do bloco `sheet` — CONTAINER de layout (painel sob demanda).
  *
- * Renderiza um BOTÃO (trigger) que, ao ser clicado, abre um PAINEL LATERAL
- * deslizante (Sheet). Os SUB-BLOCOS (gráficos/cards/tabelas/detalhe) ficam
- * DENTRO do painel, empilhados — montados pela IA via o contrato unificado de
- * container `block.blocks` (mesma sintaxe de `section`/`bento_grid`). As props
- * deste bloco são de CONFIGURAÇÃO DO LAYOUT (não de conteúdo): triggerLabel,
- * title, description, side.
+ * Renderiza um BOTÃO (trigger) que, ao ser clicado, abre um PAINEL MODAL
+ * ancorado na borda escolhida. Os SUB-BLOCOS (gráficos/cards/tabelas/detalhe)
+ * ficam DENTRO do painel, empilhados — montados pela IA via o contrato
+ * unificado de container `block.blocks` (mesma sintaxe de `section`/
+ * `bento_grid`). As props deste bloco são de CONFIGURAÇÃO DO LAYOUT (não de
+ * conteúdo): triggerLabel, title, description, side.
  *
  * Caso de uso típico: detalhamento sob demanda — ao lado de uma tabela/KPI, um
  * botão abre um painel com o gráfico/relatório detalhado, sem poluir a tela.
@@ -24,8 +24,8 @@ export const manifest = {
   kind: 'layout',
   name: 'Sheet (painel lateral)',
   description:
-    'Container de layout: um BOTÃO que abre um PAINEL LATERAL deslizante. Os sub-blocos (gráficos/detalhe) ficam DENTRO do painel, empilhados — use `block.blocks` para os filhos. Ideal para detalhamento sob demanda sem ocupar espaço na tela. Props: triggerLabel, title, description, side.',
-  source: 'vitrine:sheet',
+    'Container de layout: um BOTÃO que abre um PAINEL MODAL ancorado na borda da tela. Os sub-blocos (gráficos/detalhe) ficam DENTRO do painel, empilhados — use `block.blocks` para os filhos. Ideal para detalhamento sob demanda sem ocupar espaço na tela. Props: triggerLabel, title, description, side.',
+  source: 'astryx:dialog',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -48,7 +48,7 @@ export const manifest = {
         enum: ['top', 'right', 'bottom', 'left'],
         default: 'right',
         description:
-          'Lado de onde o painel desliza: right (default), left, top ou bottom.',
+          'Borda em que o painel encosta: right (default), left, top ou bottom.',
       },
     },
   },

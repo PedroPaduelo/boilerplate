@@ -1,280 +1,199 @@
 import { useState } from 'react';
-import {
-  Users as UsersIcon,
-  UserCheck,
-  UserX,
-  Shield,
-  Search,
-  SearchX,
-  Plus,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { Plus, Search, SearchX, Users as UsersIcon } from 'lucide-react';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Icon } from '@astryxdesign/core/Icon';
+import { HStack, StackItem, VStack } from '@astryxdesign/core/Layout';
+import { Section } from '@astryxdesign/core/Section';
+import { Heading, Text } from '@astryxdesign/core/Text';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import { getApiErrorMessage } from '@/shared/lib/api-error';
+import { useAuthStore } from '@/features/auth/store';
 import { useUsers, useUserStats } from './hooks/use-users';
-import type { User, UserRole } from './types';
+import { UserStatsGrid } from './components/user-stats';
+import { UsersTable, UsersTableSkeleton } from './components/users-table';
 import { UserFormDialog } from './components/user-form-dialog';
 import { DeleteUserDialog } from './components/delete-user-dialog';
-import {
-  KpiCard,
-  Badge,
-  Button,
-  Input,
-  Skeleton,
-  Section,
-  SectionHeader,
-  TableFluid,
-  TableFluidHeader,
-  TableFluidBody,
-  TableFluidRow,
-  TableFluidHead,
-  TableFluidCell,
-} from '@/components/ui';
-import { cn, formatDate } from '@/shared/lib/utils';
-import { useDebounce } from '@/shared/hooks/use-debounce';
-import { useAuthStore } from '@/features/auth/store';
-
-// Badges tonalizadas por token semântico do DS (sem paleta crua):
-// função e status mapeiam para chart-*/muted, mantendo legibilidade em
-// light e dark. Pills com rounded-full e borda transparente.
-const roleConfig: Record<UserRole, { label: string; className: string }> = {
-  ADMIN: { label: 'Admin', className: 'bg-chart-1/10 text-chart-1' },
-  ANALYST: { label: 'Analista', className: 'bg-chart-2/10 text-chart-2' },
-  CREATOR: { label: 'Criador', className: 'bg-chart-3/10 text-chart-3' },
-  VIEWER: { label: 'Visualizador', className: 'bg-chart-4/10 text-chart-4' },
-  USER: { label: 'Usuário', className: 'bg-muted text-muted-foreground' },
-};
-
-/** Fallback defensivo: nunca quebra se o backend trouxer um papel desconhecido. */
-const FALLBACK_ROLE = { label: 'Desconhecido', className: 'bg-muted text-muted-foreground' };
-const roleOf = (role: UserRole) => roleConfig[role] ?? FALLBACK_ROLE;
-
-function statusConfig(isActive: boolean) {
-  return isActive
-    ? { label: 'Ativo', className: 'bg-chart-2/10 text-chart-2' }
-    : { label: 'Inativo', className: 'bg-muted text-muted-foreground' };
-}
-
-function EmptyUsers({ hasSearch }: { hasSearch: boolean }) {
-  const Icon = hasSearch ? SearchX : UsersIcon;
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Icon className="size-6" />
-      </span>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">
-          {hasSearch
-            ? 'Nenhum usuário encontrado'
-            : 'Nenhum usuário cadastrado'}
-        </p>
-        <p className="mx-auto max-w-xs text-xs text-muted-foreground">
-          {hasSearch
-            ? 'Ajuste os termos da busca ou verifique a ortografia para encontrar quem você procura.'
-            : 'Os usuários do workspace aparecerão aqui assim que forem adicionados.'}
-        </p>
-      </div>
-    </div>
-  );
-}
+import type { User } from './types';
 
 export function UsersPage() {
   const currentUser = useAuthStore((s) => s.user);
   const [search, setSearch] = useState('');
-  const debounced = useDebounce(search, 300);
-  const { data: stats } = useUserStats();
-  const { data, isLoading } = useUsers({ search: debounced, pageSize: 50 });
+  const debouncedSearch = useDebounce(search, 300);
 
-  // Estado dos modais de gestão (criar/editar/excluir).
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<User | null>(null);
-  const [deleting, setDeleting] = useState<User | null>(null);
+  const stats = useUserStats();
+  const { data, isLoading, isFetching, isError, error, refetch } = useUsers({
+    search: debouncedSearch,
+    pageSize: 50,
+  });
+
+  // Estado dos diálogos de gestão (criar/editar/excluir).
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
   const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
+    setEditingUser(null);
+    setIsFormOpen(true);
   };
 
   const openEdit = (user: User) => {
-    setEditing(user);
-    setFormOpen(true);
+    setEditingUser(user);
+    setIsFormOpen(true);
   };
 
-  const kpis = [
-    { label: 'Total de usuários', value: stats?.total ?? 0, icon: UsersIcon },
-    { label: 'Ativos', value: stats?.active ?? 0, icon: UserCheck },
-    { label: 'Inativos', value: stats?.inactive ?? 0, icon: UserX },
-    { label: 'Admins', value: stats?.admins ?? 0, icon: Shield },
-  ];
-
-  const hasSearch = debounced.trim().length > 0;
-  const isEmpty = !isLoading && (data?.users.length ?? 0) === 0;
+  const users = data?.users ?? [];
+  const total = data?.total ?? 0;
+  const hasSearch = debouncedSearch.trim().length > 0;
 
   return (
-    <div className="flex flex-col gap-8">
-      <Section index={0}>
-        <SectionHeader
-          className="mb-0"
-          eyebrow="Gestão de pessoas"
-          title="Usuários"
-          description="Acompanhe o quadro de usuários, funções e status de acesso do workspace."
-          actions={
-            <Button onClick={openCreate} className="gap-2">
-              <Plus className="size-4" />
-              Novo usuário
-            </Button>
-          }
+    <VStack gap={6}>
+      {/* O h1 da tela é o título da topbar do shell; aqui a hierarquia começa
+          no h2 da seção — sem repetir "Usuários" em dois níveis. */}
+      <HStack gap={3} vAlign="center" wrap="wrap">
+        <StackItem size="fill">
+          <Text type="supporting">
+            Acompanhe o quadro de usuários, funções e status de acesso do workspace.
+          </Text>
+        </StackItem>
+        <Button
+          label="Novo usuário"
+          variant="primary"
+          icon={<Icon icon={Plus} size="sm" />}
+          onClick={openCreate}
         />
+      </HStack>
+
+      <UserStatsGrid stats={stats.data} isLoading={stats.isLoading} />
+
+      <Section>
+        <VStack gap={4}>
+          <HStack gap={3} vAlign="end" wrap="wrap">
+            <StackItem size="fill">
+              <VStack gap={0.5}>
+                <Heading level={2}>Lista de usuários</Heading>
+                <Text type="supporting" hasTabularNumbers>
+                  {total} {total === 1 ? 'usuário' : 'usuários'} no total.
+                </Text>
+              </VStack>
+            </StackItem>
+            <TextInput
+              label="Buscar usuários"
+              isLabelHidden
+              placeholder="Buscar por nome ou e-mail…"
+              startIcon={Search}
+              hasClear
+              isLoading={isFetching}
+              value={search}
+              onChange={setSearch}
+              width={288}
+            />
+          </HStack>
+
+          <UsersContent
+            users={users}
+            currentUserId={currentUser?.id}
+            hasSearch={hasSearch}
+            isLoading={isLoading}
+            isError={isError}
+            error={error}
+            onRetry={() => void refetch()}
+            onClearSearch={() => setSearch('')}
+            onCreate={openCreate}
+            onEdit={openEdit}
+            onDelete={setDeletingUser}
+          />
+        </VStack>
       </Section>
 
-      <Section
-        index={1}
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
-      >
-        {kpis.map((k) => (
-          <KpiCard key={k.label} label={k.label} value={k.value} icon={k.icon} />
-        ))}
-      </Section>
-
-      <Section
-        index={2}
-        className="rounded-xl border border-border/60 bg-card p-5 shadow-sm"
-      >
-        <SectionHeader
-          eyebrow="Diretório"
-          title="Lista de usuários"
-          description={
-            <>
-              <span className="tabular-nums">{data?.total ?? 0}</span> usuário
-              {(data?.total ?? 0) === 1 ? '' : 's'} no total.
-            </>
-          }
-          actions={
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nome ou email…"
-                className="rounded-lg pl-8"
-              />
-            </div>
-          }
-        />
-
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : isEmpty ? (
-          <EmptyUsers hasSearch={hasSearch} />
-        ) : (
-          <div className="overflow-x-auto">
-            <TableFluid>
-              <TableFluidHeader>
-                <TableFluidRow>
-                  <TableFluidHead>Usuário</TableFluidHead>
-                  <TableFluidHead className="hidden sm:table-cell">
-                    Função
-                  </TableFluidHead>
-                  <TableFluidHead>Status</TableFluidHead>
-                  <TableFluidHead className="hidden text-right md:table-cell">
-                    Criado em
-                  </TableFluidHead>
-                  <TableFluidHead className="text-right">Ações</TableFluidHead>
-                </TableFluidRow>
-              </TableFluidHeader>
-              <TableFluidBody>
-                {data?.users.map((u, i) => {
-                  const status = statusConfig(u.isActive);
-                  const isSelf = u.id === currentUser?.id;
-                  return (
-                    <TableFluidRow key={u.id} index={i}>
-                      <TableFluidCell>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-foreground">
-                            {u.name ?? '—'}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {u.email}
-                          </p>
-                        </div>
-                      </TableFluidCell>
-                      <TableFluidCell className="hidden sm:table-cell">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'rounded-full border-transparent',
-                            roleOf(u.role).className,
-                          )}
-                        >
-                          {roleOf(u.role).label}
-                        </Badge>
-                      </TableFluidCell>
-                      <TableFluidCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'gap-1.5 rounded-full border-transparent',
-                            status.className,
-                          )}
-                        >
-                          <span className="size-1.5 rounded-full bg-current" />
-                          {status.label}
-                        </Badge>
-                      </TableFluidCell>
-                      <TableFluidCell className="hidden text-right text-xs tabular-nums md:table-cell">
-                        {formatDate(u.createdAt)}
-                      </TableFluidCell>
-                      <TableFluidCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => openEdit(u)}
-                            aria-label={`Editar ${u.name ?? u.email}`}
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setDeleting(u)}
-                            disabled={isSelf}
-                            title={
-                              isSelf
-                                ? 'Você não pode excluir o próprio usuário'
-                                : undefined
-                            }
-                            aria-label={`Excluir ${u.name ?? u.email}`}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 />
-                          </Button>
-                        </div>
-                      </TableFluidCell>
-                    </TableFluidRow>
-                  );
-                })}
-              </TableFluidBody>
-            </TableFluid>
-          </div>
-        )}
-      </Section>
-
-      <UserFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        user={editing}
-      />
+      <UserFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} user={editingUser} />
       <DeleteUserDialog
-        user={deleting}
-        open={!!deleting}
+        user={deletingUser}
+        open={!!deletingUser}
         onOpenChange={(open) => {
-          if (!open) setDeleting(null);
+          if (!open) setDeletingUser(null);
         }}
       />
-    </div>
+    </VStack>
+  );
+}
+
+interface UsersContentProps {
+  users: User[];
+  currentUserId: string | undefined;
+  hasSearch: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  onRetry: () => void;
+  onClearSearch: () => void;
+  onCreate: () => void;
+  onEdit: (user: User) => void;
+  onDelete: (user: User) => void;
+}
+
+/** Os quatro estados da listagem em um só lugar: erro, carregando, vazio, dados. */
+function UsersContent({
+  users,
+  currentUserId,
+  hasSearch,
+  isLoading,
+  isError,
+  error,
+  onRetry,
+  onClearSearch,
+  onCreate,
+  onEdit,
+  onDelete,
+}: UsersContentProps) {
+  if (isError) {
+    return (
+      <Banner
+        status="error"
+        title="Não foi possível carregar os usuários"
+        description={getApiErrorMessage(
+          error,
+          'Verifique sua conexão e tente novamente.',
+        )}
+        endContent={<Button label="Tentar de novo" size="sm" onClick={onRetry} />}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <UsersTableSkeleton />;
+  }
+
+  if (users.length === 0) {
+    return (
+      <EmptyState
+        icon={<Icon icon={hasSearch ? SearchX : UsersIcon} size="lg" />}
+        headingLevel={3}
+        title={hasSearch ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
+        description={
+          hasSearch
+            ? 'Ajuste os termos da busca ou verifique a ortografia para encontrar quem você procura.'
+            : 'Os usuários do workspace aparecerão aqui assim que forem adicionados.'
+        }
+        actions={
+          hasSearch ? (
+            <Button label="Limpar busca" onClick={onClearSearch} />
+          ) : (
+            <Button label="Novo usuário" variant="primary" onClick={onCreate} />
+          )
+        }
+      />
+    );
+  }
+
+  return (
+    <UsersTable
+      users={users}
+      currentUserId={currentUserId}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />
   );
 }

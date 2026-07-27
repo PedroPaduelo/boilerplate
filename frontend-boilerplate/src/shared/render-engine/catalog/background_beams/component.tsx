@@ -1,28 +1,40 @@
 /**
- * Bloco `background_beams` (layout/decorativo) — usa o Vitrine `BackgroundBeams`
- * num contêiner de altura contida (h-56) com título por cima.
+ * Bloco `background_beams` (layout/decorativo) — capa/hero de relatório.
+ *
+ * O efeito (`./background-beams`) é só a CASCA: fica `aria-hidden` atrás e não
+ * guarda conteúdo. Título e subtítulo vêm do DS (`Heading`/`Text`), então o
+ * contraste, a tipografia e o dark mode saem dos tokens do tema.
  */
-import { BackgroundBeams } from '@/components/ui/background-beams';
+import { Card } from '@astryxdesign/core/Card';
+import { Center } from '@astryxdesign/core/Center';
+import { Text, Heading } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/VStack';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
+import { BackgroundBeams } from './background-beams';
 
 type BackgroundBeamsBlockProps = { title?: string; subtitle?: string };
 
 export const Component: BlockComponent<BackgroundBeamsBlockProps> = ({ props }) => {
   return (
-    <div className="relative h-56 w-full overflow-hidden rounded-lg bg-neutral-950">
-      <BackgroundBeams />
-      <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
-        <h3 className="text-xl font-semibold text-neutral-100 sm:text-2xl">
-          {props.title ?? 'Título'}
-        </h3>
-        {props.subtitle ? (
-          <p className="mt-2 max-w-md text-sm text-neutral-400">{props.subtitle}</p>
-        ) : null}
-      </div>
-    </div>
+    <Card padding={0} variant="muted" data-slot="background-beams-block">
+      <BackgroundBeams>
+        <Center height="100%" width="100%">
+          <VStack gap={2} padding={6} hAlign="center">
+            <Heading level={3} justify="center" textWrap="balance">
+              {props.title ?? 'Título'}
+            </Heading>
+            {props.subtitle ? (
+              <Text type="supporting" justify="center" textWrap="balance">
+                {props.subtitle}
+              </Text>
+            ) : null}
+          </VStack>
+        </Center>
+      </BackgroundBeams>
+    </Card>
   );
 };
 

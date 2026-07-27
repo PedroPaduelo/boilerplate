@@ -9,7 +9,11 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Block } from '@dashboards/contracts';
-import { Button } from '@/components/ui/button';
+import { Button } from '@astryxdesign/core/Button';
+import { Card } from '@astryxdesign/core/Card';
+import { Icon } from '@astryxdesign/core/Icon';
+import { HStack, VStack } from '@astryxdesign/core/Stack';
+import { Text } from '@astryxdesign/core/Text';
 import { BlockRenderer } from '@/shared/render-engine';
 import { useAuthStore } from '@/features/auth/store';
 import { hasPermission } from '@/shared/lib/rbac';
@@ -21,7 +25,7 @@ export interface InlineChartProps {
 }
 
 export function InlineChart({ chart }: InlineChartProps) {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const role = useAuthStore((s) => s.user?.role);
   const canManage = hasPermission(role, 'artifacts:manage');
 
@@ -34,34 +38,32 @@ export function InlineChart({ chart }: InlineChartProps) {
   } as Block;
 
   return (
-    <div
-      data-slot="chat-inline-chart"
-      className="mt-3 rounded-lg border border-border bg-background p-3"
-    >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-foreground">{chart.title}</span>
-        {canManage ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setDialogOpen(true)}
-            aria-label="Adicionar a um dashboard"
-          >
-            <Plus className="size-4" />
-            Adicionar a um dashboard
-          </Button>
-        ) : null}
-      </div>
+    <Card padding={3}>
+      <VStack gap={2}>
+        <HStack gap={2} vAlign="center" justify="between">
+          <Text type="label" maxLines={1}>
+            {chart.title}
+          </Text>
+          {canManage ? (
+            <Button
+              size="sm"
+              label="Adicionar a um dashboard"
+              icon={<Icon icon={Plus} />}
+              onClick={() => setIsDialogOpen(true)}
+            />
+          ) : null}
+        </HStack>
 
-      <BlockRenderer block={block} result={chart.result} />
+        <BlockRenderer block={block} result={chart.result} />
+      </VStack>
 
       {canManage ? (
         <AddToDashboardDialog
           chart={chart}
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
         />
       ) : null}
-    </div>
+    </Card>
   );
 }

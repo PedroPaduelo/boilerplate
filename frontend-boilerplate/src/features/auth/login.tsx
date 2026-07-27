@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@astryxdesign/core/Link';
 import { LoginForm } from './components/login-form';
 import { AuthShell } from './components/auth-shell';
 
@@ -9,10 +9,7 @@ export function LoginPage() {
       description="Acesse seus dashboards, conexões e o agente de auditoria."
       footer={
         <>
-          Ainda não tem acesso?{' '}
-          <Link to="/register" className="font-medium text-primary hover:underline">
-            Criar conta
-          </Link>
+          Ainda não tem acesso? <Link href="/register">Criar conta</Link>
         </>
       }
     >

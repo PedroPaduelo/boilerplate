@@ -1,11 +1,10 @@
 /**
- * Manifesto do bloco `progress_circle` (shape 'scalar') — anel de progresso. Usa
- * o Vitrine `ProgressCircleTremor`. FORMATO DE GRÁFICO: vive na aba "Gráficos" e
- * recebe a moldura `ChartWidget` (título no header).
+ * Manifesto do bloco `progress_circle` (shape 'scalar') — anel de progresso.
+ * Vive na aba "Gráficos" e recebe a moldura do bloco (título no header).
  *
- * Prop `accent` (canônico): string livre resolvida por `resolveAccentForStroke`
- * no component.tsx (enum DS + classe Tailwind `stroke-…` + cor CSS crua). Quando
- * preenchido, SOBRESCREVE o `variant` na cor do arco.
+ * Nomes, tipos e defaults das props são CONTRATO com o backend/agente e seguem
+ * iguais. O anel é pintado por TOM semântico: `variant` mapeia direto e
+ * `accent`, quando preenchido, usa o tom de destaque.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
@@ -15,7 +14,7 @@ export const manifest = {
   kind: 'chart',
   name: 'Anel de Progresso',
   description: 'Progresso circular de um valor sobre uma escala (percentual no centro).',
-  source: 'vitrine:progress-circle-tremor',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -23,18 +22,21 @@ export const manifest = {
       max: {
         type: 'number',
         default: 100,
-        description: 'Valor máximo da escala (o 100% do anel). Default 100 — nesse caso o `value` já É um percentual. Com max ≠ 100, o anel mostra value/max e o tooltip explicita "X de Y".',
+        description:
+          'Valor máximo da escala (o 100% do anel). Default 100 — nesse caso o `value` já É um percentual. Com max diferente de 100, o anel mostra value/max e a leitura explicita "X de Y".',
       },
       variant: {
         type: 'string',
         enum: ['default', 'neutral', 'warning', 'error', 'success'],
         default: 'default',
-        description: 'Tema de cor do anel (paleta semântica): default (azul), neutral (cinza), warning (amarelo), error (vermelho), success (verde). É IGNORADO quando `accent` está preenchido (accent sobrescreve o variant).',
+        description:
+          'Tom semântico do anel: default = destaque, neutral = neutro, warning = atenção, error = negativo, success = positivo. É IGNORADO quando `accent` está preenchido.',
       },
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
-        description: 'Cor custom do arco. Quando preenchida, SOBRESCREVE o `variant`. Aceita enum DS (chart-1..5, primary), classe Tailwind de stroke (stroke-purple-500), ou cor CSS crua (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Vazio = usa o `variant`.',
+        description:
+          'Cor do arco. Quando preenchida, SOBRESCREVE o `variant` e o anel usa o tom de destaque do tema — o anel é pintado por tom semântico, não por cor arbitrária. Valores antigos continuam aceitos. Vazio = usa o `variant`.',
       },
     },
   },

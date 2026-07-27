@@ -27,8 +27,8 @@
       "type": "alert",
       "kind": "text",
       "name": "Alerta",
-      "description": "Aviso/observação em destaque (título + descrição), com variante de cor + ícone, ícone opcional e botão de fechar opcional.",
-      "source": "vitrine:alert",
+      "description": "Aviso/observação em destaque (título + descrição), com variante semântica (cor + ícone vêm do design system), ícone opcional e botão de fechar opcional.",
+      "source": "astryx:banner",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -47,31 +47,31 @@
               "destructive"
             ],
             "default": "default",
-            "description": "Variante semântica (define cor da borda/texto + ícone). ENUM FECHADO (sem input livre).",
+            "description": "Variante semântica: define a SEVERIDADE da mensagem; cor e ícone vêm do design system. ENUM FECHADO (sem input livre).",
             "oneOf": [
               {
                 "const": "default",
-                "description": "Neutro (card) — ícone ℹ Info. Aviso genérico sem conotação."
+                "description": "Neutro — severidade informativa do DS. Aviso genérico, sem conotação."
               },
               {
                 "const": "info",
-                "description": "Informativo (azul/sky) — ícone ℹ Info. Contexto/dica."
+                "description": "Informativo — severidade informativa do DS. Contexto/dica."
               },
               {
                 "const": "success",
-                "description": "Sucesso (verde/emerald) — ícone ✓ CircleCheck. Operação concluída/meta atingida."
+                "description": "Sucesso — severidade de sucesso do DS. Operação concluída/meta atingida."
               },
               {
                 "const": "warning",
-                "description": "Atenção (âmbar/amber) — ícone ⚠ TriangleAlert. Algo requer cuidado."
+                "description": "Atenção — severidade de alerta do DS. Algo requer cuidado."
               },
               {
                 "const": "error",
-                "description": "Erro (vermelho) — ícone ✕ CircleX. Falha/valor crítico. Alias semântico de destructive."
+                "description": "Erro — severidade de erro do DS. Falha/valor crítico. Alias semântico de destructive."
               },
               {
                 "const": "destructive",
-                "description": "Destrutivo (vermelho, token --destructive do DS) — ícone CircleAlert. Ação irreversível/alerta forte."
+                "description": "Destrutivo — mesma severidade de erro do DS. Ação irreversível/alerta forte."
               }
             ]
           },
@@ -86,7 +86,7 @@
           "showIcon": {
             "type": "boolean",
             "default": true,
-            "description": "Mostra o ícone semântico (ℹ/✓/⚠/✕) conforme a variante. false oculta o ícone."
+            "description": "Mostra o ícone semântico que o design system associa à variante. false oculta o ícone."
           },
           "dismissible": {
             "type": "boolean",
@@ -109,7 +109,7 @@
       "kind": "chart",
       "name": "Gráfico de Área",
       "description": "Série temporal preenchida; mostra volume/tendência ao longo do tempo (suporta múltiplas séries).",
-      "source": "vitrine:area-chart-tremor",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -132,17 +132,17 @@
               "none"
             ],
             "default": "gradient",
-            "description": "Preenchimento da área: \"gradient\" (cor da série → transparente), \"solid\" (cor opaca com 25% alpha) ou \"none\" (só a linha de topo)."
+            "description": "Preenchimento da área: \"gradient\" (cor da série esmaecendo até transparente), \"solid\" (cor da série com opacidade baixa) ou \"none\" (só a linha de topo)."
           },
           "showLegend": {
             "type": "boolean",
             "default": true,
-            "description": "Exibe bloco de legenda clicável abaixo do SVG (uma bolinha por série + rótulo)."
+            "description": "Exibe a legenda (uma marca de cor por série + rótulo) abaixo da plotagem. Com uma única série a legenda é omitida, pois não há o que distinguir."
           },
           "showGridLines": {
             "type": "boolean",
             "default": true,
-            "description": "Exibe linhas de grade horizontais tracejadas (alinhadas aos ticks do eixo Y)."
+            "description": "Exibe as linhas de grade horizontais, alinhadas aos ticks do eixo Y."
           },
           "palette": {
             "type": "string",
@@ -152,7 +152,7 @@
               "none"
             ],
             "default": "multi",
-            "description": "Modo de paleta: \"multi\" (default) = cicla chart-1..5 por série; \"single\" = força accent em todas; \"none\" = sem distinção de cor."
+            "description": "Modo de paleta: \"multi\" (default) e \"none\" ciclam a paleta categórica do design system, uma cor por série; \"single\" fixa a cor de `accent` em todas as séries."
           },
           "accent": {
             "type": "string",
@@ -165,7 +165,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor base da(s) série(s). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Aplicada como stroke/fill via classe Tailwind ou style.stroke quando CSS custom."
+            "description": "Cor base da(s) série(s), usada quando palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão."
           }
         }
       },
@@ -214,7 +214,7 @@
       "kind": "layout",
       "name": "Background Beams",
       "description": "Fundo animado com feixes de luz — capa/hero de relatório com título.",
-      "source": "vitrine:background-beams",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -238,7 +238,7 @@
       "kind": "layout",
       "name": "Background Boxes",
       "description": "Fundo isométrico de células que acendem no hover — capa decorativa com título.",
-      "source": "vitrine:background-boxes",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -262,7 +262,7 @@
       "kind": "chart",
       "name": "Gráfico de Barras",
       "description": "Compara valores entre categorias em barras verticais (colunas) ou horizontais. Suporta empilhamento (stacked) quando os dados têm múltiplas séries (campo `series`).",
-      "source": "vitrine:bar-chart",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -270,7 +270,7 @@
           "stacked": {
             "type": "boolean",
             "default": false,
-            "description": "Empilha as séries em cada coluna (requer dados MULTI-SÉRIE: pontos com o campo `series`). true = cada categoria do eixo X vira uma coluna com segmentos empilhados, um por série. false = barras planas (1 barra por ponto). LIMITAÇÃO: só vale na orientação \"vertical\"; em \"horizontal\" o empilhamento é ignorado (barras planas), mas a cor por série é preservada. Se não houver dados multi-série, degrada para barras planas."
+            "description": "Empilha as séries em cada coluna (requer dados MULTI-SÉRIE: pontos com o campo `series`). true = cada categoria do eixo X vira uma coluna com segmentos empilhados, um por série. false = barras agrupadas. LIMITAÇÃO: só vale na orientação \"vertical\"; em \"horizontal\" o empilhamento é ignorado (barras planas), mas a cor por série é preservada. Se não houver dados multi-série, degrada para barras planas."
           },
           "orientation": {
             "type": "string",
@@ -292,7 +292,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor base das barras (usado em palette=\"single\"). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Em palette=\"multi\" é IGNORADO (a paleta cíclica do DS vence)."
+            "description": "Cor base das barras, usada em palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Em palette=\"multi\" é IGNORADO (a paleta cíclica do DS vence). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta."
           },
           "palette": {
             "type": "string",
@@ -302,14 +302,14 @@
               "none"
             ],
             "default": "single",
-            "description": "Modo de paleta AUTOMÁTICA: \"single\" (default) = todas as barras/séries com a mesma cor (accent); \"multi\" = cicla chart-1..5 por série/barra (accent custom é ignorado); \"none\" = sem cor (default do UI base). Sobrescrito por `seriesColors` quando este é fornecido."
+            "description": "Modo de paleta AUTOMÁTICA: \"single\" (default) = todas as barras/séries com a mesma cor (accent); \"multi\" = cicla a paleta categórica do design system (por série; com série única, por categoria); \"none\" = deixa a paleta padrão. Sobrescrito por `seriesColors` quando este é fornecido."
           },
           "seriesColors": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Cor por série, na ORDEM (índice 0 = primeira série, 1 = segunda, etc.). Cada item aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), linear-gradient()). SOBRESCREVE a palette automática para aquela série. Se omitido, usa `palette` (multi cicla chart-1..5, single usa accent). Use principalmente com stacked=true para fixar manualmente a cor de cada série empilhada."
+            "description": "Cor por série, na ORDEM (índice 0 = primeira série, 1 = segunda, etc.). Cada item é resolvido para uma cor de dado do design system e SOBRESCREVE a paleta automática daquela série. Se omitido, usa `palette`. Use principalmente com stacked=true para fixar a cor de cada série empilhada."
           },
           "valueFormat": {
             "type": "string",
@@ -321,7 +321,7 @@
               "percent"
             ],
             "default": "compactBRL",
-            "description": "Formato PT-BR do valor exibido no topo da barra/coluna + tooltip. ENUM FECHADO (sem input livre): BRL, compactBRL, number, compactNumber, percent.",
+            "description": "Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre): BRL, compactBRL, number, compactNumber, percent.",
             "oneOf": [
               {
                 "const": "BRL",
@@ -402,7 +402,7 @@
       "kind": "chart",
       "name": "Lista de Barras (ranking)",
       "description": "Ranking de categorias (Top N) — barra proporcional ao valor, ordenada.",
-      "source": "vitrine:bar-list-tremor",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -425,7 +425,7 @@
               "none"
             ],
             "default": "single",
-            "description": "Modo de paleta: \"single\" (default) = TODAS as barras com a mesma cor (accent); \"multi\" = cicla chart-1..5 por item (helper paletteClass(i) via BarListTremorItem.barClassName); \"none\" = sem distinção (usa o default do UI base)."
+            "description": "Modo de paleta: \"single\" (default) = todas as barras na cor de `accent`; \"multi\" = cicla a paleta categórica do design system, uma cor por item; \"none\" = deixa a cor padrão da paleta."
           },
           "accent": {
             "type": "string",
@@ -438,11 +438,11 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor base da barra (só usado em palette=\"single\"). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Cor das barras em palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           },
           "textColor": {
             "type": "string",
-            "description": "Cor do texto que fica DENTRO da barra. Por padrão (vazio) é AUTOMÁTICA por contraste (luminância WCAG da cor da barra → preto em barra clara, branco em barra escura) — sempre legível. Informe só para forçar: cor CSS (#000, rgb(255,255,255), white) ou classe Tailwind (text-white, text-black)."
+            "description": "OBSOLETA (mantida por compatibilidade): não tem efeito. O rótulo agora fica FORA da barra e usa as cores de texto do design system, que já garantem contraste sobre qualquer superfície — não há mais texto sobre a cor da barra para corrigir."
           }
         }
       },
@@ -482,7 +482,7 @@
       "kind": "layout",
       "name": "Bento Grid",
       "description": "Container de layout em mosaico \"bento\". Renderiza sub-blocos (gráficos/cards/tabelas) num grid; cada filho usa `span` (largura 1..12) e `rowSpan` (altura). Use `block.blocks` para os filhos. Props: columns, gap.",
-      "source": "custom",
+      "source": "astryx:grid",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -528,7 +528,7 @@
       "kind": "text",
       "name": "Callout",
       "description": "Banner de destaque semântico (info/sucesso/aviso/erro) com título e texto.",
-      "source": "vitrine:callout-tremor",
+      "source": "astryx:banner",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -545,7 +545,7 @@
               "warning",
               "error"
             ],
-            "description": "Preset semântico que define as cores base da caixa, do texto e do ícone (default | info=azul | success=verde | warning=amarelo | error=vermelho). boxColor/textColor sobrescrevem por cima."
+            "description": "Preset semântico: define a SEVERIDADE do destaque (default e info = informativo | success = sucesso | warning = atenção | error = erro). Cor da caixa, do texto e do ícone vêm do design system. boxColor/textColor sobrescrevem o tom por cima."
           },
           "title": {
             "type": "string",
@@ -557,11 +557,11 @@
           },
           "boxColor": {
             "type": "string",
-            "description": "Cor da CAIXA (fundo). Sobrescreve a cor do variant. INDEPENDENTE do texto. Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), gradient). Vazio = usa a cor do variant."
+            "description": "TOM da CAIXA (fundo + ícone). Sobrescreve o tom do variant. INDEPENDENTE do texto. Valores: info | success | warning | error (tons do design system). Nomes de cor legados são mapeados para o tom equivalente. Vazio (ou sem tom equivalente) = usa o tom do variant."
           },
           "textColor": {
             "type": "string",
-            "description": "Cor do TEXTO (título + corpo + ícone). Sobrescreve a cor do variant. INDEPENDENTE da caixa. Mesmo formato de boxColor (enum DS, classe Tailwind ou cor CSS). Vazio = herda a cor do variant."
+            "description": "TOM do TEXTO (título + corpo). Sobrescreve o tom do variant. INDEPENDENTE da caixa. Valores: primary | secondary | accent | disabled (tons de texto do design system). Nomes de cor legados são mapeados para o tom equivalente. Vazio (ou sem tom equivalente) = herda o tom da caixa."
           },
           "showIcon": {
             "type": "boolean",
@@ -582,7 +582,7 @@
       "kind": "layout",
       "name": "Cards com Hover",
       "description": "Grade de cards com destaque animado ao passar o mouse.",
-      "source": "vitrine:card-hover-effect",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -636,7 +636,7 @@
       "kind": "layout",
       "name": "Seção Colapsável",
       "description": "Container de layout colapsável: um cabeçalho clicável que expande/recolhe o corpo. Renderiza sub-blocos (gráficos/cards/tabelas) num grid de 12 colunas dentro do corpo. Use `block.blocks` para os filhos (cada filho usa `span` 1..12). Props: title, defaultOpen.",
-      "source": "vitrine:collapsible-section",
+      "source": "astryx:collapsible",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -666,7 +666,7 @@
       "kind": "layout",
       "name": "Painel de Dashboard",
       "description": "Container de painel: agrupa sub-blocos (KPIs, gráficos, tabelas) num card com header (título + descrição) e corpo em grid de 12 colunas. Use `block.blocks` para os filhos; cada filho usa `span` (largura 1..12). Props: title, description, variant.",
-      "source": "vitrine:dashboard-panel",
+      "source": "astryx:card",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -704,7 +704,7 @@
       "kind": "chart",
       "name": "Tabela Rica",
       "description": "Tabela com busca, ordenação e paginação (colunas tipadas). Para datasets tabulares.",
-      "source": "vitrine:data-table",
+      "source": "astryx:table",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -762,7 +762,7 @@
       "kind": "layout",
       "name": "Divisor",
       "description": "Linha divisória com rótulo central opcional — separa seções de um relatório.",
-      "source": "vitrine:divider-tremor",
+      "source": "astryx:divider",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -790,7 +790,7 @@
       "kind": "chart",
       "name": "Donut",
       "description": "Distribuição de um total entre categorias (label + value).",
-      "source": "vitrine:donut-chart",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -798,11 +798,11 @@
           "showLegend": {
             "type": "boolean",
             "default": true,
-            "description": "Exibe legenda clicável ao lado (uma linha por categoria com bolinha, valor absoluto e percentual). Em listas longas (6+ categorias) vira grade de 2 colunas com rolagem."
+            "description": "Exibe a legenda ao lado do anel: uma linha por categoria com marca de cor, valor absoluto e participação no total. É ela que dá a leitura numérica do gráfico."
           },
           "centerLabel": {
             "type": "string",
-            "description": "Rótulo exibido no centro do donut quando NÃO há hover em nenhum segmento (abaixo dele aparece o VALOR TOTAL, soma das fatias). Default: \"Total\"."
+            "description": "Rótulo exibido no centro do anel, sob o valor total (soma das fatias). Default: \"Total\"."
           },
           "palette": {
             "type": "string",
@@ -812,7 +812,7 @@
               "none"
             ],
             "default": "single",
-            "description": "Modo de paleta: \"single\" (default) = TODAS as fatias na MESMA cor (accent), variando a opacidade por fatia para mantê-las distinguíveis; \"multi\" = cicla chart-1..5 por categoria (accent custom é IGNORADO — a paleta do DS vence); \"none\" = sem cor (currentColor herdado, sem distinção)."
+            "description": "Modo de paleta: \"single\" (default) = todas as fatias na cor de `accent` (a leitura fica por conta da legenda); \"multi\" e \"none\" = ciclam a paleta categórica do design system, uma cor por categoria — use quando a cor precisar distinguir as fatias."
           },
           "accent": {
             "type": "string",
@@ -825,7 +825,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor base aplicada aos segmentos (só usado em palette=\"single\"; em \"multi\" a paleta cíclica do DS vence). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Cor das fatias em palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Em \"multi\" é IGNORADO. Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           },
           "valueFormat": {
             "type": "string",
@@ -837,7 +837,7 @@
               "percent"
             ],
             "default": "compactBRL",
-            "description": "Formato PT-BR do valor exibido no centro do donut (total/fatia) + legenda. ENUM FECHADO (sem input livre).",
+            "description": "Formato PT-BR do valor exibido no centro do anel (total) e na legenda. ENUM FECHADO (sem input livre).",
             "oneOf": [
               {
                 "const": "BRL",
@@ -934,7 +934,7 @@
       "kind": "title",
       "name": "Flip Words",
       "description": "Título com palavra que troca animadamente — ótimo para capas/headers de relatório.",
-      "source": "vitrine:flip-words",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -995,7 +995,7 @@
               "violet",
               "slate"
             ],
-            "description": "Cor base da etapa (texto de destaque + barra). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações."
+            "description": "Cor da etapa: escolhe qual RAMPA sequencial do design system pinta a barra de participação (os segmentos vão do tom mais escuro ao mais claro, porque são partes ordenadas do mesmo total). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações. Os textos seguem as cores de leitura do sistema, para não perder contraste."
           },
           "defaultOpen": {
             "type": "boolean",
@@ -1094,7 +1094,7 @@
       "kind": "layout",
       "name": "Efeito de Brilho",
       "description": "Borda com brilho que reage ao ponteiro — destaca um card.",
-      "source": "vitrine:glowing-effect",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1126,7 +1126,7 @@
       "kind": "chart",
       "name": "Barras Horizontais",
       "description": "Compara valores entre categorias em barras horizontais (rótulos longos cabem melhor).",
-      "source": "vitrine:h-bar-chart",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1139,7 +1139,7 @@
               "none"
             ],
             "default": "single",
-            "description": "Modo de paleta: \"single\" (default) = TODAS as barras com a mesma cor (accent); \"multi\" = cicla chart-1..5 por item (helper paletteClass(i) via HBarChartDatum.barClassName) — accent custom é IGNORADO nesse modo (a paleta do DS vence); \"none\" = sem distinção (default do UI base)."
+            "description": "Modo de paleta: \"single\" (default) = todas as barras na cor de `accent`; \"multi\" = cicla a paleta categórica do design system, uma cor por categoria; \"none\" = deixa a cor padrão da paleta."
           },
           "accent": {
             "type": "string",
@@ -1152,7 +1152,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor base da barra (só usado em palette=\"single\"; em \"multi\" a paleta cíclica do DS vence). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Cor das barras em palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Em \"multi\" é IGNORADO. Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           },
           "valueFormat": {
             "type": "string",
@@ -1164,7 +1164,7 @@
               "percent"
             ],
             "default": "compactBRL",
-            "description": "Formato PT-BR do valor exibido no rótulo lateral + tooltip. ENUM FECHADO (sem input livre).",
+            "description": "Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre).",
             "oneOf": [
               {
                 "const": "BRL",
@@ -1227,7 +1227,7 @@
       "kind": "layout",
       "name": "Hover Card",
       "description": "Cartão flutuante exibido ao passar o mouse sobre o gatilho.",
-      "source": "vitrine:hover-card",
+      "source": "astryx:hovercard",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1255,7 +1255,7 @@
       "kind": "chart",
       "name": "Tabela de Fatura",
       "description": "Itens com quantidade × valor unitário e total no rodapé. Linhas: label, qty, unit.",
-      "source": "vitrine:invoice-table",
+      "source": "astryx:table",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1315,7 +1315,7 @@
       "kind": "chart",
       "name": "KPI",
       "description": "Métrica única (escalar) com rótulo e variação opcional.",
-      "source": "vitrine:kpi-card",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1374,7 +1374,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor de destaque do card (rail lateral + chip do ícone). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Resolvida por resolveAccent()."
+            "description": "Cor de CATEGORIZAÇÃO do card. O valor é resolvido para uma variante de cor do design system (chart-1..5 e primary mapeiam para as cores de dado, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade; quando não descrevem uma cor do sistema, o card fica no visual padrão. Use para agrupar KPIs por tema, não para sinalizar status."
           },
           "icon": {
             "type": "string",
@@ -1410,7 +1410,7 @@
               "ArrowUpRight",
               "ArrowDownRight"
             ],
-            "description": "Ícone lucide-react exibido no canto do card. ENUM CURADO (set relevante p/ dashboards: financeiro/métricas/pessoas/status). Ex.: \"DollarSign\", \"TrendingUp\", \"Users\", \"Landmark\". Vazio = sem ícone."
+            "description": "Ícone exibido ao lado do rótulo do card. ENUM CURADO (set relevante p/ dashboards: financeiro/métricas/pessoas/status). Ex.: \"DollarSign\", \"TrendingUp\", \"Users\", \"Landmark\". Vazio = sem ícone."
           },
           "showDelta": {
             "type": "boolean",
@@ -1464,13 +1464,14 @@
       "kind": "chart",
       "name": "Leaderboard",
       "description": "Ranking (Top N) com posição, avatar e barra de progresso proporcional ao valor.",
-      "source": "vitrine:leaderboard-list",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "unit": {
-            "type": "string"
+            "type": "string",
+            "description": "Unidade colada ao valor de cada linha (ex.: \"pts\", \"atendimentos\"). Vazio = só o número, formatado em PT-BR."
           }
         }
       },
@@ -1506,19 +1507,19 @@
       "kind": "chart",
       "name": "Gráfico de Linhas",
       "description": "Série temporal: evolução de um valor ao longo do tempo.",
-      "source": "vitrine:line-chart",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "smooth": {
             "type": "boolean",
-            "description": "Se true, desenha as linhas como curvas suaves (Catmull-Rom). Se false, segmentos retos (polyline)."
+            "description": "Se true, desenha as linhas como curvas suaves; se false, segmentos retos entre os pontos."
           },
           "area": {
             "type": "boolean",
             "default": true,
-            "description": "Se true, preenche área abaixo de cada linha além do traço."
+            "description": "Se true, preenche a área abaixo de cada linha, bem discreta, além do traço."
           },
           "palette": {
             "type": "string",
@@ -1528,7 +1529,7 @@
               "none"
             ],
             "default": "multi",
-            "description": "Modo de paleta: \"multi\" (default) = cicla chart-1..5 por série; \"single\" = força accent em todas; \"none\" = sem distinção de cor."
+            "description": "Modo de paleta: \"multi\" (default) e \"none\" ciclam a paleta categórica do design system, uma cor por série; \"single\" fixa a cor de `accent` em todas as linhas."
           },
           "accent": {
             "type": "string",
@@ -1541,7 +1542,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor base da(s) série(s). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Aplicada como stroke via classe Tailwind ou style.stroke quando CSS custom."
+            "description": "Cor base da(s) série(s), usada quando palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão."
           }
         }
       },
@@ -1585,8 +1586,8 @@
       "type": "metric_glow",
       "kind": "chart",
       "name": "Métrica (glow)",
-      "description": "Card de métrica única em destaque, com variação e efeito de brilho.",
-      "source": "vitrine:metric-glow-card",
+      "description": "Card de métrica única em destaque, com variação e halo de luz atrás do número.",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1640,7 +1641,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor do brilho/destaque do card. Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Cor do halo de destaque do card. O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           },
           "showDelta": {
             "type": "boolean",
@@ -1704,7 +1705,7 @@
       "kind": "layout",
       "name": "Möbius Loop",
       "description": "Ícone animado (loop infinito) — ótimo como indicador de carregamento/processamento.",
-      "source": "vitrine:mobius-loop-icon",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1735,7 +1736,7 @@
       "kind": "layout",
       "name": "3D Pin",
       "description": "Card com efeito de inclinação 3D e \"pin\" animado no hover.",
-      "source": "vitrine:3d-pin",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1767,7 +1768,7 @@
       "kind": "chart",
       "name": "Barra de Progresso",
       "description": "Progresso de um valor sobre uma escala (ex.: 68 de 100). Ótimo para metas.",
-      "source": "vitrine:progress-bar-tremor",
+      "source": "astryx:progress-bar",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1775,7 +1776,7 @@
           "max": {
             "type": "number",
             "default": 100,
-            "description": "Valor máximo da escala (denominador do %). Ex.: max=100 → value=68 vira 68%."
+            "description": "Valor máximo da escala (denominador do %). Ex.: max=100 → value=68 vira 68%. Com max diferente de 100, a leitura passa a ser \"valor de total\"."
           },
           "variant": {
             "type": "string",
@@ -1787,7 +1788,7 @@
               "success"
             ],
             "default": "default",
-            "description": "Cor SEMÂNTICA do preenchimento + trilho (default=azul, neutral=cinza, warning=amarelo, error=vermelho, success=verde). É SOBRESCRITO por `accent` quando este vier preenchido."
+            "description": "Cor SEMÂNTICA do preenchimento, mapeada para as variantes do design system: default = destaque, neutral = neutra, warning = atenção, error = erro, success = sucesso. É SOBRESCRITA por `accent` quando este vier preenchido."
           },
           "accent": {
             "type": "string",
@@ -1799,12 +1800,12 @@
               "chart-5",
               "primary"
             ],
-            "description": "Cor CUSTOM do preenchimento. Quando preenchida, SOBRESCREVE o `variant`. Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500) ou cor CSS crua (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Cor de destaque. Quando preenchida, SOBRESCREVE o `variant` e a barra usa a cor de destaque do tema — a barra do design system é pintada por variante semântica, não por cor arbitrária. Valores antigos continuam aceitos."
           },
           "showValue": {
             "type": "boolean",
             "default": true,
-            "description": "Mostra (default) ou esconde o \"%\" exibido ao lado do rótulo do dado."
+            "description": "Mostra (default) ou esconde a leitura do valor ao lado do rótulo."
           }
         }
       },
@@ -1837,7 +1838,7 @@
       "kind": "chart",
       "name": "Anel de Progresso",
       "description": "Progresso circular de um valor sobre uma escala (percentual no centro).",
-      "source": "vitrine:progress-circle-tremor",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1845,7 +1846,7 @@
           "max": {
             "type": "number",
             "default": 100,
-            "description": "Valor máximo da escala (o 100% do anel). Default 100 — nesse caso o `value` já É um percentual. Com max ≠ 100, o anel mostra value/max e o tooltip explicita \"X de Y\"."
+            "description": "Valor máximo da escala (o 100% do anel). Default 100 — nesse caso o `value` já É um percentual. Com max diferente de 100, o anel mostra value/max e a leitura explicita \"X de Y\"."
           },
           "variant": {
             "type": "string",
@@ -1857,7 +1858,7 @@
               "success"
             ],
             "default": "default",
-            "description": "Tema de cor do anel (paleta semântica): default (azul), neutral (cinza), warning (amarelo), error (vermelho), success (verde). É IGNORADO quando `accent` está preenchido (accent sobrescreve o variant)."
+            "description": "Tom semântico do anel: default = destaque, neutral = neutro, warning = atenção, error = negativo, success = positivo. É IGNORADO quando `accent` está preenchido."
           },
           "accent": {
             "type": "string",
@@ -1869,7 +1870,7 @@
               "chart-5",
               "primary"
             ],
-            "description": "Cor custom do arco. Quando preenchida, SOBRESCREVE o `variant`. Aceita enum DS (chart-1..5, primary), classe Tailwind de stroke (stroke-purple-500), ou cor CSS crua (#40E0D0, rgb(), linear-gradient(), var(--chart-1)). Vazio = usa o `variant`."
+            "description": "Cor do arco. Quando preenchida, SOBRESCREVE o `variant` e o anel usa o tom de destaque do tema — o anel é pintado por tom semântico, não por cor arbitrária. Valores antigos continuam aceitos. Vazio = usa o `variant`."
           }
         }
       },
@@ -1901,7 +1902,7 @@
       "kind": "chart",
       "name": "Medidor Radial",
       "description": "Medidor (gauge) de um valor sobre uma escala — ótimo para metas e percentuais.",
-      "source": "vitrine:radial-gauge",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1918,7 +1919,7 @@
           },
           "unit": {
             "type": "string",
-            "description": "Unidade exibida ao lado do número no miolo (ex.: \"%\", \"km\", \"pts\"). Se ausente, usa a `unit` dos dados (data.unit)."
+            "description": "Unidade exibida junto do número no miolo (ex.: \"%\", \"km\", \"pts\"). Se ausente, usa a `unit` dos dados (data.unit)."
           },
           "accent": {
             "type": "string",
@@ -1931,7 +1932,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor do ARCO do medidor (stroke + número central + brilho). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           }
         }
       },
@@ -1969,7 +1970,7 @@
       "kind": "layout",
       "name": "Painéis Redimensionáveis",
       "description": "Container de layout em painéis arrastáveis (split). Cada sub-bloco (`block.blocks`) vira um painel; uma divisória entre eles permite redimensionar. Suporta 2+ painéis. Props: direction (horizontal|vertical), defaultSizes (% inicial de cada painel).",
-      "source": "vitrine:resizable",
+      "source": "astryx:layout",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2027,7 +2028,7 @@
       "kind": "chart",
       "name": "Dispersão (scatter)",
       "description": "Correlação entre duas variáveis numéricas (x × y); `series` colore por categoria.",
-      "source": "vitrine:scatter-chart-tremor",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2035,12 +2036,12 @@
           "showLegend": {
             "type": "boolean",
             "default": true,
-            "description": "Exibe legenda clicável acima do chart (uma bolinha por categoria, com clique para dim das outras)."
+            "description": "Exibe a legenda (uma marca de cor por categoria + rótulo) abaixo da plotagem."
           },
           "showGridLines": {
             "type": "boolean",
             "default": true,
-            "description": "Exibe linhas de grade horizontais e verticais tracejadas."
+            "description": "Exibe as linhas de grade horizontais e verticais."
           },
           "palette": {
             "type": "string",
@@ -2050,7 +2051,7 @@
               "none"
             ],
             "default": "multi",
-            "description": "Modo de paleta: \"multi\" (default) = cicla chart-1..5 por categoria; \"single\" = força accent em todas (1 cor); \"none\" = sem distinção (usa a palette cíclica padrão)."
+            "description": "Modo de paleta: \"multi\" (default) e \"none\" ciclam a paleta categórica do design system, uma cor por categoria; \"single\" junta todos os pontos numa série só — uma cor, sem distinção de grupo."
           },
           "accent": {
             "type": "string",
@@ -2063,7 +2064,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor ÚNICA aplicada a TODAS as categorias (vence palette cíclica). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Mantida por compatibilidade de contrato: numa dispersão a cor identifica a CATEGORIA, então ela vem sempre da paleta de dados do design system, na ordem dos grupos. Para uma cor só, use palette=\"single\"."
           }
         }
       },
@@ -2110,7 +2111,7 @@
       "kind": "layout",
       "name": "Seção (Container)",
       "description": "Container hierárquico: agrupa sub-blocos num card com header (título + subtítulo) e corpo em grid de 12 colunas. Permite composição: seção dentro de seção, sumário executivo, etc.",
-      "source": "custom",
+      "source": "astryx:section",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2146,8 +2147,8 @@
       "type": "sheet",
       "kind": "layout",
       "name": "Sheet (painel lateral)",
-      "description": "Container de layout: um BOTÃO que abre um PAINEL LATERAL deslizante. Os sub-blocos (gráficos/detalhe) ficam DENTRO do painel, empilhados — use `block.blocks` para os filhos. Ideal para detalhamento sob demanda sem ocupar espaço na tela. Props: triggerLabel, title, description, side.",
-      "source": "vitrine:sheet",
+      "description": "Container de layout: um BOTÃO que abre um PAINEL MODAL ancorado na borda da tela. Os sub-blocos (gráficos/detalhe) ficam DENTRO do painel, empilhados — use `block.blocks` para os filhos. Ideal para detalhamento sob demanda sem ocupar espaço na tela. Props: triggerLabel, title, description, side.",
+      "source": "astryx:dialog",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2174,7 +2175,7 @@
               "left"
             ],
             "default": "right",
-            "description": "Lado de onde o painel desliza: right (default), left, top ou bottom."
+            "description": "Borda em que o painel encosta: right (default), left, top ou bottom."
           }
         }
       },
@@ -2191,7 +2192,7 @@
       "kind": "chart",
       "name": "Signal Card",
       "description": "KPI com mini-sparkline e tendência. Recebe uma série; destaca o último valor.",
-      "source": "vitrine:signal-card",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2246,7 +2247,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor da sparkline (pinta o traço/preenchimento, NÃO o fundo). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), var(--chart-1))."
+            "description": "Cor da tendência desenhada (traço e preenchimento; nunca o fundo do cartão). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           },
           "trendPolarity": {
             "type": "string",
@@ -2312,7 +2313,7 @@
       "kind": "chart",
       "name": "Sparkline",
       "description": "Minigráfico de tendência (sem eixos) — ótimo ao lado de um KPI.",
-      "source": "vitrine:spark-chart-tremor",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2325,7 +2326,7 @@
               "line"
             ],
             "default": "area",
-            "description": "Variante do spark chart: \"area\" (default, com gradiente), \"bar\" (colunas) ou \"line\" (linha sem preenchimento)."
+            "description": "Forma do minigráfico: \"area\" (default, linha com preenchimento), \"bar\" (colunas) ou \"line\" (só a linha)."
           },
           "curveType": {
             "type": "string",
@@ -2335,7 +2336,7 @@
               "step"
             ],
             "default": "monotone",
-            "description": "Curva usada em type=\"area\" e type=\"line\": \"linear\" (reta entre pontos), \"monotone\" (suavizada sem overshoot) ou \"step\" (degraus)."
+            "description": "Curva usada em type=\"area\" e type=\"line\": \"monotone\" (default) suaviza a linha; \"linear\" e \"step\" desenham segmentos retos entre os pontos."
           },
           "palette": {
             "type": "string",
@@ -2345,7 +2346,7 @@
               "none"
             ],
             "default": "single",
-            "description": "Modo de paleta: \"single\" (default) = 1 cor (accent) na série; \"multi\" = GRADIENTE multicolor (chart-1..5) ao longo da série (spark é single-série, então multi vira um arco-íris contínuo, não fatias); \"none\" = comportamento single."
+            "description": "Modo de paleta: \"single\" (default) e \"none\" usam a cor de `accent`; \"multi\" deixa a primeira cor da paleta do design system — num gráfico de série única a cor não carrega informação, então não há o que ciclar."
           },
           "accent": {
             "type": "string",
@@ -2358,7 +2359,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor da SÉRIE (pinta o traço/preenchimento do gráfico, NÃO o fundo). Aceita enum DS (chart-1..5, primary), classe Tailwind (stroke-purple-500), ou cor CSS (#40E0D0, rgb(), var(--chart-1)). Usada em palette \"single\"/\"none\"; em \"multi\" a paleta multicolor vence."
+            "description": "Cor da SÉRIE (traço e preenchimento; nunca o fundo). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           }
         }
       },
@@ -2399,7 +2400,7 @@
       "kind": "chart",
       "name": "Stat Tile",
       "description": "Ladrilho compacto de estatística (valor + variação) para grades de KPIs.",
-      "source": "vitrine:stat-tile",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2453,7 +2454,7 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor de destaque (barra lateral). Aceita enum DS (chart-1..5, primary), classe Tailwind (bg-purple-500), ou cor CSS (#40E0D0, rgb(), linear-gradient(), var(--chart-1))."
+            "description": "Cor de CATEGORIZAÇÃO do ladrilho. O valor é resolvido para uma variante de cor do design system (chart-1..5 e primary mapeiam para as cores de dado, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade; quando não descrevem uma cor do sistema, o ladrilho fica no visual padrão."
           },
           "showDelta": {
             "type": "boolean",
@@ -2520,7 +2521,7 @@
       "kind": "chart",
       "name": "Tabela",
       "description": "Dados tabulares crus com colunas tipadas.",
-      "source": "vitrine:data-table",
+      "source": "astryx:table",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2614,8 +2615,8 @@
       "type": "tooltip_card",
       "kind": "layout",
       "name": "Tooltip Card",
-      "description": "Tooltip rico que segue o cursor e exibe um card de conteúdo.",
-      "source": "vitrine:tooltip-card",
+      "description": "Tooltip ancorado ao gatilho, exibido no hover ou no foco por teclado.",
+      "source": "astryx:tooltip",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2639,7 +2640,7 @@
       "kind": "layout",
       "name": "Tooltip Fluido",
       "description": "Tooltip com animação suave exibido ao focar/passar o mouse no gatilho.",
-      "source": "vitrine:tooltip-fluid",
+      "source": "astryx:tooltip",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,

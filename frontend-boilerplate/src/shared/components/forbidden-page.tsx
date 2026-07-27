@@ -1,6 +1,7 @@
 import { ShieldX } from 'lucide-react';
-import { Button } from '@/components/ui';
-import { useNavigate } from 'react-router-dom';
+import { Button } from '@astryxdesign/core/Button';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Icon } from '@astryxdesign/core/Icon';
 
 export interface ForbiddenPageProps {
   /** Mensagem opcional sobre o que era necessário. */
@@ -8,28 +9,22 @@ export interface ForbiddenPageProps {
 }
 
 /**
- * Tela de 403 (acesso negado por papel/permissão). Renderizada pelo guarda
- * `RequireRole` quando o usuário autenticado não tem o papel/permissão exigidos.
+ * Tela de 403 (acesso negado por papel/permissão), renderizada pelo guarda
+ * `RequireRole` quando o usuário autenticado não tem a permissão exigida.
+ *
+ * É um `EmptyState`, não um `Banner`: a página inteira é o "vazio" e o usuário
+ * precisa de uma SAÍDA, não de um aviso empilhado sobre um conteúdo que não
+ * existe. A saída é um link de verdade (`href`), que o `LinkProvider` do shell
+ * converte em navegação client-side.
  */
 export function ForbiddenPage({ description }: ForbiddenPageProps) {
-  const navigate = useNavigate();
   return (
-    <div
-      role="alert"
-      className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center"
-    >
-      <div className="flex size-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-        <ShieldX className="size-7" />
-      </div>
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Acesso negado</h1>
-        <p className="max-w-md text-sm text-muted-foreground">
-          {description ?? 'Você não tem permissão para acessar esta página.'}
-        </p>
-      </div>
-      <Button variant="outline" onClick={() => navigate('/')}>
-        Voltar ao início
-      </Button>
-    </div>
+    <EmptyState
+      icon={<Icon icon={ShieldX} size="lg" color="error" />}
+      title="Acesso negado"
+      description={description ?? 'Você não tem permissão para acessar esta página.'}
+      headingLevel={2}
+      actions={<Button label="Voltar ao início" variant="secondary" href="/" />}
+    />
   );
 }

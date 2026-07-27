@@ -23,7 +23,7 @@ export const manifest = {
   name: 'Painel de Dashboard',
   description:
     'Container de painel: agrupa sub-blocos (KPIs, gráficos, tabelas) num card com header (título + descrição) e corpo em grid de 12 colunas. Use `block.blocks` para os filhos; cada filho usa `span` (largura 1..12). Props: title, description, variant.',
-  source: 'vitrine:dashboard-panel',
+  source: 'astryx:card',
   propsSchema: {
     type: 'object',
     additionalProperties: false,

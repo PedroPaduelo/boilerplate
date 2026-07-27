@@ -1,37 +1,24 @@
 /**
- * Bloco `progress_circle` (shape 'scalar') — usa o Vitrine `ProgressCircleTremor`.
+ * Bloco `progress_circle` (shape 'scalar') — progresso em anel, sobre o
+ * `ProgressCircle` de `@/shared/ui` e o `Tooltip` do Astryx.
  *
- * FORMATO DE GRÁFICO (movido p/ a aba "Gráficos", agora recebe a moldura
- * `ChartWidget` — header com título + footer com SQL/duração). O componente
- * apenas desenha o anel centralizado dentro da moldura; o título vem do
- * ChartWidget. O `data.label` (quando existe) aparece como SUBLABEL abaixo do
- * anel. O `%` fica no centro do anel.
- *
- * Prop de COR (canônico — igual aos 8 gráficos): `accent` (string livre)
- * resolvida por `resolveAccentForStroke()` em `lib/accent.ts` (o arco é um
- * `stroke` de SVG, não `background`):
- *   - enum DS (chart-1..5 | 'primary') → classe Tailwind `stroke-chart-N`;
- *   - classe Tailwind (`stroke-purple-500`) → usa direto;
- *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.stroke` inline.
- * Quando `accent` está PREENCHIDO, ele SOBRESCREVE o `variant` na cor do arco
- * (e o trilho passa a usar a cor neutra, p/ não misturar a paleta do variant).
- * Quando `accent` está VAZIO, vale o `variant` (default|neutral|warning|error|
- * success).
- *
- * Acessibilidade: o anel é envolvido por um wrapper `role="img"` com um
- * `aria-label` descritivo (percentual + escala em PT-BR), focável por teclado,
- * de modo que a informação NÃO depende só do tooltip visual. O próprio
- * `ProgressCircleTremor` também recebe `ariaLabel`/`ariaValuetext` (role
- * progressbar) como defesa em profundidade.
- *
- * Tooltip: ao passar o mouse (ou focar) mostra um card com o valor e o
- * percentual formatados (ex.: "73,4% (734 de 1.000)").
+ * O que mudou na migração:
+ *  - o anel vem pronto da base, com papel `progressbar` e valor de verdade
+ *    (antes o `role="img"` do wrapper era a única leitura);
+ *  - COR: `variant` vira TOM semântico do anel (destaque, positivo, atenção,
+ *    negativo, neutro) e `accent`, quando preenchido, significa "use o tom de
+ *    destaque" — o anel do DS é pintado por tom, não por cor arbitrária;
+ *  - o tooltip é o do design system: ele já cuida de foco, teclado e
+ *    posicionamento, então o bloco não precisa de `tabIndex` nem de anel de
+ *    foco próprio.
  */
 import type { ScalarData } from '@dashboards/contracts';
-import { ProgressCircleTremor } from '@/components/ui/progress-circle-tremor';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Text } from '@astryxdesign/core/Text';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
+import { VStack } from '@astryxdesign/core/VStack';
+import { ProgressCircle } from '@/shared/ui';
+import type { ProgressCircleTone } from '@/shared/ui';
 import { formatNumberBR, formatPercentBR, toNumber } from '@/shared/lib/format';
-import { resolveAccentForStroke } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -40,93 +27,83 @@ import { fixture } from './fixture';
 type ProgressCircleProps = {
   max?: number;
   variant?: 'default' | 'neutral' | 'warning' | 'error' | 'success';
-  /**
-   * Cor do arco de progresso. Aceita enum DS (chart-1..5, primary), classe
-   * Tailwind (stroke-purple-500) ou cor CSS (#40E0D0, rgb(), gradient).
-   * Quando preenchido, SOBRESCREVE o `variant`.
-   */
+  /** Cor do arco (ver manifest): preenchida, usa o tom de destaque. */
   accent?: string;
 };
 
-export const Component: BlockComponent<ProgressCircleProps, ScalarData> = ({ props, data }) => {
+/** Vocabulário antigo → tom semântico do anel. */
+const TONE: Record<string, ProgressCircleTone> = {
+  default: 'accent',
+  neutral: 'neutral',
+  warning: 'warning',
+  error: 'negative',
+  success: 'positive',
+};
+
+/** Diâmetro e espessura do anel em px — geometria do desenho. */
+const RING_SIZE = 116;
+const RING_THICKNESS = 10;
+
+export const Component: BlockComponent<ProgressCircleProps, ScalarData> = ({
+  props,
+  data,
+  state,
+  error,
+}) => {
   const value = toNumber(data?.value) ?? 0;
   const rawMax = props.max ?? 100;
   const max = rawMax > 0 ? rawMax : 100;
   const fraction = Math.min(1, Math.max(0, value / max));
-  const pct = Math.round(fraction * 100);
 
-  // Strings PT-BR (nunca número cru no JSX).
-  const pctLabel = formatPercentBR(fraction); // "73,4%"
-  // Só explicita a escala "X de Y" quando há uma escala custom (max ≠ 100,
-  // o default). Com max=100, o valor já É um percentual → mostra só "%".
-  const hasExplicitScale = max !== 100;
-  const valueDescription = hasExplicitScale
-    ? `${pctLabel} (${formatNumberBR(value)} de ${formatNumberBR(max)})`
-    : pctLabel;
-  const ariaLabel = data?.label ? `${data.label}: ${valueDescription}` : valueDescription;
+  // Com a escala default o valor JÁ é um percentual; com escala própria, a
+  // leitura precisa dizer de quanto — senão "73%" de 1.000 fica sem referência.
+  const percentLabel = formatPercentBR(fraction);
+  const reading =
+    max === 100
+      ? percentLabel
+      : `${percentLabel} (${formatNumberBR(value)} de ${formatNumberBR(max)})`;
 
-  // COR — `accent` custom (quando preenchido) SOBRESCREVE o `variant`. O arco
-  // é um `stroke` de SVG → usamos `resolveAccentForStroke`. Quando há accent,
-  // o trilho de fundo passa a `neutral` (cinza) p/ não misturar a paleta do
-  // variant com a cor custom do arco.
-  const hasAccent = props.accent != null && String(props.accent).trim() !== '';
-  const resolvedAccent = hasAccent ? resolveAccentForStroke(props.accent) : null;
-  const circleClassName =
-    resolvedAccent?.kind === 'class' ? resolvedAccent.className : undefined;
-  const circleStyle =
-    resolvedAccent?.kind === 'style' ? resolvedAccent.style : undefined;
-  const effectiveVariant = hasAccent ? 'neutral' : props.variant;
+  const hasAccent = typeof props.accent === 'string' && props.accent.trim() !== '';
+  const tone = hasAccent ? 'accent' : (TONE[props.variant ?? 'default'] ?? 'accent');
+  const label = data?.label ?? manifest.name;
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            role="img"
-            aria-label={ariaLabel}
-            tabIndex={0}
-            className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <ProgressCircleTremor
-              value={value}
-              max={max}
-              radius={52}
-              strokeWidth={9}
-              variant={effectiveVariant}
-              circleClassName={circleClassName}
-              circleStyle={circleStyle}
-              ariaLabel={ariaLabel}
-              ariaValuetext={valueDescription}
-            >
-              <span className="text-xl font-semibold tabular-nums text-foreground">{pct}%</span>
-            </ProgressCircleTremor>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent className="text-center">
-          {data?.label ? <div className="font-medium">{data.label}</div> : null}
-          <div className="tabular-nums">{valueDescription}</div>
-        </TooltipContent>
+    <VStack gap={2} vAlign="center" hAlign="center" width="100%">
+      <Tooltip content={data?.label ? `${data.label}: ${reading}` : reading}>
+        <VStack>
+          <ProgressCircle
+            value={value}
+            max={max}
+            size={RING_SIZE}
+            thickness={RING_THICKNESS}
+            tone={tone}
+            label={label}
+            centerValue={percentLabel}
+            summary={reading}
+            isLoading={state === 'loading' || state === 'skeleton'}
+            emptyMessage={
+              state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
+            }
+          />
+        </VStack>
       </Tooltip>
       {data?.label ? (
-        <span className="text-sm text-muted-foreground">{data.label}</span>
+        <Text type="supporting" color="secondary">
+          {data.label}
+        </Text>
       ) : null}
-    </div>
+    </VStack>
   );
 };
 
 /**
- * Insight de rodapé (canônico): retorna 1 frase curta com o percentual de
- * conclusão em PT-BR. Como `deriveTakeaway` recebe só os dados (sem props), a
- * escala é o default (max=100 → o valor já é percentual). Ex.: "75% concluído".
- * Retorno `string[]`; o BlockRenderer normaliza p/ o array
- * `{ enabled: true, text }[]` que o ChartWidget consome.
+ * Insight de rodapé: percentual concluído. Usa a escala default (100), porque
+ * `deriveTakeaway` só recebe os DADOS.
  */
 function deriveTakeaway(data: ScalarData): string[] | undefined {
   const value = toNumber(data?.value);
   if (value == null) return undefined;
-  const fraction = Math.min(1, Math.max(0, value / 100));
-  const pctLabel = formatPercentBR(fraction);
-  return [`${pctLabel} concluído`];
+  return [`${formatPercentBR(Math.min(1, Math.max(0, value / 100)))} concluído`];
 }
 
 export const definition = defineBlock<ProgressCircleProps, ScalarData>({

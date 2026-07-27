@@ -1,44 +1,51 @@
 /**
  * Bloco `resizable_panels` — CONTAINER de layout em painéis arrastáveis.
  *
- * Usa o mecanismo de container do render-engine: o `BlockRenderer` injeta
- * `childBlocks` (sub-blocos crus) + `renderChild` (renderiza 1 filho). Este
- * componente transforma CADA filho num PAINEL do `ResizablePanelGroup`
- * (shadcn/react-resizable-panels), com uma divisória (handle) arrastável
- * entre eles. Assim a IA monta `block.blocks` com a MESMA sintaxe do
- * dashboard/section, e o bloco vira um split redimensionável (2+ painéis).
+ * O `BlockRenderer` injeta `childBlocks` (sub-blocos crus) + `renderChild`.
+ * Cada filho vira uma ZONA do `Layout` do Astryx: os N-1 primeiros são painéis
+ * de tamanho arrastável (`PanelSlot` = `LayoutPanel`/`LayoutHeader` +
+ * `ResizeHandle`) e o último ocupa o conteúdo, absorvendo o espaço que sobra.
  *
- * `direction` controla o eixo do split (horizontal = lado a lado; vertical =
- * empilhado) e `defaultSizes` o tamanho inicial (%) de cada painel.
+ * `direction` escolhe o eixo do split (horizontal = lado a lado, na zona
+ * `start`; vertical = empilhado, na zona `header`) e `defaultSizes` o tamanho
+ * inicial de cada painel.
  *
- * Sem filhos (galeria do catálogo), mostra um placeholder ilustrativo com
- * dois painéis e a divisória para comunicar o conceito.
+ * Sem filhos (galeria do catálogo), mostra o placeholder com dois painéis.
  */
-import type { ReactNode } from 'react';
 import type { Block } from '@dashboards/contracts';
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '@/components/ui/resizable';
+import { Card } from '@astryxdesign/core/Card';
+import { Layout, LayoutContent } from '@astryxdesign/core/Layout';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
+import { PanelSlot, type PanelDirection } from './panel-slot';
+import { PANELS_MIN_HEIGHT, ResizablePlaceholder } from './placeholder';
 
-type Direction = 'horizontal' | 'vertical';
 type ResizableProps = {
-  direction?: Direction;
+  direction?: PanelDirection;
   defaultSizes?: number[];
 };
 
 /**
- * Calcula o tamanho inicial (%) de cada painel. Usa `defaultSizes` quando o
+ * Tamanho inicial de cada painel arrastável. Usa `defaultSizes` quando o
  * tamanho do array casa com o número de filhos; caso contrário divide igual.
+ * No eixo horizontal a porcentagem é relativa à largura disponível; no
+ * vertical vira px sobre a altura mínima do bloco (não há "% da altura" antes
+ * de medir o container).
  */
-function resolveSizes(count: number, defaultSizes?: number[]): number[] {
-  if (defaultSizes && defaultSizes.length === count) return defaultSizes;
-  return Array.from({ length: count }, () => 100 / count);
+function resolveSizes(
+  count: number,
+  direction: PanelDirection,
+  defaultSizes?: number[],
+): (number | string)[] {
+  const percents =
+    defaultSizes && defaultSizes.length === count
+      ? defaultSizes
+      : Array.from({ length: count }, () => 100 / count);
+  return percents.map((pct) =>
+    direction === 'horizontal' ? `${pct}%` : Math.round((pct / 100) * PANELS_MIN_HEIGHT),
+  );
 }
 
 export const Component: BlockComponent<ResizableProps> = ({
@@ -46,7 +53,7 @@ export const Component: BlockComponent<ResizableProps> = ({
   childBlocks,
   renderChild,
 }) => {
-  const direction: Direction = props.direction ?? 'horizontal';
+  const direction: PanelDirection = props.direction ?? 'horizontal';
 
   // Sem filhos → placeholder ilustrativo (catálogo/galeria).
   if (!childBlocks?.length || !renderChild) {
@@ -54,68 +61,36 @@ export const Component: BlockComponent<ResizableProps> = ({
   }
 
   const children = childBlocks as Block[];
-  const sizes = resolveSizes(children.length, props.defaultSizes);
+  const sizes = resolveSizes(children.length, direction, props.defaultSizes);
+  const last = children[children.length - 1];
+  const panels = children.slice(0, -1).map((child, i) => (
+    <PanelSlot
+      key={child.id}
+      direction={direction}
+      defaultSize={sizes[i]}
+      label={`Redimensionar painel ${i + 1}`}
+    >
+      {renderChild(child)}
+    </PanelSlot>
+  ));
+  const isHorizontal = direction === 'horizontal';
 
   return (
-    <div className="min-h-[20rem] w-full overflow-hidden rounded-lg border border-border">
-      <ResizablePanelGroup direction={direction}>
-        {children.map((child, i) => (
-          <ResizablePanelGroupItem
-            key={child.id}
-            isLast={i === children.length - 1}
-            defaultSize={sizes[i]}
-          >
-            <div className="h-full min-w-0 overflow-auto p-2">
-              {renderChild(child)}
-            </div>
-          </ResizablePanelGroupItem>
-        ))}
-      </ResizablePanelGroup>
-    </div>
+    <Card
+      padding={0}
+      minHeight={PANELS_MIN_HEIGHT}
+      data-slot="resizable-panels"
+      data-resizable-direction={direction}
+    >
+      <Layout
+        height="fill"
+        start={isHorizontal ? panels : undefined}
+        header={isHorizontal ? undefined : panels}
+        content={<LayoutContent padding={2}>{renderChild(last)}</LayoutContent>}
+      />
+    </Card>
   );
 };
-
-/** Um painel + a divisória que o separa do próximo (omitida no último). */
-function ResizablePanelGroupItem({
-  children,
-  defaultSize,
-  isLast,
-}: {
-  children: ReactNode;
-  defaultSize: number;
-  isLast: boolean;
-}) {
-  return (
-    <>
-      <ResizablePanel defaultSize={defaultSize}>{children}</ResizablePanel>
-      {!isLast && <ResizableHandle withHandle />}
-    </>
-  );
-}
-
-/** Placeholder (sem filhos) — comunica o conceito na galeria. */
-function ResizablePlaceholder({ direction }: { direction: Direction }) {
-  return (
-    <div
-      data-slot="resizable-panels-placeholder"
-      className="min-h-[20rem] w-full overflow-hidden rounded-lg border border-border"
-    >
-      <ResizablePanelGroup direction={direction}>
-        <ResizablePanel defaultSize={50}>
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 text-xs text-muted-foreground">
-            Painel A
-          </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={50}>
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/5 to-transparent p-4 text-xs text-muted-foreground">
-            Painel B
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
-  );
-}
 
 export const definition = defineBlock<ResizableProps>({
   type: manifest.type,

@@ -11,22 +11,16 @@
  * Isso já custou um ciclo inteiro de diagnóstico às cegas — uma conexão
  * apontando para o host errado parecia, na tela, o mesmo erro de uma com
  * problema de SSL.
+ *
+ * Depois da migração para o Astryx o explorador virou PRESENTACIONAL (recebe
+ * `error` por prop, não busca nada), então o teste monta o componente direto —
+ * sem mock de hook, sem rede.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { AxiosError, AxiosHeaders } from 'axios';
-import { ConnectionSchemaDialog } from '../components/connection-schema-explorer';
-import type { Connection } from '../types';
-
-const { useConnectionSchemaMock } = vi.hoisted(() => ({
-  useConnectionSchemaMock: vi.fn(),
-}));
-
-vi.mock('../hooks', () => ({
-  useConnectionSchema: (...args: unknown[]) => useConnectionSchemaMock(...args),
-}));
-
-const connection = { id: 'conn-1', name: 'Banco WhatsApp' } as Connection;
+import { renderWithProviders } from '@/test/render';
+import { DbSchemaExplorer } from '../components/db-schema-explorer';
 
 /** Erro como o axios entrega: message genérica + causa real no corpo. */
 function erroDaApi(mensagemDoBackend: string) {
@@ -41,20 +35,24 @@ function erroDaApi(mensagemDoBackend: string) {
   return err;
 }
 
+const onRetry = vi.fn();
+
 function renderComErro(err: unknown) {
-  useConnectionSchemaMock.mockReturnValue({
-    data: undefined,
-    isLoading: false,
-    isError: true,
-    error: err,
-    refetch: vi.fn(),
-    isFetching: false,
-  });
-  render(<ConnectionSchemaDialog connection={connection} open onOpenChange={vi.fn()} />);
+  renderWithProviders(
+    <DbSchemaExplorer
+      database={null}
+      isLoading={false}
+      error={err}
+      isRefreshing={false}
+      onRetry={onRetry}
+      selected={null}
+      onSelect={vi.fn()}
+    />,
+  );
 }
 
 describe('erro de introspecção de schema', () => {
-  beforeEach(() => useConnectionSchemaMock.mockReset());
+  beforeEach(() => onRetry.mockReset());
 
   it.each([
     ['connect ECONNREFUSED 176.126.87.167:54349'],
@@ -74,5 +72,11 @@ describe('erro de introspecção de schema', () => {
     expect(
       screen.getByText(/Verifique a conectividade da conexão e tente novamente/i),
     ).toBeInTheDocument();
+  });
+
+  it('oferece a saída de recuperação no próprio banner de erro', () => {
+    renderComErro(erroDaApi('connect ETIMEDOUT'));
+
+    expect(screen.getByRole('button', { name: /tentar novamente/i })).toBeEnabled();
   });
 });

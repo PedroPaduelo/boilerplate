@@ -39,11 +39,11 @@ const detail: DashboardDetail = {
   layout: dashboardLayoutFixture as never,
 };
 
-const updateMutate = vi.fn((_vars: unknown, opts?: { onSuccess?: (d?: unknown) => void }) =>
-  opts?.onSuccess?.(),
+const updateMutate = vi.fn(
+  (_vars: unknown, opts?: { onSuccess?: (d?: unknown) => void }) => opts?.onSuccess?.(),
 );
-const publishMutate = vi.fn((_vars: unknown, opts?: { onSuccess?: (d?: unknown) => void }) =>
-  opts?.onSuccess?.(),
+const publishMutate = vi.fn(
+  (_vars: unknown, opts?: { onSuccess?: (d?: unknown) => void }) => opts?.onSuccess?.(),
 );
 const addChartMutate = vi.fn();
 
@@ -102,6 +102,7 @@ describe('DashboardEditor (T-G2)', () => {
     authState.user = { id: 'me', role: 'CREATOR' };
     detail.status = 'DRAFT';
     detail.publishedLayout = null;
+    detail.draftLayout = dashboardLayoutFixture as never;
   });
 
   it('renderiza o editor (título, badge rascunho, blocos)', () => {
@@ -135,7 +136,9 @@ describe('DashboardEditor (T-G2)', () => {
   it('layout inválido bloqueia o salvar e mostra erro claro', async () => {
     renderEditor();
     // esvazia o connectionId do 1º bloco de dados (kpi) → layout inválido
-    const conns = screen.getAllByLabelText(/Conexão \(connectionId\)/i) as HTMLInputElement[];
+    const conns = screen.getAllByLabelText(
+      /Conexão \(connectionId\)/i,
+    ) as HTMLInputElement[];
     fireEvent.change(conns[0], { target: { value: '' } });
 
     const save = screen.getByRole('button', { name: /Salvar/i });
@@ -177,5 +180,77 @@ describe('DashboardEditor (T-G2)', () => {
     authState.user = { id: 'me', role: 'VIEWER' };
     renderEditor();
     expect(screen.getByText('Acesso negado')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Regressão do REDESENHO (Astryx): as operações do editor e os quatro estados
+ * continuam alcançáveis por papel acessível — nada aqui depende de classe CSS.
+ */
+describe('DashboardEditor — operações e estados da tela', () => {
+  beforeEach(() => {
+    updateMutate.mockClear();
+    publishMutate.mockClear();
+    addChartMutate.mockClear();
+    useDashboardData.mockClear();
+    authState.user = { id: 'me', role: 'CREATOR' };
+    detail.status = 'DRAFT';
+    detail.publishedLayout = null;
+    detail.draftLayout = dashboardLayoutFixture as never;
+  });
+
+  it('vazio: dashboard sem linhas oferece a ação de adicionar (e nada a pré-visualizar)', () => {
+    detail.draftLayout = { filters: [], rows: [] } as never;
+    renderEditor();
+
+    expect(screen.getByText('Nenhuma linha ainda')).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: 'Adicionar linha' }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('Nada para pré-visualizar')).toBeInTheDocument();
+    // Sem filtros o vazio também tem saída própria.
+    expect(screen.getByText('Nenhum filtro neste dashboard')).toBeInTheDocument();
+  });
+
+  it('adicionar filtro insere um filtro editável na lista', async () => {
+    renderEditor();
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar filtro' }));
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Novo filtro')).toBeInTheDocument(),
+    );
+  });
+
+  it('remover bloco tira o bloco do editor', async () => {
+    renderEditor();
+    expect(screen.getByText('blk_title')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover o bloco blk_title' }));
+
+    await waitFor(() => expect(screen.queryByText('blk_title')).not.toBeInTheDocument());
+  });
+
+  it('rascunho sem publicação explica por que não dá para comparar as versões', () => {
+    renderEditor();
+    expect(
+      screen.getByText('Publique o dashboard para comparar com a versão publicada.'),
+    ).toBeInTheDocument();
+  });
+
+  it('adicionar gráfico fica bloqueado (com motivo) enquanto há alterações não salvas', async () => {
+    renderEditor();
+    fireEvent.change(screen.getByDisplayValue('Dívida Ativa 2026'), {
+      target: { value: 'Outro título' },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('Salve o rascunho antes de adicionar um gráfico.').length,
+      ).toBeGreaterThan(0),
+    );
+    expect(screen.getByRole('button', { name: 'Adicionar' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 });

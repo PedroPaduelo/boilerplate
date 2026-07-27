@@ -11,19 +11,21 @@
  * comunicar o conceito de "card que expande".
  */
 import type { Block } from '@dashboards/contracts';
-import { ExpandableCards } from '@/components/ui/expandable-cards';
-import type {
-  ExpandableCardItem,
-} from '@/components/ui/expandable-cards-types';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
+import { ExpandableCards } from './expandable-cards';
+import { EXAMPLE_ITEMS } from './example-items';
+import type { ExpandableCardItem, ExpandableCardsGap } from './types';
 
 type ExpandableCardsBlockProps = {
   columns?: number;
-  gap?: 'sm' | 'md' | 'lg';
+  gap?: ExpandableCardsGap;
 };
+
+const DEFAULT_COLUMNS = 3;
+const DEFAULT_GAP: ExpandableCardsGap = 'md';
 
 /** Converte um catalogType (`bar_chart`) num rótulo legível (`Bar Chart`). */
 function humanizeType(type: string): string {
@@ -47,14 +49,12 @@ export const Component: BlockComponent<ExpandableCardsBlockProps> = ({
   childBlocks,
   renderChild,
 }) => {
-  const columns = props.columns ?? 3;
-  const gap = props.gap ?? 'md';
+  const columns = props.columns ?? DEFAULT_COLUMNS;
+  const gap = props.gap ?? DEFAULT_GAP;
 
   // Sem filhos → galeria de exemplo (demonstra o comportamento de expandir).
   if (!childBlocks?.length || !renderChild) {
-    return (
-      <ExpandableCards columns={columns} gap={gap} items={EXAMPLE_ITEMS} />
-    );
+    return <ExpandableCards columns={columns} gap={gap} items={EXAMPLE_ITEMS} />;
   }
 
   const items: ExpandableCardItem[] = childBlocks.map((child) => {
@@ -73,53 +73,6 @@ export const Component: BlockComponent<ExpandableCardsBlockProps> = ({
 
   return <ExpandableCards columns={columns} gap={gap} items={items} />;
 };
-
-/** Cards de exemplo p/ a galeria do catálogo (sem filhos reais). */
-const EXAMPLE_ITEMS: ExpandableCardItem[] = [
-  {
-    id: 'exemplo-arrecadacao',
-    title: 'Relatório de Arrecadação',
-    subtitle: 'Bar Chart',
-    preview: (
-      <div className="h-20 w-full rounded-md bg-gradient-to-br from-primary/20 via-primary/10 to-transparent" />
-    ),
-    content: (
-      <p className="text-sm text-muted-foreground">
-        Aqui o sub-bloco (ex.: um gráfico de barras) é renderizado em tamanho
-        completo. Adicione filhos em <code>block.blocks</code> para preencher os
-        cards.
-      </p>
-    ),
-  },
-  {
-    id: 'exemplo-divida',
-    title: 'Dívida Ativa',
-    subtitle: 'Donut',
-    preview: (
-      <div className="h-20 w-full rounded-md bg-gradient-to-br from-primary/20 via-primary/10 to-transparent" />
-    ),
-    content: (
-      <p className="text-sm text-muted-foreground">
-        Cada card abre o seu próprio conteúdo num modal. Feche com o botão, a
-        tecla Esc ou clicando fora.
-      </p>
-    ),
-  },
-  {
-    id: 'exemplo-despesas',
-    title: 'Despesas por Órgão',
-    subtitle: 'Tabela',
-    preview: (
-      <div className="h-20 w-full rounded-md bg-gradient-to-br from-primary/20 via-primary/10 to-transparent" />
-    ),
-    content: (
-      <p className="text-sm text-muted-foreground">
-        Use a prop <code>columns</code> (1..4) para controlar quantos cards por
-        linha aparecem na grade colapsada.
-      </p>
-    ),
-  },
-];
 
 export const definition = defineBlock<ExpandableCardsBlockProps>({
   type: manifest.type,

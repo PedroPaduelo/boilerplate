@@ -1,12 +1,15 @@
 /**
- * Manifesto do bloco `alert` (narrativo, sem dados) — aviso/destaque. Usa o
- * Vitrine `Alert` + `AlertTitle`/`AlertDescription`.
+ * Manifesto do bloco `alert` (narrativo, sem dados) — aviso/destaque. Renderiza
+ * com o `Banner` do Astryx (mensagem persistente em contexto).
  *
  * Props de COR/ÍCONE: `variant` é um ENUM FECHADO de 6 variantes semânticas
  * (default/info/success/warning/error/destructive) — cada uma carrega sua
  * própria `description` via `oneOf`/`const` (padrão h_bar_chart) p/ o MCP/IA
  * ver a documentação por opção no autocomplete. `enum` puro coexiste com o
  * `oneOf` (AJV aceita ambos) p/ retrocompat com validadores simples.
+ *
+ * A variante NÃO define uma cor: ela define a SEVERIDADE (status do design
+ * system), e é o DS que resolve cor + ícone a partir dela.
  *
  * Todas as props têm `description` (MCP-ready).
  */
@@ -16,8 +19,9 @@ export const manifest = {
   type: 'alert',
   kind: 'text',
   name: 'Alerta',
-  description: 'Aviso/observação em destaque (título + descrição), com variante de cor + ícone, ícone opcional e botão de fechar opcional.',
-  source: 'vitrine:alert',
+  description:
+    'Aviso/observação em destaque (título + descrição), com variante semântica (cor + ícone vêm do design system), ícone opcional e botão de fechar opcional.',
+  source: 'astryx:banner',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -28,14 +32,37 @@ export const manifest = {
         type: 'string',
         enum: ['default', 'info', 'success', 'warning', 'error', 'destructive'],
         default: 'default',
-        description: 'Variante semântica (define cor da borda/texto + ícone). ENUM FECHADO (sem input livre).',
+        description:
+          'Variante semântica: define a SEVERIDADE da mensagem; cor e ícone vêm do design system. ENUM FECHADO (sem input livre).',
         oneOf: [
-          { const: 'default',     description: 'Neutro (card) — ícone ℹ Info. Aviso genérico sem conotação.' },
-          { const: 'info',        description: 'Informativo (azul/sky) — ícone ℹ Info. Contexto/dica.' },
-          { const: 'success',     description: 'Sucesso (verde/emerald) — ícone ✓ CircleCheck. Operação concluída/meta atingida.' },
-          { const: 'warning',     description: 'Atenção (âmbar/amber) — ícone ⚠ TriangleAlert. Algo requer cuidado.' },
-          { const: 'error',       description: 'Erro (vermelho) — ícone ✕ CircleX. Falha/valor crítico. Alias semântico de destructive.' },
-          { const: 'destructive', description: 'Destrutivo (vermelho, token --destructive do DS) — ícone CircleAlert. Ação irreversível/alerta forte.' },
+          {
+            const: 'default',
+            description:
+              'Neutro — severidade informativa do DS. Aviso genérico, sem conotação.',
+          },
+          {
+            const: 'info',
+            description: 'Informativo — severidade informativa do DS. Contexto/dica.',
+          },
+          {
+            const: 'success',
+            description:
+              'Sucesso — severidade de sucesso do DS. Operação concluída/meta atingida.',
+          },
+          {
+            const: 'warning',
+            description: 'Atenção — severidade de alerta do DS. Algo requer cuidado.',
+          },
+          {
+            const: 'error',
+            description:
+              'Erro — severidade de erro do DS. Falha/valor crítico. Alias semântico de destructive.',
+          },
+          {
+            const: 'destructive',
+            description:
+              'Destrutivo — mesma severidade de erro do DS. Ação irreversível/alerta forte.',
+          },
         ],
       },
       title: {
@@ -49,12 +76,14 @@ export const manifest = {
       showIcon: {
         type: 'boolean',
         default: true,
-        description: 'Mostra o ícone semântico (ℹ/✓/⚠/✕) conforme a variante. false oculta o ícone.',
+        description:
+          'Mostra o ícone semântico que o design system associa à variante. false oculta o ícone.',
       },
       dismissible: {
         type: 'boolean',
         default: false,
-        description: 'Quando true, exibe um botão X no canto que fecha o alerta (estado local — ao fechar, o bloco some da tela).',
+        description:
+          'Quando true, exibe um botão X no canto que fecha o alerta (estado local — ao fechar, o bloco some da tela).',
       },
     },
   },

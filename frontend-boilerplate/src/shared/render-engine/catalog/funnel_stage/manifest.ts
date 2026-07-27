@@ -4,9 +4,9 @@
  * (self-contained: NÃO recebe a moldura ChartWidget).
  *
  * Estrutura visual:
- *  - header: rótulo da etapa (stageLabel) + chevron (abre/fecha);
- *  - resumo: quantidade + % do universo + valor grande (à direita);
- *  - barra: participação no universo (largura = pct) segmentada pelos desfechos;
+ *  - header (clicável, abre/fecha): rótulo da etapa (stageLabel), resumo
+ *    (quantidade + % do universo + valor grande) e a barra de participação
+ *    segmentada pelos desfechos — tudo visível mesmo com a etapa fechada;
  *  - (ao abrir) tabela de desfechos: ícone + título + descrição + quantidade +
  *    valor original + valor atualizado; linha de TOTAL; e NOTAS opcionais.
  *
@@ -40,14 +40,13 @@ export const manifest = {
     properties: {
       stageLabel: {
         type: 'string',
-        description:
-          'Rótulo da etapa no header (ex.: "N1 · MOMENTO LANÇAMENTO").',
+        description: 'Rótulo da etapa no header (ex.: "N1 · MOMENTO LANÇAMENTO").',
       },
       accent: {
         type: 'string',
         enum: ['blue', 'red', 'green', 'amber', 'violet', 'slate'],
         description:
-          'Cor base da etapa (texto de destaque + barra). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações.',
+          'Cor da etapa: escolhe qual RAMPA sequencial do design system pinta a barra de participação (os segmentos vão do tom mais escuro ao mais claro, porque são partes ordenadas do mesmo total). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações. Os textos seguem as cores de leitura do sistema, para não perder contraste.',
       },
       defaultOpen: {
         type: 'boolean',

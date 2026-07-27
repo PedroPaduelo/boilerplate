@@ -1,53 +1,46 @@
 /**
- * Bloco `signal_card` (shape 'series') — usa o Vitrine `SignalCard`.
- * Destaca o ÚLTIMO valor da série + mini-sparkline + badge de tendência.
+ * Bloco `signal_card` (shape 'series') — destaca o ÚLTIMO valor da série, a
+ * variação e a tendência. Desenha o próprio cartão (`signal-card.tsx`), por
+ * isso não recebe a moldura de gráfico.
  *
- * REESCRITA (consertos):
- *  - VALOR: formatado por `formatValueByEnum(last, props.valueFormat)` de
- *    `format.ts` (default `'compactNumber'`) — antes era
- *    `last.toLocaleString('pt-BR')` cru, ilegível em milhões/bilhões.
- *  - TENDÊNCIA: `trendBasis` controla a base —
- *    `'prev-vs-last'` (default) = (último − penúltimo)/penúltimo (variação
- *    mais recente, correta); `'first-vs-last'` = (último − primeiro)/primeiro
- *    (variação no período inteiro — comportamento antigo, agora opcional).
- *  - COR: `accent` pinta o TRAÇO da sparkline via `resolveAccentForStroke()`
- *    (classe `stroke-…` do DS ou `style.stroke` p/ cor CSS crua) — antes não
- *    havia cor configurável.
- *  - `showSparkline: false` esconde o mini-gráfico.
+ * O que mudou na migração:
+ *  - o cartão foi reescrito sobre o design system; sumiram o verde/vermelho
+ *    cravados do selo de variação (agora é o selo da base, que colore pela
+ *    leitura de negócio) e a sparkline com cor por classe;
+ *  - COR: `accent` continua aceitando o vocabulário antigo e vira token de dado
+ *    do DS;
+ *  - o valor continua formatado por `valueFormat` e a tendência, calculada pela
+ *    base escolhida em `trendBasis`.
  */
-import type { CSSProperties } from 'react';
 import type { SeriesData } from '@dashboards/contracts';
-import { SignalCard } from '@/components/ui/signal-card';
+import { chartAccentColor } from '@/shared/ui';
 import { formatValueByEnum, type ValueFormat } from '@/shared/lib/format';
-import { resolveAccentForStroke } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
+import { SignalCard } from './signal-card';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
 
 type SignalProps = {
   label?: string;
-  /** Formato PT-BR do valor em destaque (enum fechado). Default 'compactNumber'. */
+  /** Formato PT-BR do valor em destaque (enum fechado do catálogo). */
   valueFormat?: ValueFormat;
-  /** Cor da sparkline (traço/preenchimento da série). Default 'chart-1'. */
+  /** Cor da tendência; resolvida para token de dado do DS. */
   accent?: string;
-  /** Subir é bom (verde) ou ruim (vermelho). Default 'up-good'. */
+  /** Subir é bom (verde) ou ruim (vermelho). */
   trendPolarity?: 'up-good' | 'up-bad';
-  /** Base do cálculo da tendência. Default 'prev-vs-last'. */
+  /** Base do cálculo da tendência. */
   trendBasis?: 'first-vs-last' | 'prev-vs-last';
-  /** Mostra/esconde a mini-sparkline. Default true. */
+  /** Mostra a tendência desenhada. */
   showSparkline?: boolean;
 };
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
 /**
- * Calcula a tendência (fração: 0.042 = +4,2%) conforme a base escolhida:
- *  - 'prev-vs-last' (default): (último − penúltimo)/|penúltimo| — variação
- *    mais recente. Precisa de ≥ 2 pontos e penúltimo ≠ 0.
- *  - 'first-vs-last': (último − primeiro)/|primeiro| — variação no período.
- *    Precisa de ≥ 2 pontos e primeiro ≠ 0.
- * Retorna `undefined` quando não há base válida (sem badge de tendência).
+ * Variação como fração. `prev-vs-last` compara com o ponto anterior (o
+ * movimento recente); `first-vs-last`, com o começo do período. Sem base válida
+ * — série curta ou base zero — não há variação: um "+∞%" seria pior que nada.
  */
 function computeTrend(
   values: number[],
@@ -60,37 +53,25 @@ function computeTrend(
   return (last - base) / Math.abs(base);
 }
 
-export const Component: BlockComponent<SignalProps, SeriesData> = ({ props, data }) => {
+export const Component: BlockComponent<SignalProps, SeriesData> = ({
+  props,
+  data,
+  state,
+}) => {
   const points = (data ?? []) as SeriesPoint[];
-  const values = points.map((p) => p.y ?? 0);
-  const last = values.length ? values[values.length - 1] : null;
-
-  // VALOR — formatado em PT-BR via enum (default 'compactNumber'). `null`
-  // (série vazia) cai no sentinel "—" dos helpers de format.ts.
-  const displayValue = formatValueByEnum(last, props.valueFormat ?? 'compactNumber');
-
-  // TENDÊNCIA — base configurável (prev-vs-last por default).
-  const trend = computeTrend(values, props.trendBasis ?? 'prev-vs-last');
-
-  // COR — pinta o TRAÇO da sparkline (nunca o fundo). `resolveAccentForStroke`
-  // devolve { className: 'stroke-…' } (Tailwind/DS) ou { style: { stroke } }
-  // (cor CSS crua).
-  const resolvedAccent = resolveAccentForStroke(props.accent);
-  const accentClassName: string | undefined =
-    resolvedAccent.kind === 'class' ? resolvedAccent.className : undefined;
-  const accentStyle: CSSProperties | undefined =
-    resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
+  const values = points.map((point) => point.y ?? 0);
+  const last = values.length > 0 ? values[values.length - 1] : null;
 
   return (
     <SignalCard
       label={props.label ?? 'Sinal'}
-      value={displayValue}
+      value={formatValueByEnum(last, props.valueFormat ?? 'compactNumber')}
       data={values}
-      trend={trend}
-      trendPolarity={props.trendPolarity ?? 'up-good'}
+      trend={computeTrend(values, props.trendBasis ?? 'prev-vs-last')}
+      higherIsBetter={(props.trendPolarity ?? 'up-good') === 'up-good'}
       showSparkline={props.showSparkline ?? true}
-      accentClassName={accentClassName}
-      accentStyle={accentStyle}
+      color={chartAccentColor(props.accent)}
+      isLoading={state === 'loading' || state === 'skeleton'}
     />
   );
 };

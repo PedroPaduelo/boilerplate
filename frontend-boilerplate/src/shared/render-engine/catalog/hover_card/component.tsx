@@ -1,33 +1,43 @@
 /**
- * Bloco `hover_card` (layout) — usa o Vitrine `HoverCard`. O gatilho fica
- * visível (o conteúdo aparece no hover).
+ * Bloco `hover_card` (layout) — o `HoverCard` do Astryx.
+ *
+ * O gatilho fica visível (um `Button`) e o cartão aparece no hover/foco. O
+ * conteúdo do cartão vai pela prop `content` do DS — quem cuida de
+ * posicionamento, atraso e dismiss é o componente, não o bloco.
  */
-import { Button } from '@/components/ui/button';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
+import { Button } from '@astryxdesign/core/Button';
+import { HoverCard } from '@astryxdesign/core/HoverCard';
+import { Text } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/VStack';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
 
-type HoverCardBlockProps = { triggerLabel?: string; title?: string; content?: string };
+type HoverCardBlockProps = {
+  triggerLabel?: string;
+  title?: string;
+  content?: string;
+};
 
 export const Component: BlockComponent<HoverCardBlockProps> = ({ props }) => {
   return (
-    <div className="flex items-center justify-center py-8">
-      <HoverCard>
-        <HoverCardTrigger asChild>
-          <Button variant="link">{props.triggerLabel ?? 'Passe o mouse'}</Button>
-        </HoverCardTrigger>
-        <HoverCardContent>
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground">{props.title ?? 'Título'}</h4>
+    <VStack hAlign="center" paddingBlock={6} data-slot="hover-card">
+      <HoverCard
+        content={
+          <VStack gap={1}>
+            <Text weight="semibold">{props.title ?? 'Título'}</Text>
             {props.content ? (
-              <p className="text-sm text-muted-foreground">{props.content}</p>
+              <Text type="supporting" color="secondary">
+                {props.content}
+              </Text>
             ) : null}
-          </div>
-        </HoverCardContent>
+          </VStack>
+        }
+      >
+        <Button variant="ghost" size="sm" label={props.triggerLabel ?? 'Passe o mouse'} />
       </HoverCard>
-    </div>
+    </VStack>
   );
 };
 

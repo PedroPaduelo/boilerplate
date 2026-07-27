@@ -1,34 +1,20 @@
 /**
- * Bloco `bar_list` (shape 'categorical') — usa o Vitrine `BarListTremor`.
- * Mapeia {label,value} para {name,value} (formato esperado pela lista).
+ * Bloco `bar_list` (shape 'categorical') — ranking "Top N" sobre o `BarList` de
+ * `@/shared/ui`.
  *
- * Prop de COR (Turno 5 — canônico): `accent` aceita enum DS + string custom
- * (resolvido por `resolveAccent()` em `lib/accent.ts`):
- *   - enum DS (chart-1..5 | 'primary') → classe Tailwind `bg-chart-N`
- *     (regra CSS do tema resolve `var(--color-chart-1)`);
- *   - classe Tailwind (bg-purple-500) → usa direto;
- *   - cor CSS crua (#40E0D0, rgb(), gradient) → `style.background` inline
- *     na barra (atributo de apresentação que vence a classe CSS).
- *
- * Modo de aplicação (Turno 6 — multi IMPLEMENTADO):
- *   - `palette: 'single'` (default) → TODAS as barras com a mesma cor (accent).
- *     Passa `barStyle`/`barClassName` no nível global da `BarListTremor`.
- *   - `palette: 'multi'` → cicla palette (chart-1..5) por item, via
- *     `paletteClass(i)` aplicado em CADA item (`barClassName` por linha).
- *     (Turno 6 — IMPLEMENTADO: `BarListTremorItem` ganhou `barClassName?`/
- *     `barStyle?` por item, então o ciclo vai direto na barra de cada linha.)
- *   - `palette: 'none'` → sem distinção de cor (deixa o default do UI base).
- *
- * `deriveTakeaway` (canônico — Turno 4): retorna 1-2 frases curtas:
- *  - SEMPRE a 1ª: "Top 1: {label} ({value})".
- *  - OPCIONAL 2ª: "Último: {label} ({value})" — só se houver +1 item e
- *    o último > 0.
+ * O que mudou na migração:
+ *  - o rótulo saiu de DENTRO da barra. Isso apagou de uma vez o cálculo de
+ *    luminância WCAG, o parser de cor e o contorno de texto que o legado
+ *    carregava só para o nome não sumir na barra colorida;
+ *  - COR: `accent` continua aceitando o vocabulário antigo, mas vira token de
+ *    dado do DS; `palette: "multi"` cicla a paleta por item;
+ *  - a lista já é texto (`<ol>` com rótulo e valor), então não precisa de
+ *    equivalente acessível extra — leitor de tela lê a linha inteira.
  */
-import type { CSSProperties } from 'react';
 import type { CategoricalData } from '@dashboards/contracts';
-import { BarListTremor, type BarListTremorItem } from '@/components/ui/bar-list-tremor';
+import { BarList, chartAccentColor } from '@/shared/ui';
+import type { BarListItem } from '@/shared/ui';
 import { formatCompactBRL } from '@/shared/lib/format';
-import { resolveAccent, paletteClass } from '../../lib/accent';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -37,102 +23,66 @@ import { fixture } from './fixture';
 type BarListProps = {
   sortOrder?: 'ascending' | 'descending' | 'none';
   palette?: 'single' | 'multi' | 'none';
-  /**
-   * Cor base da barra (só usado em palette="single").
-   * Aceita enum DS (validado pelo schema), classe Tailwind, cor CSS.
-   * Resolvido por `resolveAccent()` em `lib/accent.ts` — devolve
-   * `{ className: 'bg-…' }` (Tailwind) ou `{ style: { background } }`
-   * (CSS). VENCE `className` quando setado.
-   */
+  /** Cor das barras em palette="single"; resolvida para token do DS. */
   accent?: string;
   /**
-   * (ENTREGA 2) Override MANUAL da cor do texto que fica DENTRO da barra.
-   * Por padrão (ausente) a cor do texto é calculada AUTOMATICAMENTE por
-   * contraste (luminância WCAG da cor da barra → texto escuro ou claro),
-   * garantindo legibilidade em qualquer cor de barra. Use esta prop só p/
-   * forçar uma cor: aceita cor CSS (`#000`, `rgb(...)`, `white`) ou classe
-   * utilitária (`text-white`, `text-black`).
+   * Mantida por compatibilidade de contrato: com o rótulo FORA da barra, a cor
+   * do texto passou a ser a de leitura do DS e não precisa (nem deve) ser
+   * escolhida por bloco. Ignorada.
    */
   textColor?: string;
 };
 
 type CategoryPoint = { label: string; value: number | null };
 
-/** Row do BarListTremor (genérico ancorado em `unknown`). */
-type BarListRow = BarListTremorItem<unknown>;
-
-export const Component: BlockComponent<BarListProps, CategoricalData> = ({ props, data }) => {
+export const Component: BlockComponent<BarListProps, CategoricalData> = ({
+  props,
+  data,
+  state,
+  error,
+}) => {
   const items = (data ?? []) as CategoryPoint[];
-  const palette = props.palette ?? 'single';
 
-  // `resolveAccent()` devolve { className } (Tailwind `bg-…`) ou
-  // { style: { background } } (CSS). VENCE a classe `bg-chart-1` do UI
-  // base quando `style` está presente.
-  const resolvedAccent = resolveAccent(props.accent);
-  const globalBarClassName: string | undefined =
-    resolvedAccent.kind === 'class' ? resolvedAccent.className : undefined;
-  const globalBarStyle: CSSProperties | undefined =
-    resolvedAccent.kind === 'style' ? resolvedAccent.style : undefined;
-
-  // Modo SINGLE → aplica accent GLOBAL no nível do BarListTremor (1 cor pra
-  // todas as barras). Modo MULTI → cicla palette por item via `barClassName`
-  // em cada row. Modo NONE → sem distinção (deixa o default `bg-chart-1`).
-  const rows: BarListRow[] = items.map((d, i) => {
-    const row: BarListRow = { name: d.label, value: d.value ?? 0 };
-    if (palette === 'multi') {
-      row.barClassName = paletteClass(i);
-    }
-    return row;
-  });
+  // `single` fixa a cor de destaque; `multi` cicla a paleta por item.
+  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  const rows: BarListItem[] = items.map((item) => ({
+    label: item.label,
+    value: item.value ?? 0,
+    color: accent,
+  }));
 
   return (
-    <BarListTremor
+    <BarList
       data={rows}
       sortOrder={props.sortOrder ?? 'descending'}
-      valueFormatter={(v) => formatCompactBRL(v)}
-      // accent GLOBAL — aplicado quando `palette === 'single'`.
-      // Em `multi`, cada row traz o próprio `barClassName` (paleta cíclica),
-      // que VENCE o global via lógica de precedência do BarListTremor
-      // (item.barClassName → barClassName global → bg-chart-1 default).
-      // Em `none`, não passamos nada — UI base usa o `bg-chart-1` default.
-      barStyle={palette === 'single' ? globalBarStyle : undefined}
-      barClassName={palette === 'single' ? globalBarClassName : undefined}
-      // (ENTREGA 2) Cor do texto dentro da barra. Quando ausente, a UI base
-      // calcula por contraste (luminância WCAG da cor da barra). Quando
-      // setado, força a cor (cor CSS → style.color; classe → className).
-      textColor={props.textColor}
+      hasColorByItem={props.palette === 'multi'}
+      valueFormatter={formatCompactBRL}
+      isLoading={state === 'loading' || state === 'skeleton'}
+      emptyMessage={
+        state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
+      }
     />
   );
 };
 
-/**
- * Insights de rodapé (canônico — Turno 4): retorna 1 ou 2 frases curtas:
- *  - SEMPRE a 1ª: "Top 1: {label} ({value em BRL compacto})".
- *  - OPCIONAL 2²: "Último: {label} ({value em BRL compacto})" — só se
- *    houver +1 item E o último > 0.
- * Retorno `string[]`; o BlockRenderer normaliza p/ o array
- * `{ enabled: true, text }[]` que o ChartWidget consome. PT-BR via
- * `formatCompactBRL` (mesmo formatter do `bar_chart`).
- */
+/** Insights de rodapé: primeiro e último do ranking. */
 function deriveTakeaway(data: CategoricalData): string[] | undefined {
   const items = (data ?? []) as CategoryPoint[];
   if (items.length === 0) return undefined;
 
-  const top = items.reduce((best, d) => ((d.value ?? 0) > (best.value ?? 0) ? d : best));
+  const top = items.reduce((best, item) =>
+    (item.value ?? 0) > (best.value ?? 0) ? item : best,
+  );
   if ((top.value ?? 0) <= 0) return undefined;
 
-  const insights: string[] = [
-    `Top 1: ${top.label} (${formatCompactBRL(top.value ?? 0)})`,
-  ];
+  const insights = [`Top 1: ${top.label} (${formatCompactBRL(top.value ?? 0)})`];
 
   if (items.length > 1) {
-    const bottom = items.reduce((best, d) =>
-      (d.value ?? 0) < (best.value ?? 0) ? d : best,
+    const bottom = items.reduce((best, item) =>
+      (item.value ?? 0) < (best.value ?? 0) ? item : best,
     );
     if ((bottom.value ?? 0) > 0 && bottom !== top) {
-      insights.push(
-        `Último: ${bottom.label} (${formatCompactBRL(bottom.value ?? 0)})`,
-      );
+      insights.push(`Último: ${bottom.label} (${formatCompactBRL(bottom.value ?? 0)})`);
     }
   }
 
