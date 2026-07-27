@@ -17,6 +17,9 @@
     "prepare": "node scripts/setup-husky.mjs"
   },
   "dependencies": {
+    "@astryxdesign/cli": "^0.1.8",
+    "@astryxdesign/core": "^0.1.8",
+    "@astryxdesign/theme-neutral": "^0.1.8",
     "@dashboards/contracts": "file:../shared/contracts",
     "@hookform/resolvers": "^5.2.2",
     "@pierre/trees": "^1.0.0-beta.4",
@@ -107,5 +110,8 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "astryx": {
+    "theme": "@astryxdesign/theme-neutral"
   }
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { connectionsApi, departmentsApi } from './api';
 import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { queryKeys } from '@/shared/lib/query-keys';
@@ -68,6 +68,7 @@ export function useDepartments() {
 }
 
 export function useCreateConnection() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateConnectionInput) => connectionsApi.create(input),
@@ -82,6 +83,7 @@ export function useCreateConnection() {
 }
 
 export function useUpdateConnection() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateConnectionInput) => connectionsApi.update(input),
@@ -99,6 +101,7 @@ export function useUpdateConnection() {
 }
 
 export function useDeleteConnection() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => connectionsApi.remove(id),
@@ -113,6 +116,7 @@ export function useDeleteConnection() {
 }
 
 export function useTestConnection() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => connectionsApi.test(id),
@@ -136,6 +140,7 @@ export function useTestConnection() {
  * sucesso (o resultado é renderizado inline); só reporta erro de execução.
  */
 export function useRunConnectionQuery() {
+  const toast = useAppToast();
   return useMutation({
     mutationFn: (input: RunQueryInput) => connectionsApi.runQuery(input),
     onError: (error) => {

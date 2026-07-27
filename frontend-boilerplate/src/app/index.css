@@ -1,429 +1,52 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-
-@custom-variant dark (&:is(.dark *));
-
-:root {
-  --radius: 0.625rem;
-
-  /* ---------------------------------------------------------------------
-     Tipografia — famílias cruas. O `@theme inline` mapeia estes nomes para
-     os tokens do Tailwind (`font-sans`/`font-mono`). Antes havia uma
-     referência CIRCULAR (`--font-heading: var(--font-sans)` +
-     `--font-sans: var(--font-heading)`) que não resolvia para nada, e
-     `--font-mono` era usado em `code/pre` sem nunca ter sido definido.
-     Inter (UI) + JetBrains Mono (SQL/código) carregam em index.html com
-     fallback completo para as fontes de sistema.
-     --------------------------------------------------------------------- */
-  --font-family-sans:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  --font-family-heading:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  --font-family-mono:
-    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
-    'Liberation Mono', monospace;
-
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  /* Marca auditorIA — teal #00a1b0 ≈ oklch(0.648 0.111 206.5). O primary usa
-     um tom mais profundo para garantir contraste AA com texto branco. */
-  --primary: oklch(0.54 0.098 207);
-  --primary-foreground: oklch(0.99 0.005 207);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  /* Foco na cor da marca — o anel de foco vira assinatura visual. */
-  --ring: oklch(0.648 0.111 206.5);
-  /* Paleta de séries CATEGÓRICA (antes era uma rampa monocromática de azul,
-     em que séries vizinhas eram quase indistinguíveis). chart-2 é verde de
-     propósito: o KpiCard usa `text-chart-2` como cor de variação POSITIVA. */
-  --chart-1: oklch(0.648 0.111 206.5);
-  /* chart-2 não é só preenchimento de série: o KpiCard o usa como COR DE TEXTO
-     da variação positiva. No claro, um verde de L=0.7 dava 2.5:1 sobre o card
-     (reprova em AA). L=0.56 sobe para ~4.7:1 e segue legível como fill. */
-  --chart-2: oklch(0.54 0.128 162);
-  --chart-3: oklch(0.66 0.14 68);
-  --chart-4: oklch(0.62 0.17 288);
-  --chart-5: oklch(0.62 0.19 15);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.54 0.098 207);
-  --sidebar-primary-foreground: oklch(0.99 0.005 207);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.648 0.111 206.5);
-
-  /* Elevação discreta: sombras curtas e de baixa opacidade, no espírito do
-     Geist/Vercel (`0 1px 2px #00000029`). Ferramenta profissional ganha
-     profundidade por CONTRASTE DE BORDA, não por sombra difusa — sombra
-     pesada envelhece a interface e some no tema escuro. */
-  --shadow-2xs: 0 1px 2px 0px oklch(0 0 0 / 0.04);
-  --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.06);
-  --shadow-sm: 0 1px 2px 0px oklch(0 0 0 / 0.08);
-  --shadow: 0 1px 2px 0px oklch(0 0 0 / 0.08), 0 1px 1px -0.5px oklch(0 0 0 / 0.04);
-  --shadow-md: 0 2px 4px -1px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.06);
-  --shadow-lg: 0 8px 16px -4px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.06);
-  --shadow-xl: 0 16px 32px -8px oklch(0 0 0 / 0.14), 0 4px 8px -4px oklch(0 0 0 / 0.08);
-  --shadow-2xl: 0 24px 48px -12px oklch(0 0 0 / 0.22);
-}
-
-.dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  /* No dark o primary anterior (L=0.443) era mais ESCURO que o card e sumia.
-     Aqui o teal fica claro e o texto do botão escuro — contraste ~8:1. */
-  --primary: oklch(0.7 0.105 205);
-  --primary-foreground: oklch(0.2 0.035 210);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.648 0.111 206.5);
-  /* Mesma paleta categórica, com luminância elevada para fundo escuro. */
-  --chart-1: oklch(0.72 0.115 205);
-  --chart-2: oklch(0.76 0.15 162);
-  --chart-3: oklch(0.82 0.145 80);
-  --chart-4: oklch(0.7 0.16 288);
-  --chart-5: oklch(0.72 0.17 14);
-  /* Sidebar no MESMO plano do conteúdo (antes era mais clara que o fundo, o
-     que a fazia parecer flutuar sobre a página). Nav e conteúdo dividem a
-     superfície e são separados por uma borda hairline — o cartão é que se
-     eleva, não a navegação. */
-  --sidebar: oklch(0.141 0.005 285.823);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.7 0.105 205);
-  --sidebar-primary-foreground: oklch(0.2 0.035 210);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.648 0.111 206.5);
-
-  /* No escuro a sombra quase não existe (não há luz para bloquear): a
-     profundidade vem da borda hairline clara sobre o fundo quase preto. */
-  --shadow-2xs: 0 1px 2px 0px oklch(0 0 0 / 0.2);
-  --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.25);
-  --shadow-sm: 0 1px 2px 0px oklch(0 0 0 / 0.3);
-  --shadow: 0 1px 2px 0px oklch(0 0 0 / 0.3), 0 1px 1px -0.5px oklch(0 0 0 / 0.2);
-  --shadow-md: 0 2px 4px -1px oklch(0 0 0 / 0.35), 0 1px 2px -1px oklch(0 0 0 / 0.25);
-  --shadow-lg: 0 8px 16px -4px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.3);
-  --shadow-xl: 0 16px 32px -8px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.35);
-  --shadow-2xl: 0 24px 48px -12px oklch(0 0 0 / 0.7);
-}
-
-@theme inline {
-  --font-sans: var(--font-family-sans);
-  --font-heading: var(--font-family-heading);
-  --font-mono: var(--font-family-mono);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-
-  --shadow-2xs: var(--shadow-2xs);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-sm: var(--shadow-sm);
-  --shadow: var(--shadow);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-2xl: var(--shadow-2xl);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  html,
-  body,
-  #root {
-    height: 100%;
-  }
-  /* Trava scroll no documento: o shell cuida do scroll interno (main/sidebar).
-     Por que essa combinação toda:
-     - `overflow: hidden/clip` no <html> é IGNORADO pelos browsers (sempre
-       tratado como 'auto' por compatibilidade histórica) — o viewport
-       continua rolando e a sidebar desce junto.
-     - `overflow: hidden` no body também é contornável: childs com
-       overflow:visible podem propagar o scroll.
-     - Solução robusta: `position: fixed` no body + overflow:hidden. Body
-       vira um "viewport" de tamanho fixo (top:0/left:0/100%/100vh), sem
-       scroll possível; o shell dentro dele (sidebar + <main>) é que rola
-       internamente. Usado pelos apps de chat e shells de SO modernos. */
-  html {
-    @apply font-sans;
-    height: 100% !important;
-  }
-  body {
-    @apply bg-background text-foreground antialiased;
-    position: fixed !important;
-    inset: 0 !important;
-    height: 100% !important;
-    width: 100% !important;
-    overflow: hidden !important;
-  }
-  #root {
-    height: 100%;
-  }
-
-  code,
-  pre {
-    font-family: var(--font-family-mono);
-  }
-  /* Números em tabelas/KPIs alinhados verticalmente (leitura de dados). */
-  .tabular-nums {
-    font-variant-numeric: tabular-nums;
-  }
-  /* Estiliza a scrollbar das áreas roláveis (main, sidebar nav, etc.) no tema dark. */
-  .dark ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  .dark ::-webkit-scrollbar-track {
-    background: var(--background);
-  }
-  .dark ::-webkit-scrollbar-thumb {
-    background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
-    border-radius: 6px;
-  }
-  .dark ::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
-  }
-  .dark {
-    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent)
-      var(--background);
-    scrollbar-width: thin;
-  }
-}
-
 /* ==========================================================================
-   Markdown do chat de IA
-   Tailwind v4 sem o plugin @tailwindcss/typography — então estilizamos a
-   markdown renderizada (data-slot="chat-markdown") na unha, usando os tokens
-   do tema (--primary, --muted, --border, --card, etc) p/ funcionar em light/dark.
-   ========================================================================== */
-[data-slot="chat-markdown"] {
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--foreground);
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
+   Folha global — ORDEM DE CASCATA EXPLÍCITA (Astryx / XDS)
+   ==========================================================================
 
-/* Primeiro/último filho sem margem extra (alinha com o padding da bolha) */
-[data-slot="chat-markdown"] > *:first-child {
-  margin-top: 0;
-}
-[data-slot="chat-markdown"] > *:last-child {
-  margin-bottom: 0;
-}
+   A ordem das `@layer` é declarada UMA vez, aqui, antes de qualquer import.
+   Isso torna a precedência determinística e independente da ordem física dos
+   arquivos — que é o que mais quebra numa migração de design system.
 
-/* Headings com hierarquia clara */
-[data-slot="chat-markdown"] h1,
-[data-slot="chat-markdown"] h2,
-[data-slot="chat-markdown"] h3,
-[data-slot="chat-markdown"] h4,
-[data-slot="chat-markdown"] h5,
-[data-slot="chat-markdown"] h6 {
-  font-weight: 600;
-  line-height: 1.3;
-  margin-top: 1.25em;
-  margin-bottom: 0.5em;
-}
-[data-slot="chat-markdown"] h1 {
-  font-size: 1.25rem;
-}
-[data-slot="chat-markdown"] h2 {
-  font-size: 1.1rem;
-  padding-bottom: 0.25em;
-  border-bottom: 1px solid var(--border);
-}
-[data-slot="chat-markdown"] h3 {
-  font-size: 1rem;
-  color: var(--primary);
-}
-[data-slot="chat-markdown"] h4,
-[data-slot="chat-markdown"] h5,
-[data-slot="chat-markdown"] h6 {
-  font-size: 0.9rem;
-}
+     reset        → normalizações
+     theme        → design tokens do Tailwind
+     base         → preflight do Tailwind
+     astryx-base  → astryx.css (estilos compilados dos componentes)
+     astryx-theme → tokens do tema neutral
+     components   → camada de componentes
+     utilities    → utilities do Tailwind (vencem por último, de propósito:
+                    permitem ajuste pontual de layout sem lutar com o DS)
 
-/* Parágrafos */
-[data-slot="chat-markdown"] p {
-  margin: 0.5em 0;
-}
+   NÃO use o shorthand `@import "tailwindcss"`: ele injeta theme+preflight+
+   utilities de uma vez, sem layer, e a precedência passa a depender da ordem
+   dos imports — exatamente o que esta declaração evita.
+   -------------------------------------------------------------------------- */
 
-/* Listas */
-[data-slot="chat-markdown"] ul,
-[data-slot="chat-markdown"] ol {
-  margin: 0.5em 0;
-  padding-left: 1.5em;
-}
-[data-slot="chat-markdown"] li {
-  margin: 0.25em 0;
-}
-[data-slot="chat-markdown"] ul {
-  list-style: disc;
-}
-[data-slot="chat-markdown"] ol {
-  list-style: decimal;
-}
-[data-slot="chat-markdown"] li > ul,
-[data-slot="chat-markdown"] li > ol {
-  margin: 0.25em 0;
-}
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
 
-/* Bold com destaque */
-[data-slot="chat-markdown"] strong {
-  font-weight: 600;
-  color: var(--foreground);
-}
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
 
-/* Blockquote — destaque pro TL;DR e dicas */
-[data-slot="chat-markdown"] blockquote {
-  margin: 0.75em 0;
-  padding: 0.5em 1em;
-  border-left: 3px solid var(--primary);
-  background: color-mix(in oklch, var(--primary) 8%, transparent);
-  border-radius: 0 0.5rem 0.5rem 0;
-  color: var(--foreground);
-}
-[data-slot="chat-markdown"] blockquote p {
-  margin: 0.25em 0;
-}
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
+@import '@astryxdesign/theme-neutral/theme.css';
 
-/* Tabelas — header destacado, zebra, scroll horizontal */
-[data-slot="chat-markdown"] table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.75em 0;
-  font-size: 0.8rem;
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-}
-[data-slot="chat-markdown"] thead {
-  background: var(--muted);
-}
-[data-slot="chat-markdown"] th {
-  text-align: left;
-  font-weight: 600;
-  padding: 0.5em 0.75em;
-  border: 1px solid var(--border);
-  white-space: nowrap;
-}
-[data-slot="chat-markdown"] td {
-  padding: 0.5em 0.75em;
-  border: 1px solid var(--border);
-  vertical-align: top;
-}
-[data-slot="chat-markdown"] tbody tr:nth-child(even) {
-  background: color-mix(in oklch, var(--muted) 40%, transparent);
-}
+/* --------------------------------------------------------------------------
+   TRANSIÇÃO — remover no cutover, junto com `legacy-theme.css`.
 
-/* Código inline */
-[data-slot="chat-markdown"] :not(pre) > code {
-  background: var(--muted);
-  padding: 0.125em 0.375em;
-  border-radius: 0.25rem;
-  font-size: 0.8125em;
-  font-family: var(--font-mono, ui-monospace, monospace);
-}
+   Enquanto existir tela não migrada, o bridge do Astryx
+   (`@astryxdesign/core/tailwind-theme.css`) NÃO pode ser importado: ele
+   redefine os nomes de cor do Tailwind (primary/secondary/muted/card/border…)
+   e repintaria as telas legadas. Pior: ele não define os nomes que só existem
+   no tema legado (`--color-foreground`, `--color-muted-foreground`,
+   `--color-sidebar*`, `--color-chart-*`), então classes como
+   `text-muted-foreground` e `bg-sidebar` ficariam sem valor.
 
-/* Bloco de código (SQL e afins) */
-[data-slot="chat-markdown"] pre {
-  margin: 0.75em 0;
-  padding: 0.875em 1em;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-[data-slot="chat-markdown"] pre code {
-  background: transparent;
-  padding: 0;
-  font-size: inherit;
-  font-family: var(--font-mono, ui-monospace, monospace);
-}
+   Ordem do cutover (quando nenhum import de `@/components/ui` restar):
+     1. deletar `src/app/legacy-theme.css` e o import abaixo;
+     2. descomentar o import do bridge;
+     3. `npx astryx doctor` + `npm run build`.
+   -------------------------------------------------------------------------- */
+@import './legacy-theme.css';
+/* @import '@astryxdesign/core/tailwind-theme.css'; */
 
-/* Separador horizontal */
-[data-slot="chat-markdown"] hr {
-  margin: 1em 0;
-  border: none;
-  border-top: 1px solid var(--border);
-}
-
-/* Links */
-[data-slot="chat-markdown"] a {
-  color: var(--primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-[data-slot="chat-markdown"] a:hover {
-  text-decoration-thickness: 2px;
-}
-
-/* Imagens não estouram o container */
-[data-slot="chat-markdown"] img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-}
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import 'tw-animate-css';

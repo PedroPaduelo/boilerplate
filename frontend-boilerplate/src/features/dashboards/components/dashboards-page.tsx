@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Loader2, MessageSquare, Plus } from 'lucide-react';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 
 import { Button } from '@/components/ui';
 import { hasPermission } from '@/shared/lib/rbac';
@@ -38,6 +38,7 @@ function modeFor(status: string): ApiMode {
 }
 
 export function DashboardsPage() {
+  const toast = useAppToast();
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   const currentUserId = useAuthStore((s) => s.user?.id);

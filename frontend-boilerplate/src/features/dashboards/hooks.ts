@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { queryKeys, type ApiMode } from '@/shared/lib/query-keys';
 import { artifactQueryOptions, referenceQueryOptions } from '@/shared/lib/query-policies';
@@ -68,6 +68,7 @@ export function usePrefetchDashboard() {
  * num beco sem saída.
  */
 export function useCreateDashboard() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (title?: string) =>
@@ -86,6 +87,7 @@ export function useCreateDashboard() {
 }
 
 export function useDuplicateDashboard() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateDashboardInput) => dashboardsApi.create(input),
@@ -100,6 +102,7 @@ export function useDuplicateDashboard() {
 }
 
 export function useDeleteDashboard() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => dashboardsApi.remove(id),
@@ -114,6 +117,7 @@ export function useDeleteDashboard() {
 }
 
 export function usePublishDashboard() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, publish }: { id: string; publish: boolean }) =>
@@ -134,6 +138,7 @@ export function usePublishDashboard() {
  * (T-G2). Invalida o detalhe/dados para a view e o próprio editor refletirem.
  */
 export function useUpdateDashboard() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateDashboardInput }) =>
@@ -155,6 +160,7 @@ export function useUpdateDashboard() {
  * (com o novo bloco montado pelo backend).
  */
 export function useAddChartToDashboard() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: AddChartInput }) =>

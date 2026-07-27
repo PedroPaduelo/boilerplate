@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { usersApi } from '../api';
 import { getApiErrorMessage } from '@/shared/lib/api-error';
 import type { UserFilters, CreateUserInput, UpdateUserInput } from '../types';
@@ -38,6 +38,7 @@ export function useUserStats() {
 }
 
 export function useCreateUser() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -53,6 +54,7 @@ export function useCreateUser() {
 }
 
 export function useUpdateUser() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -69,6 +71,7 @@ export function useUpdateUser() {
 }
 
 export function useDeleteUser() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
 
   return useMutation({

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { apiClient } from '@/shared/lib/api-client';
 import { getApiErrorMessage } from '@/shared/lib/api-error';
 
@@ -30,6 +30,7 @@ export interface ShareLinkResponse {
  * O TTL conta a partir da 1ª abertura (T-B4). Retorna o token/url para exibir.
  */
 export function useCreateShare() {
+  const toast = useAppToast();
   return useMutation({
     mutationFn: async (input: CreateShareInput) => {
       const { data } = await apiClient.post<ShareLinkResponse>('/share', input);

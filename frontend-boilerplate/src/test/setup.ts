@@ -18,3 +18,28 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
     disconnect() {}
   } as unknown as typeof ResizeObserver;
 }
+
+/**
+ * Polyfill de `window.matchMedia` — o jsdom não implementa.
+ *
+ * Os componentes do Astryx consultam media queries via `useMediaQuery`
+ * (responsividade do AppShell, resolução de `mode: 'system'` no tema). Sem
+ * isto, QUALQUER teste que renderize um componente do design system quebra com
+ * "window.matchMedia is not a function".
+ *
+ * Responde sempre `matches: false` — ou seja, os testes rodam no breakpoint
+ * desktop e no esquema claro, que é o padrão determinístico. Um teste que
+ * precise do contrário deve sobrescrever isto localmente.
+ */
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}

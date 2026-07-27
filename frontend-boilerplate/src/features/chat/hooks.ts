@@ -8,7 +8,7 @@
  * permanece igual quando a T-H2 ligar a API real (o payload tem o mesmo formato).
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { queryKeys } from '@/shared/lib/query-keys';
 import { chartsApi } from '@/features/charts/api';
@@ -28,6 +28,7 @@ export interface AddGeneratedChartInput {
 }
 
 export function useAddGeneratedChartToDashboard() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
 
   return useMutation({

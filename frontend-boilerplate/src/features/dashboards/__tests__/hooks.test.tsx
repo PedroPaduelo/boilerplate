@@ -5,12 +5,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 /* -------------------------------------------------------------- mocks ------ */
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('@/shared/hooks/use-app-toast', () => ({
+  useAppToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
+}));
 
 const update = vi.fn(async () => ({ id: 'd1' }));
 const publish = vi.fn(async () => ({ id: 'd1' }));
 const unpublish = vi.fn(async () => ({ id: 'd1' }));
-const addChart = vi.fn(async () => ({ id: 'd1', draftLayout: { filters: [], rows: [] } }));
+const addChart = vi.fn(async () => ({
+  id: 'd1',
+  draftLayout: { filters: [], rows: [] },
+}));
 
 vi.mock('../api', () => ({
   dashboardsApi: {

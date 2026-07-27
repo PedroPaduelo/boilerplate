@@ -1,11 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { queryKeys, type ApiMode } from '@/shared/lib/query-keys';
-import {
-  artifactQueryOptions,
-  referenceQueryOptions,
-} from '@/shared/lib/query-policies';
+import { artifactQueryOptions, referenceQueryOptions } from '@/shared/lib/query-policies';
 import { chartsApi } from './api';
 import type { CreateChartInput, UpdateChartInput } from './types';
 
@@ -36,10 +33,7 @@ export function useChart(id: string | undefined, mode: ApiMode = 'draft') {
  * preencher o preview com os DADOS REAIS da query. `mode=draft` por padrão
  * (dado fresco em edição).
  */
-export function useChartData(
-  id: string | undefined,
-  mode: ApiMode = 'draft',
-) {
+export function useChartData(id: string | undefined, mode: ApiMode = 'draft') {
   return useQuery({
     queryKey: [...queryKeys.charts.detail(id ?? '', mode), 'data'],
     queryFn: () => chartsApi.getData(id as string, mode),
@@ -52,6 +46,7 @@ export function useChartData(
 
 /** Edita o draft de um gráfico (PATCH /charts/:id). */
 export function useUpdateChart() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateChartInput }) =>
@@ -81,6 +76,7 @@ export function usePrefetchChart() {
 }
 
 export function useDuplicateChart() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateChartInput) => chartsApi.create(input),
@@ -95,6 +91,7 @@ export function useDuplicateChart() {
 }
 
 export function useDeleteChart() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => chartsApi.remove(id),
@@ -109,6 +106,7 @@ export function useDeleteChart() {
 }
 
 export function usePublishChart() {
+  const toast = useAppToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, publish }: { id: string; publish: boolean }) =>

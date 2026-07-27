@@ -1,11 +1,12 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { authApi } from '../api';
 import { useAuthStore } from '../store';
 import type { LoginInput, RegisterInput } from '../types';
 
 export function useLogin() {
+  const toast = useAppToast();
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
@@ -23,6 +24,7 @@ export function useLogin() {
 }
 
 export function useRegister() {
+  const toast = useAppToast();
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
