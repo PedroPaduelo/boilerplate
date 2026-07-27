@@ -22,12 +22,43 @@
 
 @layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
 
+/* --------------------------------------------------------------------------
+   TIPOGRAFIA DO DESIGN SYSTEM — self-hosted, igual à origem.
+
+   Public Sans (primária, variável) cobre toda a interface; Barlow (secundária)
+   é usada SÓ em h1–h3. Os pesos de Barlow são importados um a um porque o
+   pacote é estático — e só os 5 que o DS realmente pede (400–800).
+
+   O projeto de origem também importava DM Sans, Inter e Nunito Sans sem usar
+   nenhuma das três (`99-inconsistencias.md` §6: três fontes variáveis baixadas
+   e nunca desenhadas). Não replicamos o desperdício.
+   -------------------------------------------------------------------------- */
+@import '@fontsource-variable/public-sans';
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow/800.css';
+
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/preflight.css' layer(base);
 
 @import '@astryxdesign/core/reset.css';
 @import '@astryxdesign/core/astryx.css';
-@import '@astryxdesign/theme-neutral/theme.css';
+
+/* --------------------------------------------------------------------------
+   TEMA AUDITORIA — o design system de origem, tokenizado.
+
+   `auditoria.css` é COMPILADO (`npm run ds:build`) a partir de
+   `src/shared/theme/ds/auditoria-theme.ts`, que por sua vez é gerado do JSON
+   da auditoria. Ninguém edita o CSS à mão.
+
+   Fica em `astryx-theme` (a camada declarada no topo do arquivo), depois do
+   `astryx.css`: os tokens precisam vencer os defaults dos componentes, mas
+   perder para as utilities do Tailwind — que continuam por último, de propósito.
+   -------------------------------------------------------------------------- */
+@import './../shared/theme/ds/auditoria.css' layer(astryx-theme);
+@import './../shared/theme/ds/typography-responsive.css' layer(astryx-theme);
 
 /* --------------------------------------------------------------------------
    BRIDGE Tailwind ↔ Astryx — ATIVO desde o cutover.
@@ -45,3 +76,21 @@
 
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
+
+/* --------------------------------------------------------------------------
+   SUPERFÍCIE DA PÁGINA
+
+   O DS pinta a página com `background.default` (#FFFFFF no claro, #141A21 no
+   escuro) — sem isso o `body` fica transparente e o fundo vira o default do
+   `color-scheme` do browser, que é parecido no escuro mas errado no claro.
+
+   Fica em `base` (preflight): é baseline, não componente. Qualquer utility ou
+   componente do DS continua vencendo isso.
+   -------------------------------------------------------------------------- */
+@layer base {
+  body {
+    background-color: var(--color-background-body);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-body);
+  }
+}

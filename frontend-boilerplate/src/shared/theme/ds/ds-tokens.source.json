@@ -1,0 +1,1843 @@
+{
+  "$meta": {
+    "project": "AuditorIA — frontend",
+    "generatedFrom": "tema MUI 7.0.1 computado em Node + medicoes em runtime (Chrome, viewport 1911x898)",
+    "baseTemplate": "Minimal Kit (Minimals) v7.0.0",
+    "mui": "7.0.1",
+    "emotion": "11.14.0",
+    "react": "19.1.0",
+    "colorScheme": "light (default)",
+    "remBase": {
+      "value": "14px",
+      "warning": "CRITICO: html { font-size: 14px }. Todo valor em rem renderiza a rem x 14. Os rem do tema foram gerados com divisor 16."
+    },
+    "colorSyntax": "O projeto emite rgba(R G B / A) (CSS Color 4). Cada token traz tambem a forma rgba(R, G, B, A).",
+    "docs": "docs/design-system/*.md"
+  },
+  "color": {
+    "semantic": {
+      "primary": {
+        "lighter": {
+          "value": "#C8FAD6",
+          "rgb": "rgb(200, 250, 214)",
+          "channel": "200 250 214",
+          "source": "frontend/src/theme/theme-config.ts:49"
+        },
+        "light": {
+          "value": "#5BE49B",
+          "rgb": "rgb(91, 228, 155)",
+          "channel": "91 228 155",
+          "source": "frontend/src/theme/theme-config.ts:50"
+        },
+        "main": {
+          "value": "#00A76F",
+          "rgb": "rgb(0, 167, 111)",
+          "channel": "0 167 111",
+          "source": "frontend/src/theme/theme-config.ts:51"
+        },
+        "dark": {
+          "value": "#007867",
+          "rgb": "rgb(0, 120, 103)",
+          "channel": "0 120 103",
+          "source": "frontend/src/theme/theme-config.ts:52"
+        },
+        "darker": {
+          "value": "#004B50",
+          "rgb": "rgb(0, 75, 80)",
+          "channel": "0 75 80",
+          "source": "frontend/src/theme/theme-config.ts:53"
+        },
+        "contrastText": {
+          "value": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/theme-config.ts:54"
+        }
+      },
+      "secondary": {
+        "lighter": {
+          "value": "#EFD6FF",
+          "rgb": "rgb(239, 214, 255)",
+          "channel": "239 214 255",
+          "source": "frontend/src/theme/theme-config.ts:57"
+        },
+        "light": {
+          "value": "#C684FF",
+          "rgb": "rgb(198, 132, 255)",
+          "channel": "198 132 255",
+          "source": "frontend/src/theme/theme-config.ts:58"
+        },
+        "main": {
+          "value": "#8E33FF",
+          "rgb": "rgb(142, 51, 255)",
+          "channel": "142 51 255",
+          "source": "frontend/src/theme/theme-config.ts:59"
+        },
+        "dark": {
+          "value": "#5119B7",
+          "rgb": "rgb(81, 25, 183)",
+          "channel": "81 25 183",
+          "source": "frontend/src/theme/theme-config.ts:60"
+        },
+        "darker": {
+          "value": "#27097A",
+          "rgb": "rgb(39, 9, 122)",
+          "channel": "39 9 122",
+          "source": "frontend/src/theme/theme-config.ts:61"
+        },
+        "contrastText": {
+          "value": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/theme-config.ts:62"
+        }
+      },
+      "info": {
+        "lighter": {
+          "value": "#CAFDF5",
+          "rgb": "rgb(202, 253, 245)",
+          "channel": "202 253 245",
+          "source": "frontend/src/theme/theme-config.ts:65"
+        },
+        "light": {
+          "value": "#61F3F3",
+          "rgb": "rgb(97, 243, 243)",
+          "channel": "97 243 243",
+          "source": "frontend/src/theme/theme-config.ts:66"
+        },
+        "main": {
+          "value": "#00B8D9",
+          "rgb": "rgb(0, 184, 217)",
+          "channel": "0 184 217",
+          "source": "frontend/src/theme/theme-config.ts:67"
+        },
+        "dark": {
+          "value": "#006C9C",
+          "rgb": "rgb(0, 108, 156)",
+          "channel": "0 108 156",
+          "source": "frontend/src/theme/theme-config.ts:68"
+        },
+        "darker": {
+          "value": "#003768",
+          "rgb": "rgb(0, 55, 104)",
+          "channel": "0 55 104",
+          "source": "frontend/src/theme/theme-config.ts:69"
+        },
+        "contrastText": {
+          "value": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/theme-config.ts:70"
+        }
+      },
+      "success": {
+        "lighter": {
+          "value": "#D3FCD2",
+          "rgb": "rgb(211, 252, 210)",
+          "channel": "211 252 210",
+          "source": "frontend/src/theme/theme-config.ts:73"
+        },
+        "light": {
+          "value": "#77ED8B",
+          "rgb": "rgb(119, 237, 139)",
+          "channel": "119 237 139",
+          "source": "frontend/src/theme/theme-config.ts:74"
+        },
+        "main": {
+          "value": "#22C55E",
+          "rgb": "rgb(34, 197, 94)",
+          "channel": "34 197 94",
+          "source": "frontend/src/theme/theme-config.ts:75"
+        },
+        "dark": {
+          "value": "#118D57",
+          "rgb": "rgb(17, 141, 87)",
+          "channel": "17 141 87",
+          "source": "frontend/src/theme/theme-config.ts:76"
+        },
+        "darker": {
+          "value": "#065E49",
+          "rgb": "rgb(6, 94, 73)",
+          "channel": "6 94 73",
+          "source": "frontend/src/theme/theme-config.ts:77"
+        },
+        "contrastText": {
+          "value": "#ffffff",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/theme-config.ts:78"
+        }
+      },
+      "warning": {
+        "lighter": {
+          "value": "#FFF5CC",
+          "rgb": "rgb(255, 245, 204)",
+          "channel": "255 245 204",
+          "source": "frontend/src/theme/theme-config.ts:81"
+        },
+        "light": {
+          "value": "#FFD666",
+          "rgb": "rgb(255, 214, 102)",
+          "channel": "255 214 102",
+          "source": "frontend/src/theme/theme-config.ts:82"
+        },
+        "main": {
+          "value": "#FFAB00",
+          "rgb": "rgb(255, 171, 0)",
+          "channel": "255 171 0",
+          "source": "frontend/src/theme/theme-config.ts:83"
+        },
+        "dark": {
+          "value": "#B76E00",
+          "rgb": "rgb(183, 110, 0)",
+          "channel": "183 110 0",
+          "source": "frontend/src/theme/theme-config.ts:84"
+        },
+        "darker": {
+          "value": "#7A4100",
+          "rgb": "rgb(122, 65, 0)",
+          "channel": "122 65 0",
+          "source": "frontend/src/theme/theme-config.ts:85"
+        },
+        "contrastText": {
+          "value": "#1C252E",
+          "rgb": "rgb(28, 37, 46)",
+          "channel": "28 37 46",
+          "source": "frontend/src/theme/theme-config.ts:86"
+        }
+      },
+      "error": {
+        "lighter": {
+          "value": "#FFE9D5",
+          "rgb": "rgb(255, 233, 213)",
+          "channel": "255 233 213",
+          "source": "frontend/src/theme/theme-config.ts:89"
+        },
+        "light": {
+          "value": "#FFAC82",
+          "rgb": "rgb(255, 172, 130)",
+          "channel": "255 172 130",
+          "source": "frontend/src/theme/theme-config.ts:90"
+        },
+        "main": {
+          "value": "#FF5630",
+          "rgb": "rgb(255, 86, 48)",
+          "channel": "255 86 48",
+          "source": "frontend/src/theme/theme-config.ts:91"
+        },
+        "dark": {
+          "value": "#B71D18",
+          "rgb": "rgb(183, 29, 24)",
+          "channel": "183 29 24",
+          "source": "frontend/src/theme/theme-config.ts:92"
+        },
+        "darker": {
+          "value": "#7A0916",
+          "rgb": "rgb(122, 9, 22)",
+          "channel": "122 9 22",
+          "source": "frontend/src/theme/theme-config.ts:93"
+        },
+        "contrastText": {
+          "value": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/theme-config.ts:94"
+        }
+      }
+    },
+    "grey": {
+      "50": {
+        "value": "#FCFDFD",
+        "rgb": "rgb(252, 253, 253)",
+        "channel": "252 253 253",
+        "source": "frontend/src/theme/theme-config.ts:97"
+      },
+      "100": {
+        "value": "#F9FAFB",
+        "rgb": "rgb(249, 250, 251)",
+        "channel": "249 250 251",
+        "source": "frontend/src/theme/theme-config.ts:98"
+      },
+      "200": {
+        "value": "#F4F6F8",
+        "rgb": "rgb(244, 246, 248)",
+        "channel": "244 246 248",
+        "source": "frontend/src/theme/theme-config.ts:99"
+      },
+      "300": {
+        "value": "#DFE3E8",
+        "rgb": "rgb(223, 227, 232)",
+        "channel": "223 227 232",
+        "source": "frontend/src/theme/theme-config.ts:100"
+      },
+      "400": {
+        "value": "#C4CDD5",
+        "rgb": "rgb(196, 205, 213)",
+        "channel": "196 205 213",
+        "source": "frontend/src/theme/theme-config.ts:101"
+      },
+      "500": {
+        "value": "#919EAB",
+        "rgb": "rgb(145, 158, 171)",
+        "channel": "145 158 171",
+        "source": "frontend/src/theme/theme-config.ts:102"
+      },
+      "600": {
+        "value": "#637381",
+        "rgb": "rgb(99, 115, 129)",
+        "channel": "99 115 129",
+        "source": "frontend/src/theme/theme-config.ts:103"
+      },
+      "700": {
+        "value": "#454F5B",
+        "rgb": "rgb(69, 79, 91)",
+        "channel": "69 79 91",
+        "source": "frontend/src/theme/theme-config.ts:104"
+      },
+      "800": {
+        "value": "#1C252E",
+        "rgb": "rgb(28, 37, 46)",
+        "channel": "28 37 46",
+        "source": "frontend/src/theme/theme-config.ts:105"
+      },
+      "900": {
+        "value": "#141A21",
+        "rgb": "rgb(20, 26, 33)",
+        "channel": "20 26 33",
+        "source": "frontend/src/theme/theme-config.ts:106"
+      },
+      "A100": {
+        "value": "#f5f5f5",
+        "rgb": "rgb(245, 245, 245)",
+        "channel": "245 245 245",
+        "source": "default MUI 7.0.1"
+      },
+      "A200": {
+        "value": "#eeeeee",
+        "rgb": "rgb(238, 238, 238)",
+        "channel": "238 238 238",
+        "source": "default MUI 7.0.1"
+      },
+      "A400": {
+        "value": "#bdbdbd",
+        "rgb": "rgb(189, 189, 189)",
+        "channel": "189 189 189",
+        "source": "default MUI 7.0.1"
+      },
+      "A700": {
+        "value": "#616161",
+        "rgb": "rgb(97, 97, 97)",
+        "channel": "97 97 97",
+        "source": "default MUI 7.0.1"
+      }
+    },
+    "common": {
+      "black": {
+        "value": "#000000",
+        "rgb": "rgb(0, 0, 0)",
+        "channel": "0 0 0",
+        "source": "frontend/src/theme/theme-config.ts:108"
+      },
+      "white": {
+        "value": "#FFFFFF",
+        "rgb": "rgb(255, 255, 255)",
+        "channel": "255 255 255",
+        "source": "frontend/src/theme/theme-config.ts:108"
+      }
+    },
+    "text": {
+      "primary": {
+        "light": {
+          "value": "#1C252E",
+          "rgb": "rgb(28, 37, 46)",
+          "channel": "28 37 46",
+          "source": "frontend/src/theme/core/palette.ts:92"
+        },
+        "dark": {
+          "value": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/core/palette.ts:93"
+        }
+      },
+      "secondary": {
+        "light": {
+          "value": "#637381",
+          "rgb": "rgb(99, 115, 129)",
+          "channel": "99 115 129",
+          "source": "frontend/src/theme/core/palette.ts:92"
+        },
+        "dark": {
+          "value": "#919EAB",
+          "rgb": "rgb(145, 158, 171)",
+          "channel": "145 158 171",
+          "source": "frontend/src/theme/core/palette.ts:93"
+        }
+      },
+      "disabled": {
+        "light": {
+          "value": "#919EAB",
+          "rgb": "rgb(145, 158, 171)",
+          "channel": "145 158 171",
+          "source": "frontend/src/theme/core/palette.ts:92"
+        },
+        "dark": {
+          "value": "#637381",
+          "rgb": "rgb(99, 115, 129)",
+          "channel": "99 115 129",
+          "source": "frontend/src/theme/core/palette.ts:93"
+        }
+      }
+    },
+    "background": {
+      "default": {
+        "light": {
+          "value": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/core/palette.ts:98"
+        },
+        "dark": {
+          "value": "#141A21",
+          "rgb": "rgb(20, 26, 33)",
+          "channel": "20 26 33",
+          "source": "frontend/src/theme/core/palette.ts:99"
+        }
+      },
+      "paper": {
+        "light": {
+          "value": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "channel": "255 255 255",
+          "source": "frontend/src/theme/core/palette.ts:98"
+        },
+        "dark": {
+          "value": "#1C252E",
+          "rgb": "rgb(28, 37, 46)",
+          "channel": "28 37 46",
+          "source": "frontend/src/theme/core/palette.ts:99"
+        }
+      },
+      "neutral": {
+        "light": {
+          "value": "#F4F6F8",
+          "rgb": "rgb(244, 246, 248)",
+          "channel": "244 246 248",
+          "source": "frontend/src/theme/core/palette.ts:98"
+        },
+        "dark": {
+          "value": "#28323D",
+          "rgb": "rgb(40, 50, 61)",
+          "channel": "40 50 61",
+          "source": "frontend/src/theme/core/palette.ts:99"
+        }
+      }
+    },
+    "action": {
+      "hover": {
+        "value": "rgba(145 158 171 / 0.08)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.08)",
+        "base": "#919EAB",
+        "alpha": 0.08,
+        "source": "frontend/src/theme/core/palette.ts:104"
+      },
+      "selected": {
+        "value": "rgba(145 158 171 / 0.16)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.16)",
+        "base": "#919EAB",
+        "alpha": 0.16,
+        "source": "frontend/src/theme/core/palette.ts:105"
+      },
+      "focus": {
+        "value": "rgba(145 158 171 / 0.24)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.24)",
+        "base": "#919EAB",
+        "alpha": 0.24,
+        "source": "frontend/src/theme/core/palette.ts:106"
+      },
+      "disabled": {
+        "value": "rgba(145 158 171 / 0.8)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.8)",
+        "base": "#919EAB",
+        "alpha": 0.8,
+        "source": "frontend/src/theme/core/palette.ts:107"
+      },
+      "disabledBackground": {
+        "value": "rgba(145 158 171 / 0.24)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.24)",
+        "base": "#919EAB",
+        "alpha": 0.24,
+        "source": "frontend/src/theme/core/palette.ts:108"
+      },
+      "active": {
+        "light": {
+          "value": "#637381",
+          "rgb": "rgb(99, 115, 129)",
+          "channel": "99 115 129",
+          "source": "frontend/src/theme/core/palette.ts:115"
+        },
+        "dark": {
+          "value": "#919EAB",
+          "rgb": "rgb(145, 158, 171)",
+          "channel": "145 158 171",
+          "source": "frontend/src/theme/core/palette.ts:116"
+        }
+      }
+    },
+    "divider": {
+      "light": {
+        "value": "rgba(145 158 171 / 0.2)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.2)",
+        "base": "#919EAB",
+        "alpha": 0.2,
+        "source": "frontend/src/theme/core/palette.ts:131"
+      },
+      "dark": {
+        "value": "rgba(145 158 171 / 0.2)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.2)",
+        "base": "#919EAB",
+        "alpha": 0.2,
+        "source": "frontend/src/theme/core/palette.ts:131"
+      }
+    },
+    "border": {
+      "paperOutlined": {
+        "value": "rgba(145 158 171 / 0.16)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.16)",
+        "base": "#919EAB",
+        "alpha": 0.16,
+        "source": "frontend/src/theme/core/components/paper.tsx:19"
+      },
+      "inputRest": {
+        "value": "rgba(145 158 171 / 0.2)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.2)",
+        "base": "#919EAB",
+        "alpha": 0.2,
+        "source": "frontend/src/theme/core/components/textfield.tsx:70"
+      },
+      "inputFocus": {
+        "value": "#1C252E",
+        "rgb": "rgb(28, 37, 46)",
+        "channel": "28 37 46",
+        "source": "frontend/src/theme/core/components/textfield.tsx:55"
+      },
+      "inputError": {
+        "value": "#FF5630",
+        "rgb": "rgb(255, 86, 48)",
+        "channel": "255 86 48",
+        "source": "frontend/src/theme/core/components/textfield.tsx:60"
+      },
+      "inputDisabled": {
+        "value": "rgba(145 158 171 / 0.24)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.24)",
+        "base": "#919EAB",
+        "alpha": 0.24,
+        "source": "frontend/src/theme/core/components/textfield.tsx:65"
+      },
+      "buttonOutlinedInherit": {
+        "value": "rgba(145 158 171 / 0.32)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.32)",
+        "base": "#919EAB",
+        "alpha": 0.32,
+        "source": "frontend/src/theme/core/components/button.tsx:125"
+      },
+      "navSidebar": {
+        "light": {
+          "value": "rgba(145 158 171 / 0.12)",
+          "rgbaLegacy": "rgba(145, 158, 171, 0.12)",
+          "base": "#919EAB",
+          "alpha": 0.12,
+          "source": "frontend/src/layouts/dashboard/css-vars.ts:40"
+        },
+        "dark": {
+          "value": "rgba(145 158 171 / 0.08)",
+          "rgbaLegacy": "rgba(145, 158, 171, 0.08)",
+          "base": "#919EAB",
+          "alpha": 0.08,
+          "source": "frontend/src/layouts/dashboard/css-vars.ts:45"
+        }
+      },
+      "toggleGroup": {
+        "value": "rgba(145 158 171 / 0.08)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.08)",
+        "base": "#919EAB",
+        "alpha": 0.08,
+        "source": "frontend/src/theme/core/components/button-toggle.tsx:82"
+      },
+      "paginationOutlined": {
+        "value": "rgba(145 158 171 / 0.24)",
+        "rgbaLegacy": "rgba(145, 158, 171, 0.24)",
+        "base": "#919EAB",
+        "alpha": 0.24,
+        "source": "frontend/src/theme/core/components/pagination.tsx:103"
+      }
+    }
+  },
+  "typography": {
+    "htmlFontSize": {
+      "value": "14px",
+      "note": "BASE REAL DO REM. Definido por MuiCssBaseline a partir de settings.fontSize.",
+      "source": "frontend/src/components/settings/settings-config.ts:18 + frontend/src/theme/with-settings/update-components.ts:54-59",
+      "confirmedInRuntime": true
+    },
+    "themeHtmlFontSizeProperty": {
+      "value": 16,
+      "note": "Valor do objeto do tema (typography.htmlFontSize). NAO e a base usada pelo navegador.",
+      "source": "default MUI 7.0.1"
+    },
+    "fontFamily": {
+      "primary": {
+        "value": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "firstFamily": "Public Sans Variable",
+        "source": "frontend/src/theme/theme-config.ts:41"
+      },
+      "secondary": {
+        "value": "\"Barlow\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "firstFamily": "Barlow",
+        "source": "frontend/src/theme/theme-config.ts:42"
+      }
+    },
+    "fontWeight": {
+      "light": {
+        "value": "300",
+        "source": "frontend/src/theme/core/typography.ts:49"
+      },
+      "regular": {
+        "value": "400",
+        "source": "frontend/src/theme/core/typography.ts:50"
+      },
+      "medium": {
+        "value": "500",
+        "source": "frontend/src/theme/core/typography.ts:51"
+      },
+      "semiBold": {
+        "value": "600",
+        "source": "frontend/src/theme/core/typography.ts:52",
+        "note": "extensao do projeto"
+      },
+      "bold": {
+        "value": "700",
+        "source": "frontend/src/theme/core/typography.ts:53"
+      },
+      "extraBold": {
+        "value": "800",
+        "source": "frontend/src/theme/core/typography.ts:56 (h1), frontend/src/theme/core/typography.ts:63 (h2)",
+        "note": "literal nas variantes h1/h2"
+      }
+    },
+    "letterSpacing": {
+      "value": "normal",
+      "note": "nenhuma variante define letter-spacing",
+      "source": "frontend/src/theme/core/typography.ts"
+    },
+    "variants": {
+      "h1": {
+        "fontFamily": "secondary",
+        "fontFamilyValue": "\"Barlow\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "800",
+        "fontSize": {
+          "value": "2.5rem",
+          "px": 35,
+          "note": "px real = 2.5rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:54"
+        },
+        "lineHeight": {
+          "value": 1.25,
+          "px": 43.75,
+          "source": "frontend/src/theme/core/typography.ts:54"
+        },
+        "textTransform": "none",
+        "responsive": {
+          "sm": {
+            "minWidth": "600px",
+            "value": "3.25rem",
+            "px": 45.5,
+            "note": "px real = 3.25rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:54"
+          },
+          "md": {
+            "minWidth": "900px",
+            "value": "3.625rem",
+            "px": 50.75,
+            "note": "px real = 3.625rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:54"
+          },
+          "lg": {
+            "minWidth": "1200px",
+            "value": "4rem",
+            "px": 56,
+            "note": "px real = 4rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:54"
+          }
+        },
+        "source": "frontend/src/theme/core/typography.ts:54"
+      },
+      "h2": {
+        "fontFamily": "secondary",
+        "fontFamilyValue": "\"Barlow\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "800",
+        "fontSize": {
+          "value": "2rem",
+          "px": 28,
+          "note": "px real = 2rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:61"
+        },
+        "lineHeight": {
+          "value": 1.3333333333333333,
+          "px": 37.3333,
+          "source": "frontend/src/theme/core/typography.ts:61"
+        },
+        "textTransform": "none",
+        "responsive": {
+          "sm": {
+            "minWidth": "600px",
+            "value": "2.5rem",
+            "px": 35,
+            "note": "px real = 2.5rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:61"
+          },
+          "md": {
+            "minWidth": "900px",
+            "value": "2.75rem",
+            "px": 38.5,
+            "note": "px real = 2.75rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:61"
+          },
+          "lg": {
+            "minWidth": "1200px",
+            "value": "3rem",
+            "px": 42,
+            "note": "px real = 3rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:61"
+          }
+        },
+        "source": "frontend/src/theme/core/typography.ts:61"
+      },
+      "h3": {
+        "fontFamily": "secondary",
+        "fontFamilyValue": "\"Barlow\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "700",
+        "fontSize": {
+          "value": "1.5rem",
+          "px": 21,
+          "note": "px real = 1.5rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:68"
+        },
+        "lineHeight": {
+          "value": 1.5,
+          "px": 31.5,
+          "source": "frontend/src/theme/core/typography.ts:68"
+        },
+        "textTransform": "none",
+        "responsive": {
+          "sm": {
+            "minWidth": "600px",
+            "value": "1.625rem",
+            "px": 22.75,
+            "note": "px real = 1.625rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:68"
+          },
+          "md": {
+            "minWidth": "900px",
+            "value": "1.875rem",
+            "px": 26.25,
+            "note": "px real = 1.875rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:68"
+          },
+          "lg": {
+            "minWidth": "1200px",
+            "value": "2rem",
+            "px": 28,
+            "note": "px real = 2rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:68"
+          }
+        },
+        "source": "frontend/src/theme/core/typography.ts:68"
+      },
+      "h4": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "700",
+        "fontSize": {
+          "value": "1.25rem",
+          "px": 17.5,
+          "note": "px real = 1.25rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:75"
+        },
+        "lineHeight": {
+          "value": 1.5,
+          "px": 26.25,
+          "source": "frontend/src/theme/core/typography.ts:75"
+        },
+        "textTransform": "none",
+        "responsive": {
+          "md": {
+            "minWidth": "900px",
+            "value": "1.5rem",
+            "px": 21,
+            "note": "px real = 1.5rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:75"
+          }
+        },
+        "source": "frontend/src/theme/core/typography.ts:75"
+      },
+      "h5": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "700",
+        "fontSize": {
+          "value": "1.125rem",
+          "px": 15.75,
+          "note": "px real = 1.125rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:81"
+        },
+        "lineHeight": {
+          "value": 1.5,
+          "px": 23.625,
+          "source": "frontend/src/theme/core/typography.ts:81"
+        },
+        "textTransform": "none",
+        "responsive": {
+          "sm": {
+            "minWidth": "600px",
+            "value": "1.1875rem",
+            "px": 16.625,
+            "note": "px real = 1.1875rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:81"
+          }
+        },
+        "source": "frontend/src/theme/core/typography.ts:81"
+      },
+      "h6": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "600",
+        "fontSize": {
+          "value": "1.0625rem",
+          "px": 14.875,
+          "note": "px real = 1.0625rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:87"
+        },
+        "lineHeight": {
+          "value": 1.5555555555555556,
+          "px": 23.1389,
+          "source": "frontend/src/theme/core/typography.ts:87"
+        },
+        "textTransform": "none",
+        "responsive": {
+          "sm": {
+            "minWidth": "600px",
+            "value": "1.125rem",
+            "px": 15.75,
+            "note": "px real = 1.125rem × 14px (html font-size = 14px)",
+            "source": "frontend/src/theme/core/typography.ts:87"
+          }
+        },
+        "source": "frontend/src/theme/core/typography.ts:87"
+      },
+      "subtitle1": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "600",
+        "fontSize": {
+          "value": "1rem",
+          "px": 14,
+          "note": "px real = 1rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:93"
+        },
+        "lineHeight": {
+          "value": 1.5,
+          "px": 21,
+          "source": "frontend/src/theme/core/typography.ts:93"
+        },
+        "textTransform": "none",
+        "responsive": null,
+        "source": "frontend/src/theme/core/typography.ts:93"
+      },
+      "subtitle2": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "600",
+        "fontSize": {
+          "value": "0.875rem",
+          "px": 12.25,
+          "note": "px real = 0.875rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:98"
+        },
+        "lineHeight": {
+          "value": 1.5714285714285714,
+          "px": 19.25,
+          "source": "frontend/src/theme/core/typography.ts:98"
+        },
+        "textTransform": "none",
+        "responsive": null,
+        "source": "frontend/src/theme/core/typography.ts:98"
+      },
+      "body1": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "400",
+        "fontSize": {
+          "value": "1rem",
+          "px": 14,
+          "note": "px real = 1rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:103"
+        },
+        "lineHeight": {
+          "value": 1.5,
+          "px": 21,
+          "source": "frontend/src/theme/core/typography.ts:103"
+        },
+        "textTransform": "none",
+        "responsive": null,
+        "source": "frontend/src/theme/core/typography.ts:103"
+      },
+      "body2": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "400",
+        "fontSize": {
+          "value": "0.875rem",
+          "px": 12.25,
+          "note": "px real = 0.875rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:107"
+        },
+        "lineHeight": {
+          "value": 1.5714285714285714,
+          "px": 19.25,
+          "source": "frontend/src/theme/core/typography.ts:107"
+        },
+        "textTransform": "none",
+        "responsive": null,
+        "source": "frontend/src/theme/core/typography.ts:107"
+      },
+      "caption": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "400",
+        "fontSize": {
+          "value": "0.75rem",
+          "px": 10.5,
+          "note": "px real = 0.75rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:111"
+        },
+        "lineHeight": {
+          "value": 1.5,
+          "px": 15.75,
+          "source": "frontend/src/theme/core/typography.ts:111"
+        },
+        "textTransform": "none",
+        "responsive": null,
+        "source": "frontend/src/theme/core/typography.ts:111"
+      },
+      "overline": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "700",
+        "fontSize": {
+          "value": "0.75rem",
+          "px": 10.5,
+          "note": "px real = 0.75rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:115"
+        },
+        "lineHeight": {
+          "value": 1.5,
+          "px": 15.75,
+          "source": "frontend/src/theme/core/typography.ts:115"
+        },
+        "textTransform": "uppercase",
+        "responsive": null,
+        "source": "frontend/src/theme/core/typography.ts:115"
+      },
+      "button": {
+        "fontFamily": "primary",
+        "fontFamilyValue": "\"Public Sans Variable\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
+        "fontWeight": "700",
+        "fontSize": {
+          "value": "0.875rem",
+          "px": 12.25,
+          "note": "px real = 0.875rem × 14px (html font-size = 14px)",
+          "source": "frontend/src/theme/core/typography.ts:121"
+        },
+        "lineHeight": {
+          "value": 1.7142857142857142,
+          "px": 21,
+          "source": "frontend/src/theme/core/typography.ts:121"
+        },
+        "textTransform": "unset",
+        "responsive": null,
+        "source": "frontend/src/theme/core/typography.ts:121"
+      }
+    }
+  },
+  "spacing": {
+    "base": {
+      "value": "8px",
+      "source": "default MUI 7.0.1 (nao sobrescrito)",
+      "confirmedInRuntime": true
+    },
+    "cssVariable": "--spacing",
+    "scale": {
+      "0": {
+        "value": "0px",
+        "multiplier": 0
+      },
+      "1": {
+        "value": "8px",
+        "multiplier": 1
+      },
+      "2": {
+        "value": "16px",
+        "multiplier": 2
+      },
+      "3": {
+        "value": "24px",
+        "multiplier": 3
+      },
+      "4": {
+        "value": "32px",
+        "multiplier": 4
+      },
+      "5": {
+        "value": "40px",
+        "multiplier": 5
+      },
+      "6": {
+        "value": "48px",
+        "multiplier": 6
+      },
+      "7": {
+        "value": "56px",
+        "multiplier": 7
+      },
+      "8": {
+        "value": "64px",
+        "multiplier": 8
+      },
+      "9": {
+        "value": "72px",
+        "multiplier": 9
+      },
+      "10": {
+        "value": "80px",
+        "multiplier": 10
+      },
+      "11": {
+        "value": "88px",
+        "multiplier": 11
+      },
+      "12": {
+        "value": "96px",
+        "multiplier": 12
+      },
+      "0.25": {
+        "value": "2px",
+        "multiplier": 0.25
+      },
+      "0.5": {
+        "value": "4px",
+        "multiplier": 0.5
+      },
+      "0.75": {
+        "value": "6px",
+        "multiplier": 0.75
+      },
+      "1.25": {
+        "value": "10px",
+        "multiplier": 1.25
+      },
+      "1.5": {
+        "value": "12px",
+        "multiplier": 1.5
+      },
+      "1.75": {
+        "value": "14px",
+        "multiplier": 1.75
+      },
+      "2.25": {
+        "value": "18px",
+        "multiplier": 2.25
+      },
+      "2.5": {
+        "value": "20px",
+        "multiplier": 2.5
+      },
+      "2.75": {
+        "value": "22px",
+        "multiplier": 2.75
+      },
+      "3.25": {
+        "value": "26px",
+        "multiplier": 3.25
+      },
+      "3.5": {
+        "value": "28px",
+        "multiplier": 3.5
+      },
+      "3.75": {
+        "value": "30px",
+        "multiplier": 3.75
+      },
+      "4.5": {
+        "value": "36px",
+        "multiplier": 4.5
+      }
+    }
+  },
+  "breakpoints": {
+    "unit": "px",
+    "values": {
+      "xs": {
+        "value": "0px",
+        "number": 0
+      },
+      "sm": {
+        "value": "600px",
+        "number": 600
+      },
+      "md": {
+        "value": "900px",
+        "number": 900
+      },
+      "lg": {
+        "value": "1200px",
+        "number": 1200
+      },
+      "xl": {
+        "value": "1536px",
+        "number": 1536
+      }
+    },
+    "mediaQueries": {
+      "up": {
+        "xs": "@media (min-width:0px)",
+        "sm": "@media (min-width:600px)",
+        "md": "@media (min-width:900px)",
+        "lg": "@media (min-width:1200px)",
+        "xl": "@media (min-width:1536px)"
+      },
+      "down": {
+        "xs": "@media (max-width:-0.05px)",
+        "sm": "@media (max-width:599.95px)",
+        "md": "@media (max-width:899.95px)",
+        "lg": "@media (max-width:1199.95px)",
+        "xl": "@media (max-width:1535.95px)"
+      }
+    },
+    "source": "default MUI 7.0.1 (nao sobrescrito)"
+  },
+  "shape": {
+    "borderRadius": {
+      "value": "8px",
+      "number": 8,
+      "referenceMui": "shape.borderRadius",
+      "source": "frontend/src/theme/create-theme.ts:35",
+      "muiDefault": "4px"
+    },
+    "multipliers": {
+      "1": {
+        "value": "8px",
+        "usedBy": [
+          "campo preenchido",
+          "chip small",
+          "etiqueta de autocomplete",
+          "item de nav vertical/mini",
+          "botao"
+        ]
+      },
+      "2": {
+        "value": "16px",
+        "usedBy": ["Card", "superficie de dialogo", "Skeleton rounded"]
+      },
+      "0.75": {
+        "value": "6px",
+        "usedBy": ["item de menu", "Label", "item de nav horizontal"]
+      },
+      "1.25": {
+        "value": "10px",
+        "usedBy": ["chip medium", "superficie de dropdown"]
+      },
+      "1.5": {
+        "value": "12px",
+        "usedBy": ["avatar rounded", "popper de date picker"]
+      }
+    }
+  },
+  "motion": {
+    "duration": {
+      "shortest": {
+        "value": "150ms",
+        "number": 150
+      },
+      "shorter": {
+        "value": "200ms",
+        "number": 200
+      },
+      "short": {
+        "value": "250ms",
+        "number": 250
+      },
+      "standard": {
+        "value": "300ms",
+        "number": 300
+      },
+      "complex": {
+        "value": "375ms",
+        "number": 375
+      },
+      "enteringScreen": {
+        "value": "225ms",
+        "number": 225
+      },
+      "leavingScreen": {
+        "value": "195ms",
+        "number": 195
+      }
+    },
+    "easing": {
+      "easeInOut": {
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)"
+      },
+      "easeOut": {
+        "value": "cubic-bezier(0.0, 0, 0.2, 1)"
+      },
+      "easeIn": {
+        "value": "cubic-bezier(0.4, 0, 1, 1)"
+      },
+      "sharp": {
+        "value": "cubic-bezier(0.4, 0, 0.6, 1)"
+      }
+    },
+    "layout": {
+      "duration": {
+        "value": "120ms",
+        "cssVariable": "--layout-transition-duration",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:11"
+      },
+      "easing": {
+        "value": "linear",
+        "cssVariable": "--layout-transition-easing",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:10"
+      }
+    },
+    "source": "default MUI 7.0.1 (nao sobrescrito)"
+  },
+  "zIndex": {
+    "mobileStepper": {
+      "value": 1000,
+      "source": "default MUI 7.0.1"
+    },
+    "fab": {
+      "value": 1050,
+      "source": "default MUI 7.0.1"
+    },
+    "speedDial": {
+      "value": 1050,
+      "source": "default MUI 7.0.1"
+    },
+    "appBar": {
+      "value": 1100,
+      "source": "default MUI 7.0.1"
+    },
+    "drawer": {
+      "value": 1200,
+      "source": "default MUI 7.0.1"
+    },
+    "modal": {
+      "value": 1300,
+      "source": "default MUI 7.0.1"
+    },
+    "snackbar": {
+      "value": 1400,
+      "source": "default MUI 7.0.1"
+    },
+    "tooltip": {
+      "value": 1500,
+      "source": "default MUI 7.0.1"
+    },
+    "layoutNav": {
+      "value": 1201,
+      "cssVariable": "--layout-nav-zIndex",
+      "source": "frontend/src/layouts/core/css-vars.ts:7"
+    },
+    "layoutHeader": {
+      "value": 1101,
+      "cssVariable": "--layout-header-zIndex",
+      "source": "frontend/src/layouts/core/css-vars.ts:10"
+    },
+    "nprogress": {
+      "value": 9999,
+      "source": "frontend/src/components/progress-bar/styles.css:6"
+    },
+    "badgeDot": {
+      "value": 9,
+      "source": "frontend/src/theme/core/components/badge.tsx:22"
+    },
+    "card": {
+      "value": 0,
+      "source": "frontend/src/theme/core/components/card.tsx:13",
+      "note": "corrige overflow com border-radius no Safari"
+    },
+    "headerBackdrop": {
+      "value": -1,
+      "source": "frontend/src/layouts/core/header-section.tsx:82"
+    },
+    "headerShadow": {
+      "value": -2,
+      "source": "frontend/src/layouts/core/header-section.tsx:82"
+    }
+  },
+  "shadows": {
+    "scale": {
+      "light": {
+        "0": "none",
+        "1": "0px 2px 1px -1px rgba(145 158 171 / 0.2),0px 1px 1px 0px rgba(145 158 171 / 0.14),0px 1px 3px 0px rgba(145 158 171 / 0.12)",
+        "2": "0px 3px 1px -2px rgba(145 158 171 / 0.2),0px 2px 2px 0px rgba(145 158 171 / 0.14),0px 1px 5px 0px rgba(145 158 171 / 0.12)",
+        "3": "0px 3px 3px -2px rgba(145 158 171 / 0.2),0px 3px 4px 0px rgba(145 158 171 / 0.14),0px 1px 8px 0px rgba(145 158 171 / 0.12)",
+        "4": "0px 2px 4px -1px rgba(145 158 171 / 0.2),0px 4px 5px 0px rgba(145 158 171 / 0.14),0px 1px 10px 0px rgba(145 158 171 / 0.12)",
+        "5": "0px 3px 5px -1px rgba(145 158 171 / 0.2),0px 5px 8px 0px rgba(145 158 171 / 0.14),0px 1px 14px 0px rgba(145 158 171 / 0.12)",
+        "6": "0px 3px 5px -1px rgba(145 158 171 / 0.2),0px 6px 10px 0px rgba(145 158 171 / 0.14),0px 1px 18px 0px rgba(145 158 171 / 0.12)",
+        "7": "0px 4px 5px -2px rgba(145 158 171 / 0.2),0px 7px 10px 1px rgba(145 158 171 / 0.14),0px 2px 16px 1px rgba(145 158 171 / 0.12)",
+        "8": "0px 5px 5px -3px rgba(145 158 171 / 0.2),0px 8px 10px 1px rgba(145 158 171 / 0.14),0px 3px 14px 2px rgba(145 158 171 / 0.12)",
+        "9": "0px 5px 6px -3px rgba(145 158 171 / 0.2),0px 9px 12px 1px rgba(145 158 171 / 0.14),0px 3px 16px 2px rgba(145 158 171 / 0.12)",
+        "10": "0px 6px 6px -3px rgba(145 158 171 / 0.2),0px 10px 14px 1px rgba(145 158 171 / 0.14),0px 4px 18px 3px rgba(145 158 171 / 0.12)",
+        "11": "0px 6px 7px -4px rgba(145 158 171 / 0.2),0px 11px 15px 1px rgba(145 158 171 / 0.14),0px 4px 20px 3px rgba(145 158 171 / 0.12)",
+        "12": "0px 7px 8px -4px rgba(145 158 171 / 0.2),0px 12px 17px 2px rgba(145 158 171 / 0.14),0px 5px 22px 4px rgba(145 158 171 / 0.12)",
+        "13": "0px 7px 8px -4px rgba(145 158 171 / 0.2),0px 13px 19px 2px rgba(145 158 171 / 0.14),0px 5px 24px 4px rgba(145 158 171 / 0.12)",
+        "14": "0px 7px 9px -4px rgba(145 158 171 / 0.2),0px 14px 21px 2px rgba(145 158 171 / 0.14),0px 5px 26px 4px rgba(145 158 171 / 0.12)",
+        "15": "0px 8px 9px -5px rgba(145 158 171 / 0.2),0px 15px 22px 2px rgba(145 158 171 / 0.14),0px 6px 28px 5px rgba(145 158 171 / 0.12)",
+        "16": "0px 8px 10px -5px rgba(145 158 171 / 0.2),0px 16px 24px 2px rgba(145 158 171 / 0.14),0px 6px 30px 5px rgba(145 158 171 / 0.12)",
+        "17": "0px 8px 11px -5px rgba(145 158 171 / 0.2),0px 17px 26px 2px rgba(145 158 171 / 0.14),0px 6px 32px 5px rgba(145 158 171 / 0.12)",
+        "18": "0px 9px 11px -5px rgba(145 158 171 / 0.2),0px 18px 28px 2px rgba(145 158 171 / 0.14),0px 7px 34px 6px rgba(145 158 171 / 0.12)",
+        "19": "0px 9px 12px -6px rgba(145 158 171 / 0.2),0px 19px 29px 2px rgba(145 158 171 / 0.14),0px 7px 36px 6px rgba(145 158 171 / 0.12)",
+        "20": "0px 10px 13px -6px rgba(145 158 171 / 0.2),0px 20px 31px 3px rgba(145 158 171 / 0.14),0px 8px 38px 7px rgba(145 158 171 / 0.12)",
+        "21": "0px 10px 13px -6px rgba(145 158 171 / 0.2),0px 21px 33px 3px rgba(145 158 171 / 0.14),0px 8px 40px 7px rgba(145 158 171 / 0.12)",
+        "22": "0px 10px 14px -6px rgba(145 158 171 / 0.2),0px 22px 35px 3px rgba(145 158 171 / 0.14),0px 8px 42px 7px rgba(145 158 171 / 0.12)",
+        "23": "0px 11px 14px -7px rgba(145 158 171 / 0.2),0px 23px 36px 3px rgba(145 158 171 / 0.14),0px 9px 44px 8px rgba(145 158 171 / 0.12)",
+        "24": "0px 11px 15px -7px rgba(145 158 171 / 0.2),0px 24px 38px 3px rgba(145 158 171 / 0.14),0px 9px 46px 8px rgba(145 158 171 / 0.12)"
+      },
+      "dark": {
+        "0": "none",
+        "1": "0px 2px 1px -1px rgba(0 0 0 / 0.2),0px 1px 1px 0px rgba(0 0 0 / 0.14),0px 1px 3px 0px rgba(0 0 0 / 0.12)",
+        "2": "0px 3px 1px -2px rgba(0 0 0 / 0.2),0px 2px 2px 0px rgba(0 0 0 / 0.14),0px 1px 5px 0px rgba(0 0 0 / 0.12)",
+        "3": "0px 3px 3px -2px rgba(0 0 0 / 0.2),0px 3px 4px 0px rgba(0 0 0 / 0.14),0px 1px 8px 0px rgba(0 0 0 / 0.12)",
+        "4": "0px 2px 4px -1px rgba(0 0 0 / 0.2),0px 4px 5px 0px rgba(0 0 0 / 0.14),0px 1px 10px 0px rgba(0 0 0 / 0.12)",
+        "5": "0px 3px 5px -1px rgba(0 0 0 / 0.2),0px 5px 8px 0px rgba(0 0 0 / 0.14),0px 1px 14px 0px rgba(0 0 0 / 0.12)",
+        "6": "0px 3px 5px -1px rgba(0 0 0 / 0.2),0px 6px 10px 0px rgba(0 0 0 / 0.14),0px 1px 18px 0px rgba(0 0 0 / 0.12)",
+        "7": "0px 4px 5px -2px rgba(0 0 0 / 0.2),0px 7px 10px 1px rgba(0 0 0 / 0.14),0px 2px 16px 1px rgba(0 0 0 / 0.12)",
+        "8": "0px 5px 5px -3px rgba(0 0 0 / 0.2),0px 8px 10px 1px rgba(0 0 0 / 0.14),0px 3px 14px 2px rgba(0 0 0 / 0.12)",
+        "9": "0px 5px 6px -3px rgba(0 0 0 / 0.2),0px 9px 12px 1px rgba(0 0 0 / 0.14),0px 3px 16px 2px rgba(0 0 0 / 0.12)",
+        "10": "0px 6px 6px -3px rgba(0 0 0 / 0.2),0px 10px 14px 1px rgba(0 0 0 / 0.14),0px 4px 18px 3px rgba(0 0 0 / 0.12)",
+        "11": "0px 6px 7px -4px rgba(0 0 0 / 0.2),0px 11px 15px 1px rgba(0 0 0 / 0.14),0px 4px 20px 3px rgba(0 0 0 / 0.12)",
+        "12": "0px 7px 8px -4px rgba(0 0 0 / 0.2),0px 12px 17px 2px rgba(0 0 0 / 0.14),0px 5px 22px 4px rgba(0 0 0 / 0.12)",
+        "13": "0px 7px 8px -4px rgba(0 0 0 / 0.2),0px 13px 19px 2px rgba(0 0 0 / 0.14),0px 5px 24px 4px rgba(0 0 0 / 0.12)",
+        "14": "0px 7px 9px -4px rgba(0 0 0 / 0.2),0px 14px 21px 2px rgba(0 0 0 / 0.14),0px 5px 26px 4px rgba(0 0 0 / 0.12)",
+        "15": "0px 8px 9px -5px rgba(0 0 0 / 0.2),0px 15px 22px 2px rgba(0 0 0 / 0.14),0px 6px 28px 5px rgba(0 0 0 / 0.12)",
+        "16": "0px 8px 10px -5px rgba(0 0 0 / 0.2),0px 16px 24px 2px rgba(0 0 0 / 0.14),0px 6px 30px 5px rgba(0 0 0 / 0.12)",
+        "17": "0px 8px 11px -5px rgba(0 0 0 / 0.2),0px 17px 26px 2px rgba(0 0 0 / 0.14),0px 6px 32px 5px rgba(0 0 0 / 0.12)",
+        "18": "0px 9px 11px -5px rgba(0 0 0 / 0.2),0px 18px 28px 2px rgba(0 0 0 / 0.14),0px 7px 34px 6px rgba(0 0 0 / 0.12)",
+        "19": "0px 9px 12px -6px rgba(0 0 0 / 0.2),0px 19px 29px 2px rgba(0 0 0 / 0.14),0px 7px 36px 6px rgba(0 0 0 / 0.12)",
+        "20": "0px 10px 13px -6px rgba(0 0 0 / 0.2),0px 20px 31px 3px rgba(0 0 0 / 0.14),0px 8px 38px 7px rgba(0 0 0 / 0.12)",
+        "21": "0px 10px 13px -6px rgba(0 0 0 / 0.2),0px 21px 33px 3px rgba(0 0 0 / 0.14),0px 8px 40px 7px rgba(0 0 0 / 0.12)",
+        "22": "0px 10px 14px -6px rgba(0 0 0 / 0.2),0px 22px 35px 3px rgba(0 0 0 / 0.14),0px 8px 42px 7px rgba(0 0 0 / 0.12)",
+        "23": "0px 11px 14px -7px rgba(0 0 0 / 0.2),0px 23px 36px 3px rgba(0 0 0 / 0.14),0px 9px 44px 8px rgba(0 0 0 / 0.12)",
+        "24": "0px 11px 15px -7px rgba(0 0 0 / 0.2),0px 24px 38px 3px rgba(0 0 0 / 0.14),0px 9px 46px 8px rgba(0 0 0 / 0.12)"
+      }
+    },
+    "custom": {
+      "light": {
+        "z1": "0 1px 2px 0 rgba(145 158 171 / 0.16)",
+        "z4": "0 4px 8px 0 rgba(145 158 171 / 0.16)",
+        "z8": "0 8px 16px 0 rgba(145 158 171 / 0.16)",
+        "z12": "0 12px 24px -4px rgba(145 158 171 / 0.16)",
+        "z16": "0 16px 32px -4px rgba(145 158 171 / 0.16)",
+        "z20": "0 20px 40px -4px rgba(145 158 171 / 0.16)",
+        "z24": "0 24px 48px 0 rgba(145 158 171 / 0.16)",
+        "dialog": "-40px 40px 80px -8px rgba(0 0 0 / 0.24)",
+        "card": "0 0 2px 0 rgba(145 158 171 / 0.2), 0 12px 24px -4px rgba(145 158 171 / 0.12)",
+        "dropdown": "0 0 2px 0 rgba(145 158 171 / 0.24), -20px 20px 40px -4px rgba(145 158 171 / 0.24)",
+        "primary": "0 8px 16px 0 rgba(0 167 111 / 0.24)",
+        "secondary": "0 8px 16px 0 rgba(142 51 255 / 0.24)",
+        "info": "0 8px 16px 0 rgba(0 184 217 / 0.24)",
+        "success": "0 8px 16px 0 rgba(34 197 94 / 0.24)",
+        "warning": "0 8px 16px 0 rgba(255 171 0 / 0.24)",
+        "error": "0 8px 16px 0 rgba(255 86 48 / 0.24)"
+      },
+      "dark": {
+        "z1": "0 1px 2px 0 rgba(0 0 0 / 0.16)",
+        "z4": "0 4px 8px 0 rgba(0 0 0 / 0.16)",
+        "z8": "0 8px 16px 0 rgba(0 0 0 / 0.16)",
+        "z12": "0 12px 24px -4px rgba(0 0 0 / 0.16)",
+        "z16": "0 16px 32px -4px rgba(0 0 0 / 0.16)",
+        "z20": "0 20px 40px -4px rgba(0 0 0 / 0.16)",
+        "z24": "0 24px 48px 0 rgba(0 0 0 / 0.16)",
+        "dialog": "-40px 40px 80px -8px rgba(0 0 0 / 0.24)",
+        "card": "0 0 2px 0 rgba(0 0 0 / 0.2), 0 12px 24px -4px rgba(0 0 0 / 0.12)",
+        "dropdown": "0 0 2px 0 rgba(0 0 0 / 0.24), -20px 20px 40px -4px rgba(0 0 0 / 0.24)",
+        "primary": "0 8px 16px 0 rgba(0 167 111 / 0.24)",
+        "secondary": "0 8px 16px 0 rgba(142 51 255 / 0.24)",
+        "info": "0 8px 16px 0 rgba(0 184 217 / 0.24)",
+        "success": "0 8px 16px 0 rgba(34 197 94 / 0.24)",
+        "warning": "0 8px 16px 0 rgba(255 171 0 / 0.24)",
+        "error": "0 8px 16px 0 rgba(255 86 48 / 0.24)"
+      }
+    },
+    "source": {
+      "scale": "frontend/src/theme/core/shadows.ts:10-45",
+      "custom": "frontend/src/theme/core/custom-shadows.ts:36-58"
+    },
+    "note": "A escala usa #919EAB (grey.500) como base no tema claro e #000000 no escuro."
+  },
+  "layout": {
+    "header": {
+      "heightMobile": {
+        "value": "64px",
+        "cssVariable": "--layout-header-mobile-height",
+        "source": "frontend/src/layouts/core/css-vars.ts:11",
+        "confirmedInRuntime": true
+      },
+      "heightDesktop": {
+        "value": "72px",
+        "cssVariable": "--layout-header-desktop-height",
+        "source": "frontend/src/layouts/core/css-vars.ts:12",
+        "confirmedInRuntime": true
+      },
+      "blur": {
+        "value": "8px",
+        "cssVariable": "--layout-header-blur",
+        "source": "frontend/src/layouts/core/css-vars.ts:9",
+        "confirmedInRuntime": true
+      },
+      "zIndex": {
+        "value": 1101,
+        "cssVariable": "--layout-header-zIndex",
+        "source": "frontend/src/layouts/core/css-vars.ts:10"
+      }
+    },
+    "nav": {
+      "verticalWidth": {
+        "value": "300px",
+        "cssVariable": "--layout-nav-vertical-width",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:13"
+      },
+      "miniWidth": {
+        "value": "88px",
+        "cssVariable": "--layout-nav-mini-width",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:12"
+      },
+      "mobileWidth": {
+        "value": "288px",
+        "cssVariable": "--layout-nav-mobile-width",
+        "source": "frontend/src/layouts/core/css-vars.ts:8",
+        "confirmedInRuntime": true
+      },
+      "horizontalHeight": {
+        "value": "64px",
+        "cssVariable": "--layout-nav-horizontal-height",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:14"
+      },
+      "zIndex": {
+        "value": 1201,
+        "cssVariable": "--layout-nav-zIndex",
+        "source": "frontend/src/layouts/core/css-vars.ts:7"
+      },
+      "breakpoint": {
+        "value": "1200px",
+        "note": "layoutQuery = lg; abaixo disso vira drawer temporario",
+        "source": "frontend/src/layouts/dashboard/layout.tsx:57"
+      }
+    },
+    "content": {
+      "paddingTop": {
+        "value": "8px",
+        "cssVariable": "--layout-dashboard-content-pt",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:16"
+      },
+      "paddingTopHorizontalNav": {
+        "value": "40px",
+        "source": "frontend/src/layouts/dashboard/content.tsx:46"
+      },
+      "paddingBottom": {
+        "value": "64px",
+        "cssVariable": "--layout-dashboard-content-pb",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:17"
+      },
+      "paddingX": {
+        "value": "40px",
+        "cssVariable": "--layout-dashboard-content-px",
+        "source": "frontend/src/layouts/dashboard/css-vars.ts:18",
+        "note": "aplicado somente a partir de 1200px"
+      },
+      "maxWidth": {
+        "value": "none",
+        "note": "compactLayout=false -> container sem max-width",
+        "source": "frontend/src/layouts/dashboard/content.tsx:33"
+      }
+    },
+    "navItem": {
+      "vertical": {
+        "gap": "4px",
+        "radius": "8px",
+        "padding": "4px 8px 4px 12px",
+        "rootHeight": "44px",
+        "subHeight": "36px",
+        "iconSize": "24px",
+        "iconMargin": "0 12px 0 0",
+        "bulletSize": "12px",
+        "source": "frontend/src/components/nav-section/styles/css-vars.ts:38-62"
+      },
+      "mini": {
+        "gap": "4px",
+        "radius": "8px",
+        "rootHeight": "56px",
+        "rootPadding": "8px 4px 6px 4px",
+        "subHeight": "34px",
+        "subPadding": "0 8px",
+        "iconSize": "22px",
+        "iconRootMargin": "0 0 6px 0",
+        "iconSubMargin": "0 8px 0 0",
+        "source": "frontend/src/components/nav-section/styles/css-vars.ts:66-83"
+      },
+      "horizontal": {
+        "gap": "6px",
+        "navHeight": "56px",
+        "radius": "6px",
+        "rootHeight": "32px",
+        "rootPadding": "0 6px",
+        "subHeight": "34px",
+        "subPadding": "0 8px",
+        "iconSize": "22px",
+        "source": "frontend/src/components/nav-section/styles/css-vars.ts:87-105"
+      }
+    },
+    "container": {
+      "gutterXs": {
+        "value": "16px",
+        "source": "default MUI 7.0.1 (@mui/system/Container/createContainer.js:67-68)"
+      },
+      "gutterSm": {
+        "value": "24px",
+        "source": "default MUI 7.0.1 (@mui/system/Container/createContainer.js:70-72)"
+      },
+      "maxWidth": {
+        "xs": {
+          "value": "444px",
+          "note": "Math.max(breakpoints.values.xs, 444)"
+        },
+        "sm": {
+          "value": "600px"
+        },
+        "md": {
+          "value": "900px"
+        },
+        "lg": {
+          "value": "1200px"
+        },
+        "xl": {
+          "value": "1536px"
+        },
+        "source": "default MUI 7.0.1 (@mui/system/Container/createContainer.js:93-107)"
+      }
+    },
+    "classPrefix": {
+      "value": "minimal",
+      "source": "frontend/src/theme/theme-config.ts:36"
+    }
+  },
+  "size": {
+    "button": {
+      "small": {
+        "height": "30px",
+        "paddingX": "8px",
+        "paddingXText": "4px",
+        "fontSize": {
+          "value": "0.8125rem",
+          "px": 11.375,
+          "note": "px real = 0.8125rem × 14px (html font-size = 14px)",
+          "source": "default MUI 7.0.1"
+        },
+        "source": "frontend/src/theme/core/components/button.tsx:155-160"
+      },
+      "medium": {
+        "height": "33px",
+        "heightNote": "nao declarado; resultado de padding 6px + line-height 21px",
+        "paddingX": "12px",
+        "paddingXText": "8px",
+        "fontSize": {
+          "value": "0.875rem",
+          "px": 12.25,
+          "note": "px real = 0.875rem × 14px (html font-size = 14px)",
+          "source": "default MUI 7.0.1"
+        },
+        "source": "frontend/src/theme/core/components/button.tsx:161-166"
+      },
+      "large": {
+        "height": "48px",
+        "paddingX": "16px",
+        "paddingXText": "10px",
+        "fontSize": {
+          "value": "0.9375rem",
+          "px": 13.125,
+          "note": "px real = 0.9375rem × 14px (html font-size = 14px)",
+          "source": "default MUI 7.0.1"
+        },
+        "source": "frontend/src/theme/core/components/button.tsx:171-174"
+      },
+      "minWidth": {
+        "value": "64px",
+        "source": "default MUI 7.0.1"
+      },
+      "radius": {
+        "value": "8px",
+        "source": "frontend/src/theme/create-theme.ts:35"
+      }
+    },
+    "fab": {
+      "extended": {
+        "height": "48px",
+        "radius": "24px",
+        "gap": "8px",
+        "padding": "0 16px"
+      },
+      "extendedMedium": {
+        "height": "40px",
+        "radius": "20px"
+      },
+      "extendedSmall": {
+        "height": "34px",
+        "radius": "17px",
+        "gap": "4px",
+        "padding": "0 8px"
+      },
+      "source": "frontend/src/theme/core/components/button-fab.tsx:146-158"
+    },
+    "input": {
+      "outlinedMedium": {
+        "height": "51.8594px",
+        "composition": "padding 16.5px + 16.5px + conteudo 18.8594px",
+        "confirmedInRuntime": true
+      },
+      "outlinedSmall": {
+        "height": "35.8594px",
+        "confirmedInRuntime": true
+      },
+      "filledMedium": {
+        "height": "51.8594px",
+        "confirmedInRuntime": true
+      },
+      "filledSmall": {
+        "height": "34.6094px",
+        "confirmedInRuntime": true
+      },
+      "standardMedium": {
+        "height": "27.8594px",
+        "confirmedInRuntime": true
+      },
+      "standardSmall": {
+        "height": "24.8594px",
+        "confirmedInRuntime": true
+      },
+      "radius": {
+        "value": "8px"
+      },
+      "fontSize": {
+        "value": "0.9375rem",
+        "px": 13.125,
+        "note": "px real = 0.9375rem × 14px (html font-size = 14px)",
+        "source": "frontend/src/theme/core/components/textfield.tsx:21"
+      },
+      "fontSizeBelowSm": {
+        "value": "1rem",
+        "px": 14,
+        "note": "px real = 1rem × 14px (html font-size = 14px)",
+        "source": "frontend/src/theme/core/components/textfield.tsx:22-25"
+      }
+    },
+    "chip": {
+      "medium": {
+        "height": "32px",
+        "radius": "10px",
+        "labelPaddingX": "12px",
+        "confirmedInRuntime": true
+      },
+      "small": {
+        "height": "24px",
+        "radius": "8px",
+        "confirmedInRuntime": true
+      },
+      "avatar": {
+        "size": "24px",
+        "fontSize": "10.5px",
+        "marginLeft": "5px",
+        "confirmedInRuntime": true
+      },
+      "deleteIcon": {
+        "size": "22px",
+        "marginRight": "5px",
+        "opacity": 0.48,
+        "confirmedInRuntime": true
+      },
+      "source": "frontend/src/theme/core/components/chip.tsx:139-141"
+    },
+    "label": {
+      "height": "24px",
+      "minWidth": "24px",
+      "padding": "0 6px",
+      "gap": "6px",
+      "radius": "6px",
+      "fontSize": {
+        "value": "0.75rem",
+        "px": 10.5,
+        "note": "px real = 0.75rem × 14px (html font-size = 14px)",
+        "source": "frontend/src/components/label/styles.tsx:98"
+      },
+      "fontWeight": "700",
+      "lineHeight": "0",
+      "iconSize": "16px",
+      "source": "frontend/src/components/label/styles.tsx:88-111"
+    },
+    "icon": {
+      "iconifyDefault": {
+        "value": "20px",
+        "source": "frontend/src/components/iconify/iconify.tsx:21"
+      },
+      "svgIconSmall": {
+        "value": "1.25rem",
+        "px": 17.5,
+        "note": "px real = 1.25rem × 14px (html font-size = 14px)",
+        "source": "default MUI 7.0.1"
+      },
+      "svgIconMedium": {
+        "value": "1.5rem",
+        "px": 21,
+        "note": "px real = 1.5rem × 14px (html font-size = 14px)",
+        "source": "default MUI 7.0.1",
+        "confirmedInRuntime": true
+      },
+      "svgIconLarge": {
+        "value": "32px",
+        "source": "frontend/src/theme/core/components/svg-icon.tsx:9"
+      },
+      "selectArrow": {
+        "value": "18px",
+        "source": "frontend/src/theme/core/components/select.tsx:33-35"
+      },
+      "dataGrid": {
+        "value": "20px",
+        "source": "frontend/src/theme/core/components/mui-x-data-grid.tsx:234-237"
+      }
+    },
+    "switch": {
+      "medium": {
+        "trackHeight": "20px",
+        "thumbSize": "14px"
+      },
+      "small": {
+        "trackHeight": "16px",
+        "thumbSize": "10px"
+      },
+      "trackRadius": "10px",
+      "source": "frontend/src/theme/core/components/switch.tsx:47-57"
+    },
+    "slider": {
+      "medium": {
+        "railHeight": "10px",
+        "thumbSize": "20px",
+        "markHeight": "6px"
+      },
+      "small": {
+        "railHeight": "6px",
+        "thumbSize": "16px",
+        "markHeight": "4px"
+      },
+      "source": "frontend/src/theme/core/components/slider.tsx:19-23"
+    },
+    "rating": {
+      "small": "20px",
+      "medium": "24px",
+      "large": "28px",
+      "source": "frontend/src/theme/core/components/rating.tsx:36-38"
+    },
+    "avatarGroupCompact": {
+      "container": "40px",
+      "avatar": "28px",
+      "source": "frontend/src/theme/core/components/avatar.tsx:100-112"
+    },
+    "badgeDot": {
+      "size": "10px",
+      "source": "frontend/src/theme/core/components/badge.tsx:20-23"
+    },
+    "tab": {
+      "minWidth": "48px",
+      "minHeight": "48px",
+      "source": "frontend/src/theme/core/components/tabs.tsx:41-42"
+    },
+    "tablePaginationToolbar": {
+      "height": "64px",
+      "source": "frontend/src/theme/core/components/table.tsx:90"
+    },
+    "logo": {
+      "single": "40px",
+      "full": "102px x 36px",
+      "source": "frontend/src/components/logo/logo.tsx:44-46"
+    },
+    "loadingScreenBar": {
+      "maxWidth": "360px",
+      "source": "frontend/src/components/loading-screen/loading-screen.tsx:22"
+    },
+    "progressBar": {
+      "height": "2.5px",
+      "source": "frontend/src/components/progress-bar/styles.css:5"
+    }
+  },
+  "opacity": {
+    "hover": {
+      "value": 0.08,
+      "source": "frontend/src/theme/core/palette.ts:109"
+    },
+    "disabled": {
+      "value": 0.48,
+      "source": "frontend/src/theme/core/palette.ts:110"
+    },
+    "selected": {
+      "value": 0.08,
+      "source": "default MUI 7.0.1"
+    },
+    "focus": {
+      "value": 0.12,
+      "source": "default MUI 7.0.1"
+    },
+    "activated": {
+      "value": 0.12,
+      "source": "default MUI 7.0.1"
+    },
+    "chipDeleteIcon": {
+      "value": 0.48,
+      "source": "frontend/src/theme/core/components/chip.tsx:135"
+    },
+    "scrollbar": {
+      "value": 0.48,
+      "source": "frontend/src/components/scrollbar/styles.css:7"
+    },
+    "headerShadowOnScroll": {
+      "value": 0.48,
+      "source": "frontend/src/layouts/core/header-section.tsx:125"
+    },
+    "paperSurface": {
+      "value": 0.9,
+      "source": "frontend/src/theme/core/mixins/global-styles-components.ts:94"
+    },
+    "headerBackdrop": {
+      "value": 0.8,
+      "source": "frontend/src/layouts/core/header-section.tsx:110"
+    },
+    "sliderRail": {
+      "value": 0.12,
+      "source": "frontend/src/theme/core/components/slider.tsx:88"
+    },
+    "sliderThumbBefore": {
+      "value": 0.4,
+      "source": "frontend/src/theme/core/components/slider.tsx:78"
+    }
+  }
+}

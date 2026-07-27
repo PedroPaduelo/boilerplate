@@ -6,21 +6,29 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#00a1b0" />
+    <!-- Cor da barra do navegador = `primary.main` do design system.
+         (Na origem esta meta estava preta enquanto a interface era branca —
+         ver docs/design-system/99-inconsistencias.md §3.4.) -->
+    <meta name="theme-color" content="#00A76F" />
     <meta
       name="description"
       content="auditorIA — plataforma de auditoria de dados conversacional: conecte seus bancos, pergunte em português e transforme respostas em gráficos e dashboards auditáveis."
     />
     <title>auditorIA — auditoria de dados conversacional</title>
 
-    <!-- Tipografia da marca: Inter (interface) + JetBrains Mono (SQL/código).
-         `preconnect` reduz o custo do handshake; se a rede falhar, o
-         fallback de fontes de sistema em index.css assume sem quebrar nada. -->
+    <!-- Tipografia da INTERFACE: Public Sans (primária) + Barlow (h1–h3).
+         Vêm do design system e são self-hosted via @fontsource, importadas em
+         `src/app/index.css` — sem request a CDN de terceiros e sem FOUT de rede.
+
+         JetBrains Mono continua vindo do Google Fonts porque é usada só em
+         SQL/código: o design system de origem não define família monoespaçada
+         (o editor de query não existe lá), então esta é a única lacuna que
+         preenchemos por fora — e ela não pinta nenhuma superfície de UI. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
     />
 
     <!-- Tema aplicado ANTES do primeiro paint (script bloqueante, de propósito).

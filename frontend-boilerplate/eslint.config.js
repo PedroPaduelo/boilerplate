@@ -25,7 +25,19 @@ import { defineConfig, globalIgnores } from 'eslint/config';
  * single object (which would create numeric keys ESLint rejects).
  */
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    /**
+     * Artefatos do `astryx theme build` (`npm run ds:build`). São emitidos por
+     * ferramenta a partir de `auditoria-theme.ts` e sobrescritos a cada build —
+     * lintá-los só produz erro em código que ninguém escreve nem pode corrigir.
+     * (Ex.: o `.d.ts` referencia as augmentations de variante por
+     * triple-slash, que é a forma correta para carregar `declare module`.)
+     */
+    'src/shared/theme/ds/auditoria.js',
+    'src/shared/theme/ds/auditoria.d.ts',
+    'src/shared/theme/ds/auditoria.variants.d.ts',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     ...js.configs.recommended,

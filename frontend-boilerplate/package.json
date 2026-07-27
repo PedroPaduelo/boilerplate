@@ -12,6 +12,9 @@
     "test": "vitest run --config vite.config.ts",
     "test:watch": "vitest --config vite.config.ts",
     "typecheck": "tsc -b --noEmit",
+    "ds:tokens": "node scripts/generate-ds-theme.mjs",
+    "ds:build": "npm run ds:tokens && astryx theme build src/shared/theme/ds/auditoria-theme.ts -o src/shared/theme/ds/auditoria.css",
+    "ds:check": "node scripts/validate-ds-theme.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
     "prepare": "node scripts/setup-husky.mjs"
@@ -21,6 +24,8 @@
     "@astryxdesign/core": "^0.1.8",
     "@astryxdesign/theme-neutral": "^0.1.8",
     "@dashboards/contracts": "file:../shared/contracts",
+    "@fontsource-variable/public-sans": "^5.3.0",
+    "@fontsource/barlow": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@pierre/trees": "^1.0.0-beta.4",
     "@radix-ui/react-accordion": "^1.2.12",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Theme } from '@astryxdesign/core/theme';
-import { neutralTheme } from '@astryxdesign/theme-neutral/built';
+import { auditoriaTheme } from './ds/auditoria';
 import {
   COLOR_MODE_STORAGE_KEY,
   ColorModeContext,
@@ -75,7 +75,7 @@ export function ColorModeProvider({
 
   return (
     <ColorModeContext.Provider value={value}>
-      <Theme theme={neutralTheme} mode={resolvedMode}>
+      <Theme theme={auditoriaTheme} mode={resolvedMode}>
         {children}
       </Theme>
     </ColorModeContext.Provider>
