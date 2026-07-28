@@ -77,6 +77,12 @@ const SIZE_BY_TYPE: Record<string, ChartBodySize> = {
    * usuário, e crescer aí não é pulo de layout.
    */
   funnel_stage: 'compact',
+  /**
+   * Grafo pede AMPLITUDE nos dois eixos: a rede se abre em todas as direções e,
+   * espremida, vira um novelo. Fica no degrau da série (o mais alto), que é o
+   * mesmo da dispersão — o outro tipo cujo dado é uma nuvem de marcas.
+   */
+  graph_chart: 'series',
   // Composição de um todo / rankings.
   donut: 'categorical',
   bar_list: 'categorical',
@@ -268,6 +274,63 @@ export function rowHeightForTypes(types: readonly string[]): BlockRowHeight {
  */
 export function rowHeightPx(step: BlockRowHeight): number | undefined {
   return step === 'auto' ? undefined : BLOCK_ROW_HEIGHT[step];
+}
+
+/* ========================================================================== *
+ * ALTURA DECLARADA — o que o AUTOR do dashboard pediu
+ * ========================================================================== *
+ *
+ * Tudo acima responde "que altura este conteúdo PEDE?". Esta seção responde a
+ * outra pergunta: "que altura a PESSOA pediu?".
+ *
+ * As duas convivem por prioridade, nunca por mistura: havendo altura declarada
+ * (no bloco ou na linha), ela manda; não havendo, a derivação por tipo segue
+ * decidindo. É o mesmo desenho do editor de painéis do Grafana, onde a altura
+ * da linha é um degrau nomeado com uma saída para pixels — e é deliberado que
+ * o degrau venha primeiro: ele acompanha qualquer recalibragem futura das
+ * medidas acima, enquanto um número gravado no JSON congela para sempre.
+ */
+
+/** Altura declarada: um degrau nomeado ou uma medida em pixels. */
+export type BlockHeight = BlockRowHeight | number;
+
+/** Piso e teto do modo pixels. Fora disso não é altura, é acidente. */
+export const BLOCK_HEIGHT_PX_MIN = 120;
+export const BLOCK_HEIGHT_PX_MAX = 1600;
+
+/** É um degrau nomeado do vocabulário? */
+export function isBlockRowHeight(value: unknown): value is BlockRowHeight {
+  return (
+    value === 'auto' || value === 'compact' || value === 'default' || value === 'tall'
+  );
+}
+
+/**
+ * Lê uma altura declarada vinda do layout (JSON de terceiro/IA) e devolve os
+ * pixels correspondentes.
+ *
+ * Segue a REGRA DE LEITURA do motor: valor fora do vocabulário é IGNORADO, não
+ * corrigido — um `height: "gigante"` degrada para a derivação por tipo em vez
+ * de derrubar o bloco. Número fora da faixa é grampeado, porque ali a intenção
+ * é inequívoca (a pessoa quis um número; só quis um impossível).
+ *
+ * `undefined` significa "nada declarado" — e é diferente de `'auto'`, que é uma
+ * declaração ativa de "sem altura reservada".
+ */
+export function declaredHeightPx(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(
+      BLOCK_HEIGHT_PX_MIN,
+      Math.min(BLOCK_HEIGHT_PX_MAX, Math.round(value)),
+    );
+  }
+  if (isBlockRowHeight(value)) return rowHeightPx(value);
+  return undefined;
+}
+
+/** Há uma altura declarada legível neste valor? */
+export function hasDeclaredHeight(value: unknown): boolean {
+  return isBlockRowHeight(value) || (typeof value === 'number' && Number.isFinite(value));
 }
 
 /**

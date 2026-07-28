@@ -84,6 +84,9 @@ export const CATEGORY_BY_TYPE: Record<string, Category> = {
   // Funil é comparação entre etapas — é gráfico, não "outros". Estava fora do
   // mapa e caía sozinho na aba de fallback.
   funnel_stage: 'graficos',
+  // Grafo é relação entre entidades (rede/funil de camadas) — outra pergunta,
+  // mesma família: continua sendo leitura de dado desenhada.
+  graph_chart: 'graficos',
 
   // 🔔 Cards, Métricas & Indicadores — valor único (escalar) + alertas
   kpi: 'indicadores',

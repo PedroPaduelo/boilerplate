@@ -1,0 +1,163 @@
+/**
+ * Manifesto do bloco `graph_chart` (shape 'table') — GRAFO/rede: nós ligados
+ * por arestas.
+ *
+ * Por que shape `table` e não um shape novo: `dataContract.shape` é um enum
+ * FECHADO do contrato compartilhado (`scalar | series | categorical | table`),
+ * validado com ajv no backend e lido pelo agente. Um grafo tem DUAS listas
+ * (nós e ligações), e a forma já usada no catálogo para dado heterogêneo é a
+ * do `funnel_stage`: shape `table` com uma coluna `tipo` dizendo o PAPEL de
+ * cada linha. Mesma convenção aqui — quem já monta uma etapa de funil monta um
+ * grafo sem aprender vocabulário novo.
+ *
+ * Convenção de DADOS (cada linha traz a coluna `tipo`):
+ *  - tipo='no'     → um NÓ. Colunas: id (obrigatório), rotulo (texto exibido,
+ *                    default = id), grupo (categoria → cor), valor (número →
+ *                    tamanho do nó), camada (inteiro ≥ 0 → posição no layout
+ *                    `layered`/`radial`).
+ *  - tipo='aresta' → uma LIGAÇÃO dirigida. Colunas: origem, destino (ids),
+ *                    valor (número → espessura), rotulo (texto do tooltip).
+ *
+ * Só a lista de ARESTAS já basta: um id citado em `origem`/`destino` que não
+ * foi declarado como nó é criado automaticamente. Isso torna o caso mais comum
+ * (`SELECT de, para, volume FROM fluxo`) uma consulta só, sem UNION.
+ */
+import type { BlockManifest } from '@dashboards/contracts';
+import { ACCENT_COLORS } from '../../lib/accent';
+import { VALUE_FORMATS } from '@/shared/lib/format';
+
+export const manifest = {
+  type: 'graph_chart',
+  kind: 'chart',
+  name: 'Grafo (rede)',
+  description:
+    'Rede de nós ligados por arestas — mostra COMO as coisas se conectam e por onde o volume flui: funil de camadas (N1 → N2 → N3), encadeamento de processos, relação entre entidades. Shape `table`: cada linha tem a coluna `tipo` (no|aresta) que define seu papel. Colunas por tipo: no{id, rotulo?, grupo?, valor?, camada?}; aresta{origem, destino, valor?, rotulo?}. Um id citado em `origem`/`destino` e não declarado vira nó automaticamente — para um fluxo simples basta a lista de arestas. Para declarar nós e arestas na mesma consulta, componha com UNION ALL. O tamanho do nó sai de `valor` (ou, sem ele, do número de ligações); a espessura da aresta sai do `valor` dela.',
+  source: 'custom',
+  propsSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      layout: {
+        type: 'string',
+        enum: ['force', 'layered', 'radial'],
+        default: 'force',
+        description:
+          'Como os nós são posicionados. "force" (default) = simulação de forças, o desenho orgânico de mapa de conhecimento: bom para EXPLORAR uma rede sem hierarquia (quem se conecta com quem, o que é periférico). "layered" = uma COLUNA por camada, da esquerda para a direita — é o layout do FUNIL: use quando o dado tem `camada`, ou quando as arestas descrevem um fluxo com começo e fim (a camada é deduzida do caminho mais longo até o nó). "radial" = anéis concêntricos, uma camada por anel, do centro para fora: mesma leitura hierárquica do "layered" quando há muitos nós por camada. O desenho é DETERMINÍSTICO nos três: os mesmos dados produzem sempre o mesmo desenho (o painel não muda de forma a cada recarga, e a exportação em PDF sai igual à tela).',
+      },
+      showLabels: {
+        type: 'boolean',
+        default: true,
+        description:
+          'Escreve o rótulo de cada nó abaixo dele. Desligue em redes densas (dezenas de nós), onde os textos se sobrepõem e viram ruído — a identificação continua disponível no tooltip de cada nó.',
+      },
+      showArrows: {
+        type: 'boolean',
+        default: true,
+        description:
+          'Desenha a ponta de seta no destino de cada ligação. Ligue quando o SENTIDO importa (fluxo, funil, dependência); desligue quando a ligação é apenas uma relação simétrica (coocorrência, similaridade).',
+      },
+      linkStyle: {
+        type: 'string',
+        enum: ['straight', 'curved'],
+        default: 'straight',
+        description:
+          'Traçado das ligações: "straight" (default) = reta, a leitura mais limpa; "curved" = arco suave, que separa visualmente o par de ligações de ida e volta entre os mesmos dois nós e alivia o emaranhado quando muitas arestas partem do mesmo ponto.',
+      },
+      showLegend: {
+        type: 'boolean',
+        default: true,
+        description:
+          'Exibe a legenda de GRUPOS (uma marca de cor por grupo + o total do grupo) abaixo do desenho. Sem a coluna `grupo` nos dados — ou com cor única (ver `accent`) — não há o que distinguir e a legenda é omitida de qualquer forma.',
+      },
+      palette: {
+        type: 'string',
+        enum: ['single', 'multi'],
+        default: 'multi',
+        description:
+          'Modo de paleta: "multi" (default) cicla a paleta categórica do design system, uma cor por GRUPO — é ela que separa as camadas/famílias de nós; "single" pinta todos os nós com a mesma cor (use quando a rede não tem grupos e a cor não carrega informação).',
+      },
+      // COR — enum do catálogo; o componente resolve para token de dado do DS.
+      // SEM `default`: o BlockRenderer mescla `defaultProps` em toda
+      // renderização e `accent` VENCE a paleta, então um default de fábrica
+      // pintaria TODO grafo de uma cor só, apagando a distinção de grupos.
+      accent: {
+        type: 'string',
+        enum: [...ACCENT_COLORS],
+        description:
+          'Cor de TODOS os nós. Declarar `accent` é pedir cor única e vence o modo de paleta — os grupos deixam de ser distinguíveis pela cor (e a legenda some), então use apenas quando a rede tiver um grupo só. OMITA (o padrão) para que cada grupo receba a próxima cor da paleta de dados do design system.',
+      },
+      valueFormat: {
+        type: 'string',
+        enum: [...VALUE_FORMATS],
+        default: 'number',
+        description:
+          'Formato PT-BR dos valores exibidos na legenda, nos tooltips e na leitura de rodapé. ENUM FECHADO: BRL, compactBRL, number, compactNumber, percent. Default "number" (contagem): escolha "BRL"/"compactBRL" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.',
+      },
+    },
+  },
+  dataContract: {
+    shape: 'table',
+    spec: {
+      columns: { type: 'array', required: true },
+      rows: { type: 'array', required: true },
+    },
+    example: {
+      columns: [
+        { key: 'tipo', label: 'tipo', type: 'string' },
+        { key: 'id', label: 'id', type: 'string' },
+        { key: 'rotulo', label: 'rotulo', type: 'string' },
+        { key: 'grupo', label: 'grupo', type: 'string' },
+        { key: 'camada', label: 'camada', type: 'number' },
+        { key: 'origem', label: 'origem', type: 'string' },
+        { key: 'destino', label: 'destino', type: 'string' },
+        { key: 'valor', label: 'valor', type: 'number' },
+      ],
+      rows: [
+        {
+          tipo: 'no',
+          id: 'lancado',
+          rotulo: 'Lançado',
+          grupo: 'N1 · Lançamento',
+          camada: 0,
+          valor: 10835362,
+        },
+        {
+          tipo: 'no',
+          id: 'pago',
+          rotulo: 'Pago',
+          grupo: 'N2 · Cobrança',
+          camada: 1,
+          valor: 8060686,
+        },
+        {
+          tipo: 'no',
+          id: 'inscrito',
+          rotulo: 'Inscrito em DA',
+          grupo: 'N2 · Cobrança',
+          camada: 1,
+          valor: 2774676,
+        },
+        { tipo: 'aresta', origem: 'lancado', destino: 'pago', valor: 8060686 },
+        { tipo: 'aresta', origem: 'lancado', destino: 'inscrito', valor: 2774676 },
+      ],
+    },
+  },
+  // `accent` NÃO tem default (ver a nota no schema).
+  defaultProps: {
+    layout: 'force',
+    showLabels: true,
+    showArrows: true,
+    linkStyle: 'straight',
+    showLegend: true,
+    palette: 'multi',
+    valueFormat: 'number',
+  },
+  /**
+   * Teto de LINHAS da consulta (nós + arestas somados). Um grafo deixa de ser
+   * legível muito antes disso — acima de ~120 nós vira uma nuvem —, mas o
+   * limite existe para proteger o desenho: a simulação de forças é O(n²) por
+   * iteração, e o número de iterações já cai conforme a rede cresce.
+   */
+  maxRows: 600,
+  version: '1.0.0',
+} satisfies BlockManifest;
