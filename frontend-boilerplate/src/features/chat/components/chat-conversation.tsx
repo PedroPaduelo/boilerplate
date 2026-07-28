@@ -30,6 +30,12 @@ export interface ChatConversationProps {
   conversationId: string;
   /** `false` quando a chave do provedor não está configurada no servidor. */
   isAgentReady: boolean | null;
+  /**
+   * Texto que já nasce no composer — hoje, a pergunta vinda da paleta (⌘K).
+   * Preenche e espera o Enter: enviar sozinho tiraria do usuário a chance de
+   * revisar a pergunta que vai virar evidência.
+   */
+  initialDraft?: string;
 }
 
 const AGENT_OFFLINE_REASON =
@@ -38,10 +44,13 @@ const AGENT_OFFLINE_REASON =
 export function ChatConversation({
   conversationId,
   isAgentReady,
+  initialDraft = '',
 }: ChatConversationProps) {
   const state = useConversationStream(conversationId);
   const { messages, phaseLabel, isStreaming, error, lastPrompt, send, stop } = state;
-  const [draft, setDraft] = useState('');
+  // Só o valor INICIAL: a conversa é remontada (`key={activeId}`) ao trocar,
+  // então não há efeito de sincronização para manter.
+  const [draft, setDraft] = useState(initialDraft);
 
   const isOffline = isAgentReady === false;
 

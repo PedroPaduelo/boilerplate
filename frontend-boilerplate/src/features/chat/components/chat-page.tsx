@@ -9,7 +9,7 @@
  * No mobile a lista fixa comeria dois terços da tela: abaixo de `md` ela vira um
  * diálogo, acionado pelo botão de conversas do cabeçalho.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bot } from 'lucide-react';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { Button } from '@astryxdesign/core/Button';
@@ -26,6 +26,7 @@ import {
 } from '@astryxdesign/core/Layout';
 import { useMediaQuery } from '@astryxdesign/core/hooks';
 import { useConversations } from '../use-conversations';
+import { usePendingQuestion } from '../use-pending-question';
 import { ChatConversation } from './chat-conversation';
 import { ChatConversationList } from './chat-conversation-list';
 import { ChatHeader } from './chat-header';
@@ -51,6 +52,22 @@ export function ChatPage() {
   const isCompact = useMediaQuery(COMPACT_QUERY);
   const [isListOpen, setIsListOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  /**
+   * Pergunta vinda da paleta (⌘K → `/chat?q=…`).
+   *
+   * Se o usuário ainda não tem conversa nenhuma, abrir uma é responsabilidade
+   * NOSSA: ele já disse o que quer perguntar — obrigá-lo a clicar em "nova
+   * conversa" antes seria devolver a burocracia que o atalho veio remover.
+   * O `ref` garante uma única criação mesmo com re-renders da lista.
+   */
+  const pendingQuestion = usePendingQuestion();
+  const hasAutoCreated = useRef(false);
+  useEffect(() => {
+    if (!pendingQuestion || isLoading || activeId || hasAutoCreated.current) return;
+    hasAutoCreated.current = true;
+    create();
+  }, [pendingQuestion, isLoading, activeId, create]);
 
   const conversationList = (
     <ChatConversationList
@@ -131,6 +148,7 @@ export function ChatPage() {
                 key={activeId}
                 conversationId={activeId}
                 isAgentReady={isAgentReady}
+                initialDraft={pendingQuestion}
               />
             ) : (
               <Center height="100%">

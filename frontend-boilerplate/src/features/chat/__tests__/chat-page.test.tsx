@@ -93,6 +93,22 @@ describe('ChatPage', () => {
     );
   });
 
+  it('pergunta vinda da paleta (?q=) chega escrita no composer, sem enviar sozinha', async () => {
+    const pergunta = 'quais empenhos passaram do limite em julho';
+    renderWithProviders(<ChatPage />, {
+      route: `/chat?q=${encodeURIComponent(pergunta)}`,
+    });
+
+    // O composer do DS é um contenteditable (aceita tokens), então o que se
+    // observa é o TEXTO dentro dele — não um `value` de input.
+    const composer = await screen.findByLabelText('Mensagem');
+    await waitFor(() => expect(composer).toHaveTextContent(pergunta));
+
+    // Preenche e ESPERA: numa ferramenta de auditoria a pergunta é a premissa
+    // da evidência — quem pergunta revisa antes de gastar uma execução.
+    expect(startRun).not.toHaveBeenCalled();
+  });
+
   it('sem agente configurado, avisa e desabilita o envio', async () => {
     agentApi.checkHealth.mockResolvedValue({ configured: false, model: '' });
     renderWithProviders(<ChatPage />, { route: '/chat' });

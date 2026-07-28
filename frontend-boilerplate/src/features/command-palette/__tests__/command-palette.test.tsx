@@ -150,6 +150,38 @@ describe('CommandPalette', () => {
     expect(navigateFn).toHaveBeenCalledWith('/chat');
   });
 
+  it('texto que não casa com nada vira pergunta ao agente, com a pergunta na URL', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CommandPalette />);
+    await openWithShortcut(user);
+
+    const pergunta = 'quais notas fiscais fogem do padrão';
+    await user.type(await screen.findByPlaceholderText(PLACEHOLDER), pergunta);
+
+    await user.click(
+      await screen.findByRole('option', { name: new RegExp(`Perguntar ao agente`) }),
+    );
+
+    // A pergunta viaja na URL: quem abre o chat já a encontra escrita no
+    // composer, pronta para revisar e enviar.
+    expect(navigateFn).toHaveBeenCalledWith(`/chat?q=${encodeURIComponent(pergunta)}`);
+  });
+
+  it('termo curto não vira pergunta — é busca, e a busca continua funcionando', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CommandPalette />);
+    await openWithShortcut(user);
+
+    await user.type(await screen.findByPlaceholderText(PLACEHOLDER), 'rece');
+
+    expect(
+      await screen.findByRole('option', { name: /Receita mensal/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: /Perguntar ao agente: “/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it('VIEWER não vê as ações de criação (RBAC)', async () => {
     state.user = { id: 'v', role: 'VIEWER' };
     const user = userEvent.setup();

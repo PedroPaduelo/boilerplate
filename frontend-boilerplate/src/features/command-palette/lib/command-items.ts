@@ -25,6 +25,24 @@ import type { SearchableItem } from '@astryxdesign/core/Typeahead';
 /** Limite de itens por seção — a paleta é para navegar rápido, não paginar. */
 const MAX_PER_SECTION = 6;
 
+/**
+ * Prefixo do item "perguntar" — a pergunta viaja NO ID.
+ *
+ * O item é montado a cada tecla e não existe na lista estática, então quem
+ * trata a escolha não consegue procurá-lo por id fixo. Carregar o texto no
+ * próprio id mantém a paleta sem estado compartilhado (nada de ref com "a
+ * última query", que erra se a seleção chegar fora de ordem).
+ */
+export const ASK_ITEM_PREFIX = 'ask:';
+
+/** Curto demais não é pergunta, é tentativa de busca — não vira item. */
+const MIN_QUESTION_LENGTH = 6;
+
+/** A pergunta digitada, quando o id é de um item "perguntar". */
+export function readAskQuestion(id: string): string | null {
+  return id.startsWith(ASK_ITEM_PREFIX) ? id.slice(ASK_ITEM_PREFIX.length) : null;
+}
+
 export const COMMAND_GROUPS = {
   actions: 'Ações',
   navigation: 'Ir para',
@@ -79,6 +97,41 @@ export interface CommandHandlers {
 
 function statusHint(status: string | undefined): string {
   return status === 'PUBLISHED' ? 'Publicado' : 'Rascunho';
+}
+
+/**
+ * "Perguntar ao agente: «…»" — o item que transforma a paleta em ponto de
+ * entrada do produto.
+ *
+ * Sem ele, quem tinha uma pergunta precisava: achar o menu, abrir /chat,
+ * escolher ou criar conversa e só então digitar. Com ele são duas teclas e a
+ * pergunta: ⌘K, texto, Enter. É o padrão "ask from anywhere" que os
+ * lançadores modernos consolidaram.
+ *
+ * Aparece SEMPRE no topo enquanto há texto (não compete por relevância com a
+ * busca): quando o termo casa com um artefato, o usuário vê as duas saídas —
+ * abrir o que já existe ou perguntar algo novo.
+ */
+export function buildAskItem(
+  query: string,
+  { canManage }: CommandPermissions,
+): CommandAction | null {
+  const question = query.trim();
+  if (!canManage || question.length < MIN_QUESTION_LENGTH) return null;
+
+  return {
+    id: `${ASK_ITEM_PREFIX}${question}`,
+    label: `Perguntar ao agente: “${question}”`,
+    auxiliaryData: {
+      group: COMMAND_GROUPS.actions,
+      icon: Sparkles,
+      hint: 'Abre o chat',
+      keywords: [],
+      // O `run` real mora em quem monta a paleta (precisa navegar com a
+      // pergunta); aqui fica inerte de propósito, para o tipo continuar único.
+      run: () => {},
+    },
+  };
 }
 
 /** Ações: o que o usuário FAZ (não para onde vai). */
