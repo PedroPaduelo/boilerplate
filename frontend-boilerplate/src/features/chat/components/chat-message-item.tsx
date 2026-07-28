@@ -72,6 +72,7 @@ function AssistantMessage({
     [isSettled, onFollowUp, message.content],
   );
   const artifacts = trail?.artifacts ?? [];
+  const charts = message.charts ?? [];
 
   return (
     <ChatMessageRow sender="assistant" avatar={<Avatar name="Agente" size="sm" />}>
@@ -100,7 +101,15 @@ function AssistantMessage({
             {text}
           </Markdown>
 
-          {message.chart ? <InlineChart chart={message.chart} /> : null}
+          {/* Todos os gráficos do turno, na ordem em que o agente os montou.
+              Um pedido de painel rende vários de uma vez — mostrar só um
+              obrigaria o usuário a sair do chat para ver o que já pediu. */}
+          {charts.map((chart, index) => (
+            <InlineChart
+              key={chart.chartId ?? chart.result?.blockId ?? `${message.id}:${index}`}
+              chart={chart}
+            />
+          ))}
 
           {artifacts.length > 0 ? (
             <VStack gap={2}>

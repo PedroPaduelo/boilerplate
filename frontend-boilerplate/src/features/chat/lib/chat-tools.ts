@@ -313,36 +313,37 @@ export function readPersistedTrail(record: TrailSourceRecord): ChatMessageTrail 
 }
 
 /**
- * O gráfico persistido junto da mensagem (`toolData.charts`).
+ * Os gráficos persistidos junto da mensagem (`toolData.charts`).
  *
  * O backend grava os gráficos do turno na mesma linha da mensagem justamente
  * para isto: o Redis do turno expira em 30 min e o socket só alcança quem
  * estava com a tela aberta. Sem esta leitura, o gráfico — o PRODUTO da
  * resposta — sumia no primeiro F5, sobrando o texto e a trilha.
  *
- * Quando o turno produziu mais de um gráfico, vale o ÚLTIMO válido: é a mesma
- * regra do streaming, onde cada evento `chart` sobrescreve o anterior na
- * mensagem. A validação aqui é de FORMA (título, tipo de bloco e a presença de
- * `result`); quem valida o conteúdo do bloco é o BlockRenderer, que já trata
- * bloco inválido — mesmo contrato do transporte por socket.
+ * Devolve TODOS os válidos, na ordem em que o agente os produziu. Antes esta
+ * função devolvia só o último: um pedido de painel gera meia dúzia de gráficos
+ * num turno só, e ao reabrir a conversa cinco deles simplesmente não existiam.
+ *
+ * A validação aqui é de FORMA (título, tipo de bloco e a presença de `result`);
+ * quem valida o conteúdo do bloco é o BlockRenderer, que já trata bloco
+ * inválido — mesmo contrato do transporte por socket. Um gráfico corrompido é
+ * pulado sem levar os irmãos junto.
  */
-export function readPersistedChart(
-  record: TrailSourceRecord,
-): ChatChartPayload | undefined {
+export function readPersistedCharts(record: TrailSourceRecord): ChatChartPayload[] {
   const data = record.toolData;
-  if (!isRecord(data) || !Array.isArray(data.charts)) return undefined;
+  if (!isRecord(data) || !Array.isArray(data.charts)) return [];
 
-  for (let index = data.charts.length - 1; index >= 0; index -= 1) {
-    const candidate: unknown = data.charts[index];
+  const charts: ChatChartPayload[] = [];
+  for (const candidate of data.charts) {
     if (!isRecord(candidate)) continue;
     if (!asString(candidate.title)) continue;
     if (!asString(candidate.catalogType)) continue;
     // Sem dados não há o que desenhar — um gráfico gravado sem `result` cai
     // fora em vez de virar um cartão vazio na conversa.
     if (candidate.result === undefined || candidate.result === null) continue;
-    return candidate as unknown as ChatChartPayload;
+    charts.push(candidate as unknown as ChatChartPayload);
   }
-  return undefined;
+  return charts;
 }
 
 // ---------------------------------------------------------------------------

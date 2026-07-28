@@ -19,6 +19,7 @@ import type {
 } from '../model';
 import { EMPTY_TRAIL } from '../model';
 import type {
+  ChatChartPayload,
   ChatEvent,
   ChatMessage,
   ChatRole,
@@ -112,6 +113,35 @@ function upsertArtifact(
     next,
     (artifact) => artifact.kind === next.kind && artifact.id === next.id,
   );
+}
+
+/**
+ * Identidade de um gráfico para fins de deduplicação.
+ *
+ * O mesmo gráfico pode chegar duas vezes — reconexão do socket, retomada de um
+ * turno em voo — e a resposta não pode ganhar uma cópia a cada reconexão. Sem
+ * `chartId` (o mock e o gráfico ainda não salvo não têm), o `blockId` serve; em
+ * último caso o título, que é o que distingue os gráficos de um mesmo turno aos
+ * olhos de quem lê.
+ */
+function chartIdentity(chart: ChatChartPayload): string | undefined {
+  return chart.chartId ?? chart.result?.blockId ?? chart.title ?? undefined;
+}
+
+/**
+ * Acrescenta o gráfico à resposta preservando a ORDEM de chegada — que é a
+ * ordem em que o agente montou o raciocínio (KPIs, depois série, depois
+ * distribuição). Repetição substitui a versão anterior no mesmo lugar em vez de
+ * empilhar: um gráfico reemitido é uma correção, não um gráfico novo.
+ */
+function appendChart(
+  charts: readonly ChatChartPayload[] | undefined,
+  next: ChatChartPayload,
+): ChatChartPayload[] {
+  const current = charts ?? [];
+  const identity = chartIdentity(next);
+  if (identity === undefined) return [...current, next];
+  return upsertBy(current, next, (chart) => chartIdentity(chart) === identity);
 }
 
 function mergeTrails(base: ChatMessageTrail, extra: ChatMessageTrail): ChatMessageTrail {
@@ -259,12 +289,15 @@ function applyEvent(state: ConversationState, event: ChatEvent): ConversationSta
         messages: exists
           ? adopted.messages.map((message) =>
               message.id === event.messageId
-                ? { ...message, chart: event.chart }
+                ? { ...message, charts: appendChart(message.charts, event.chart) }
                 : message,
             )
           : [
               ...adopted.messages,
-              { ...newAssistantMessage(event.messageId, ''), chart: event.chart },
+              {
+                ...newAssistantMessage(event.messageId, ''),
+                charts: [event.chart],
+              },
             ],
       };
     }

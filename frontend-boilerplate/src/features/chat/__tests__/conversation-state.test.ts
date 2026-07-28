@@ -247,7 +247,79 @@ describe('a trilha pertence à mensagem', () => {
     );
 
     expect(state.messages).toHaveLength(1);
-    expect(state.messages[0]).toMatchObject({ id: 'asg_1', content: 'Segue', chart });
+    expect(state.messages[0]).toMatchObject({
+      id: 'asg_1',
+      content: 'Segue',
+      charts: [chart],
+    });
+  });
+
+  /**
+   * Um pedido de painel ("monte um dashboard de mensagens") rende KPIs, série e
+   * distribuição no MESMO turno — um evento `chart` para cada. Enquanto a
+   * mensagem guardava um gráfico só, cada evento apagava o anterior e a resposta
+   * chegava à tela com um gráfico, mandando o usuário procurar o resto fora do
+   * chat.
+   */
+  it('acumula TODOS os gráficos do turno, na ordem de chegada', () => {
+    const grafico = (id: string, title: string) =>
+      ({
+        chartId: id,
+        title,
+        catalogType: 'bar_chart',
+        result: { rows: [] },
+      }) as unknown as Extract<ChatEvent, { type: 'chart' }>['chart'];
+
+    const state = reduce(
+      initialConversationState,
+      {
+        type: 'event',
+        event: { type: 'chart', messageId: 'asg_1', chart: grafico('c1', 'KPI') },
+      },
+      {
+        type: 'event',
+        event: { type: 'chart', messageId: 'asg_1', chart: grafico('c2', 'Barras') },
+      },
+      {
+        type: 'event',
+        event: { type: 'chart', messageId: 'asg_1', chart: grafico('c3', 'Donut') },
+      },
+    );
+
+    expect(state.messages[0]?.charts?.map((chart) => chart.chartId)).toEqual([
+      'c1',
+      'c2',
+      'c3',
+    ]);
+  });
+
+  /**
+   * Reconexão do socket e retomada de turno reentregam eventos já vistos. Sem
+   * identidade, a resposta ganharia uma cópia do gráfico a cada reconexão.
+   */
+  it('o mesmo gráfico reemitido substitui no lugar, sem duplicar', () => {
+    const versao = (value: number) =>
+      ({
+        chartId: 'c1',
+        title: 'Total',
+        catalogType: 'kpi',
+        result: { value },
+      }) as unknown as Extract<ChatEvent, { type: 'chart' }>['chart'];
+
+    const state = reduce(
+      initialConversationState,
+      {
+        type: 'event',
+        event: { type: 'chart', messageId: 'asg_1', chart: versao(1) },
+      },
+      {
+        type: 'event',
+        event: { type: 'chart', messageId: 'asg_1', chart: versao(2) },
+      },
+    );
+
+    expect(state.messages[0]?.charts).toHaveLength(1);
+    expect(state.messages[0]?.charts?.[0]?.result).toMatchObject({ value: 2 });
   });
 
   it('a fase corrente fica disponível para a tela e some no fim do turno', () => {

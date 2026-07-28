@@ -67,8 +67,19 @@ export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
-  /** Gráfico inline (só em mensagens do assistente). */
-  chart?: ChatChartPayload;
+  /**
+   * Gráficos inline da resposta (só em mensagens do assistente), na ordem em
+   * que o agente os produziu.
+   *
+   * É uma LISTA porque um turno rende quantos gráficos a pergunta pedir — "monte
+   * um painel de mensagens" devolve KPIs, barras e donut de uma vez. Enquanto
+   * isto era um campo único, cada gráfico novo sobrescrevia o anterior e a
+   * resposta chegava à tela com um gráfico só; os demais viravam cartão "abrir
+   * gráfico", empurrando o usuário para fora do chat para ver o que ele já
+   * tinha pedido ali. O servidor sempre mandou todos (um evento `chart` cada,
+   * e `toolData.charts` no banco) — era o front que os descartava.
+   */
+  charts?: ChatChartPayload[];
   /** ISO timestamp de criação. */
   createdAt: string;
 }
