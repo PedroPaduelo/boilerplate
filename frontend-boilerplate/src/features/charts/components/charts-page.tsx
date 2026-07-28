@@ -2,14 +2,26 @@
  * Página "Gráficos" (`/charts`) — lista o que o usuário pode ver, conforme
  * papel e visibilidade (o backend já filtra; o RBAC do cliente só esconde ações).
  *
- * A lista é uma TABELA: o dado é denso e comparável (status, visibilidade,
- * contexto, data). Card aqui viraria uma grade de caixas com pouca informação
- * cada e nenhuma coluna alinhada.
+ * DUAS VISÕES do mesmo conjunto, porque são duas perguntas diferentes:
  *
- * Os quatro estados: carregando (`Skeleton` com a geometria da tabela), erro
- * (`Banner` com "Tentar de novo"), vazio (`EmptyState` com caminho de criação)
- * e desabilitado (ações sem permissão nem aparecem; as que dependem de contexto
- * mostram o motivo).
+ *  - GRADE (padrão) — "qual era mesmo aquele gráfico?". Numa biblioteca de
+ *    gráficos o item se reconhece pela FORMA, não pelo nome: a célula mostra a
+ *    miniatura ao vivo, com os dados reais, e o estado da evidência
+ *    (publicado/rascunho), o alcance e o frescor logo abaixo.
+ *  - TABELA — "compare todos por status/visibilidade/data". Dado denso se lê
+ *    em coluna alinhada; a grade não faz isso e nunca vai fazer.
+ *
+ * A escolha fica gravada por usuário (`localStorage`): modo de exibição é
+ * preferência, e perguntar de novo a cada visita é ruído.
+ *
+ * Acima da lista, a faixa de resumo responde à pergunta de governança do
+ * produto — quanto do acervo já é evidência publicada — e cada célula dela é
+ * um atalho para o recorte correspondente.
+ *
+ * Os quatro estados continuam cobertos nas duas visões: carregando (esqueleto
+ * com a geometria da visão ativa), erro (`Banner` com "Tentar de novo"), vazio
+ * (`EmptyState` com caminho de criação) e desabilitado (ações sem permissão
+ * nem aparecem).
  */
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +34,11 @@ import { Pagination } from '@astryxdesign/core/Pagination';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
-import { DEFAULT_ARTIFACT_FILTERS } from '@/shared/lib/artifact-filters';
+import { useLocalStorage } from '@/shared/hooks/use-local-storage';
+import {
+  DEFAULT_ARTIFACT_FILTERS,
+  type StatusFilter,
+} from '@/shared/lib/artifact-filters';
 import { hasPermission } from '@/shared/lib/rbac';
 import { ShareArtifactDialog } from '@/shared/components/share-artifact-dialog';
 import { useAuthStore } from '@/features/auth/store';
@@ -33,13 +49,21 @@ import {
   usePublishChart,
 } from '../hooks';
 import { CHARTS_PAGE_SIZE, useChartsList } from '../use-charts-list';
+import { useChartsSummary } from '../use-charts-summary';
 import { buildChartMenuItems } from '../lib/chart-actions';
+import { chartTypeLabel } from '../lib/chart-type-label';
 import type { Chart } from '../types';
 import { ChartsEmptyState } from './charts-empty-state';
 import { ChartsFilters } from './charts-filters';
+import { ChartsGrid, ChartsGridSkeleton, type ChartsGridItem } from './charts-grid';
+import { ChartsSummary } from './charts-summary';
 import { ChartsTable, type ChartRow } from './charts-table';
 import { ChartsTableSkeleton } from './charts-table-skeleton';
+import { ChartsViewBar, type ChartsView } from './charts-view-bar';
 import { DeleteChartDialog } from './delete-chart-dialog';
+
+/** Chave da preferência de exibição (grade x tabela). */
+const VIEW_STORAGE_KEY = 'charts:view';
 
 export function ChartsPage() {
   const toast = useAppToast();
@@ -48,11 +72,13 @@ export function ChartsPage() {
   const currentUserId = useAuthStore((s) => s.user?.id);
 
   const list = useChartsList(currentUserId);
+  const summary = useChartsSummary();
   const prefetch = usePrefetchChart();
   const duplicate = useDuplicateChart();
   const remove = useDeleteChart();
   const publish = usePublishChart();
 
+  const [view, setView] = useLocalStorage<ChartsView>(VIEW_STORAGE_KEY, 'grid');
   const [sharing, setSharing] = useState<Chart | null>(null);
   const { deleting, confirmation, openDelete } = useConfirmDelete<Chart>({
     mutation: remove,
@@ -62,19 +88,16 @@ export function ChartsPage() {
 
   const canCreate = hasPermission(role, 'artifacts:manage');
 
-  const rows: ChartRow[] = useMemo(
+  // Uma única derivação alimenta as DUAS visões: o menu de ações, o contexto e
+  // o rótulo do tipo são os mesmos — o que muda é só a forma de desenhar.
+  const items = useMemo(
     () =>
       list.charts.map((chart) => ({
-        id: chart.id,
         chart,
-        title: chart.title,
-        catalogType: chart.catalogType,
-        isPublished: chart.status === 'PUBLISHED',
-        visibility: chart.visibility,
+        typeLabel: chartTypeLabel(chart.catalogType),
         context:
           list.departmentName(chart.departmentId) ??
           (chart.ownerId === currentUserId ? 'Meu gráfico' : 'Organização'),
-        updatedAt: chart.updatedAt,
         actions: buildChartMenuItems(
           {
             role,
@@ -101,11 +124,30 @@ export function ChartsPage() {
             delete: () => openDelete(chart),
           },
         ),
-      })),
+      })) satisfies ChartsGridItem[],
     // `list.departmentName` e os mutations são estáveis por render do hook.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [list.charts, list.departmentName, role, currentUserId],
   );
+
+  const rows: ChartRow[] = useMemo(
+    () =>
+      items.map(({ chart, context, actions }) => ({
+        id: chart.id,
+        chart,
+        title: chart.title,
+        catalogType: chart.catalogType,
+        isPublished: chart.status === 'PUBLISHED',
+        visibility: chart.visibility,
+        context,
+        updatedAt: chart.updatedAt,
+        actions,
+      })),
+    [items],
+  );
+
+  const handleFilterStatus = (status: StatusFilter) =>
+    list.setFilters({ ...list.filters, status });
 
   return (
     <VStack gap={5}>
@@ -127,6 +169,16 @@ export function ChartsPage() {
         ) : null}
       </HStack>
 
+      <ChartsSummary
+        total={summary.total}
+        published={summary.published}
+        drafts={summary.drafts}
+        isLoading={summary.isLoading}
+        isError={summary.isError}
+        activeStatus={list.filters.status}
+        onFilterStatus={handleFilterStatus}
+      />
+
       <ChartsFilters
         filters={list.filters}
         onChange={list.setFilters}
@@ -135,7 +187,11 @@ export function ChartsPage() {
       />
 
       {list.isLoading ? (
-        <ChartsTableSkeleton />
+        view === 'grid' ? (
+          <ChartsGridSkeleton />
+        ) : (
+          <ChartsTableSkeleton />
+        )
       ) : list.isError ? (
         <Banner
           status="error"
@@ -143,7 +199,7 @@ export function ChartsPage() {
           description="Pode ser uma instabilidade momentânea de rede ou do servidor."
           endContent={<Button label="Tentar de novo" size="sm" onClick={list.refetch} />}
         />
-      ) : rows.length === 0 ? (
+      ) : items.length === 0 ? (
         <ChartsEmptyState
           hasFilters={list.hasFilters}
           canCreate={canCreate}
@@ -156,12 +212,16 @@ export function ChartsPage() {
         />
       ) : (
         <VStack gap={3}>
-          <ChartsTable rows={rows} onPrefetch={(id) => prefetch(id, 'draft')} />
-          <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
-            <Text type="supporting">
-              {rows.length === 1 ? '1 gráfico' : `${rows.length} gráficos`} nesta página
-            </Text>
-            {list.totalPages > 1 ? (
+          <ChartsViewBar count={items.length} view={view} onViewChange={setView} />
+
+          {view === 'grid' ? (
+            <ChartsGrid items={items} onPrefetch={(id) => prefetch(id, 'draft')} />
+          ) : (
+            <ChartsTable rows={rows} onPrefetch={(id) => prefetch(id, 'draft')} />
+          )}
+
+          {list.totalPages > 1 ? (
+            <HStack justify="end">
               <Pagination
                 page={list.page}
                 totalPages={list.totalPages}
@@ -170,8 +230,8 @@ export function ChartsPage() {
                 label="Paginação de gráficos"
                 onChange={list.setPage}
               />
-            ) : null}
-          </HStack>
+            </HStack>
+          ) : null}
         </VStack>
       )}
 
