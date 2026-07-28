@@ -6,6 +6,10 @@
  *    legenda (categoria + valor + participação). Sem ela o bloco vira enfeite.
  * 2. OS TRÊS ESTADOS — carregando, sem dados e com dados.
  * 3. COR DE TOKEN — o acento antigo vira token de dado do design system.
+ * 4. UNIDADE NÃO SE INVENTA — sem `valueFormat` declarado o valor sai como
+ *    NÚMERO. Este teste já afirmou "R$ 62,00" para uma composição de 62 e 38
+ *    unidades: o default de moeda transformava contagem em dinheiro, e o teste
+ *    congelava o bug em vez de pegá-lo.
  */
 import { describe, expect, it } from 'vitest';
 import { screen } from '@testing-library/react';
@@ -24,10 +28,27 @@ describe('bloco donut', () => {
   it('lista categoria, valor e participação na legenda', () => {
     renderWithProviders(<Block props={{}} data={DATA} state="success" />);
     expect(screen.getByText('Quitado')).toBeInTheDocument();
-    expect(screen.getByText('R$ 62,00')).toBeInTheDocument();
+    expect(screen.getByText('62')).toBeInTheDocument();
     expect(screen.getByText('62%')).toBeInTheDocument();
     expect(screen.getByText('Em aberto')).toBeInTheDocument();
     expect(screen.getByText('38%')).toBeInTheDocument();
+  });
+
+  it('sem valueFormat declarado, o valor é número — não dinheiro', () => {
+    const { container } = renderWithProviders(
+      <Block props={{}} data={DATA} state="success" />,
+    );
+    expect(screen.getByText('62')).toBeInTheDocument();
+    // Nenhum "R$" em lugar nenhum do bloco (legenda, total central, tooltip):
+    // a composição é de 62 e 38 unidades, e unidade não se inventa.
+    expect(container.textContent).not.toContain('R$');
+  });
+
+  it('moeda continua disponível — como escolha explícita', () => {
+    renderWithProviders(
+      <Block props={{ valueFormat: 'BRL' }} data={DATA} state="success" />,
+    );
+    expect(screen.getByText('R$ 62,00')).toBeInTheDocument();
   });
 
   it('esconde a legenda quando o bloco pede', () => {

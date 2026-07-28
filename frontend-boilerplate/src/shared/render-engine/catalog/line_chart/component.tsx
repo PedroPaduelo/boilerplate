@@ -15,7 +15,8 @@
 import type { SeriesData } from '@dashboards/contracts';
 import { ChartDataTable, LineChart, chartAccentColor } from '@/shared/ui';
 import type { ChartSeries } from '@/shared/ui';
-import { formatBRL, formatCompactNumberBR } from '@/shared/lib/format';
+import { formatCompactNumberBR, type ValueFormat } from '@/shared/lib/format';
+import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -30,6 +31,8 @@ type LineProps = {
    * (classe utilitária, cor CSS); resolvida para token do DS.
    */
   accent?: string;
+  /** Formato do valor no tooltip (enum fechado do catálogo). */
+  valueFormat?: ValueFormat;
   /** Override programático do formato do valor no tooltip (fora do schema). */
   valueFormatter?: (value: number) => string;
 };
@@ -71,7 +74,9 @@ export const Component: BlockComponent<LineProps, SeriesData> = ({
   error,
 }) => {
   const { series, labels } = toLineSeries(data ?? []);
-  const formatValue = props.valueFormatter ?? formatBRL;
+  const formatValue =
+    props.valueFormatter ??
+    ((value: number) => formatCatalogValue(value, props.valueFormat));
 
   // `single` é o único modo que fixa cor; nos demais a paleta do DS cicla.
   const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;

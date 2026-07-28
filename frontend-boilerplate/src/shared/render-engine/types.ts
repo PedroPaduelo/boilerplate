@@ -90,7 +90,21 @@ export interface BlockDefinition<P = Record<string, unknown>, D = BlockData> {
   /**
    * (Opcional) Deriva 0..N frases curtas de INSIGHT de negócio ("takeaway")
    * a partir dos dados já resolvidos no shape do bloco — exibidas no
-   * rodapé da moldura (`BlockFrame`). Retorne:
+   * rodapé da moldura (`BlockFrame`).
+   *
+   * Recebe também as PROPS já mescladas porque o insight repete números que o
+   * bloco desenhou, e um número precisa da mesma unidade nos dois lugares: o
+   * takeaway que formatava moeda por conta própria dizia "Maior: order.paid
+   * (R$ 11,19 mil)" embaixo de um gráfico que já mostrava contagem. Quem só
+   * precisa dos dados simplesmente ignora o segundo parâmetro.
+   *
+   * `props` é OPCIONAL de propósito: há chamadores que derivam o insight fora
+   * do render, sem um bloco montado (o editor de takeaways do playground).
+   * Quem implementa deve assumir um default — e o default de formato já é o
+   * neutro (`lib/value-format.ts`), então cair aqui sem props não reintroduz
+   * moeda.
+   *
+   * Retorne:
    *  - `undefined` / vazio → nenhum insight renderizado;
    *  - `string` → 1 linha (retrocompat com a versão 1 linha);
    *  - `string[]` → 1 linha por string (padrão atual — cada string já
@@ -99,7 +113,7 @@ export interface BlockDefinition<P = Record<string, unknown>, D = BlockData> {
    * Mantém o cálculo do insight no PRÓPRIO bloco (padrão escalável p/ todo
    * o catálogo, opt-in).
    */
-  deriveTakeaway?: (data: D) => TakeawayResult;
+  deriveTakeaway?: (data: D, props?: P) => TakeawayResult;
 }
 
 /**

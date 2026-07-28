@@ -14,7 +14,8 @@
 import type { CategoricalData } from '@dashboards/contracts';
 import { BarList, chartAccentColor } from '@/shared/ui';
 import type { BarListItem } from '@/shared/ui';
-import { formatCompactBRL } from '@/shared/lib/format';
+import type { ValueFormat } from '@/shared/lib/format';
+import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -25,6 +26,8 @@ type BarListProps = {
   palette?: 'single' | 'multi' | 'none';
   /** Cor das barras em palette="single"; resolvida para token do DS. */
   accent?: string;
+  /** Formato do valor ao lado da barra (enum fechado do catálogo). */
+  valueFormat?: ValueFormat;
   /**
    * Mantida por compatibilidade de contrato: com o rótulo FORA da barra, a cor
    * do texto passou a ser a de leitura do DS e não precisa (nem deve) ser
@@ -42,6 +45,7 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({
   error,
 }) => {
   const items = (data ?? []) as CategoryPoint[];
+  const formatValue = (value: number) => formatCatalogValue(value, props.valueFormat);
 
   // `single` fixa a cor de destaque; `multi` cicla a paleta por item.
   const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
@@ -56,7 +60,7 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({
       data={rows}
       sortOrder={props.sortOrder ?? 'descending'}
       hasColorByItem={props.palette === 'multi'}
-      valueFormatter={formatCompactBRL}
+      valueFormatter={formatValue}
       isLoading={state === 'loading' || state === 'skeleton'}
       emptyMessage={
         state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
@@ -65,24 +69,32 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({
   );
 };
 
-/** Insights de rodapé: primeiro e último do ranking. */
-function deriveTakeaway(data: CategoricalData): string[] | undefined {
+/**
+ * Insights de rodapé: primeiro e último do ranking. Formata pelo MESMO
+ * `valueFormat` do bloco — o insight repete o número que a barra mostra, e as
+ * duas leituras não podem discordar na unidade.
+ */
+function deriveTakeaway(
+  data: CategoricalData,
+  props: BarListProps = {},
+): string[] | undefined {
   const items = (data ?? []) as CategoryPoint[];
   if (items.length === 0) return undefined;
 
+  const format = (value: number) => formatCatalogValue(value, props.valueFormat);
   const top = items.reduce((best, item) =>
     (item.value ?? 0) > (best.value ?? 0) ? item : best,
   );
   if ((top.value ?? 0) <= 0) return undefined;
 
-  const insights = [`Top 1: ${top.label} (${formatCompactBRL(top.value ?? 0)})`];
+  const insights = [`Top 1: ${top.label} (${format(top.value ?? 0)})`];
 
   if (items.length > 1) {
     const bottom = items.reduce((best, item) =>
       (item.value ?? 0) < (best.value ?? 0) ? item : best,
     );
     if ((bottom.value ?? 0) > 0 && bottom !== top) {
-      insights.push(`Último: ${bottom.label} (${formatCompactBRL(bottom.value ?? 0)})`);
+      insights.push(`Último: ${bottom.label} (${format(bottom.value ?? 0)})`);
     }
   }
 

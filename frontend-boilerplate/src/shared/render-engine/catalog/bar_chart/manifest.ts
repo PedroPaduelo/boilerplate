@@ -3,10 +3,11 @@
  * (shape 'series', x categórico, `series` opcional p/ multi-série).
  * Alinhado a @dashboards/contracts.
  *
- * Nomes, tipos e defaults das props são CONTRATO com o backend/agente e seguem
- * iguais. O que mudou foi a semântica de COR: `accent` e `seriesColors` são
- * resolvidos para tokens de dado do design system (o componente aceita os
- * valores antigos e os traduz).
+ * Nomes e tipos das props são CONTRATO com o backend/agente e seguem iguais. O
+ * que mudou foi a semântica de COR (`accent` e `seriesColors` viram tokens de
+ * dado do design system, com os valores antigos traduzidos pelo componente) e,
+ * na 1.2.0, o default de `valueFormat`: era `compactBRL`, o que fazia contagem
+ * de mensagens sair como "R$ 7". Agora é `number` (ver `lib/value-format.ts`).
  *
  * TODAS as props têm `description` completa — o MCP lê este schema p/ instruir
  * a IA na montagem de dashboards.
@@ -63,13 +64,13 @@ export const manifest = {
         description:
           'Cor por série, na ORDEM (índice 0 = primeira série, 1 = segunda, etc.). Cada item é resolvido para uma cor de dado do design system e SOBRESCREVE a paleta automática daquela série. Se omitido, usa `palette`. Use principalmente com stacked=true para fixar a cor de cada série empilhada.',
       },
-      // valueFormat — ENUM FECHADO, default 'compactBRL'.
+      // valueFormat — ENUM FECHADO, default 'number' (contagem).
       valueFormat: {
         type: 'string',
         enum: [...VALUE_FORMATS],
-        default: 'compactBRL',
+        default: 'number',
         description:
-          'Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre): BRL, compactBRL, number, compactNumber, percent.',
+          'Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre): BRL, compactBRL, number, compactNumber, percent. Default "number" (contagem): escolha "BRL"/"compactBRL" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.',
         oneOf: [
           {
             const: 'BRL',
@@ -77,12 +78,12 @@ export const manifest = {
           },
           {
             const: 'compactBRL',
-            description:
-              'formatCompactBRL — moeda BRL compacta (ex.: "R$ 2,61 bi"). DEFAULT.',
+            description: 'formatCompactBRL — moeda BRL compacta (ex.: "R$ 2,61 bi").',
           },
           {
             const: 'number',
-            description: 'formatNumberBR — número PT-BR com milhar (ex.: "1.234.567,8").',
+            description:
+              'formatNumberBR — número PT-BR com milhar (ex.: "1.234.567,8"). DEFAULT — use para CONTAGEM.',
           },
           {
             const: 'compactNumber',
@@ -116,9 +117,9 @@ export const manifest = {
     stacked: false,
     accent: 'chart-1',
     palette: 'single',
-    valueFormat: 'compactBRL',
+    valueFormat: 'number',
   },
   minColumns: 1,
   maxRows: 5000,
-  version: '1.1.0',
+  version: '1.2.0',
 } satisfies BlockManifest;

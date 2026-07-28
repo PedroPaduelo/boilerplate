@@ -22,10 +22,11 @@ import type { SeriesData } from '@dashboards/contracts';
 import { AreaChart, ChartDataTable, chartAccentColor } from '@/shared/ui';
 import type { ChartSeries } from '@/shared/ui';
 import {
-  formatBRL,
   formatCompactNumberBR,
   formatPercentPointsBR,
+  type ValueFormat,
 } from '@/shared/lib/format';
+import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -42,6 +43,8 @@ type AreaProps = {
    * (classe utilitária, cor CSS); `chartAccentColor()` resolve para token do DS.
    */
   accent?: string;
+  /** Formato do valor no tooltip (enum fechado do catálogo). */
+  valueFormat?: ValueFormat;
 };
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
@@ -89,8 +92,12 @@ export const Component: BlockComponent<AreaProps, SeriesData> = ({
   const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
   const colored = accent ? series.map((item) => ({ ...item, color: accent })) : series;
 
+  // Em `percent` o eixo JÁ é participação: o valor sai em pontos percentuais e
+  // o `valueFormat` não se aplica (formatar "42" como R$ contradiria o gráfico).
   const formatValue = (value: number) =>
-    isPercent ? formatPercentPointsBR(value) : formatBRL(value);
+    isPercent
+      ? formatPercentPointsBR(value)
+      : formatCatalogValue(value, props.valueFormat);
   const formatAxis = (value: number) =>
     isPercent ? formatPercentPointsBR(value) : formatCompactNumberBR(value);
 

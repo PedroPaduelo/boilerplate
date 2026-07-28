@@ -13,3 +13,24 @@ export { DashboardRenderer } from './dashboard-renderer';
 export type { DashboardRendererProps } from './dashboard-renderer';
 export type { BlockFrameProps, BlockFrameTakeaway } from './block-frame';
 export type { BlockBoundaryProps } from './block-boundary';
+/**
+ * Política de formato e de tamanho dos blocos. Sai pelo barril porque quem
+ * RENDERIZA um bloco fora do dashboard (o chat) precisa das mesmas decisões —
+ * senão cada tela reinventa altura e unidade, que é como o card do chat acabou
+ * com um KPI esticado por 1086 px e uma contagem escrita em reais.
+ */
+export {
+  CATALOG_VALUE_FORMAT_DEFAULT,
+  describeValueFormat,
+  formatCatalogValue,
+  isCurrencyFormat,
+  resolveValueFormat,
+} from './lib/value-format';
+export {
+  CHART_BODY_HEIGHT,
+  COMPACT_CARD_MAX_COLUMNS,
+  COMPACT_CARD_MIN_WIDTH,
+  chartBodyHeight,
+  isCompactCardBlock,
+} from './lib/block-sizing';
+export { describeDataScope } from './lib/data-caption';

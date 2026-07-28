@@ -14,7 +14,8 @@
  */
 import type { ScalarData } from '@dashboards/contracts';
 import { chartAccentColor } from '@/shared/ui';
-import { formatValueByEnum, type ValueFormat } from '@/shared/lib/format';
+import { type ValueFormat } from '@/shared/lib/format';
+import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { MetricGlowCard } from './metric-glow-card';
@@ -50,7 +51,7 @@ export const Component: BlockComponent<MetricGlowProps, ScalarData> = ({
   return (
     <MetricGlowCard
       title={props.label?.trim() || data?.label || manifest.name}
-      value={formatValueByEnum(value, props.valueFormat ?? 'compactBRL')}
+      value={formatCatalogValue(value, props.valueFormat)}
       delta={delta}
       higherIsBetter={(props.deltaPolarity ?? 'up-good') === 'up-good'}
       color={chartAccentColor(props.accent)}

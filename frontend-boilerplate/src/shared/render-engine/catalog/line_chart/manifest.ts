@@ -8,6 +8,7 @@
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
+import { VALUE_FORMATS } from '@/shared/lib/format';
 
 export const manifest = {
   type: 'line_chart',
@@ -48,6 +49,41 @@ export const manifest = {
         description:
           'Cor base da(s) série(s), usada quando palette="single". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão.',
       },
+      // valueFormat — ENUM FECHADO, default 'number' (contagem). NOVO na
+      // 1.1.0: o tooltip formatava em BRL por código, sem prop nenhuma, então
+      // uma série de mensagens por dia exibia "R$ 3.992,00" e não havia como o
+      // agente corrigir.
+      valueFormat: {
+        type: 'string',
+        enum: [...VALUE_FORMATS],
+        default: 'number',
+        description:
+          'Formato PT-BR do valor exibido no tooltip. ENUM FECHADO (sem input livre). Default "number" (contagem): escolha "BRL"/"compactBRL" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado. O eixo Y continua compacto, para caber.',
+        oneOf: [
+          {
+            const: 'BRL',
+            description: 'formatBRL — moeda BRL completa (ex.: "R$ 2.609.946.157,73").',
+          },
+          {
+            const: 'compactBRL',
+            description: 'formatCompactBRL — moeda BRL compacta (ex.: "R$ 2,61 bi").',
+          },
+          {
+            const: 'number',
+            description:
+              'formatNumberBR — número PT-BR com milhar (ex.: "1.234.567,8"). DEFAULT — use para CONTAGEM.',
+          },
+          {
+            const: 'compactNumber',
+            description: 'formatCompactNumberBR — número compacto (ex.: "2,61 bi").',
+          },
+          {
+            const: 'percent',
+            description:
+              'formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → "12,5%").',
+          },
+        ],
+      },
     },
   },
   dataContract: {
@@ -62,7 +98,13 @@ export const manifest = {
       { x: '2026-02', y: 18 },
     ],
   },
-  defaultProps: { smooth: true, area: true, palette: 'multi', accent: 'chart-1' },
+  defaultProps: {
+    smooth: true,
+    area: true,
+    palette: 'multi',
+    accent: 'chart-1',
+    valueFormat: 'number',
+  },
   maxRows: 5000,
-  version: '1.0.0',
+  version: '1.1.0',
 } satisfies BlockManifest;

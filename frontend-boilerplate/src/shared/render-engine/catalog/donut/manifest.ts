@@ -2,12 +2,14 @@
  * Manifesto do bloco `donut` — distribuição de um total entre categorias
  * (shape 'categorical'). Alinhado a @dashboards/contracts.
  *
- * Nomes, tipos e defaults das props são CONTRATO com o backend/agente e seguem
- * iguais. A prop de cor (`accent`) é resolvida pelo componente para um token de
- * dado do design system.
+ * Nomes e tipos das props são CONTRATO com o backend/agente e seguem iguais. A
+ * prop de cor (`accent`) é resolvida pelo componente para um token de dado do
+ * design system.
  *
  * `valueFormat` continua um ENUM FECHADO com os 5 formatos canônicos, cada um
- * casando 1:1 com um helper de `format.ts` via `formatValueByEnum()`.
+ * casando 1:1 com um helper de `format.ts` via `formatValueByEnum()`. Na 1.1.0
+ * o default virou `number`: era `compactBRL`, e uma composição de mensagens por
+ * status somava "R$ 4,09 mil" no centro do anel (ver `lib/value-format.ts`).
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
@@ -52,13 +54,13 @@ export const manifest = {
         description:
           'Cor das fatias em palette="single". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Em "multi" é IGNORADO. Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
       },
-      // valueFormat — ENUM FECHADO, default 'compactBRL'.
+      // valueFormat — ENUM FECHADO, default 'number' (contagem).
       valueFormat: {
         type: 'string',
         enum: [...VALUE_FORMATS],
-        default: 'compactBRL',
+        default: 'number',
         description:
-          'Formato PT-BR do valor exibido no centro do anel (total) e na legenda. ENUM FECHADO (sem input livre).',
+          'Formato PT-BR do valor exibido no centro do anel (total) e na legenda. ENUM FECHADO (sem input livre). Default "number" (contagem): escolha "BRL"/"compactBRL" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.',
         oneOf: [
           {
             const: 'BRL',
@@ -66,12 +68,12 @@ export const manifest = {
           },
           {
             const: 'compactBRL',
-            description:
-              'formatCompactBRL — moeda BRL compacta (ex.: "R$ 2,61 bi"). DEFAULT.',
+            description: 'formatCompactBRL — moeda BRL compacta (ex.: "R$ 2,61 bi").',
           },
           {
             const: 'number',
-            description: 'formatNumberBR — número PT-BR com milhar (ex.: "1.234.567,8").',
+            description:
+              'formatNumberBR — número PT-BR com milhar (ex.: "1.234.567,8"). DEFAULT — use para CONTAGEM.',
           },
           {
             const: 'compactNumber',
@@ -101,7 +103,7 @@ export const manifest = {
     showLegend: true,
     palette: 'single',
     accent: 'chart-1',
-    valueFormat: 'compactBRL',
+    valueFormat: 'number',
   },
-  version: '1.0.0',
+  version: '1.1.0',
 } satisfies BlockManifest;

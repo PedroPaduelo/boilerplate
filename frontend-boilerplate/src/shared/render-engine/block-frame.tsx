@@ -52,10 +52,18 @@ export interface BlockFrameProps {
   takeaways?: BlockFrameTakeaway[];
   /** `false` esconde o rodapé técnico inteiro, mesmo com `query`. */
   showQuery?: boolean;
+  /**
+   * Altura reservada ao corpo, por TIPO de bloco (`lib/block-sizing`). O
+   * esqueleto e o gráfico ocupam a mesma caixa, então a chegada do dado não
+   * muda a altura do card — antes havia um número único (224 px) para todo o
+   * catálogo, que era alto demais para um ranking e baixo demais para uma
+   * série, e o card pulava nos dois casos.
+   */
+  bodyMinHeight?: number;
   children?: ReactNode;
 }
 
-/** Altura do esqueleto: casa com a altura natural dos gráficos do catálogo. */
+/** Usada quando o tipo não declara altura própria. */
 const BODY_SKELETON_HEIGHT = 224;
 
 export function BlockFrame({
@@ -66,6 +74,7 @@ export function BlockFrame({
   isLoading = false,
   takeaways,
   showQuery = true,
+  bodyMinHeight,
   children,
 }: BlockFrameProps) {
   const visibleTakeaways = (takeaways ?? []).filter(
@@ -90,9 +99,19 @@ export function BlockFrame({
         </HStack>
         <Divider />
 
-        <VStack paddingInline={4} paddingBlock={3}>
+        <VStack
+          paddingInline={4}
+          paddingBlock={3}
+          minHeight={bodyMinHeight}
+          justify="center"
+          data-slot="block-frame-body"
+        >
           {isLoading ? (
-            <Skeleton width="100%" height={BODY_SKELETON_HEIGHT} radius={2} />
+            <Skeleton
+              width="100%"
+              height={bodyMinHeight ?? BODY_SKELETON_HEIGHT}
+              radius={2}
+            />
           ) : (
             children
           )}

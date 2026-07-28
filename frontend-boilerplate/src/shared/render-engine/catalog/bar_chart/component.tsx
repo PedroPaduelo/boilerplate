@@ -15,11 +15,8 @@
  */
 import type { SeriesData } from '@dashboards/contracts';
 import { BarChart, ChartDataTable, HBarChart } from '@/shared/ui';
-import {
-  formatCompactBRL,
-  formatValueByEnum,
-  type ValueFormat,
-} from '@/shared/lib/format';
+import { type ValueFormat } from '@/shared/lib/format';
+import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { barColorAt, isColorByCategory } from './bar-colors';
@@ -53,7 +50,7 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
     state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined;
   const formatValue =
     props.valueFormatter ??
-    ((value: number) => formatValueByEnum(value, props.valueFormat ?? 'compactBRL'));
+    ((value: number) => formatCatalogValue(value, props.valueFormat));
 
   // ----- HORIZONTAL: uma barra por linha do dado (não empilha) -----
   if (props.orientation === 'horizontal') {
@@ -114,22 +111,27 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
   );
 };
 
-/** Insights de rodapé: maior e menor valor da série. */
-function deriveTakeaway(data: SeriesData): string[] | undefined {
+/**
+ * Insights de rodapé: maior e menor valor da série. Formata pelo MESMO
+ * `valueFormat` do bloco — o insight repete o número que a barra mostra, e as
+ * duas leituras não podem discordar na unidade.
+ */
+function deriveTakeaway(data: SeriesData, props: BarProps = {}): string[] | undefined {
   const points = (data ?? []) as BarPoint[];
   if (points.length === 0) return undefined;
 
+  const format =
+    props.valueFormatter ??
+    ((value: number) => formatCatalogValue(value, props.valueFormat));
   const top = points.reduce((best, p) => ((p.y ?? 0) > (best.y ?? 0) ? p : best));
   if ((top.y ?? 0) <= 0) return undefined;
 
-  const insights = [`Maior valor: ${String(top.x)} (${formatCompactBRL(top.y ?? 0)})`];
+  const insights = [`Maior valor: ${String(top.x)} (${format(top.y ?? 0)})`];
 
   if (points.length > 1) {
     const bottom = points.reduce((best, p) => ((p.y ?? 0) < (best.y ?? 0) ? p : best));
     if ((bottom.y ?? 0) > 0 && bottom !== top) {
-      insights.push(
-        `Menor valor: ${String(bottom.x)} (${formatCompactBRL(bottom.y ?? 0)})`,
-      );
+      insights.push(`Menor valor: ${String(bottom.x)} (${format(bottom.y ?? 0)})`);
     }
   }
 

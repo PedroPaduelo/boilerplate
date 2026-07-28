@@ -18,11 +18,8 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { VStack } from '@astryxdesign/core/VStack';
 import { DonutChart, chartAccentColor } from '@/shared/ui';
 import type { ChartPoint } from '@/shared/ui';
-import {
-  formatPercentBR,
-  formatValueByEnum,
-  type ValueFormat,
-} from '@/shared/lib/format';
+import { formatPercentBR, type ValueFormat } from '@/shared/lib/format';
+import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { DonutLegend } from './donut-legend';
@@ -53,8 +50,7 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({
   error,
 }) => {
   const items = (data ?? []) as CategoryPoint[];
-  const formatValue = (value: number) =>
-    formatValueByEnum(value, props.valueFormat ?? 'compactBRL');
+  const formatValue = (value: number) => formatCatalogValue(value, props.valueFormat);
 
   // `single` pinta todas as fatias com a cor de destaque; nos demais modos a
   // paleta categórica do DS cicla (é o que distingue uma fatia da outra).

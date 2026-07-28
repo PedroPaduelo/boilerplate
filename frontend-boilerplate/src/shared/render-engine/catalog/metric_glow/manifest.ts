@@ -37,16 +37,16 @@ export const manifest = {
         description:
           'Rótulo da métrica (sobrescreve o `label` vindo dos dados). Se vazio, usa o label dos dados ou o nome do bloco.',
       },
-      // (valueFormat) ENUM FECHADO — default 'compactBRL'. Cada valor carrega
+      // (valueFormat) ENUM FECHADO — default 'number'. Cada valor carrega
       // sua própria `description` via `oneOf`/`const` (doc por opção no
       // autocomplete do MCP/IA). O `enum` puro coexiste com o `oneOf` (a AJV
       // aceita ambos) — `enum` para validadores simples, `oneOf` para a doc.
       valueFormat: {
         type: 'string',
         enum: [...VALUE_FORMATS],
-        default: 'compactBRL',
+        default: 'number',
         description:
-          'Formato PT-BR do valor em destaque. ENUM FECHADO (sem input livre). Substitui a formatação crua antiga.',
+          'Formato PT-BR do valor em destaque. ENUM FECHADO (sem input livre). Default "number" (contagem): escolha "BRL"/"compactBRL" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.',
         oneOf: [
           {
             const: 'BRL',
@@ -54,12 +54,12 @@ export const manifest = {
           },
           {
             const: 'compactBRL',
-            description:
-              'formatCompactBRL — moeda BRL compacta (ex.: "R$ 124,5 mil"). DEFAULT.',
+            description: 'formatCompactBRL — moeda BRL compacta (ex.: "R$ 124,5 mil").',
           },
           {
             const: 'number',
-            description: 'formatNumberBR — número PT-BR com milhar (ex.: "124.500").',
+            description:
+              'formatNumberBR — número PT-BR com milhar (ex.: "124.500"). DEFAULT — use para CONTAGEM.',
           },
           {
             const: 'compactNumber',
@@ -119,10 +119,10 @@ export const manifest = {
     example: { value: 124500, label: 'Receita do mês', unit: 'BRL', delta: 0.125 },
   },
   defaultProps: {
-    valueFormat: 'compactBRL',
+    valueFormat: 'number',
     accent: 'chart-1',
     showDelta: true,
     deltaPolarity: 'up-good',
   },
-  version: '1.0.0',
+  version: '1.1.0',
 } satisfies BlockManifest;

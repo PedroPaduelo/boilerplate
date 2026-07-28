@@ -24,6 +24,7 @@ import { BlockPlaceholder, BlockUnknown } from './block-body';
 import { BlockBoundary } from './block-boundary';
 import { BlockContainer } from './block-container';
 import { BlockFrame, type BlockFrameTakeaway } from './block-frame';
+import { chartBodyHeight } from './lib/block-sizing';
 import {
   durationOf,
   explicitBlockTitle,
@@ -160,7 +161,8 @@ export function BlockRenderer({
             query={block.dataBinding?.query}
             durationMs={durationOf(ownResult)}
             isLoading={isLoading}
-            takeaways={frameTakeaways(block, def.deriveTakeaway, dataVal, state)}
+            bodyMinHeight={chartBodyHeight(block.type)}
+            takeaways={frameTakeaways(block, def.deriveTakeaway, dataVal, state, props)}
             showQuery={showSqlOf(block)}
           >
             {isLoading ? null : body}
@@ -180,11 +182,14 @@ export function BlockRenderer({
  */
 function frameTakeaways(
   block: Block,
-  derive: ((data: BlockData) => string | string[] | undefined) | undefined,
+  derive:
+    | ((data: BlockData, props: Record<string, unknown>) => string | string[] | undefined)
+    | undefined,
   data: BlockData | undefined,
   state: string,
+  props: Record<string, unknown>,
 ): BlockFrameTakeaway[] {
   const derived =
-    state === 'success' && data != null ? normalizeTakeaway(derive?.(data)) : [];
+    state === 'success' && data != null ? normalizeTakeaway(derive?.(data, props)) : [];
   return [...takeawaysOf(block), ...derived];
 }
