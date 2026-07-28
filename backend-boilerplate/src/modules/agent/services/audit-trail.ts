@@ -98,37 +98,52 @@ export interface DescribeOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Rótulo humano por ferramenta, em português.
+ * Rótulo humano por ferramenta, em português, NARRADO em gerúndio.
  *
  * Vale a pena ser explícito em vez de derivar do nome (`create_chart` ->
- * "Create chart"): o usuário desta tela é auditor, não desenvolvedor, e o
+ * "Create chart"): o usuário desta tela é gestor, não desenvolvedor, e o
  * rótulo é a primeira coisa que ele lê para decidir se confia no passo.
+ *
+ * O vocabulário é o DELE, não o nosso. "Lendo o schema do banco" pressupõe que
+ * quem lê sabe o que é schema — quem faz a pergunta ("quantas mensagens
+ * entraram em julho?") não sabe, e a trilha, que existe para dar confiança,
+ * virava mais uma coisa a decifrar. Cada rótulo aqui responde "o que a máquina
+ * está fazendo agora, dito para gente": procurar tabela, consultar dado, montar
+ * gráfico. Mesmo espírito da regra de composição da resposta (`docs/
+ * composicao-da-resposta.md` §4): nada de jargão do sistema na frente do
+ * usuário.
+ *
+ * ⚠️ Este mapa tem um ESPELHO no frontend (`TOOL_LABELS`, em
+ * `features/chat/lib/chat-tools.ts`), usado como plano B para conversas
+ * gravadas antes da trilha existir. Os textos precisam ser IDÊNTICOS — enquanto
+ * divergiram, o mesmo passo tinha dois nomes conforme a idade da conversa. Ao
+ * mexer aqui, mexa lá.
  */
 export const TOOL_TITLES: Readonly<Record<string, string>> = {
   // Conexões e dados
-  list_connections: 'Listando conexões',
-  get_connection_schema: 'Lendo o schema do banco',
-  run_query: 'Executando consulta',
-  list_catalog: 'Consultando o catálogo de blocos',
+  list_connections: 'Procurando as fontes de dados',
+  get_connection_schema: 'Procurando as tabelas',
+  run_query: 'Consultando os dados',
+  list_catalog: 'Escolhendo o tipo de visualização',
   // Gráficos
-  list_charts: 'Listando gráficos',
-  create_chart: 'Criando gráfico',
-  update_chart: 'Atualizando gráfico',
-  publish_chart: 'Publicando gráfico',
-  preview_chart_data: 'Pré-visualizando dados do gráfico',
-  delete_chart: 'Excluindo gráfico',
-  unpublish_chart: 'Despublicando gráfico',
+  list_charts: 'Revendo os gráficos já criados',
+  create_chart: 'Montando o gráfico',
+  update_chart: 'Ajustando o gráfico',
+  publish_chart: 'Publicando o gráfico',
+  preview_chart_data: 'Conferindo os dados do gráfico',
+  delete_chart: 'Excluindo o gráfico',
+  unpublish_chart: 'Tirando o gráfico do ar',
   // Dashboards
-  list_dashboards: 'Listando dashboards',
-  create_dashboard: 'Criando dashboard',
-  update_dashboard: 'Atualizando dashboard',
-  add_chart_to_dashboard: 'Adicionando gráfico ao dashboard',
-  publish_dashboard: 'Publicando dashboard',
-  delete_dashboard: 'Excluindo dashboard',
-  unpublish_dashboard: 'Despublicando dashboard',
-  create_dashboard_share_link: 'Gerando link de compartilhamento',
+  list_dashboards: 'Revendo os dashboards já criados',
+  create_dashboard: 'Montando o dashboard',
+  update_dashboard: 'Ajustando o dashboard',
+  add_chart_to_dashboard: 'Encaixando o gráfico no dashboard',
+  publish_dashboard: 'Publicando o dashboard',
+  delete_dashboard: 'Excluindo o dashboard',
+  unpublish_dashboard: 'Tirando o dashboard do ar',
+  create_dashboard_share_link: 'Gerando o link de compartilhamento',
   // Agente
-  activate_skill: 'Ativando skill',
+  activate_skill: 'Consultando o manual de trabalho',
 };
 
 /**
@@ -643,13 +658,39 @@ export function describeToolStep(
 }
 
 /**
- * Frase pronta para o `chat:phase` de fase `tool` — ex.: "Executando consulta ·
- * teste". Vem montada do servidor porque só ele conhece o alvo real da chamada.
+ * Preposição que liga o título ao alvo, quando os dois formam uma frase:
+ * "Consultando os dados em messages", "Procurando as tabelas de vendas".
+ *
+ * A lista é curta de propósito. Nas outras ferramentas o alvo é um NOME (o
+ * título do gráfico, um slug, um filtro), e preposição ali produziria frase
+ * torta ("Revendo os gráficos já criados de vendas"); para esses, dois-pontos
+ * apresenta o nome sem fingir que é complemento.
+ */
+const LIGACAO_COM_O_ALVO: Readonly<Record<string, string>> = {
+  run_query: 'em',
+  get_connection_schema: 'de',
+};
+
+/**
+ * Frase pronta para o `chat:phase` de fase `tool` — ex.: "Consultando os dados
+ * em messages…". Vem montada do servidor porque só ele conhece o alvo real da
+ * chamada.
+ *
+ * É o texto que fica piscando na tela ENQUANTO o passo roda (o `phaseLabel` do
+ * chat), então ele é uma frase em andamento: termina em reticências e nomeia o
+ * alvo. "Trabalhando…" não informa nada a quem espera 40 segundos; "Procurando
+ * as tabelas de vendas…" informa.
+ *
+ * O alvo ganha do nome da conexão porque ele diz O QUE está sendo feito (a
+ * tabela, o gráfico, a skill); a conexão continua na evidência do passo, onde
+ * dá para conferi-la com calma.
  */
 export function stepLabel(fields: AuditFields, toolName: string): string {
   const titulo = fields.title ?? toolTitle(toolName);
-  const complemento = fields.connectionName ?? fields.target;
-  return complemento ? `${titulo} · ${complemento}` : titulo;
+  const alvo = fields.target ?? fields.connectionName;
+  if (!alvo) return `${titulo}…`;
+  const ligacao = LIGACAO_COM_O_ALVO[toolName];
+  return ligacao ? `${titulo} ${ligacao} ${alvo}…` : `${titulo}: ${alvo}…`;
 }
 
 // ---------------------------------------------------------------------------

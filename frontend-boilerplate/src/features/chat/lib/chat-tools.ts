@@ -36,34 +36,39 @@ import type { ChatChartPayload, ChatToolStepPayload } from '../transport/types';
  * conversa velha e "Listando conexões" numa nova — dois nomes para o mesmo
  * fato, dependendo só da data. Ao mexer aqui, mexa lá (e vice-versa).
  *
+ * Os rótulos são narrados em gerúndio e no vocabulário de quem lê: "Procurando
+ * as tabelas", não "Lendo o schema do banco" — quem pergunta "quantas mensagens
+ * entraram em julho?" não sabe o que é schema, e a trilha existe para dar
+ * confiança, não para ser decifrada.
+ *
  * Nome desconhecido cai no próprio nome: uma tool nova precisa aparecer feia na
  * trilha, não sumir dela.
  */
 const TOOL_LABELS: Record<string, string> = {
   // Conexões e dados
-  list_connections: 'Listando conexões',
-  get_connection_schema: 'Lendo o schema do banco',
-  run_query: 'Executando consulta',
-  list_catalog: 'Consultando o catálogo de blocos',
+  list_connections: 'Procurando as fontes de dados',
+  get_connection_schema: 'Procurando as tabelas',
+  run_query: 'Consultando os dados',
+  list_catalog: 'Escolhendo o tipo de visualização',
   // Gráficos
-  list_charts: 'Listando gráficos',
-  create_chart: 'Criando gráfico',
-  update_chart: 'Atualizando gráfico',
-  publish_chart: 'Publicando gráfico',
-  preview_chart_data: 'Pré-visualizando dados do gráfico',
-  delete_chart: 'Excluindo gráfico',
-  unpublish_chart: 'Despublicando gráfico',
+  list_charts: 'Revendo os gráficos já criados',
+  create_chart: 'Montando o gráfico',
+  update_chart: 'Ajustando o gráfico',
+  publish_chart: 'Publicando o gráfico',
+  preview_chart_data: 'Conferindo os dados do gráfico',
+  delete_chart: 'Excluindo o gráfico',
+  unpublish_chart: 'Tirando o gráfico do ar',
   // Dashboards
-  list_dashboards: 'Listando dashboards',
-  create_dashboard: 'Criando dashboard',
-  update_dashboard: 'Atualizando dashboard',
-  add_chart_to_dashboard: 'Adicionando gráfico ao dashboard',
-  publish_dashboard: 'Publicando dashboard',
-  delete_dashboard: 'Excluindo dashboard',
-  unpublish_dashboard: 'Despublicando dashboard',
-  create_dashboard_share_link: 'Gerando link de compartilhamento',
+  list_dashboards: 'Revendo os dashboards já criados',
+  create_dashboard: 'Montando o dashboard',
+  update_dashboard: 'Ajustando o dashboard',
+  add_chart_to_dashboard: 'Encaixando o gráfico no dashboard',
+  publish_dashboard: 'Publicando o dashboard',
+  delete_dashboard: 'Excluindo o dashboard',
+  unpublish_dashboard: 'Tirando o dashboard do ar',
+  create_dashboard_share_link: 'Gerando o link de compartilhamento',
   // Agente
-  activate_skill: 'Ativando skill',
+  activate_skill: 'Consultando o manual de trabalho',
 };
 
 /**

@@ -82,29 +82,44 @@ const previewOk = {
 
 describe('rótulo humano por família de ferramenta', () => {
   it.each([
-    ['list_connections', 'Listando conexões'],
-    ['get_connection_schema', 'Lendo o schema do banco'],
-    ['run_query', 'Executando consulta'],
-    ['list_catalog', 'Consultando o catálogo de blocos'],
-    ['create_chart', 'Criando gráfico'],
-    ['update_chart', 'Atualizando gráfico'],
-    ['publish_chart', 'Publicando gráfico'],
-    ['preview_chart_data', 'Pré-visualizando dados do gráfico'],
-    ['delete_chart', 'Excluindo gráfico'],
-    ['unpublish_chart', 'Despublicando gráfico'],
-    ['list_charts', 'Listando gráficos'],
-    ['create_dashboard', 'Criando dashboard'],
-    ['update_dashboard', 'Atualizando dashboard'],
-    ['add_chart_to_dashboard', 'Adicionando gráfico ao dashboard'],
-    ['publish_dashboard', 'Publicando dashboard'],
-    ['delete_dashboard', 'Excluindo dashboard'],
-    ['unpublish_dashboard', 'Despublicando dashboard'],
-    ['list_dashboards', 'Listando dashboards'],
-    ['create_dashboard_share_link', 'Gerando link de compartilhamento'],
-    ['activate_skill', 'Ativando skill'],
+    ['list_connections', 'Procurando as fontes de dados'],
+    ['get_connection_schema', 'Procurando as tabelas'],
+    ['run_query', 'Consultando os dados'],
+    ['list_catalog', 'Escolhendo o tipo de visualização'],
+    ['create_chart', 'Montando o gráfico'],
+    ['update_chart', 'Ajustando o gráfico'],
+    ['publish_chart', 'Publicando o gráfico'],
+    ['preview_chart_data', 'Conferindo os dados do gráfico'],
+    ['delete_chart', 'Excluindo o gráfico'],
+    ['unpublish_chart', 'Tirando o gráfico do ar'],
+    ['list_charts', 'Revendo os gráficos já criados'],
+    ['create_dashboard', 'Montando o dashboard'],
+    ['update_dashboard', 'Ajustando o dashboard'],
+    ['add_chart_to_dashboard', 'Encaixando o gráfico no dashboard'],
+    ['publish_dashboard', 'Publicando o dashboard'],
+    ['delete_dashboard', 'Excluindo o dashboard'],
+    ['unpublish_dashboard', 'Tirando o dashboard do ar'],
+    ['list_dashboards', 'Revendo os dashboards já criados'],
+    ['create_dashboard_share_link', 'Gerando o link de compartilhamento'],
+    ['activate_skill', 'Consultando o manual de trabalho'],
   ])('%s → "%s"', (tool, esperado) => {
     expect(toolTitle(tool)).toBe(esperado);
     expect(describeToolStep(tool, {}, {}).title).toBe(esperado);
+  });
+
+  it('nenhum rótulo devolve jargão do sistema ao usuário', () => {
+    // A trilha é lida por quem faz a pergunta de negócio, não por quem mantém o
+    // banco: "schema", "query", "binding" e afins não podem aparecer nela.
+    const jargao = /\b(schema|query|sql|binding|catalogType|payload|endpoint)\b/i;
+    for (const rotulo of Object.values(TOOL_TITLES)) {
+      expect(rotulo).not.toMatch(jargao);
+    }
+  });
+
+  it('todo rótulo é uma ação em andamento (gerúndio)', () => {
+    for (const rotulo of Object.values(TOOL_TITLES)) {
+      expect(rotulo).toMatch(/^[A-ZÀ-Ú][a-zà-ú]+ndo\b/);
+    }
   });
 
   it('nenhuma das 20 ferramentas do agente caiu no fallback do nome cru', () => {
@@ -453,7 +468,7 @@ describe('output malformado NÃO lança', () => {
     ).not.toThrow();
     const campos = describeToolStep('run_query', { connectionId: 'c', sql: 'select 1 from t' }, output);
     // Mesmo sem entender o retorno, o passo continua identificável.
-    expect(campos.title).toBe('Executando consulta');
+    expect(campos.title).toBe('Consultando os dados');
   });
 
   it.each(lixos)('preview_chart_data com output %s', (_nome, output) => {
@@ -483,7 +498,7 @@ describe('output malformado NÃO lança', () => {
 });
 
 describe('rótulo da fase (o que a tela mostra enquanto roda)', () => {
-  it('junta título e conexão: "Executando consulta · teste"', () => {
+  it('narra a frase com o alvo: "Consultando os dados em messages…"', () => {
     const campos = describeToolStep(
       'run_query',
       { connectionId: 'con_1', sql: 'select * from messages' },
@@ -491,18 +506,40 @@ describe('rótulo da fase (o que a tela mostra enquanto roda)', () => {
       undefined,
       { connectionName: () => 'teste' },
     );
-    expect(stepLabel(campos, 'run_query')).toBe('Executando consulta · teste');
+    // O alvo (a tabela) ganha do nome da conexão: é ele que diz O QUE está
+    // sendo consultado. A conexão continua na evidência do passo.
+    expect(stepLabel(campos, 'run_query')).toBe('Consultando os dados em messages…');
   });
 
-  it('sem conexão, usa o alvo', () => {
-    const campos = describeToolStep('create_chart', { title: 'Vendas por mês' }, undefined);
-    expect(stepLabel(campos, 'create_chart')).toBe('Criando gráfico · Vendas por mês');
-  });
-
-  it('sem alvo nenhum, só o título', () => {
-    expect(stepLabel(describeToolStep('list_catalog', {}, undefined), 'list_catalog')).toBe(
-      'Consultando o catálogo de blocos',
+  it('sem alvo no SQL, cai para o nome da conexão', () => {
+    const campos = describeToolStep(
+      'run_query',
+      { connectionId: 'con_1', sql: 'select 1' },
+      undefined,
+      undefined,
+      { connectionName: () => 'teste' },
     );
+    expect(stepLabel(campos, 'run_query')).toBe('Consultando os dados em teste…');
+  });
+
+  it('alvo que é nome próprio entra depois de dois-pontos', () => {
+    const campos = describeToolStep('create_chart', { title: 'Vendas por mês' }, undefined);
+    expect(stepLabel(campos, 'create_chart')).toBe('Montando o gráfico: Vendas por mês…');
+  });
+
+  it('sem alvo nenhum, só o título (ainda em andamento)', () => {
+    expect(stepLabel(describeToolStep('list_catalog', {}, undefined), 'list_catalog')).toBe(
+      'Escolhendo o tipo de visualização…',
+    );
+  });
+
+  it('a busca por tabela vira a frase do requisito: "Procurando as tabelas de vendas…"', () => {
+    const campos = describeToolStep(
+      'get_connection_schema',
+      { connectionId: 'con_1', search: 'vendas' },
+      undefined,
+    );
+    expect(stepLabel(campos, 'get_connection_schema')).toBe('Procurando as tabelas de vendas…');
   });
 });
 
