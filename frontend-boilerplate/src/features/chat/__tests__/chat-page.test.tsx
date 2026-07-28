@@ -97,7 +97,13 @@ describe('ChatPage', () => {
     agentApi.checkHealth.mockResolvedValue({ configured: false, model: '' });
     renderWithProviders(<ChatPage />, { route: '/chat' });
 
-    expect(await screen.findByText('Agente indisponível')).toBeInTheDocument();
+    // O aviso mudou de forma: era um Badge; virou a linha de status do
+    // cabeçalho (dot + texto), no padrão de app de mensagens. O que o teste
+    // trava é o CONTEÚDO — a tela precisa dizer que o agente está fora e o
+    // porquê, não a roupa que isso veste.
+    expect(
+      await screen.findByText(/indisponível — chave do provedor ausente/),
+    ).toBeInTheDocument();
     expect(await screen.findByText(/ANTHROPIC_API_KEY/)).toBeInTheDocument();
   });
 

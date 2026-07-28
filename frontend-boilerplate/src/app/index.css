@@ -187,10 +187,23 @@
 @layer components {
   /* ---- Campo de digitação: o protagonista ------------------------------- */
 
-  .app-chat [class*='chat-composer'] {
+  /*
+     ⚠️ Seletor EXATO, nunca `[class*='chat-composer']`.
+     
+     O DS tem dois elementos cujo nome começa igual: `.astryx-chat-composer`
+     (a moldura) e `.astryx-chat-composer-input` (o campo, dentro dela). Um
+     seletor por prefixo pega os DOIS e desenha duas bordas com duas sombras,
+     uma dentro da outra — foi exatamente o que aconteceu e o que deixou o
+     campo com cara de remendo.
+  */
+  .app-chat .astryx-chat-composer {
     /* `--radius-page` (16px) é o raio das superfícies grandes do tema. */
     border-radius: var(--radius-page);
     border: 1px solid var(--color-border);
+    /* Superfície própria: com o fundo da conversa rebaixado para `body`, um
+       composer transparente vira um buraco com borda. Ele é uma SUPERFÍCIE,
+       na mesma profundidade do cartão de resposta. */
+    background: var(--color-background-card);
     /* Elevação para o campo pousar SOBRE a conversa, não flutuar nela. */
     box-shadow: var(--shadow-med);
     transition:
@@ -198,19 +211,35 @@
       box-shadow var(--duration-fast, 200ms) ease;
   }
 
-  /* Foco no elemento inteiro (`:focus-within`), não só no cursor: quem está
+  /* O campo interno não tem moldura própria: a moldura é a de fora. Sem isto
+     ficam duas caixas aninhadas competindo pela mesma função. */
+  .app-chat .astryx-chat-composer-input {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  /* Foco na moldura inteira (`:focus-within`), não só no cursor: quem está
      digitando precisa ver ONDE está digitando sem procurar o cursor. */
-  .app-chat [class*='chat-composer']:focus-within {
+  .app-chat .astryx-chat-composer:focus-within {
     border-color: var(--color-border-emphasized);
     box-shadow: var(--shadow-high);
   }
 
   .app-chat [aria-label='Mensagem'] {
-    /* 52px: duas linhas de texto a 16px com folga — o campo já nasce com cara
-       de "escreva algo de verdade aqui", em vez de crescer só depois. */
-    min-height: 52px;
-    font-size: var(--font-size-lg); /* 15,75px — some o zoom do iOS e lê melhor */
-    line-height: 1.55;
+    /* 44px: UMA linha com folga. A tentativa anterior (52px) somada ao
+       crescimento automático fazia o campo dominar o rodapé — na referência
+       aprovada o campo é discreto e pill, e cresce só quando o texto pede. */
+    min-height: 44px;
+    font-size: var(--font-size-base); /* 14,875px */
+    line-height: 1.5;
+  }
+
+  /* Pill: raio = metade da altura de UMA linha (44px). Não é token porque é
+     geometria da composição — muda junto com o min-height acima. */
+  .app-chat .astryx-chat-composer,
+  .app-chat .astryx-chat-composer-input {
+    border-radius: 22px;
   }
 
   /* ---- Corpo da conversa ------------------------------------------------ */
@@ -229,10 +258,60 @@
     font-size: var(--font-size-xs);
   }
 
-  /* A bolha do usuário ganha peso: numa conversa longa é o marco visual que
-     divide os turnos e permite achar "onde foi que eu perguntei isso". */
-  .app-chat .astryx-chat-message-bubble.filled {
+  /* ---- Papéis visuais das mensagens (referência aprovada pelo usuário) --- */
+
+  /*
+     Profundidade — a correção que faz TODAS as outras aparecerem.
+
+     Medido no print: fundo da área, cartão da resposta e campo de digitação
+     estavam na MESMA cor (rgb 28,37,46), porque a área da conversa é
+     transparente sobre um ancestral já pintado de `paper`. Cartão paper sobre
+     fundo paper = invisível: borda, sombra e raio existiam e não se viam.
+
+     Na referência aprovada há três profundidades (fundo ≪ cartão < bolha). O
+     tema JÁ TEM essa escala — body (20,26,33), card (28,37,46), muted
+     (40,50,61) — só ninguém a estava usando aqui. Nenhuma cor nova.
+  */
+  .app-chat {
+    background: var(--color-background-body);
+  }
+
+  /*
+     A RESPOSTA do agente é o documento da conversa: ocupa a coluna inteira,
+     num cartão elevado com borda — é o que dá o ar de "painel" da referência.
+     A PERGUNTA do usuário é um aparte: bolha compacta, encostada à direita.
+     Papéis diferentes, formas diferentes — é isso que deixa a conversa
+     escaneável sem ler nada.
+  */
+  .app-chat .astryx-chat-message.assistant .astryx-chat-message-bubble {
+    width: 100%;
+    max-width: 100%;
+    background: var(--color-background-card);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-container);
+    padding: var(--spacing-5) var(--spacing-6);
+  }
+
+  /*
+     Sem avatar POR MENSAGEM: quem fala já está identificado no cabeçalho da
+     tela, e o avatar repetido a cada resposta só roubava 40px da largura do
+     cartão e desalinhava o eixo esquerdo (era ele que fazia a resposta parecer
+     "de um lado" em vez de central).
+  */
+  .app-chat .astryx-chat-message.assistant .astryx-avatar {
+    display: none;
+  }
+
+  .app-chat .astryx-chat-message.user .astryx-chat-message-bubble {
+    max-width: 70%;
+    background: var(--color-background-muted);
+    border-radius: var(--radius-container);
+  }
+
+  /* Turnos precisam respirar: sem este espaço os cartões da IA emendam um no
+     outro e a conversa vira uma parede. */
+  .app-chat .astryx-chat-message-list {
+    gap: var(--spacing-5);
   }
 
   /* ---- Cursor de digitação --------------------------------------------- */

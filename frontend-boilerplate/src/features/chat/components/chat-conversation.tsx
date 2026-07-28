@@ -76,17 +76,21 @@ export function ChatConversation({
        * compartilhem exatamente o mesmo eixo. O fundo continua ocupando a
        * largura toda: quem centraliza é o conteúdo, não a moldura.
        *
-       * 56rem (896px) e não 45rem: a primeira tentativa fixou 720px e deixou
-       * 65% do monitor vazio — a tela parecia um formulário no meio do nada.
-       * O que permite alargar sem perder a leitura é a fonte ter subido para
-       * 15,75px (ver `.app-chat` em app/index.css): a conta de caracteres por
-       * linha é largura ÷ tamanho da fonte, então crescer os dois juntos mantém
-       * a linha na faixa confortável e devolve a tela ao usuário.
+       * 75rem (1200px), depois de duas tentativas erradas: 45rem deixou 65% do
+       * monitor vazio e 56rem ainda espremia a resposta numa faixa estreita no
+       * meio da tela.
+       *
+       * O erro era tratar como escolha binária entre "usa a tela" e "texto
+       * legível". Não é: o que precisa ficar estreito é a PROSA (uma linha de
+       * 110 caracteres cansa), e o que precisa de espaço é o resto — tabela de
+       * resultado, SQL, gráfico, trilha de auditoria. Aqui o contêiner fica
+       * largo (72% da área útil) e só o parágrafo se contém, por `max-width`
+       * em ch dentro do markdown (ver `.app-chat` em app/index.css).
        *
        * `app-chat` é o escopo do redesenho visual — sem ele, as regras de
        * superfície do chat vazariam para o resto do app.
        */
-      className="app-chat [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-[56rem]"
+      className="app-chat [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-[75rem]"
       composer={
         <ChatComposer
           value={draft}

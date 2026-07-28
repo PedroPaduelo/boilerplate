@@ -1,12 +1,18 @@
 /**
  * Cabeçalho da conversa aberta.
  *
- * Só carrega o que muda com a conversa: título, saúde do agente e as duas ações
- * de contexto (abrir a lista no mobile, excluir a conversa). O `h1` da tela é o
- * do TopNav do shell, então o título aqui é `level={2}`.
+ * É o cabeçalho — não cada mensagem — que apresenta QUEM está do outro lado:
+ * avatar do agente, nome e o estado da linha ("online" / "indisponível"),
+ * como num aplicativo de mensagens. Foi uma troca deliberada: o avatar por
+ * mensagem foi removido (roubava largura do cartão de resposta e desalinhava
+ * o eixo esquerdo), então a identidade subiu para cá, onde aparece uma vez e
+ * vale para a conversa inteira.
+ *
+ * O `h1` da tela é o do TopNav do shell, então o título aqui é `level={2}`.
  */
-import { AlertCircle, MessageSquare, Trash2 } from 'lucide-react';
-import { Badge } from '@astryxdesign/core/Badge';
+import { MessageSquare, Trash2 } from 'lucide-react';
+import { Avatar } from '@astryxdesign/core/Avatar';
+import { StatusDot } from '@astryxdesign/core/StatusDot';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { HStack, VStack } from '@astryxdesign/core/Stack';
 import { Icon } from '@astryxdesign/core/Icon';
@@ -23,6 +29,31 @@ export interface ChatHeaderProps {
   onDelete?: () => void;
 }
 
+/**
+ * A linha de status diz a verdade que se sabe: `null` (checagem de saúde ainda
+ * no ar) não vira "online" — afirmar disponibilidade antes da resposta seria
+ * chute, e este produto vive de não chutar.
+ */
+function statusLine(isAgentReady: boolean | null) {
+  if (isAgentReady === null) {
+    return <Text type="supporting">verificando o agente…</Text>;
+  }
+  if (!isAgentReady) {
+    return (
+      <HStack gap={1} vAlign="center">
+        <StatusDot variant="error" label="Agente indisponível" />
+        <Text type="supporting">indisponível — chave do provedor ausente</Text>
+      </HStack>
+    );
+  }
+  return (
+    <HStack gap={1} vAlign="center">
+      <StatusDot variant="success" label="Agente online" isPulsing />
+      <Text type="supporting">online · agente com acesso aos seus dados</Text>
+    </HStack>
+  );
+}
+
 export function ChatHeader({
   title,
   isAgentReady,
@@ -32,7 +63,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   return (
     <HStack gap={3} vAlign="center" justify="between">
-      <HStack gap={2} vAlign="center">
+      <HStack gap={3} vAlign="center">
         {isCompact ? (
           <IconButton
             size="sm"
@@ -43,26 +74,16 @@ export function ChatHeader({
             onClick={onOpenList}
           />
         ) : null}
+        <Avatar name="IA" size="md" />
         <VStack gap={0}>
           <Heading level={2} maxLines={1}>
             {title}
           </Heading>
-          <Text type="supporting" maxLines={1}>
-            Agente de IA com acesso aos seus dados
-          </Text>
+          {statusLine(isAgentReady)}
         </VStack>
       </HStack>
 
       <HStack gap={2} vAlign="center">
-        {/* Badge só para a exceção: um selo "tudo certo" em toda tela vira ruído
-            e faz o alerta real passar despercebido. */}
-        {isAgentReady === false ? (
-          <Badge
-            variant="error"
-            icon={<Icon icon={AlertCircle} />}
-            label="Agente indisponível"
-          />
-        ) : null}
         {onDelete ? (
           <IconButton
             size="sm"
