@@ -119,8 +119,11 @@ acima) — decisão registrada em `NOTAS.md`.
 ## 5. Ordem de execução
 
 1. ✅ Base (orquestrador).
-2. ⏩ SUB-01 … SUB-13 em paralelo (arquivos disjuntos).
-3. ⏳ Consolidação: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+2. ✅ SUB-01 … SUB-14 em paralelo (arquivos disjuntos) — **14 lotes, 0 conflitos**.
+3. ✅ Consolidação: tokens que estavam em constante local subiram ao `chart-theme`,
+   `CHART_BODY_HEIGHT` ajustado aos 320px da referência, `ChartCenterLabel` na
+   tipografia da referência, `RankingBar` no barril. Lint, typecheck, testes e
+   build verdes. Ver `CHANGELOG.md` e a seção CONSOLIDAÇÃO de `NOTAS.md`.
 
 ## 6. Critérios de pronto por lote
 

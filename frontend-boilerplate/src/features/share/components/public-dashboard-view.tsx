@@ -18,6 +18,7 @@
  * Sem filtro interativo (read-only), sem ações autenticadas.
  */
 import type { ReactNode } from 'react';
+import type { DashboardDataPayload } from '@dashboards/contracts';
 import { useParams } from 'react-router-dom';
 import { Clock, Lock } from 'lucide-react';
 import { Badge } from '@astryxdesign/core/Badge';
@@ -71,7 +72,14 @@ export function PublicDashboardView() {
         // fica vazia.
         <DashboardRenderer
           layout={data.dashboard.publishedLayout}
-          data={dataPayload ?? data.dashboard.publishedDataPayload ?? undefined}
+          // O contrato público tipa `blocks` como `Record<string, unknown>`
+          // (o snapshot vem serializado); o renderer espera o payload do
+          // dashboard. A forma é a mesma — o schema já validou na borda.
+          data={
+            (dataPayload ?? data.dashboard.publishedDataPayload ?? undefined) as
+              | DashboardDataPayload
+              | undefined
+          }
         />
       ) : null}
 

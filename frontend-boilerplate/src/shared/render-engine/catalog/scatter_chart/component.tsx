@@ -10,9 +10,31 @@
  *    (uma cor), e `accent` continua aceito por compatibilidade (ver manifest);
  *  - o equivalente textual é o resumo do próprio gráfico: uma tabela de
  *    milhares de pontos não ajudaria ninguém a ouvir uma correlação.
+ *
+ * ---------------------------------------------------------------------------
+ * CONFORMIDADE VISUAL — `03-tipos-de-grafico.md` §15 (Dispersão)
+ * ---------------------------------------------------------------------------
+ * 1. Grade só horizontal, tracejada 3 ......... `chartGridProps(palette)`; a
+ *    grade vertical que este bloco desenhava foi removida (base §7).
+ * 2. Eixos sem linha e sem marcações .......... `chartAxisProps` /
+ *    `chartYAxisProps` (Y com as 5 divisões da base).
+ * 3. Texto dos eixos 12px/400/#919EAB ......... vem de `chartAxisProps`.
+ * 4. Linhas 2,5px sem pontos .................. N/A (dispersão não tem linha);
+ *    o que vale aqui é o MARCADOR tamanho 6 (`geometry.markerVisibleSize`).
+ * 5. Coluna raio 4px/largura 48% .............. N/A (não há coluna).
+ * 6. Hover ESCURECE ........................... `activeShape` com
+ *    `palette.hoverAt(i)`.
+ * 7. Tooltip branco 90% com blur .............. `ChartTooltip` da base.
+ * + Altura 350px (`CHART_HEIGHT.scatter`), eixo X com 8 divisões e 1 casa
+ *   decimal, legenda ligada, animação 360ms com 120ms por série.
+ * + Contrato comum: rótulos de eixo e mensagem de vazio aceitam Markdown e
+ *   `{{variavel}}`, com escopo de `buildChartScope(data)`.
+ * ⚠️ ZOOM `xy` (§15) — não entregue: o recharts não tem equivalente nativo e
+ *   trocar de biblioteca está fora de escopo. Registrado em `docs/charts/NOTAS.md`
+ *   e `docs/charts/PEDIDOS-BASE.md` (`[SUB-07]`).
  */
 import type { SeriesData } from '@dashboards/contracts';
-import { ScatterChart } from '@/shared/ui';
+import { ScatterChart, buildChartScope } from '@/shared/ui';
 import type { ScatterPoint } from '@/shared/ui';
 import { formatCompactNumberBR, formatNumberBR } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
@@ -53,14 +75,18 @@ export const Component: BlockComponent<ScatterProps, SeriesData> = ({
   return (
     <ScatterChart
       data={rows}
+      // Vocabulário de `{{variaveis}}` derivado dos dados DO BLOCO (com os
+      // nomes de série), não dos pontos já achatados.
+      scope={buildChartScope(data ?? [])}
       showLegend={props.showLegend !== false}
       showGrid={props.showGridLines !== false}
       valueFormatter={formatNumberBR}
-      axisFormatter={formatCompactNumberBR}
+      // O eixo X fica com a 1 casa decimal do §15; só o Y vira compacto, que é
+      // onde o rótulo longo estoura a largura reservada.
+      yAxisFormatter={formatCompactNumberBR}
       isLoading={state === 'loading' || state === 'skeleton'}
-      emptyMessage={
-        state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
-      }
+      state={state === 'error' ? 'error' : undefined}
+      errorMessage={error}
       label={manifest.name}
     />
   );

@@ -11,7 +11,9 @@
  *    apenas troca.
  *
  * As medidas são em `em` (relativas à fonte herdada), não em px: o número
- * acompanha o `Text`/`Heading` que o envolve, sem fixar tamanho próprio.
+ * acompanha o `Text`/`Heading` que o envolve, sem fixar tamanho próprio — é o
+ * que permite ao card de resumo desenhá-lo nos 17,5px/700 da referência
+ * (`04-widgets-prontos.md` §2.2) sem que este arquivo saiba disso.
  *
  * ESTILO (regra 2.3): a caixa de cada dígito é utility (`h-[1em]`,
  * `leading-none`, `tabular-nums`); nenhum `style` inline — a rolagem é escrita

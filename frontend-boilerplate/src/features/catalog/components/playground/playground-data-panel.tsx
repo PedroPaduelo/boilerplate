@@ -1,6 +1,12 @@
 /**
  * Aba "Dados" — de onde vem o que o preview desenha.
  *
+ * Vale para TODO bloco, inclusive os narrativos/layout: mesmo sem contrato de
+ * dados, qualquer campo de texto pode interpolar `{{variavel}}`, e o vocabulário
+ * dessas variáveis nasce de um dado. Por isso o bloco sem `dataContract` recebe
+ * um JSON LIVRE (não validado) que só alimenta a interpolação — a UI diz isso
+ * com todas as letras para ninguém esperar que o bloco desenhe esse dado.
+ *
  * Catálogo: variantes de fixture (`Selector`) + JSON editável, com o erro de
  * shape inline (`FieldStatus`).
  * `/charts/:id` (live): o JSON é o resultado REAL da query, então vira
@@ -17,6 +23,7 @@ import { Badge } from '@astryxdesign/core/Badge';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { SHAPE_LABEL, type CatalogEntry } from '../../lib/catalog-entries';
 import type { FixtureVariant } from '../../lib/block-fixtures';
+import { PlaygroundVariables } from './playground-variables';
 import type { UsePlaygroundDataReturn } from './use-playground-data';
 
 export interface PlaygroundDataPanelProps {
@@ -37,25 +44,28 @@ export function PlaygroundDataPanel({
   isFetching,
   onRunQuery,
 }: PlaygroundDataPanelProps) {
-  if (!entry.shape) {
-    return (
-      <VStack gap={3}>
-        <Heading level={4}>Dados</Heading>
-        <Text type="supporting">
-          Bloco narrativo — não consome dados. O conteúdo vem das propriedades.
-        </Text>
-      </VStack>
-    );
-  }
-
   const activeVariant = variants.find((v) => v.id === data.variantId);
+  const hasContract = entry.hasData;
 
   return (
     <VStack gap={3}>
       <HStack gap={2} justify="between" vAlign="center">
         <Heading level={4}>Dados</Heading>
-        <Badge variant="neutral" label={SHAPE_LABEL[entry.shape]} />
+        <Badge
+          variant={hasContract ? 'neutral' : 'blue'}
+          label={
+            hasContract && entry.shape ? SHAPE_LABEL[entry.shape] : 'Só para variáveis'
+          }
+        />
       </HStack>
+
+      {hasContract ? null : (
+        <Text type="supporting">
+          Este bloco não consome dados: ele desenha o que está nas propriedades. O JSON
+          abaixo NÃO é validado e serve só para alimentar as variáveis dos textos do
+          cabeçalho.
+        </Text>
+      )}
 
       {data.liveError ? (
         <Banner
@@ -115,6 +125,12 @@ export function PlaygroundDataPanel({
             rows={12}
             hasSpellCheck={false}
             value={data.dataText}
+            placeholder={'{ "total": 1234, "cliente": "ACME" }'}
+            description={
+              hasContract
+                ? undefined
+                : 'Cada chave vira uma variável: {"total": 1234} habilita {{total}}.'
+            }
             status={data.dataError ? { type: 'error' } : undefined}
             onChange={data.setDataText}
           />
@@ -123,15 +139,23 @@ export function PlaygroundDataPanel({
             <FieldStatus
               type="error"
               variant="detached"
-              message={`Inválido para o shape "${entry.shape}": ${data.dataError}`}
+              message={
+                hasContract && entry.shape
+                  ? `Inválido para o shape "${entry.shape}": ${data.dataError}`
+                  : `JSON inválido: ${data.dataError}`
+              }
             />
           ) : (
             <Text type="supporting">
-              JSON válido — o preview ao lado usa exatamente este dado.
+              {hasContract
+                ? 'JSON válido — o preview ao lado usa exatamente este dado.'
+                : 'JSON válido — as variáveis abaixo já valem nos textos do cabeçalho.'}
             </Text>
           )}
         </>
       )}
+
+      <PlaygroundVariables data={data.parsedData} />
     </VStack>
   );
 }

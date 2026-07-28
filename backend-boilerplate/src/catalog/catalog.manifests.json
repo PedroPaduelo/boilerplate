@@ -166,6 +166,40 @@
             ],
             "default": "chart-1",
             "description": "Cor base da(s) série(s), usada quando palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "number",
+            "description": "Formato PT-BR do valor exibido no tooltip. ENUM FECHADO (sem input livre). Default \"number\" (contagem): escolha \"BRL\"/\"compactBRL\" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado. Ignorado quando type=\"percent\".",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\"). DEFAULT — use para CONTAGEM."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
           }
         }
       },
@@ -204,10 +238,11 @@
         "showLegend": true,
         "showGridLines": true,
         "palette": "multi",
-        "accent": "chart-1"
+        "accent": "chart-1",
+        "valueFormat": "number"
       },
       "maxRows": 5000,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "background_beams",
@@ -320,8 +355,8 @@
               "compactNumber",
               "percent"
             ],
-            "default": "compactBRL",
-            "description": "Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre): BRL, compactBRL, number, compactNumber, percent.",
+            "default": "number",
+            "description": "Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre): BRL, compactBRL, number, compactNumber, percent. Default \"number\" (contagem): escolha \"BRL\"/\"compactBRL\" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.",
             "oneOf": [
               {
                 "const": "BRL",
@@ -329,11 +364,11 @@
               },
               {
                 "const": "compactBRL",
-                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\"). DEFAULT."
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
               },
               {
                 "const": "number",
-                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\"). DEFAULT — use para CONTAGEM."
               },
               {
                 "const": "compactNumber",
@@ -391,11 +426,11 @@
         "stacked": false,
         "accent": "chart-1",
         "palette": "single",
-        "valueFormat": "compactBRL"
+        "valueFormat": "number"
       },
       "minColumns": 1,
       "maxRows": 5000,
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     {
       "type": "bar_list",
@@ -440,6 +475,40 @@
             "default": "chart-1",
             "description": "Cor das barras em palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
           },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "number",
+            "description": "Formato PT-BR do valor exibido ao lado de cada barra. ENUM FECHADO (sem input livre). Default \"number\" (contagem): escolha \"BRL\"/\"compactBRL\" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"11.274\"). DEFAULT — use para CONTAGEM."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
+          },
           "textColor": {
             "type": "string",
             "description": "OBSOLETA (mantida por compatibilidade): não tem efeito. O rótulo agora fica FORA da barra e usa as cores de texto do design system, que já garantem contraste sobre qualquer superfície — não há mais texto sobre a cor da barra para corrigir."
@@ -472,10 +541,11 @@
       "defaultProps": {
         "sortOrder": "descending",
         "palette": "single",
-        "accent": "chart-1"
+        "accent": "chart-1",
+        "valueFormat": "number"
       },
       "maxRows": 5000,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "bento_grid",
@@ -836,8 +906,8 @@
               "compactNumber",
               "percent"
             ],
-            "default": "compactBRL",
-            "description": "Formato PT-BR do valor exibido no centro do anel (total) e na legenda. ENUM FECHADO (sem input livre).",
+            "default": "number",
+            "description": "Formato PT-BR do valor exibido no centro do anel (total) e na legenda. ENUM FECHADO (sem input livre). Default \"number\" (contagem): escolha \"BRL\"/\"compactBRL\" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.",
             "oneOf": [
               {
                 "const": "BRL",
@@ -845,11 +915,11 @@
               },
               {
                 "const": "compactBRL",
-                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\"). DEFAULT."
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
               },
               {
                 "const": "number",
-                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\"). DEFAULT — use para CONTAGEM."
               },
               {
                 "const": "compactNumber",
@@ -890,9 +960,9 @@
         "showLegend": true,
         "palette": "single",
         "accent": "chart-1",
-        "valueFormat": "compactBRL"
+        "valueFormat": "number"
       },
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "expandable_cards",
@@ -983,7 +1053,7 @@
         "properties": {
           "stageLabel": {
             "type": "string",
-            "description": "Rótulo da etapa no header (ex.: \"N1 · MOMENTO LANÇAMENTO\")."
+            "description": "Rótulo da etapa no header (ex.: \"N1 · MOMENTO LANÇAMENTO\"). Aceita Markdown inline e {{variavel}}."
           },
           "accent": {
             "type": "string",
@@ -995,7 +1065,7 @@
               "violet",
               "slate"
             ],
-            "description": "Cor da etapa: escolhe qual RAMPA sequencial do design system pinta a barra de participação (os segmentos vão do tom mais escuro ao mais claro, porque são partes ordenadas do mesmo total). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações. Os textos seguem as cores de leitura do sistema, para não perder contraste."
+            "description": "Cor da etapa: escolhe qual RAMPA sequencial do design system pinta a barra de participação (os segmentos vão do tom mais claro ao mais escuro, porque são partes ordenadas do mesmo total; o hover escurece um passo). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações. Os textos seguem as cores de leitura do sistema, para não perder contraste."
           },
           "defaultOpen": {
             "type": "boolean",
@@ -1003,7 +1073,11 @@
           },
           "barLabel": {
             "type": "string",
-            "description": "Legenda exibida sob a barra (ex.: \"valor total lançado (VL_ORIGINAL)\")."
+            "description": "Legenda exibida sob a barra (ex.: \"valor total lançado (VL_ORIGINAL)\"). Aceita Markdown inline e {{variavel}}."
+          },
+          "emptyMessage": {
+            "type": "string",
+            "description": "Mensagem exibida quando a consulta não devolve nenhuma linha com papel reconhecido. Default: \"Sem dados para esta etapa\". Aceita Markdown inline e {{variavel}}."
           },
           "valueFormat": {
             "type": "string",
@@ -1163,8 +1237,8 @@
               "compactNumber",
               "percent"
             ],
-            "default": "compactBRL",
-            "description": "Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre).",
+            "default": "number",
+            "description": "Formato PT-BR do valor exibido no eixo e no tooltip. ENUM FECHADO (sem input livre). Default \"number\" (contagem): escolha \"BRL\"/\"compactBRL\" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.",
             "oneOf": [
               {
                 "const": "BRL",
@@ -1172,11 +1246,11 @@
               },
               {
                 "const": "compactBRL",
-                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\"). DEFAULT."
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
               },
               {
                 "const": "number",
-                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\")."
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\"). DEFAULT — use para CONTAGEM."
               },
               {
                 "const": "compactNumber",
@@ -1216,11 +1290,11 @@
       "defaultProps": {
         "palette": "single",
         "accent": "chart-1",
-        "valueFormat": "compactBRL"
+        "valueFormat": "number"
       },
       "minColumns": 1,
       "maxRows": 5000,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "hover_card",
@@ -1543,6 +1617,40 @@
             ],
             "default": "chart-1",
             "description": "Cor base da(s) série(s), usada quando palette=\"single\". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão."
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "compactBRL",
+              "number",
+              "compactNumber",
+              "percent"
+            ],
+            "default": "number",
+            "description": "Formato PT-BR do valor exibido no tooltip. ENUM FECHADO (sem input livre). Default \"number\" (contagem): escolha \"BRL\"/\"compactBRL\" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado. O eixo Y continua compacto, para caber.",
+            "oneOf": [
+              {
+                "const": "BRL",
+                "description": "formatBRL — moeda BRL completa (ex.: \"R$ 2.609.946.157,73\")."
+              },
+              {
+                "const": "compactBRL",
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 2,61 bi\")."
+              },
+              {
+                "const": "number",
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"1.234.567,8\"). DEFAULT — use para CONTAGEM."
+              },
+              {
+                "const": "compactNumber",
+                "description": "formatCompactNumberBR — número compacto (ex.: \"2,61 bi\")."
+              },
+              {
+                "const": "percent",
+                "description": "formatPercentBR — percentual a partir de FRAÇÃO (ex.: 0.125 → \"12,5%\")."
+              }
+            ]
           }
         }
       },
@@ -1577,10 +1685,11 @@
         "smooth": true,
         "area": true,
         "palette": "multi",
-        "accent": "chart-1"
+        "accent": "chart-1",
+        "valueFormat": "number"
       },
       "maxRows": 5000,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "metric_glow",
@@ -1605,8 +1714,8 @@
               "compactNumber",
               "percent"
             ],
-            "default": "compactBRL",
-            "description": "Formato PT-BR do valor em destaque. ENUM FECHADO (sem input livre). Substitui a formatação crua antiga.",
+            "default": "number",
+            "description": "Formato PT-BR do valor em destaque. ENUM FECHADO (sem input livre). Default \"number\" (contagem): escolha \"BRL\"/\"compactBRL\" QUANDO A MEDIDA FOR DINHEIRO — o bloco não adivinha a natureza do dado.",
             "oneOf": [
               {
                 "const": "BRL",
@@ -1614,11 +1723,11 @@
               },
               {
                 "const": "compactBRL",
-                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 124,5 mil\"). DEFAULT."
+                "description": "formatCompactBRL — moeda BRL compacta (ex.: \"R$ 124,5 mil\")."
               },
               {
                 "const": "number",
-                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"124.500\")."
+                "description": "formatNumberBR — número PT-BR com milhar (ex.: \"124.500\"). DEFAULT — use para CONTAGEM."
               },
               {
                 "const": "compactNumber",
@@ -1693,12 +1802,12 @@
         }
       },
       "defaultProps": {
-        "valueFormat": "compactBRL",
+        "valueFormat": "number",
         "accent": "chart-1",
         "showDelta": true,
         "deltaPolarity": "up-good"
       },
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "type": "mobius_loop",
@@ -1768,7 +1877,7 @@
       "kind": "chart",
       "name": "Barra de Progresso",
       "description": "Progresso de um valor sobre uma escala (ex.: 68 de 100). Ótimo para metas.",
-      "source": "astryx:progress-bar",
+      "source": "custom",
       "propsSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1788,7 +1897,7 @@
               "success"
             ],
             "default": "default",
-            "description": "Cor SEMÂNTICA do preenchimento, mapeada para as variantes do design system: default = destaque, neutral = neutra, warning = atenção, error = erro, success = sucesso. É SOBRESCRITA por `accent` quando este vier preenchido."
+            "description": "Cor SEMÂNTICA do preenchimento: default = verde da referência, neutral = neutra, warning = atenção, error = erro, success = sucesso. É SOBRESCRITA por `accent` quando este vier preenchido."
           },
           "accent": {
             "type": "string",
@@ -1800,7 +1909,7 @@
               "chart-5",
               "primary"
             ],
-            "description": "Cor de destaque. Quando preenchida, SOBRESCREVE o `variant` e a barra usa a cor de destaque do tema — a barra do design system é pintada por variante semântica, não por cor arbitrária. Valores antigos continuam aceitos."
+            "description": "Cor de destaque. Quando preenchida, SOBRESCREVE o `variant` e a barra é pintada com a cor de série correspondente do tema de gráfico. Valores antigos continuam aceitos."
           },
           "showValue": {
             "type": "boolean",
@@ -1932,7 +2041,17 @@
               "primary"
             ],
             "default": "chart-1",
-            "description": "Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
+            "description": "Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). No valor PADRÃO (`chart-1`) o medidor usa o par de cores do próprio layout (roxo, no medidor semicircular); qualquer outro valor pinta o arco com a cor escolhida. Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema."
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "semicircle",
+              "radial",
+              "dashed"
+            ],
+            "default": "semicircle",
+            "description": "Layout do medidor: `semicircle` (meia-lua de -90° a +90°, o padrão), `radial` (barra radial de volta completa, com legenda embaixo) ou `dashed` (arco de 270° com a barra de valor pontilhada). Só muda o desenho — escala, unidade e leitura central são as mesmas."
           }
         }
       },

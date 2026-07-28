@@ -10,11 +10,36 @@
  *    dado do DS; `palette: "multi"` cicla a paleta por item;
  *  - a lista já é texto (`<ol>` com rótulo e valor), então não precisa de
  *    equivalente acessível extra — leitor de tela lê a linha inteira.
+ *
+ * ---------------------------------------------------------------------------
+ * CONFORMIDADE VISUAL (§4 do briefing — um item por linha da tabela)
+ * ---------------------------------------------------------------------------
+ * A referência não tem "ranking em DOM": o layout é a BARRA HORIZONTAL (§8)
+ * com o par rótulo/valor da LEGENDA PRÓPRIA (§05-3). Registro em NOTAS.md.
+ *
+ *  1. Grade só horizontal, tracejada 3 ....... N/A — ranking em DOM, sem grade.
+ *  2. Eixos sem linha e sem marcações ........ N/A — sem eixo; o rótulo é texto.
+ *  3. Texto dos eixos 12px/400/#919EAB ....... N/A — o par rótulo/valor segue a
+ *     legenda própria (§05-3): 11,375px/500 e peso 600 no degrau de 14px.
+ *  4. Linha 2,5px, curva suave, sem pontos ... N/A — não há linha.
+ *  5. Coluna raio 4px no topo, largura 48% ... adaptado da §8: raio 2px
+ *     (`geometry.barRadiusFlat`), traço 0 e altura de 30% da faixa da linha
+ *     (`geometry.hBarWidth`); trilho em `chrome('trackLight')`.
+ *  6. Hover ESCURECE ......................... `darkenColor` sobre a cor da
+ *     barra, disparado pelo hover da linha inteira.
+ *  7. Tooltip branco 90% com blur ............ N/A — o valor já está escrito ao
+ *     lado da barra; não há nada que o tooltip revelaria.
+ *  + Cor: `palette.primary80` (série única, §2.1) / ciclo da paleta em "multi".
+ *  + Animação de entrada: N/A — não há desenho a percorrer. O único movimento é
+ *    a transição de cor do hover, com a duração de `palette.motion`.
+ *  + Estados: esqueleto da base (`ChartSkeleton`), vazio em `EmptyState`, erro
+ *    em `ChartFrame state="error"`. A lista NÃO é `role="img"` — é texto.
  */
 import type { CategoricalData } from '@dashboards/contracts';
-import { BarList, chartAccentColor } from '@/shared/ui';
+import { BarList, ChartFrame, chartAccentColor } from '@/shared/ui';
 import type { BarListItem } from '@/shared/ui';
 import type { ValueFormat } from '@/shared/lib/format';
+import { CHART_BODY_HEIGHT } from '../../lib/block-sizing';
 import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
@@ -55,6 +80,21 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({
     color: accent,
   }));
 
+  // Erro é BANNER, não uma lista vazia com o texto do erro no lugar da
+  // mensagem: quem desenha os estados do catálogo é o `ChartFrame` da base.
+  if (state === 'error') {
+    return (
+      <ChartFrame
+        label={manifest.name}
+        height={CHART_BODY_HEIGHT.categorical}
+        state="error"
+        errorMessage={error}
+      >
+        {null}
+      </ChartFrame>
+    );
+  }
+
   return (
     <BarList
       data={rows}
@@ -62,9 +102,6 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({
       hasColorByItem={props.palette === 'multi'}
       valueFormatter={formatValue}
       isLoading={state === 'loading' || state === 'skeleton'}
-      emptyMessage={
-        state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
-      }
     />
   );
 };

@@ -13,11 +13,28 @@ export interface Takeaway {
   text: string;
 }
 
+/**
+ * Estado do bloco no preview. Espelha `BlockFrameState`/`ChartFrameState` — o
+ * contrato comum diz que TODO bloco cobre os cinco, então o playground precisa
+ * conseguir mostrar os cinco.
+ */
+export type PlaygroundState = 'success' | 'loading' | 'empty' | 'error' | 'forbidden';
+
+/**
+ * Campos de texto do cabeçalho. Todos aceitam Markdown e `{{variavel}}`, e é
+ * neles que a ajuda de variáveis insere a chave clicada.
+ */
+export type PlaygroundTextField = 'title' | 'subtitle' | 'description' | 'emptyMessage';
+
 /** Valores iniciais para semear o playground (usado pela tela do gráfico). */
 export interface PlaygroundSeed {
   props?: Record<string, unknown>;
   title?: string;
   subtitle?: string;
+  /** Texto de ajuda do cabeçalho. Aceita Markdown e `{{variavel}}`. */
+  description?: string;
+  /** Mensagem do estado vazio. Aceita Markdown e `{{variavel}}`. */
+  emptyMessage?: string;
   query?: string;
   durationMs?: number;
   takeaways?: Takeaway[];
@@ -36,17 +53,23 @@ export interface LiveData {
 
 /**
  * Estado editável do playground. É o que a tela do gráfico persiste no draft
- * (título/props/query) — `dataText` só vale para o preview.
+ * (título/props/query) — `dataText` e `previewState` só valem para o preview.
  */
 export interface PlaygroundConfig {
   props: Record<string, unknown>;
   title: string;
   subtitle: string;
+  /** Texto de ajuda do cabeçalho (vai para `block.description`). */
+  description: string;
+  /** Mensagem do estado vazio (vai para `block.emptyMessage`). */
+  emptyMessage: string;
   query: string;
   /** `''` quando não informado (input numérico vazio). */
   durationMs: number | '';
   takeaways: Takeaway[];
   showSql: boolean;
+  /** Estado simulado no preview — não é persistido, só desenha. */
+  previewState: PlaygroundState;
 }
 
 /** Snapshot reportado via `onChange` — config + o JSON de dados do preview. */

@@ -281,8 +281,19 @@ export const CHART_GEOMETRY = {
   barWidthMd: 0.6,
   /** Largura da coluna < 600px. §11 */
   barWidthSm: 0.8,
+  /** Largura da coluna SIMPLES — o §4 estreita para 40%. */
+  barWidthSingle: 0.4,
+  /** Largura da coluna EMPILHADA — o §6 estreita para 36%. */
+  barWidthStacked: 0.36,
+  /**
+   * Respiro entre colunas vizinhas do mesmo grupo (px). No original é um traço
+   * de 2px TRANSPARENTE (§5); no recharts, `barGap`.
+   */
+  barGroupGap: 2,
   /** Altura da barra horizontal (fração da faixa). §8 */
   hBarWidth: 0.3,
+  /** Traço das colunas/barras: a referência zera em §4, §6 e §8. */
+  barStrokeWidth: 0,
   /** Tracejado da grade. §7 */
   gridDash: '3 3',
   /** Grade vertical desligada. §7 */
@@ -305,6 +316,33 @@ export const CHART_GEOMETRY = {
   tooltipMinWidth: 80,
   /** Desfoque do tooltip. §05-1 */
   tooltipBlur: 6,
+
+  /* --- Preenchimento (§5) ------------------------------------------------ */
+  /** Gradiente vertical da área: 0.4 no topo → 0 na base, paradas 0 e 100. */
+  areaGradient: { opacityFrom: 0.4, opacityTo: 0, from: '0%', to: '100%' },
+  /**
+   * Área de CONTEXTO sob a linha (§1 não pede preenchimento, mas o catálogo
+   * expõe `area` como prop): bem discreta, para não competir com o traço.
+   */
+  areaContextOpacity: 0.12,
+
+  /* --- Medidores (§12, §13) ---------------------------------------------- */
+  /** Tracejado da barra de valor do medidor tracejado (§13). */
+  gaugeDash: 4,
+
+  /* --- Mini-gráfico / sparkline (§04-2.3, §04-2.4) ----------------------- */
+  /** Raio da coluna do mini-gráfico de card de resumo. */
+  sparkBarRadius: 1.5,
+  /** Largura da coluna do mini-gráfico (fração da faixa). */
+  sparkBarWidth: 0.64,
+  /** Contorno do marcador no mini-gráfico: zero. */
+  sparkMarkerStrokeWidth: 0,
+
+  /* --- Dispersão (§15) ---------------------------------------------------- */
+  /** Divisões do eixo X da dispersão (o Y segue `yTickCount`). */
+  scatterXTickCount: 8,
+  /** Casas decimais do rótulo do eixo X da dispersão. */
+  scatterAxisDecimals: 1,
 } as const;
 
 /**
@@ -316,6 +354,12 @@ export const CHART_MARGIN = { top: 20, right: 20, bottom: 0, left: 0 } as const;
 
 /** Margem de mini-gráfico (`sparkline`): 6px em todos os lados. §04-2.3 */
 export const CHART_SPARK_MARGIN = { top: 6, right: 6, bottom: 6, left: 6 } as const;
+
+/**
+ * Margem ZERO — o modo `sparkline` dos circulares (pizza, rosca, medidores)
+ * remove eixos, grade E paddings (`03-tipos-de-grafico.md` §9–§13).
+ */
+export const CHART_NO_MARGIN = { top: 0, right: 0, bottom: 0, left: 0 } as const;
 
 /** Largura reservada ao eixo Y (rótulos compactos cabem em 44px). */
 export const Y_AXIS_WIDTH = 44;
@@ -333,6 +377,8 @@ export const CHART_TYPOGRAPHY = {
   centerValue: { size: 17.5, weight: 700 },
   /** Rótulo "Total" central. */
   centerTotal: { size: 12.25, weight: 600 },
+  /** Rótulo "Total" do medidor semicircular — o §12 o afina para 10,5/400. */
+  gaugeTotal: { size: 10.5, weight: 400 },
   /** Legenda própria (fora do gráfico) — rótulo. */
   ownLegend: { size: 11.375, weight: 500 },
   /** Legenda própria — valor. */

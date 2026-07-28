@@ -1,28 +1,53 @@
 /**
  * Bloco `donut` (shape 'categorical') — composição de um total sobre o
- * `DonutChart` de `@/shared/ui`, com a leitura numérica na legenda própria
- * (`donut-legend.tsx`).
+ * `DonutChart` de `@/shared/ui`.
  *
- * O que mudou na migração:
- *  - o anel, o tooltip, a leitura central e os estados vêm da base; sumiram o
- *    `strokeDasharray` à mão, o hover manual e o ramp de opacidade;
+ * ---------------------------------------------------------------------------
+ * CONFORMIDADE VISUAL (`docs/charts/BRIEFING-SUBAGENTE.md` §4)
+ * ---------------------------------------------------------------------------
+ * 1. Grade só horizontal, tracejada 3 ...... N/A — circular é `sparkline`: sem
+ *    grade e sem eixos (`03-tipos-de-grafico.md` §9/§10).
+ * 2. Eixos sem linha e sem marcações ....... N/A — idem.
+ * 3. Texto dos eixos 12px/400/#919EAB ...... N/A — não há eixo.
+ * 4. Linha 2,5px, curva suave, sem pontos .. N/A — não há linha.
+ * 5. Coluna com raio 4px, largura 48% ...... N/A — não há coluna.
+ * 6. Hover ESCURECE ........................ OK — a fatia sob o cursor troca
+ *    para `palette.hoverAt()` / `darkenColor()` (`DonutChart`).
+ * 7. Tooltip branco 90% com blur ........... OK — `ChartTooltip` da base.
+ * + Animação 360ms .......................... OK — `chartAnimationProps`.
+ * + Circular sem eixo/grade, legenda fora ... OK — `ChartLegends` no rodapé do
+ *   `ChartFrame`, nunca a legenda do motor.
+ * + Cores da proporção (§9) ................. OK — verde escuro a 80%, âmbar,
+ *   azul petróleo e vermelho, nesta ordem, quando `palette` não fixa uma cor.
+ * + 240 × 240 quadrado e centralizado ....... OK — `CHART_HEIGHT.circular` +
+ *   `ChartFrame isCircular`.
+ * + Furo 72% do raio ........................ OK — `palette.geometry.donutHole`.
+ * + Rótulos centrais 17,5/700 e 12,25/600 ... PARCIAL — `ChartCenterLabel` da
+ *   base (17,5px pelo token `--font-size-xl`; peso e o 12,25px do "Total"
+ *   dependem de mudança na base — pedido em `docs/charts/PEDIDOS-BASE.md`).
+ *
+ * ---------------------------------------------------------------------------
+ * O que mudou nesta repaginação
+ * ---------------------------------------------------------------------------
+ *  - o anel virou o desenho da referência (quadrado, sparkline, furo 72%,
+ *    traço 0) e deixou de disputar espaço com a legenda numa `HStack`;
+ *  - a legenda passou a ser a `ChartLegends` da base, desenhada pelo próprio
+ *    `DonutChart` — quem conhece a cor da fatia é ele. O que continuou do
+ *    bloco é o TEXTO do valor ("62 (62%)"), em `donut-legend.tsx`;
+ *  - `state === 'error'` deixou de virar "estado vazio com texto de erro" e
+ *    passa ao `ChartFrame`, que tem o aviso de erro de verdade;
  *  - COR: `accent` continua aceitando o vocabulário antigo, mas vira token de
- *    dado do DS. Em `palette: "multi"` a paleta categórica cicla — é ela que
- *    garante fatias vizinhas distinguíveis;
- *  - a legenda com valor e percentual (o que o legado tinha de melhor) ficou,
- *    agora como lista de texto legível por leitor de tela — por isso o bloco
- *    não precisa de tabela oculta.
+ *    dado do DS. Em `palette: "multi"` a sequência da proporção cicla — é ela
+ *    que garante fatias vizinhas distinguíveis.
  */
 import type { CategoricalData } from '@dashboards/contracts';
-import { HStack } from '@astryxdesign/core/HStack';
-import { VStack } from '@astryxdesign/core/VStack';
-import { DonutChart, chartAccentColor } from '@/shared/ui';
+import { CHART_HEIGHT, DonutChart, chartAccentColor } from '@/shared/ui';
 import type { ChartPoint } from '@/shared/ui';
 import { formatPercentBR, type ValueFormat } from '@/shared/lib/format';
 import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
-import { DonutLegend } from './donut-legend';
+import { donutLegendValue } from './donut-legend';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
 
@@ -39,9 +64,8 @@ type DonutProps = {
 /** Elemento de `CategoricalData` anotado localmente (no FE resolve p/ any). */
 type CategoryPoint = { label: string; value: number | null };
 
-/** Largura reservada ao anel — geometria do desenho, não espaçamento. */
-const RING_WIDTH = 220;
-const RING_HEIGHT = 200;
+/** Rótulo padrão do vão central, quando o bloco não declara outro. */
+const CENTER_LABEL = 'Total';
 
 export const Component: BlockComponent<DonutProps, CategoricalData> = ({
   props,
@@ -52,8 +76,9 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({
   const items = (data ?? []) as CategoryPoint[];
   const formatValue = (value: number) => formatCatalogValue(value, props.valueFormat);
 
-  // `single` pinta todas as fatias com a cor de destaque; nos demais modos a
-  // paleta categórica do DS cicla (é o que distingue uma fatia da outra).
+  // `single` pinta todas as fatias com a cor de destaque; nos demais modos o
+  // anel cicla a sequência da proporção da referência (§9), que é o que
+  // distingue uma fatia da outra.
   const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
   const points: ChartPoint[] = items.map((item) => ({
     label: item.label,
@@ -62,29 +87,21 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({
   }));
 
   const total = points.reduce((sum, point) => sum + point.value, 0);
-  const showLegend = props.showLegend !== false;
 
   return (
-    <HStack gap={5} hAlign="center" vAlign="center" wrap="wrap" width="100%">
-      <VStack width={RING_WIDTH}>
-        <DonutChart
-          data={points}
-          height={RING_HEIGHT}
-          centerValue={formatValue(total)}
-          centerCaption={props.centerLabel ?? 'Total'}
-          showLegend={false}
-          valueFormatter={formatValue}
-          isLoading={state === 'loading' || state === 'skeleton'}
-          emptyMessage={
-            state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
-          }
-          label={manifest.name}
-        />
-      </VStack>
-      {showLegend ? (
-        <DonutLegend data={points} total={total} valueFormatter={formatValue} />
-      ) : null}
-    </HStack>
+    <DonutChart
+      data={points}
+      height={CHART_HEIGHT.circular}
+      centerValue={formatValue(total)}
+      centerCaption={props.centerLabel ?? CENTER_LABEL}
+      showLegend={props.showLegend !== false}
+      valueFormatter={formatValue}
+      legendValueFormatter={donutLegendValue(total, formatValue)}
+      state={state === 'error' ? 'error' : undefined}
+      errorMessage={error}
+      isLoading={state === 'loading' || state === 'skeleton'}
+      label={manifest.name}
+    />
   );
 };
 

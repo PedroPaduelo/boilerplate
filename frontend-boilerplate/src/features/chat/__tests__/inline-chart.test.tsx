@@ -15,6 +15,7 @@
 import { describe, expect, it } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
+import { CHART_BODY_HEIGHT } from '@/shared/render-engine/lib/block-sizing';
 import type { ChatChartPayload } from '../transport';
 import { InlineChart, InlineCharts } from '../components/inline-chart';
 
@@ -78,7 +79,9 @@ describe('InlineChart (card do gráfico na resposta)', () => {
 
   it('reserva a altura final do corpo desde o esqueleto', () => {
     // Mesmo SEM dados (estado de carregamento), a caixa já tem a altura do
-    // gráfico pronto — é o que evita o pulo quando o dado chega.
+    // gráfico pronto — é o que evita o pulo quando o dado chega. O número vem
+    // de `CHART_BODY_HEIGHT` (não é cravado aqui): a repaginação o subiu para
+    // acomodar os 320px de desenho da referência + padding + legenda.
     const carregando = chart({
       result: { state: 'running' },
     });
@@ -87,7 +90,7 @@ describe('InlineChart (card do gráfico na resposta)', () => {
     const body = container.querySelector('[data-slot="inline-chart-body"]');
 
     expect(body).not.toBeNull();
-    expect(body?.getAttribute('style')).toContain('312px');
+    expect(body?.getAttribute('style')).toContain(`${CHART_BODY_HEIGHT.series}px`);
   });
 
   it('cartão de número não ganha moldura nem título repetido', () => {

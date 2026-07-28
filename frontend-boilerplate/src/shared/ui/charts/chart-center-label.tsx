@@ -3,7 +3,16 @@
  * círculo de progresso). O texto precisa ficar DENTRO do SVG do recharts para
  * acompanhar o centro calculado por ele; fora dali só sobraria posicionamento
  * absoluto no DOM, que quebra ao redimensionar. Por isso é `<text>` — e, como
- * manda o contrato, com cor e tamanho vindos de token via `useChartPalette`.
+ * manda o contrato, com cor e tamanho vindos do tema de gráfico.
+ *
+ * TIPOGRAFIA — `02-configuracao-base.md` §10 (rótulos centrais da rosca), que o
+ * medidor radial herda:
+ *   valor    17,5px / 700 / cor de ênfase   (`CHART_TYPOGRAPHY.centerValue`)
+ *   "Total"  12,25px / 600 / cor de rótulo  (`CHART_TYPOGRAPHY.centerTotal`)
+ *
+ * Antes o valor saía de `--font-size-xl` (21px) com peso 600 e a legenda dos
+ * 12px do eixo: os três anéis do catálogo liam a mesma coisa em dois corpos
+ * diferentes do que a referência pede.
  *
  * Compartilhado pelos três anéis para não repetir o mesmo `<text>` três vezes.
  */
@@ -34,6 +43,17 @@ export interface ChartCenterLabelProps {
   palette: ChartPalette;
   /** Cor do valor. Sem isto, usa a cor de texto primária do tema. */
   tone?: string;
+  /** Cor da legenda. Sem isto, usa a cor de rótulo do tema. */
+  captionTone?: string;
+  /**
+   * Tamanho do valor, em px. Sem isto, os 17,5px da referência. A barra radial
+   * (§11) é o único tipo que reduz esse corpo.
+   */
+  valueSize?: number;
+  /** Tamanho da legenda, em px. Sem isto, os 12,25px da referência. */
+  captionSize?: number;
+  /** Peso da legenda. Sem isto, o 600 da referência. */
+  captionWeight?: number;
 }
 
 /** Valor (e legenda opcional) centralizados no vão de um anel. */
@@ -43,11 +63,16 @@ export function ChartCenterLabel({
   caption,
   palette,
   tone,
+  captionTone,
+  valueSize,
+  captionSize,
+  captionWeight,
 }: ChartCenterLabelProps) {
   const center = readCenter(viewBox);
   if (!center) return null;
 
   const valueY = caption ? center.cy - STACK_OFFSET : center.cy;
+  const { centerValue, centerTotal } = palette.typography;
 
   return (
     <g data-slot="chart-center-label">
@@ -57,8 +82,8 @@ export function ChartCenterLabel({
         textAnchor="middle"
         dominantBaseline="central"
         fill={tone ?? palette.chrome('emphasis')}
-        fontSize={palette.token('--font-size-xl')}
-        fontWeight={palette.token('--font-weight-semibold')}
+        fontSize={valueSize ?? centerValue.size}
+        fontWeight={centerValue.weight}
       >
         {value}
       </text>
@@ -68,8 +93,9 @@ export function ChartCenterLabel({
           y={center.cy + STACK_OFFSET}
           textAnchor="middle"
           dominantBaseline="central"
-          fill={palette.chrome('label')}
-          fontSize={palette.axisFontSize}
+          fill={captionTone ?? palette.chrome('label')}
+          fontSize={captionSize ?? centerTotal.size}
+          fontWeight={captionWeight ?? centerTotal.weight}
         >
           {caption}
         </text>

@@ -2,10 +2,22 @@
  * COMPONENTE PRÓPRIO — o Astryx não tem gráficos. Resolve "tendência ao longo
  * do tempo": uma ou mais linhas, com área opcional sob elas.
  *
- * Substitui `line-chart.tsx` (SVG à mão, 397 linhas, com `ResizeObserver`,
- * spline Catmull-Rom e cor por classe Tailwind). O recharts já mede o
- * container e desenha a curva; sobra o que importa — cor, tipografia e estados
- * saindo dos tokens do DS pelos primitivos compartilhados desta pasta.
+ * ---------------------------------------------------------------------------
+ * LAYOUT: `03-tipos-de-grafico.md` §1 (Linha) da referência de design
+ * ---------------------------------------------------------------------------
+ * O tipo Linha herda a configuração base (grade só horizontal tracejada `3`,
+ * eixos sem linha nem marcação, texto de eixo 12px, hover que ESCURECE,
+ * animação de 360ms com 120ms de atraso por série) e SOBREPÕE quatro coisas:
+ *
+ *   cores        `rgba(0,120,103,.8)` (o verde escuro a 80%, a cor mais
+ *                recorrente do catálogo) e âmbar — as demais séries seguem o
+ *                ciclo da paleta;
+ *   altura       320px (o padrão do catálogo);
+ *   legenda      LIGADA (na base ela vem desligada);
+ *   marcadores   VISÍVEIS, tamanho 6 com contorno de 3 (na base são invisíveis).
+ *
+ * Nenhuma cor, medida, tipografia ou duração é digitada aqui: tudo sai de
+ * `useChartPalette()` e dos props compartilhados de `chart-axes`.
  */
 import {
   Area,
@@ -20,9 +32,11 @@ import {
 import {
   CHART_MARGIN,
   Y_AXIS_WIDTH,
+  chartAnimationProps,
   chartAxisProps,
   chartCursorProps,
   chartGridProps,
+  chartYAxisProps,
 } from './chart-axes';
 import {
   CATEGORY_KEY,
@@ -32,11 +46,20 @@ import {
   seriesKey,
   toChartRows,
 } from './chart-data';
-import { ChartFrame } from './chart-frame';
+import { ChartFrame, type ChartFrameState } from './chart-frame';
 import { ChartLegend } from './chart-legend';
 import { ChartSeriesTooltip } from './chart-series-tooltip';
+import { CHART_GEOMETRY, CHART_HEIGHT } from './chart-theme';
+import { hasVariables, type ChartScope } from './chart-template';
+import { chartPlainText } from './chart-text-html';
 import type { ChartSeries, ChartStateProps, ValueFormatter } from './types';
-import { useChartPalette } from './use-chart-palette';
+import {
+  darkenColor,
+  isChartSeriesColor,
+  useChartPalette,
+  type ChartPalette,
+  type ChartSeriesColor,
+} from './use-chart-palette';
 
 export interface LineChartProps extends ChartStateProps {
   /** Séries desenhadas (uma linha cada). */
@@ -59,48 +82,84 @@ export interface LineChartProps extends ChartStateProps {
   valueFormatter?: ValueFormatter;
   /** Formata os ticks dos eixos. Sem isto, usa `valueFormatter`. */
   axisFormatter?: ValueFormatter;
+  /**
+   * Escopo de `{{variaveis}}` dos textos do gráfico (de `buildChartScope`).
+   * O `ChartFrame` o usa no rótulo acessível e na mensagem de vazio; aqui ele
+   * também alcança rótulo de série, categoria do eixo e título do tooltip.
+   */
+  scope?: ChartScope;
+  /**
+   * Estado do gráfico. `error` troca o desenho pelo aviso do `ChartFrame` —
+   * sem isto, uma falha de consulta apareceria como "sem dados".
+   */
+  state?: ChartFrameState;
+  /** Detalhe do erro exibido quando `state="error"`. */
+  errorMessage?: string;
 }
 
-/** A área sob a linha é só contexto: opacidade baixa para não competir. */
-const AREA_FILL_OPACITY = 0.12;
+/**
+ * Opacidade da área sob a linha. A §1 NÃO prevê preenchimento no tipo Linha —
+ * a prop `showArea` é do produto (o bloco do catálogo a expõe como `area`), e
+ * a área existe só como contexto: opacidade baixa para a linha continuar sendo
+ * o que se lê. Fica aqui, e não no tema, porque nenhum tipo da referência a
+ * define (pedido registrado em `docs/charts/PEDIDOS-BASE.md`).
+ */
+const AREA_FILL_OPACITY = CHART_GEOMETRY.areaContextOpacity;
 
 /** Gráfico de linha com eixos, grade, tooltip e legenda tematizados. */
 export function LineChart({
   series,
   labels,
-  height = 280,
-  isSmooth = false,
+  height = CHART_HEIGHT.default,
+  isSmooth = true,
   showArea = false,
-  showDots = false,
+  showDots = true,
   showGrid = true,
   showLegend = true,
   valueFormatter = formatChartValue,
   axisFormatter,
+  scope,
+  state,
   isLoading,
   emptyMessage,
+  errorMessage,
   label = 'Gráfico de linha',
   summary,
 }: LineChartProps) {
   const palette = useChartPalette();
+
+  // Rótulo de série é texto do bloco: passa pelo contrato comum antes de ser
+  // desenhado (legenda, tooltip e equivalente textual leem daqui).
+  const named = series.map((item) => ({ ...item, label: dataText(item.label, scope) }));
   const isEmpty = isSeriesEmpty(series);
   const rows = toChartRows(series, labels);
   const tickFormatter = axisFormatter ?? valueFormatter;
-  const curve = isSmooth ? 'monotone' : 'linear';
+  const curve = isSmooth ? palette.geometry.curve : 'linear';
+
+  /** Marcador da §1: 6px de raio, contorno de 3px na cor da superfície. */
+  const marker = {
+    r: palette.geometry.markerVisibleSize,
+    stroke: palette.chrome('markerStroke'),
+    strokeWidth: palette.geometry.markerStrokeWidth,
+  };
 
   return (
     <ChartFrame
       label={label}
-      summary={summary ?? describeSeries(series, valueFormatter)}
+      summary={summary ?? describeSeries(named, valueFormatter)}
       height={height}
+      scope={scope}
+      state={state}
       isLoading={isLoading}
       isEmpty={isEmpty}
       emptyMessage={emptyMessage}
+      errorMessage={errorMessage}
       footer={
         showLegend ? (
           <ChartLegend
-            items={series.map((item, index) => ({
+            items={named.map((item, index) => ({
               label: item.label,
-              color: palette.varAt(index, item.color),
+              color: seriesVarAt(palette, index, item.color),
             }))}
           />
         ) : null
@@ -109,11 +168,16 @@ export function LineChart({
       <ResponsiveContainer width="100%" height={height}>
         <ComposedChart data={rows} margin={CHART_MARGIN}>
           {showGrid ? <CartesianGrid {...chartGridProps(palette)} /> : null}
-          <XAxis dataKey={CATEGORY_KEY} {...chartAxisProps(palette)} />
+          {/* Eixo X de categorias (§1): o rótulo é o dado, não uma escala. */}
+          <XAxis
+            dataKey={CATEGORY_KEY}
+            tickFormatter={(value: unknown) => dataText(String(value ?? ''), scope)}
+            {...chartAxisProps(palette)}
+          />
           <YAxis
             width={Y_AXIS_WIDTH}
             tickFormatter={tickFormatter}
-            {...chartAxisProps(palette)}
+            {...chartYAxisProps(palette)}
           />
           <Tooltip
             cursor={chartCursorProps(palette)}
@@ -121,9 +185,9 @@ export function LineChart({
             content={(props) => (
               <ChartSeriesTooltip
                 isActive={props.active}
-                title={String(props.label ?? '')}
+                title={dataText(String(props.label ?? ''), scope)}
                 entries={props.payload ?? undefined}
-                series={series}
+                series={named}
                 palette={palette}
                 format={valueFormatter}
               />
@@ -134,14 +198,14 @@ export function LineChart({
                 <Area
                   key={`area-${seriesKey(index)}`}
                   dataKey={seriesKey(index)}
-                  name={item.label}
+                  name={named[index].label}
                   type={curve}
                   stroke="none"
-                  fill={palette.colorAt(index, item.color)}
+                  fill={seriesColorAt(palette, index, item.color)}
                   fillOpacity={AREA_FILL_OPACITY}
                   legendType="none"
                   tooltipType="none"
-                  isAnimationActive={false}
+                  {...chartAnimationProps(palette, index)}
                 />
               ))
             : null}
@@ -149,16 +213,79 @@ export function LineChart({
             <Line
               key={seriesKey(index)}
               dataKey={seriesKey(index)}
-              name={item.label}
+              name={named[index].label}
               type={curve}
-              stroke={palette.colorAt(index, item.color)}
-              strokeWidth={2}
-              dot={showDots ? { r: 2.5, strokeWidth: 0 } : false}
-              activeDot={{ r: 4, stroke: palette.chrome('surface'), strokeWidth: 2 }}
+              stroke={seriesColorAt(palette, index, item.color)}
+              strokeWidth={palette.geometry.lineWidth}
+              strokeLinecap={palette.geometry.lineCap}
+              dot={
+                showDots
+                  ? { ...marker, fill: seriesColorAt(palette, index, item.color) }
+                  : false
+              }
+              // Hover ESCURECE (a maioria das libs clareia) — §4 da base.
+              activeDot={{ ...marker, fill: seriesHoverAt(palette, index, item.color) }}
+              {...chartAnimationProps(palette, index)}
             />
           ))}
         </ComposedChart>
       </ResponsiveContainer>
     </ChartFrame>
   );
+}
+
+/**
+ * Cor RESOLVIDA da série `index` (para dentro do SVG).
+ *
+ * A §1 troca a PRIMEIRA cor do ciclo pelo verde escuro a 80%
+ * (`rgba(0,120,103,.8)`) e mantém o resto — a 2ª série continua sendo o âmbar
+ * do ciclo. Cor explícita na série vence sempre (é o modo `single` do bloco).
+ */
+function seriesColorAt(
+  palette: ChartPalette,
+  index: number,
+  override?: ChartSeriesColor,
+): string {
+  if (isChartSeriesColor(override)) return palette.colorAt(index, override);
+  return index === 0 ? palette.primary80 : palette.colorAt(index);
+}
+
+/**
+ * Cor da série `index` para o DOM (legenda). `var(--token)` sempre que a cor
+ * vem do ciclo; o verde a 80% da §1 é token + opacidade, e por isso só existe
+ * na forma resolvida que o `useChartPalette` calcula.
+ */
+function seriesVarAt(
+  palette: ChartPalette,
+  index: number,
+  override?: ChartSeriesColor,
+): string {
+  if (isChartSeriesColor(override)) return palette.varAt(index, override);
+  return index === 0 ? palette.primary80 : palette.varAt(index);
+}
+
+/**
+ * Cor do ponto ATIVO (hover): a da série, escurecida. Para cores do ciclo é
+ * exatamente `palette.hoverAt(i)`; o verde a 80% da §1 não está no ciclo,
+ * então escurece pelo mesmo fator, com o mesmo utilitário do tema.
+ */
+function seriesHoverAt(
+  palette: ChartPalette,
+  index: number,
+  override?: ChartSeriesColor,
+): string {
+  if (isChartSeriesColor(override)) return palette.hoverAt(index, override);
+  return index === 0 ? darkenColor(palette.primary80) : palette.hoverAt(index);
+}
+
+/**
+ * Texto DESENHADO a partir do dado (rótulo de série, categoria do eixo, título
+ * do tooltip). Passa pelo contrato comum de `{{interpolação}}`, mas só quando o
+ * texto realmente tem variáveis: um rótulo vindo da consulta (`pix_enviado`,
+ * `2026-01`) não pode perder caractere para a remoção de marcação do markdown.
+ * Texto CONFIGURADO do bloco (rótulo acessível, mensagem de vazio) é resolvido
+ * pelo `ChartFrame`, que recebe o mesmo `scope`.
+ */
+function dataText(value: string, scope?: ChartScope): string {
+  return scope && hasVariables(value) ? chartPlainText(value, scope) : value;
 }

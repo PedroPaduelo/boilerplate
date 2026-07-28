@@ -23,12 +23,23 @@
  * faltar 27 px é o pulo que se quer eliminar.
  */
 
-/** Altura reservada ao CORPO de um bloco de gráfico, em pixels. */
+/**
+ * Altura reservada ao CORPO de um bloco de gráfico, em pixels.
+ *
+ * ATUALIZADO na repaginação: a referência de design fixa **320px** de desenho
+ * para 13 dos 18 tipos (`01-fundamentos.md` §7), e o corpo do card ainda soma o
+ * padding assimétrico (20px em cima e embaixo) e a legenda no rodapé. Com os
+ * 312px antigos o card crescia ~35px na chegada do dado — exatamente o pulo que
+ * este arquivo existe para evitar. Os números abaixo são a soma real:
+ *
+ *   série       320 (desenho) + 40 (padding) + 28 (legenda) = 388
+ *   categórico  240 (anel)    + 40 (padding) + 48 (legenda própria, 2 linhas) = 328
+ */
 export const CHART_BODY_HEIGHT = {
   /** Séries e comparações: precisam de amplitude vertical para a leitura. */
-  series: 312,
+  series: 388,
   /** Composições e rankings: o desenho é largo, não alto. */
-  categorical: 216,
+  categorical: 328,
   /** Medidores e mini-gráficos: existem para caber num canto. */
   compact: 160,
   /** Tabelas: várias linhas por definição. */

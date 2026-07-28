@@ -2,19 +2,42 @@
  * Bloco `bar_chart` (shape 'series') — compara categorias em barras verticais
  * (`BarChart`) ou horizontais (`HBarChart`), ambos de `@/shared/ui`.
  *
- * O que mudou na migração:
- *  - a plotagem, os eixos, o tooltip, a legenda e os estados vêm da base; o
- *    bloco só adapta o contrato (`bar-series.ts`) e decide a cor
- *    (`bar-colors.ts`) — por isso o arquivo cabe numa tela;
- *  - COR: `accent` e `seriesColors` continuam aceitando o vocabulário antigo,
- *    mas viram token de dado do DS. Nenhum hex atravessa;
+ * ---------------------------------------------------------------------------
+ * CONFORMIDADE VISUAL — `03-tipos-de-grafico.md` §4/§5/§6/§7 da referência
+ * ---------------------------------------------------------------------------
+ * 1. Grade só horizontal, tracejada 3 ........ `chartGridProps(palette)`
+ * 2. Eixos sem linha e sem marcações ......... `chartAxisProps`/`chartYAxisProps`
+ * 3. Texto dos eixos 12px/400/#919EAB ........ herdado de `chartAxisProps`
+ * 4. Linhas 2,5px sem pontos ................. n/a (este bloco não desenha linha)
+ * 5. Coluna: raio 4px SÓ no topo, largura 48% . `chartBarRadius` + `barCategoryGap`
+ *    §4 simples 40% · §5 múltipla 48% + respiro 2px · §6 empilhada 36% ·
+ *    §7 negativa raio 2px e cor por FAIXA (`<Cell>`) · §11 responsivo 60/80% e raio 3
+ * 6. Hover ESCURECE .......................... `activeBar` com `palette.hoverAt(i)`
+ * 7. Tooltip branco 90% com blur ............. `ChartSeriesTooltip` (§4/§7 sem título)
+ * + Cor da 1ª série: VERDE80 (`palette.primary80`), a cor das colunas na referência
+ * + Animação 360ms com 120ms por série ....... `chartAnimationProps(palette, i)`
+ *
+ * CONTRATO COMUM (briefing §5): o cabeçalho é do `BlockFrame` — o bloco NÃO
+ * desenha um segundo título; os dados alimentam o desenho E o escopo de
+ * `{{interpolação}}`; todo texto que o bloco publica passa por `chartPlainText`;
+ * os estados vêm do `ChartFrame`; e nenhuma prop do `propsSchema` mudou.
+ *
+ * O que o bloco continua fazendo por conta própria:
+ *  - COR: `accent` e `seriesColors` aceitam o vocabulário antigo, mas viram
+ *    token de dado do DS (`bar-colors.ts`). Nenhum hex atravessa;
  *  - EMPILHAMENTO: segue exigindo dado multi-série e orientação vertical, e
  *    degrada para barras planas quando falta um dos dois — igual a antes;
  *  - ACESSIBILIDADE: as categorias do eixo vivem dentro do SVG, então o bloco
  *    publica os mesmos números como tabela para leitor de tela.
  */
 import type { SeriesData } from '@dashboards/contracts';
-import { BarChart, ChartDataTable, HBarChart } from '@/shared/ui';
+import {
+  BarChart,
+  ChartDataTable,
+  HBarChart,
+  buildChartScope,
+  chartPlainText,
+} from '@/shared/ui';
 import { type ValueFormat } from '@/shared/lib/format';
 import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
@@ -39,6 +62,9 @@ type BarProps = {
   valueFormatter?: (value: number) => string;
 };
 
+/** Legenda da tabela equivalente — aceita Markdown e `{{variaveis}}`. */
+const TABLE_CAPTION = `${manifest.name}: valor por categoria`;
+
 export const Component: BlockComponent<BarProps, SeriesData> = ({
   props,
   data,
@@ -51,6 +77,11 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
   const formatValue =
     props.valueFormatter ??
     ((value: number) => formatCatalogValue(value, props.valueFormat));
+  // Contrato comum: os dados são também o vocabulário de `{{interpolação}}`
+  // de todo texto que o bloco desenha (rótulo de a11y, vazio, legenda da
+  // tabela).
+  const scope = buildChartScope(data ?? []);
+  const caption = chartPlainText(TABLE_CAPTION, scope);
 
   // ----- HORIZONTAL: uma barra por linha do dado (não empilha) -----
   if (props.orientation === 'horizontal') {
@@ -69,7 +100,7 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
           label={manifest.name}
         />
         <ChartDataTable
-          caption={`${manifest.name}: valor por categoria`}
+          caption={caption}
           columns={['Categoria', 'Valor']}
           rows={points.map((point) => [point.label, formatValue(point.value)])}
         />
@@ -98,9 +129,10 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
         isLoading={isLoading}
         emptyMessage={emptyMessage}
         label={manifest.name}
+        scope={scope}
       />
       <ChartDataTable
-        caption={`${manifest.name}: valor por categoria`}
+        caption={caption}
         columns={['Categoria', ...series.map((item) => item.label)]}
         rows={labels.map((label, index) => [
           label,

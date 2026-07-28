@@ -45,11 +45,15 @@ function buildInitialConfig(
     props: initialPropsFor(manifest, { ...(previewProps ?? {}), ...(seed?.props ?? {}) }),
     title: seed?.title ?? manifest.name,
     subtitle: seed?.subtitle ?? '',
+    description: seed?.description ?? '',
+    emptyMessage: seed?.emptyMessage ?? '',
     query: seed?.query ?? '',
     durationMs: seed?.durationMs ?? '',
     takeaways:
       seed?.takeaways && seed.takeaways.length > 0 ? seed.takeaways : EMPTY_TAKEAWAYS,
     showSql: seed?.showSql ?? true,
+    // O preview abre no estado que o autor quer ver: o bloco funcionando.
+    previewState: 'success',
   };
 }
 

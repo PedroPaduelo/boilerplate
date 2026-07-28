@@ -22,7 +22,11 @@ export interface PlaygroundToolbarProps {
   onResetProps: () => void;
   onResetWrapper: () => void;
   onResetData: () => void;
-  /** Sem `dataContract` não há o que restaurar/rodar na aba "Dados". */
+  /**
+   * O bloco declara `dataContract`? Só muda o TEXTO da ação: mesmo o bloco
+   * narrativo tem o que restaurar, porque o JSON livre dele alimenta as
+   * `{{variaveis}}` dos textos.
+   */
   hasData: boolean;
 }
 
@@ -91,11 +95,10 @@ export function PlaygroundToolbar({
             variant="ghost"
             size="sm"
             icon={<Icon icon={RotateCcw} />}
-            isDisabled={!hasData}
             tooltip={
               hasData
                 ? 'Volta para a fixture padrão do bloco'
-                : 'Bloco narrativo — não consome dados'
+                : 'Volta para o JSON de exemplo que alimenta as variáveis'
             }
             onClick={onResetData}
           />

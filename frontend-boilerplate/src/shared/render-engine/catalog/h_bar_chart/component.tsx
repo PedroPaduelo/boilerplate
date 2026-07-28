@@ -10,9 +10,34 @@
  *    dado do DS; em `palette: "multi"` a paleta categórica cicla por barra;
  *  - ACESSIBILIDADE: as categorias vivem dentro do SVG, então o bloco publica
  *    os mesmos números como tabela para leitor de tela.
+ *
+ * ---------------------------------------------------------------------------
+ * CONFORMIDADE VISUAL — `03-tipos-de-grafico.md` §8 (Barra horizontal)
+ * ---------------------------------------------------------------------------
+ *  1. Grade só do eixo de VALOR, tracejada 3 ....... `chartGridProps` (vertical
+ *     aqui: em barra horizontal o eixo de valor é o X — NOTAS [SUB-04])
+ *  2. Eixos sem linha e sem marcações .............. `chartAxisProps` /
+ *     `chartYAxisProps` (5 divisões no eixo de valor)
+ *  3. Texto dos eixos 12px/400/#919EAB ............. `chartAxisProps`
+ *  4. Linha 2,5px/curva suave/sem pontos ........... n/a (tipo sem linha)
+ *  5. Barra 30% da faixa, raio 2px SÓ NA PONTA ..... `geometry.hBarWidth` +
+ *     `geometry.barRadiusFlat` em `[0, r, r, 0]`; traço 0
+ *  6. Hover ESCURECE ............................... `activeBar` + `darkenColor`
+ *  7. Tooltip branco 90% com blur .................. `ChartTooltip`
+ *  + cor VERDE80 (`palette.primary80`), altura 320px, entrada 360ms.
+ *
+ * CONTRATO COMUM: cabeçalho no `BlockFrame` (o gráfico não desenha um segundo
+ * título); dados em `data`; todo texto desenhado passa por `chartPlainText`
+ * com o escopo de `buildChartScope(data)`; estados no `ChartFrame`.
  */
 import type { SeriesData } from '@dashboards/contracts';
-import { ChartDataTable, HBarChart, chartAccentColor } from '@/shared/ui';
+import {
+  ChartDataTable,
+  HBarChart,
+  buildChartScope,
+  chartAccentColor,
+  chartPlainText,
+} from '@/shared/ui';
 import type { ChartPoint } from '@/shared/ui';
 import { type ValueFormat } from '@/shared/lib/format';
 import { formatCatalogValue } from '../../lib/value-format';
@@ -31,6 +56,12 @@ type HBarProps = {
 
 type SeriesPoint = { x: string | number; y: number | null; series?: string };
 
+/** Legenda da tabela textual equivalente (aceita `{{variáveis}}` dos dados). */
+const TABLE_CAPTION = `${manifest.name}: valor por categoria`;
+
+/** Cabeçalhos da tabela textual equivalente. */
+const TABLE_COLUMNS = ['Categoria', 'Valor'];
+
 export const Component: BlockComponent<HBarProps, SeriesData> = ({
   props,
   data,
@@ -40,10 +71,14 @@ export const Component: BlockComponent<HBarProps, SeriesData> = ({
   const points = (data ?? []) as SeriesPoint[];
   const formatValue = (value: number) => formatCatalogValue(value, props.valueFormat);
 
+  // Vocabulário de `{{interpolação}}` do bloco: sai dos DADOS já resolvidos, e
+  // é o MESMO escopo que o gráfico usa nos rótulos e na mensagem de vazio.
+  const scope = buildChartScope(points);
+
   // `single` fixa a cor de destaque; `multi` cicla a paleta por categoria.
   const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
   const chartData: ChartPoint[] = points.map((point) => ({
-    label: String(point.x),
+    label: chartPlainText(String(point.x), scope) || String(point.x),
     value: point.y ?? 0,
     color: accent,
   }));
@@ -54,15 +89,15 @@ export const Component: BlockComponent<HBarProps, SeriesData> = ({
         data={chartData}
         hasColorByCategory={props.palette === 'multi'}
         valueFormatter={formatValue}
+        scope={scope}
         isLoading={state === 'loading' || state === 'skeleton'}
-        emptyMessage={
-          state === 'error' ? (error ?? 'Erro ao carregar os dados') : undefined
-        }
+        state={state === 'error' ? 'error' : undefined}
+        errorMessage={error}
         label={manifest.name}
       />
       <ChartDataTable
-        caption={`${manifest.name}: valor por categoria`}
-        columns={['Categoria', 'Valor']}
+        caption={chartPlainText(TABLE_CAPTION, scope)}
+        columns={TABLE_COLUMNS}
         rows={chartData.map((point) => [point.label, formatValue(point.value)])}
       />
     </>

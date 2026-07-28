@@ -11,5 +11,6 @@ export type {
   PlaygroundConfig,
   PlaygroundSeed,
   PlaygroundSnapshot,
+  PlaygroundState,
   Takeaway,
 } from './types';

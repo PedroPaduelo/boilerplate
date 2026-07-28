@@ -4,11 +4,15 @@
  * (self-contained: NÃO recebe a moldura ChartWidget).
  *
  * Estrutura visual:
- *  - header (clicável, abre/fecha): rótulo da etapa (stageLabel), resumo
- *    (quantidade + % do universo + valor grande) e a barra de participação
- *    segmentada pelos desfechos — tudo visível mesmo com a etapa fechada;
+ *  - header (clicável, abre/fecha): rótulo da etapa (stageLabel), o valor da
+ *    etapa, a taxa de conversão (% do universo), o volume e a barra de
+ *    participação segmentada pelos desfechos — tudo visível mesmo com a etapa
+ *    fechada;
  *  - (ao abrir) tabela de desfechos: ícone + título + descrição + quantidade +
  *    valor original + valor atualizado; linha de TOTAL; e NOTAS opcionais.
+ *
+ * Todo campo de texto (stageLabel, barLabel, emptyMessage e os textos que vêm
+ * da consulta) aceita Markdown inline e `{{variavel}}` interpolada dos dados.
  *
  * Convenção de DADOS (shape table — cada linha tem a coluna `tipo`):
  *  - tipo='resumo'  → header/barra. Colunas: quantidade, pct (FRAÇÃO 0..1 =
@@ -40,13 +44,14 @@ export const manifest = {
     properties: {
       stageLabel: {
         type: 'string',
-        description: 'Rótulo da etapa no header (ex.: "N1 · MOMENTO LANÇAMENTO").',
+        description:
+          'Rótulo da etapa no header (ex.: "N1 · MOMENTO LANÇAMENTO"). Aceita Markdown inline e {{variavel}}.',
       },
       accent: {
         type: 'string',
         enum: ['blue', 'red', 'green', 'amber', 'violet', 'slate'],
         description:
-          'Cor da etapa: escolhe qual RAMPA sequencial do design system pinta a barra de participação (os segmentos vão do tom mais escuro ao mais claro, porque são partes ordenadas do mesmo total). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações. Os textos seguem as cores de leitura do sistema, para não perder contraste.',
+          'Cor da etapa: escolhe qual RAMPA sequencial do design system pinta a barra de participação (os segmentos vão do tom mais claro ao mais escuro, porque são partes ordenadas do mesmo total; o hover escurece um passo). blue (default) p/ fases iniciais; red p/ estoque/risco; amber/green/violet/slate p/ variações. Os textos seguem as cores de leitura do sistema, para não perder contraste.',
       },
       defaultOpen: {
         type: 'boolean',
@@ -56,7 +61,12 @@ export const manifest = {
       barLabel: {
         type: 'string',
         description:
-          'Legenda exibida sob a barra (ex.: "valor total lançado (VL_ORIGINAL)").',
+          'Legenda exibida sob a barra (ex.: "valor total lançado (VL_ORIGINAL)"). Aceita Markdown inline e {{variavel}}.',
+      },
+      emptyMessage: {
+        type: 'string',
+        description:
+          'Mensagem exibida quando a consulta não devolve nenhuma linha com papel reconhecido. Default: "Sem dados para esta etapa". Aceita Markdown inline e {{variavel}}.',
       },
       valueFormat: {
         type: 'string',

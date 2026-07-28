@@ -105,8 +105,9 @@ export function BlockPlayground({
         data.parsedData,
         Boolean(data.dataError),
         config.durationMs,
+        config.previewState,
       ),
-    [entry, data.parsedData, data.dataError, config.durationMs],
+    [entry, data.parsedData, data.dataError, config.durationMs, config.previewState],
   );
 
   // A página do gráfico persiste este snapshot ao clicar em "Salvar".
@@ -120,7 +121,13 @@ export function BlockPlayground({
       header={header}
       content={
         <LayoutContent padding={0} label="Pré-visualização do bloco">
-          <PlaygroundPreview entry={entry} block={block} result={result} />
+          <PlaygroundPreview
+            entry={entry}
+            block={block}
+            result={result}
+            state={config.previewState}
+            data={data.parsedData}
+          />
         </LayoutContent>
       }
       end={
@@ -136,7 +143,7 @@ export function BlockPlayground({
               onTabChange={setTab}
               isLive={isLive}
               isFetching={Boolean(live?.isFetching)}
-              hasData={Boolean(entry.shape)}
+              hasData={entry.hasData}
               onRunQuery={() => live?.onRun()}
               onResetProps={resetProps}
               onResetWrapper={resetTakeaways}
@@ -160,6 +167,8 @@ export function BlockPlayground({
                       titlePlaceholder={manifest.name}
                       isTitleRequired={variant === 'page'}
                       isLive={isLive}
+                      data={data.parsedData}
+                      badgeLabel={manifest.name}
                     />
                     {showTakeaways ? (
                       <PlaygroundTakeawaysEditor

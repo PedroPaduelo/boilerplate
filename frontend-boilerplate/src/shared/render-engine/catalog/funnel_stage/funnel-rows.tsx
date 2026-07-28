@@ -1,11 +1,19 @@
 /**
- * Detalhamento da etapa de funil: a tabela de desfechos e a linha de total.
+ * DETALHAMENTO da etapa de funil: a tabela de desfechos, com a linha de total
+ * no rodapé. É o que aparece quando o painel abre (as observações ficam em
+ * `funnel-notes.tsx`).
  *
  * Extraído do componente do bloco por tamanho e por natureza — aqui é tabela de
  * verdade (`Table` do design system, com cabeçalho e rodapé semânticos), no
  * lugar da grade de `<div>`s que o legado montava com colunas fixas. Isso dá de
  * graça o que a grade não tinha: leitura por linha/coluna em leitor de tela e
  * densidade coerente com as outras tabelas do app.
+ *
+ * CONTRATO COMUM: os textos que vêm da consulta (título e descrição do
+ * desfecho, rótulo da quantidade, título do total) passam por `ChartText` —
+ * aceitam Markdown inline e `{{variavel}}`, como qualquer outro texto do
+ * catálogo. Os números continuam texto puro: markdown em número formatado não
+ * significa nada.
  */
 import { Icon } from '@astryxdesign/core/Icon';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -20,6 +28,8 @@ import {
 } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
+import { ChartText } from '@/shared/ui';
+import type { ChartScope } from '@/shared/ui';
 import { formatNumberBR } from '@/shared/lib/format';
 import { resolveLucideIcon } from '../../lib/lucide-resolver';
 import type { FunnelOutcome, FunnelTotal } from './funnel-data';
@@ -31,6 +41,8 @@ export interface FunnelRowsProps {
   total?: FunnelTotal;
   /** Formata os valores monetários (definido pela prop `valueFormat`). */
   money: (value: unknown) => string;
+  /** Escopo de interpolação dos textos (de `buildChartScope`). */
+  scope: ChartScope;
 }
 
 /** Número alinhado à direita — a coluna só é comparável se as casas alinham. */
@@ -43,7 +55,7 @@ function NumberCell({ children }: { children: React.ReactNode }) {
 }
 
 /** Tabela de desfechos da etapa, com total no rodapé. */
-export function FunnelRows({ outcomes, total, money }: FunnelRowsProps) {
+export function FunnelRows({ outcomes, total, money, scope }: FunnelRowsProps) {
   if (outcomes.length === 0 && !total) return null;
 
   return (
@@ -68,10 +80,12 @@ export function FunnelRows({ outcomes, total, money }: FunnelRowsProps) {
                     <Icon icon={OutcomeIcon} size="sm" color="secondary" />
                   ) : null}
                   <VStack gap={0.5}>
-                    <Text weight="medium">{outcome.title}</Text>
+                    <Text weight="medium">
+                      <ChartText value={outcome.title} scope={scope} />
+                    </Text>
                     {outcome.description ? (
                       <Text type="supporting" color="secondary">
-                        {outcome.description}
+                        <ChartText value={outcome.description} scope={scope} />
                       </Text>
                     ) : null}
                   </VStack>
@@ -85,7 +99,7 @@ export function FunnelRows({ outcomes, total, money }: FunnelRowsProps) {
                     </Text>
                     {outcome.quantityLabel ? (
                       <Text type="supporting" color="secondary" justify="end">
-                        {outcome.quantityLabel}
+                        <ChartText value={outcome.quantityLabel} scope={scope} />
                       </Text>
                     ) : null}
                   </VStack>
@@ -114,7 +128,9 @@ export function FunnelRows({ outcomes, total, money }: FunnelRowsProps) {
         <TableFooter>
           <TableRow>
             <TableCell>
-              <Text weight="semibold">{total.title}</Text>
+              <Text weight="semibold">
+                <ChartText value={total.title} scope={scope} />
+              </Text>
             </TableCell>
             <TableCell>
               <NumberCell>

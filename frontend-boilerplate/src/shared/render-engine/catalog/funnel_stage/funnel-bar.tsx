@@ -1,5 +1,5 @@
 /**
- * COMPONENTE PRÓPRIO DO BLOCO — barra de participação da etapa de funil.
+ * COMPONENTE PRÓPRIO DO BLOCO — a barra de participação da etapa de funil.
  *
  * Por que não sai da base: `ChartBarTrack` desenha UMA barra de uma cor; aqui a
  * barra ocupa a fração do universo que a etapa representa e, dentro dela, se
@@ -7,19 +7,37 @@
  * do app precisa disso além do funil, então mora aqui; se um segundo bloco
  * precisar, a regra da trilha manda promovê-la para `@/shared/ui`.
  *
- * Cor: rampa sequencial do design system (`--color-data-<cor>-1..5`), do passo
- * mais escuro para o mais claro. Rampa (e não paleta categórica) porque os
- * segmentos são partes ORDENADAS de um mesmo todo. Como isto é DOM (e não SVG),
- * a cor entra como `var(--token)`: trocar o tema repinta a barra sem re-render.
- * Zero hex, zero rgba — era exatamente isso que o bloco tinha.
+ * ---------------------------------------------------------------------------
+ * REPAGINAÇÃO POR ANALOGIA — funil NÃO existe na referência
+ * ---------------------------------------------------------------------------
+ * A etapa é desenhada como a BARRA HORIZONTAL de `03-tipos-de-grafico.md` §8
+ * (raio 2px, traço 0, barra fina); a divisão em desfechos segue a COLUNA
+ * EMPILHADA da §6, que é onde um mesmo total se reparte em partes ordenadas —
+ * e partes ordenadas pedem RAMPA sequencial, não paleta categórica.
  *
- * ESTILO (regra 2.3): a forma da barra (trilho, altura, raio, recorte) é
- * utility ancorada em token. No `style` fica só o que depende DO DADO: a
- * largura da barra (fração do universo), a largura de cada segmento (peso do
- * desfecho) e a cor do passo da rampa escolhido pelo bloco — é o mesmo padrão
- * do `ProgressBar` do DS, que também escreve `width: 40%` inline.
+ *   trilha ....... `chrome('trackLight')` — a "trilha alternativa, mais clara"
+ *                  de `01-fundamentos.md` §3 (rgba(145,158,171,.08))
+ *   raio ......... `geometry.barRadiusFlat` — 2px (§8)
+ *   traço ........ nenhum (§8)
+ *   altura ....... `--spacing-4` (16px): é a altura que a §8 produz numa faixa
+ *                  típica — 30% de ~53px, seis categorias numa área de 320px
+ *   cor .......... `chartRampToken(cor, passo)`, CLARO → ESCURO (§6)
+ *   hover ........ ESCURECE: o segmento avança UM passo na rampa
+ *                  (`01-fundamentos.md` §9 — "hover escurece, não clareia")
+ *   transição .... `motion.duration` (360ms), a mesma da entrada dos gráficos
+ *
+ * Como isto é DOM (e não SVG), a cor entra como `var(--token)`: trocar o tema
+ * repinta a barra sem re-render. Zero hex, zero rgba — era exatamente isso que
+ * o bloco tinha antes da migração.
+ *
+ * ESTILO (regra 2.3): a forma da barra (trilho, altura, recorte) é utility
+ * ancorada em token. No `style` fica só o que depende DO DADO — a largura da
+ * barra (fração do universo) e a de cada segmento (peso do desfecho) — mais as
+ * variáveis de cor/duração que o hover consome, que saem do tema. É o mesmo
+ * padrão do `ProgressBar` do DS, que também escreve `width: 40%` inline.
  */
-import { chartRampToken, chartTokenVar } from '@/shared/ui';
+import type { CSSProperties } from 'react';
+import { chartRampToken, chartTokenVar, useChartPalette } from '@/shared/ui';
 import type { ChartRampColor } from '@/shared/ui';
 
 export interface FunnelBarProps {
@@ -34,51 +52,107 @@ export interface FunnelBarProps {
 }
 
 /**
- * O trilho: largura cheia, altura de 1 passo de `--spacing-8` (geometria do
- * desenho, na escala do DS), raio interno e a superfície de fundo do tema.
+ * `style` com as variáveis locais da barra. O React escreve custom properties
+ * sem reclamar; o TIPO `CSSProperties` é que não as conhece.
  */
-const TRACK_CLASS = [
-  'block w-full h-[var(--spacing-8)] overflow-hidden',
-  'rounded-[var(--radius-inner)]',
-  'bg-[color:var(--color-track)]',
+type FunnelStyle = CSSProperties & Record<`--funnel-${string}`, string>;
+
+/**
+ * O trilho: largura cheia, a altura da §8 e recorte — sem `overflow-hidden` o
+ * raio de 2px não valeria para os segmentos que encostam nas pontas.
+ */
+const TRACK_CLASS = 'block w-full h-[var(--spacing-4)] overflow-hidden';
+
+/** O preenchimento: a fatia do universo que a etapa ocupa. */
+const FILL_CLASS = 'flex h-full overflow-hidden';
+
+/**
+ * Segmento: cor da rampa em repouso e UM PASSO MAIS ESCURO no hover, na
+ * duração de entrada dos gráficos. As duas cores e a duração descem por
+ * variável — assim o hover é CSS puro, sem estado e sem re-render.
+ */
+const SEGMENT_CLASS = [
+  'h-full',
+  'bg-[color:var(--funnel-segment)]',
+  'hover:bg-[color:var(--funnel-segment-hover)]',
+  'transition-colors ease-out duration-[var(--funnel-duration)]',
 ].join(' ');
 
-/** Passos da rampa usados nos segmentos: do mais escuro ao mais claro. */
-const SEGMENT_STEPS = [5, 4, 3, 2];
+/**
+ * Passos da rampa nos segmentos, CLARO → ESCURO (§6). Param no 4 de propósito:
+ * o hover soma 1, e o 5 (o tom mais escuro) fica reservado para ele — é o que
+ * garante que passar o mouse SEMPRE escureça, inclusive no último segmento.
+ */
+const SEGMENT_STEPS = [1, 2, 3, 4];
 
 /** Passo médio — usado quando a etapa não detalha desfechos. */
 const FALLBACK_STEP = 3;
 
+/** Fração válida da barra: fora de 0..1 vira um bug visível, não um dado. */
+function clampFraction(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
 /** Barra de participação da etapa, segmentada pelos desfechos. */
 export function FunnelBar({ fraction, weights, color, label }: FunnelBarProps) {
+  const palette = useChartPalette();
   const total = weights.reduce((sum, weight) => sum + weight, 0);
-  const rampVar = (step: number) => chartTokenVar(chartRampToken(color, step));
+
+  /** Cor de um passo da rampa, como token (DOM). */
+  const ramp = (step: number) => chartTokenVar(chartRampToken(color, step));
+
+  /** Um segmento: cor de repouso, cor de hover (mais escura) e largura. */
+  const segment = (step: number, width: string): FunnelStyle => ({
+    '--funnel-segment': ramp(step),
+    '--funnel-segment-hover': ramp(step + 1),
+    inlineSize: width,
+  });
+
+  const trackStyle: FunnelStyle = {
+    // tema: trilha da §3, raio da barra horizontal da §8 e a duração do hover,
+    // que desce por variável para todos os segmentos
+    backgroundColor: palette.chromeVar('trackLight'),
+    borderRadius: palette.geometry.barRadiusFlat,
+    '--funnel-duration': `${palette.motion.duration}ms`,
+  };
 
   return (
-    <span role="img" aria-label={label} data-slot="funnel-bar" className={TRACK_CLASS}>
+    <span
+      role="img"
+      aria-label={label}
+      data-slot="funnel-bar"
+      className={TRACK_CLASS}
+      style={trackStyle}
+    >
       <span
-        className="flex h-full"
+        className={FILL_CLASS}
         // runtime: a barra ocupa a fração do universo que a etapa representa
-        style={{ inlineSize: `${Math.min(1, Math.max(0, fraction)) * 100}%` }}
+        style={{
+          inlineSize: `${clampFraction(fraction) * 100}%`,
+          borderRadius: palette.geometry.barRadiusFlat,
+        }}
       >
         {total > 0 ? (
           weights.map((weight, index) => (
             <span
               key={index}
+              data-slot="funnel-segment"
+              className={SEGMENT_CLASS}
               // runtime: largura = peso do desfecho; cor = passo da rampa do bloco
-              style={{
-                inlineSize: `${(weight / total) * 100}%`,
-                backgroundColor: rampVar(SEGMENT_STEPS[index % SEGMENT_STEPS.length]),
-              }}
+              style={segment(
+                SEGMENT_STEPS[index % SEGMENT_STEPS.length],
+                `${(weight / total) * 100}%`,
+              )}
             />
           ))
         ) : (
           // Sem desfechos (ou todos zerados) a barra continua legível: um
           // bloco só, no tom médio da rampa.
           <span
-            className="w-full"
+            data-slot="funnel-segment"
+            className={SEGMENT_CLASS}
             // runtime: cor = passo médio da rampa escolhida pelo bloco
-            style={{ backgroundColor: rampVar(FALLBACK_STEP) }}
+            style={segment(FALLBACK_STEP, '100%')}
           />
         )}
       </span>

@@ -30,8 +30,27 @@ import { renderMarkdown } from './rich_text/markdown';
 import { listBlockTypes, getBlock } from '../registry';
 import type { BlockDefinition } from '../types';
 
-const BASE: BlockDefinition[] = [kpi, barChart, lineChart, donut, table, title, richText];
-const BASE_TYPES = ['kpi', 'bar_chart', 'line_chart', 'donut', 'table', 'title', 'rich_text'];
+/**
+ * As sete definições têm genéricos DIFERENTES (`BlockDefinition<KpiProps,
+ * ScalarData>`, `<BarProps, SeriesData>`…), e `BlockComponent` é contravariante
+ * em `data`: uma lista tipada com o genérico neutro não aceita nenhuma delas.
+ * O que este arquivo verifica — manifesto, tipo e fixture — não olha para o
+ * componente, então a lista guarda só a parte comum.
+ */
+type CatalogEntry = Pick<BlockDefinition, 'type' | 'manifest'> & {
+  fixture?: unknown;
+};
+
+const BASE: CatalogEntry[] = [kpi, barChart, lineChart, donut, table, title, richText];
+const BASE_TYPES = [
+  'kpi',
+  'bar_chart',
+  'line_chart',
+  'donut',
+  'table',
+  'title',
+  'rich_text',
+];
 
 afterEach(() => cleanup());
 
@@ -83,7 +102,9 @@ describe('catálogo base — auto-registro (glob)', () => {
 
 describe('catálogo base — render com fixture', () => {
   it('kpi mostra o rótulo da fixture', () => {
-    render(<kpi.Component props={{ showDelta: true }} data={kpi.fixture!} state="success" />);
+    render(
+      <kpi.Component props={{ showDelta: true }} data={kpi.fixture!} state="success" />,
+    );
     expect(screen.getByText('Total arrecadado')).toBeInTheDocument();
   });
 
@@ -100,7 +121,13 @@ describe('catálogo base — render com fixture', () => {
   });
 
   it('donut lista as categorias na legenda', () => {
-    render(<donut.Component props={{ showLegend: true }} data={donut.fixture!} state="success" />);
+    render(
+      <donut.Component
+        props={{ showLegend: true }}
+        data={donut.fixture!}
+        state="success"
+      />,
+    );
     expect(screen.getByText('Quitado')).toBeInTheDocument();
     expect(screen.getByText('Em aberto')).toBeInTheDocument();
   });

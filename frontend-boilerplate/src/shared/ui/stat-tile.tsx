@@ -1,110 +1,81 @@
 /**
- * COMPONENTE PRÓPRIO — irmão denso do `KpiCard`. Existe porque um painel tem
- * DUAS hierarquias de número: o indicador principal (card grande) e o dado de
- * apoio, que aparece em fileiras de quatro ou seis. Mesma ordem de leitura,
- * tipografia um degrau abaixo — a diferença de tamanho é que comunica a
- * importância.
+ * COMPONENTE PRÓPRIO — o irmão do `KpiCard` na grade de indicadores. Existe
+ * porque um painel tem DUAS entradas para o mesmo widget: o indicador
+ * principal, que abre a tela, e o dado de apoio, que aparece em fileiras de
+ * quatro ou seis. Cada um chega com o seu vocabulário de props (o KPI fala de
+ * `icon` e formato automático; o ladrilho, de `hint` e número compacto).
  *
- * Substitui `stat-tile.tsx`, que repetia borda/sombra à mão, o chip de ícone com
- * `bg-muted` e a barra de destaque colorida por classe Tailwind.
+ * ---------------------------------------------------------------------------
+ * POR QUE ELE NÃO É MAIS "UM DEGRAU MENOR"
+ * ---------------------------------------------------------------------------
+ * A versão anterior reduzia a tipografia para marcar hierarquia. A referência
+ * (`04-widgets-prontos.md` §2) não tem essa segunda escala: ela descreve UM
+ * card de resumo e, em §2.4, quatro variações dele que mudam apenas o
+ * mini-gráfico — nunca o tamanho do título ou do valor. Duas escalas de card
+ * de resumo convivendo no mesmo painel era justamente o que fazia dois
+ * indicadores iguais parecerem coisas diferentes.
+ *
+ * Então o ladrilho passa a ser o MESMO card, e a hierarquia volta a ser dada
+ * por onde ele está e quantos cabem na linha — que é como a referência a
+ * resolve. A composição inteira vem de `KpiCard`; aqui ficam só o contrato de
+ * props e os defaults do ladrilho.
+ *
+ * A decisão está registrada em `docs/charts/NOTAS.md` (SUB-10).
  */
 import type { ReactNode } from 'react';
 import type { CardProps } from '@astryxdesign/core/Card';
-import { Card } from '@astryxdesign/core/Card';
-import { HStack } from '@astryxdesign/core/HStack';
-import { Skeleton } from '@astryxdesign/core/Skeleton';
-import { Text } from '@astryxdesign/core/Text';
-import { VStack } from '@astryxdesign/core/VStack';
-import { AnimatedNumber } from './animated-number';
-import { DeltaBadge } from './delta-badge';
+import type { ChartScope } from './charts';
+import { KpiCard, type KpiCardState } from './kpi-card';
 
 export interface StatTileProps {
-  /** Nome da estatística (ex.: "Eventos hoje"). */
+  /** Nome da estatística (ex.: "Eventos hoje"). Aceita Markdown e `{{var}}`. */
   label: string;
   /** Valor numérico — anima dígito a dígito quando muda. */
-  value: number;
+  value?: number;
   /** Valor JÁ formatado. Vence `value`/`prefix`/`suffix`. */
   displayValue?: string;
   /** Prefixo colado no número. */
   prefix?: string;
-  /** Sufixo colado no número. */
+  /** Unidade colada no número. Aceita Markdown e `{{variavel}}`. */
   suffix?: string;
   /** Variação percentual vs. período anterior. */
   delta?: number;
-  /** Texto ao lado da variação. */
+  /** Texto ao lado da variação. Aceita Markdown e `{{variavel}}`. */
   hint?: string;
   /** Força a direção da variação. */
   trend?: 'up' | 'down';
   /** Se subir é bom (inverte a cor da variação quando `false`). */
   higherIsBetter?: boolean;
-  /** Ícone antes do rótulo — passe o `Icon` do DS já montado. */
+  /** Ícone do topo — passe o `Icon` do DS já montado (caixa de 48×48). */
   icon?: ReactNode;
   /** Cor de categorização do ladrilho (variantes do `Card` do DS). */
   variant?: CardProps['variant'];
-  /** Troca o conteúdo por `Skeleton` enquanto os dados não chegam. */
+  /** Estado do ladrilho. Tem prioridade sobre `isLoading`/`isEmpty`. */
+  state?: KpiCardState;
+  /** Troca o valor por `Skeleton` (atalho de `state="loading"`). */
   isLoading?: boolean;
+  /** Sem dados (atalho de `state="empty"`). */
+  isEmpty?: boolean;
+  /** Mensagem do estado vazio. Aceita Markdown e `{{variavel}}`. */
+  emptyMessage?: string;
+  /** Detalhe do erro, exibido quando `state="error"`. */
+  error?: string;
+  /** Escopo de interpolação das `{{variaveis}}` (de `buildChartScope`). */
+  scope?: ChartScope;
+  /** Mini-gráfico de 84×56 à direita do texto (§2.2 da referência). */
+  media?: ReactNode;
 }
 
-/** Ladrilho compacto de estatística, para fileiras de dados de apoio. */
-export function StatTile({
-  label,
-  value,
-  displayValue,
-  prefix,
-  suffix,
-  delta,
-  hint,
-  trend,
-  higherIsBetter = true,
-  icon,
-  variant,
-  isLoading = false,
-}: StatTileProps) {
+/** Ladrilho de estatística — o card de resumo da referência, em fileira. */
+export function StatTile({ hint, ...props }: StatTileProps) {
   return (
-    <Card padding={3} variant={variant} data-slot="stat-tile">
-      <VStack gap={2}>
-        <HStack gap={1.5} vAlign="center">
-          {icon}
-          <Text type="supporting" color="secondary" maxLines={1}>
-            {label}
-          </Text>
-        </HStack>
-
-        {isLoading ? (
-          <Skeleton height={24} radius={1} />
-        ) : (
-          <HStack gap={0.5} vAlign="end">
-            <Text type="large" weight="semibold" hasTabularNumbers>
-              {displayValue !== undefined ? (
-                displayValue
-              ) : (
-                <>
-                  {prefix}
-                  <AnimatedNumber value={value} />
-                </>
-              )}
-            </Text>
-            {displayValue === undefined && suffix ? (
-              <Text type="supporting" color="secondary">
-                {suffix}
-              </Text>
-            ) : null}
-          </HStack>
-        )}
-
-        {!isLoading && (delta !== undefined || hint) ? (
-          <HStack gap={1.5} vAlign="center" wrap="wrap">
-            {delta !== undefined ? (
-              <DeltaBadge value={delta} trend={trend} higherIsBetter={higherIsBetter} />
-            ) : null}
-            {hint ? (
-              <Text type="supporting" color="secondary">
-                {hint}
-              </Text>
-            ) : null}
-          </HStack>
-        ) : null}
-      </VStack>
-    </Card>
+    <KpiCard
+      {...props}
+      slot="stat-tile"
+      // O KPI assume "vs. período anterior" quando ninguém diz nada; o
+      // ladrilho não assume — a string vazia é o jeito de dizer "sem texto"
+      // sem reintroduzir o default do irmão.
+      hint={hint ?? ''}
+    />
   );
 }

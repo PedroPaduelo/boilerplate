@@ -1,35 +1,49 @@
 /**
  * Bloco `funnel_stage` (shape 'table') — uma ETAPA de funil temporal como
- * painel colapsável. Self-contained: desenha o próprio card, sem a moldura de
- * gráfico.
+ * painel colapsável. Self-contained: desenha o PRÓPRIO card e não recebe a
+ * moldura `BlockFrame`, então o cabeçalho do contrato comum (rótulo da etapa,
+ * texto com Markdown/interpolação) e os estados são responsabilidade dele.
  *
- * O que mudou na migração:
- *  - a paleta cravada em hex/rgba (blue/red/green/amber/violet) saiu por
- *    inteiro. A cor agora vem das RAMPAS sequenciais do design system, via
- *    `useChartPalette` — os desfechos são partes ordenadas de um mesmo todo,
- *    que é exatamente o que uma rampa comunica;
- *  - o abre/fecha é o `Collapsible` do DS (foco, teclado e `aria-expanded`
- *    prontos), no lugar do botão com `useState` e chevron girado à mão;
- *  - o detalhamento virou tabela de verdade (`funnel-rows.tsx`) e a leitura dos
- *    dados, defensiva e testável, ficou em `funnel-data.ts`.
+ * ---------------------------------------------------------------------------
+ * CONFORMIDADE VISUAL (checklist §4 do briefing)
+ * ---------------------------------------------------------------------------
+ * Funil NÃO existe na referência: repaginado por ANALOGIA com a BARRA
+ * HORIZONTAL (§8) e a COLUNA EMPILHADA (§6) de `03-tipos-de-grafico.md`.
+ *
+ *  1. Grade só horizontal, tracejada 3 ... N/A — a etapa não tem plano cartesiano
+ *  2. Eixos sem linha e sem marcações .... N/A — a etapa não tem eixos
+ *  3. Texto dos eixos 12px/400 ........... N/A — a tipografia aqui é a da LEGENDA
+ *                                          PRÓPRIA (§3): 11,375/500 no rótulo e
+ *                                          14,875/600 no valor; 12,25/600 na taxa
+ *                                          de conversão (o degrau do "Total")
+ *  4. Linha 2,5px, suave, sem pontos ..... N/A — não há série contínua
+ *  5. Coluna raio 4px no topo, 48% ....... ADAPTADO — a etapa é BARRA HORIZONTAL
+ *                                          (§8): raio 2px (`barRadiusFlat`),
+ *                                          traço 0, altura de 16px
+ *  6. Hover ESCURECE ..................... SIM — o segmento avança um passo da
+ *                                          rampa, em `motion.duration`
+ *  7. Tooltip branco 90% com blur ........ N/A — os números da etapa estão na
+ *                                          tabela de desfechos, não em tooltip
+ *
+ * Mais: cor da barra pela RAMPA sequencial (claro → escuro, §6), trilha em
+ * `chrome('trackLight')` (§3) e os estados (carregando / vazio / erro / sem
+ * permissão) delegados ao `ChartFrame` — nenhum é reinventado aqui.
+ *
+ * Comportamento (inalterado): o abre/fecha é o `Collapsible` do DS (foco,
+ * teclado e `aria-expanded` prontos), o detalhamento é tabela de verdade
+ * (`funnel-rows.tsx`) e a leitura defensiva dos dados fica em `funnel-data.ts`.
  */
 import type { TableData } from '@dashboards/contracts';
 import { Card } from '@astryxdesign/core/Card';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
-import { EmptyState } from '@astryxdesign/core/EmptyState';
-import { HStack } from '@astryxdesign/core/HStack';
-import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
-import type { ChartRampColor } from '@/shared/ui';
-import {
-  formatBRL,
-  formatCompactBRL,
-  formatNumberBR,
-  formatPercentBR,
-} from '@/shared/lib/format';
+import { CHART_HEIGHT, ChartFrame, buildChartScope } from '@/shared/ui';
+import type { ChartFrameState, ChartRampColor } from '@/shared/ui';
+import { formatBRL, formatCompactBRL } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
-import type { BlockComponent } from '../../types';
-import { FunnelBar } from './funnel-bar';
+import type { BlockComponent, BlockRenderState } from '../../types';
+import { FunnelHeader } from './funnel-header';
+import { FunnelNotes } from './funnel-notes';
 import { FunnelRows } from './funnel-rows';
 import { outcomeWeights, readFunnelStage } from './funnel-data';
 import { manifest } from './manifest';
@@ -44,6 +58,7 @@ type FunnelStageProps = {
   defaultOpen?: boolean;
   barLabel?: string;
   valueFormat?: 'BRL' | 'compactBRL';
+  emptyMessage?: string;
 };
 
 /** Cor da etapa → rampa sequencial do design system. */
@@ -56,86 +71,101 @@ const RAMP: Record<AccentKey, ChartRampColor> = {
   slate: 'gray',
 };
 
+/** Mensagem padrão quando nenhuma linha da consulta tem papel reconhecido. */
+const EMPTY_MESSAGE = 'Sem dados para esta etapa';
+
+/**
+ * Altura reservada aos estados sem desenho. 56px é o que a etapa fechada ocupa
+ * (rótulo + valor + barra), então o esqueleto entra e sai sem empurrar a
+ * página — que é o defeito clássico de esqueleto com altura de gráfico.
+ */
+const STAGE_HEIGHT = CHART_HEIGHT.spark;
+
+/**
+ * Erro que é, na verdade, falta de permissão. O motor de blocos só tem
+ * `error`, mas a referência de estados separa os dois — e "sem permissão" pede
+ * outra ação de quem lê (pedir acesso), não "tentar de novo".
+ */
+const FORBIDDEN_PATTERN = /\b403\b|forbidden|unauthorized|sem permiss|n[ãa]o autorizad/i;
+
+/** Estado do motor de blocos → estado do `ChartFrame`. */
+function frameState(
+  state: BlockRenderState,
+  isEmpty: boolean,
+  error?: string,
+): ChartFrameState {
+  if (state === 'loading' || state === 'skeleton') return 'loading';
+  if (state === 'error') {
+    return FORBIDDEN_PATTERN.test(error ?? '') ? 'forbidden' : 'error';
+  }
+  return state === 'empty' || isEmpty ? 'empty' : 'success';
+}
+
 export const Component: BlockComponent<FunnelStageProps, TableData> = ({
   props,
   data,
+  state,
+  error,
 }) => {
   const { summary, outcomes, total, notes } = readFunnelStage(data);
   const money = (value: unknown) =>
     props.valueFormat === 'compactBRL' ? formatCompactBRL(value) : formatBRL(value);
 
-  if (!summary && outcomes.length === 0 && !total) {
+  /**
+   * Contrato comum: todo texto do bloco aceita Markdown e `{{variavel}}`. O
+   * vocabulário sai dos dados (`{{contagem}}`, `{{linhas.0.desfecho}}`…) mais
+   * o que só a etapa sabe — o rótulo, o volume, o valor e a taxa.
+   */
+  const scope = buildChartScope(data, {
+    etapa: props.stageLabel,
+    quantidade: summary?.quantity ?? null,
+    valor: summary?.value ?? null,
+    taxa: summary?.hasFraction ? summary.fraction : null,
+  });
+
+  const isEmpty = !summary && outcomes.length === 0 && !total;
+  const frame = frameState(state, isEmpty, error);
+
+  // Carregando / vazio / erro / sem permissão: quem desenha é o `ChartFrame`,
+  // com o rótulo da etapa no cabeçalho — o card continua legível sem dado.
+  if (frame !== 'success') {
     return (
       <Card padding={4} data-slot="funnel-stage">
-        <EmptyState isCompact title="Sem dados para esta etapa" />
+        <ChartFrame
+          label={props.stageLabel}
+          title={props.stageLabel}
+          scope={scope}
+          state={frame}
+          height={STAGE_HEIGHT}
+          emptyMessage={props.emptyMessage ?? EMPTY_MESSAGE}
+          errorMessage={error}
+          isCompact
+        >
+          {null}
+        </ChartFrame>
       </Card>
     );
   }
-
-  const fraction = summary?.fraction ?? 0;
-  const participation = summary?.hasFraction
-    ? `${formatPercentBR(fraction, 2)} dos lançamentos`
-    : undefined;
 
   return (
     <Card padding={4} data-slot="funnel-stage">
       <Collapsible
         defaultIsOpen={Boolean(props.defaultOpen)}
         trigger={
-          // `as="span"` em toda a árvore do gatilho: ele é um <button>, e o
-          // conteúdo de um botão precisa ser texto/inline — não <div>.
-          <VStack as="span" gap={2} width="100%">
-            <Text type="label" color="secondary">
-              {props.stageLabel}
-            </Text>
-
-            <HStack as="span" gap={3} hAlign="between" vAlign="end" wrap="wrap">
-              <Text type="supporting" weight="semibold" hasTabularNumbers>
-                {summary?.quantity != null ? formatNumberBR(summary.quantity, 0) : '—'}
-                {participation ? ` — ${participation}` : ''}
-              </Text>
-              <Text type="display-3" hasTabularNumbers>
-                {money(summary?.value)}
-              </Text>
-            </HStack>
-
-            <FunnelBar
-              fraction={fraction}
-              weights={outcomeWeights(outcomes)}
-              color={RAMP[props.accent ?? 'blue']}
-              label={`${props.stageLabel}: ${participation ?? 'participação no universo'}`}
-            />
-
-            {props.barLabel ? (
-              <Text type="supporting" color="secondary">
-                {props.barLabel}
-              </Text>
-            ) : null}
-          </VStack>
+          <FunnelHeader
+            stageLabel={props.stageLabel}
+            barLabel={props.barLabel}
+            summary={summary}
+            weights={outcomeWeights(outcomes)}
+            color={RAMP[props.accent ?? 'blue']}
+            scope={scope}
+            money={money}
+          />
         }
       >
         <VStack gap={3}>
-          <FunnelRows outcomes={outcomes} total={total} money={money} />
-
-          {notes.map((note) => (
-            <Card key={note.key} padding={3} variant="muted">
-              <VStack gap={1}>
-                <HStack gap={3} hAlign="between" vAlign="center">
-                  <Text weight="semibold">{note.title}</Text>
-                  {note.value != null ? (
-                    <Text weight="semibold" hasTabularNumbers>
-                      {money(note.value)}
-                    </Text>
-                  ) : null}
-                </HStack>
-                {note.description ? (
-                  <Text type="supporting" color="secondary">
-                    {note.description}
-                  </Text>
-                ) : null}
-              </VStack>
-            </Card>
-          ))}
+          <FunnelRows outcomes={outcomes} total={total} money={money} scope={scope} />
+          <FunnelNotes notes={notes} money={money} scope={scope} />
         </VStack>
       </Collapsible>
     </Card>

@@ -5,6 +5,11 @@
  * Nomes, tipos e defaults das props são CONTRATO com o backend/agente e seguem
  * iguais. A prop de cor (`accent`) é resolvida pelo componente para um token de
  * dado do design system.
+ *
+ * `variant` foi ACRESCENTADA (opcional, default `semicircle`) na repaginação:
+ * a referência tem TRÊS medidores (`03-tipos-de-grafico.md` §11, §12 e §13) e
+ * o bloco desenhava só um. Nenhuma prop existente mudou de nome, tipo ou
+ * default — decisão registrada em `docs/charts/NOTAS.md` (SUB-06).
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
@@ -43,7 +48,15 @@ export const manifest = {
         enum: [...ACCENT_COLORS],
         default: 'chart-1',
         description:
-          'Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
+          'Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). No valor PADRÃO (`chart-1`) o medidor usa o par de cores do próprio layout (roxo, no medidor semicircular); qualquer outro valor pinta o arco com a cor escolhida. Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
+      },
+      // LAYOUT — os três medidores da referência de design.
+      variant: {
+        type: 'string',
+        enum: ['semicircle', 'radial', 'dashed'],
+        default: 'semicircle',
+        description:
+          'Layout do medidor: `semicircle` (meia-lua de -90° a +90°, o padrão), `radial` (barra radial de volta completa, com legenda embaixo) ou `dashed` (arco de 270° com a barra de valor pontilhada). Só muda o desenho — escala, unidade e leitura central são as mesmas.',
       },
     },
   },

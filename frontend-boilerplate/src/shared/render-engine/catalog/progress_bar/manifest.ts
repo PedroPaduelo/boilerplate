@@ -1,10 +1,15 @@
 /**
- * Manifesto do bloco `progress_bar` (shape 'scalar') — barra de progresso do
- * design system. Bom para metas e percentuais (valor sobre `max`).
+ * Manifesto do bloco `progress_bar` (shape 'scalar') — barra de progresso.
+ * Bom para metas e percentuais (valor sobre `max`).
  *
  * Nomes, tipos e defaults das props são CONTRATO com o backend/agente e seguem
- * iguais. A barra do DS trabalha com variantes SEMÂNTICAS de cor: `variant`
- * mapeia direto e `accent`, quando preenchido, pinta com a cor de destaque.
+ * IGUAIS. O que mudou na repaginação foi só o desenho: a barra é a BARRA
+ * HORIZONTAL da referência (§8) — trilha a 16 %, raio 2 px, traço 0 —, então a
+ * origem do componente deixou de ser o `ProgressBar` do Astryx e passou a ser
+ * a marca de dado própria do catálogo (`ChartBarTrack`).
+ *
+ * `variant` continua escolhendo a cor semântica e `accent`, quando preenchido,
+ * continua vencendo o `variant` — agora com a cor de série do tema de gráfico.
  */
 import type { BlockManifest } from '@dashboards/contracts';
 import { ACCENT_COLORS } from '../../lib/accent';
@@ -15,7 +20,7 @@ export const manifest = {
   name: 'Barra de Progresso',
   description:
     'Progresso de um valor sobre uma escala (ex.: 68 de 100). Ótimo para metas.',
-  source: 'astryx:progress-bar',
+  source: 'custom',
   propsSchema: {
     type: 'object',
     additionalProperties: false,
@@ -31,13 +36,13 @@ export const manifest = {
         enum: ['default', 'neutral', 'warning', 'error', 'success'],
         default: 'default',
         description:
-          'Cor SEMÂNTICA do preenchimento, mapeada para as variantes do design system: default = destaque, neutral = neutra, warning = atenção, error = erro, success = sucesso. É SOBRESCRITA por `accent` quando este vier preenchido.',
+          'Cor SEMÂNTICA do preenchimento: default = verde da referência, neutral = neutra, warning = atenção, error = erro, success = sucesso. É SOBRESCRITA por `accent` quando este vier preenchido.',
       },
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
         description:
-          'Cor de destaque. Quando preenchida, SOBRESCREVE o `variant` e a barra usa a cor de destaque do tema — a barra do design system é pintada por variante semântica, não por cor arbitrária. Valores antigos continuam aceitos.',
+          'Cor de destaque. Quando preenchida, SOBRESCREVE o `variant` e a barra é pintada com a cor de série correspondente do tema de gráfico. Valores antigos continuam aceitos.',
       },
       showValue: {
         type: 'boolean',

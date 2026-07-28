@@ -19,6 +19,7 @@ export {
   CHART_HEIGHT,
   CHART_MARGIN,
   CHART_MOTION,
+  CHART_NO_MARGIN,
   CHART_RAMP_COLORS,
   CHART_SERIES_COLORS,
   CHART_SPARK_MARGIN,
@@ -99,8 +100,8 @@ export { AreaChart } from './area-chart';
 export type { AreaChartFill, AreaChartMode, AreaChartProps } from './area-chart';
 export { BarChart } from './bar-chart';
 export type { BarChartProps } from './bar-chart';
-export { BarList } from './bar-list';
-export type { BarListItem, BarListProps } from './bar-list';
+export { BarList, RankingBar, RANKING_ROW_BAND, RANKING_TEXT } from './bar-list';
+export type { BarListItem, BarListProps, RankingBarProps } from './bar-list';
 export { DonutChart } from './donut-chart';
 export type { DonutChartProps } from './donut-chart';
 export { HBarChart } from './h-bar-chart';
