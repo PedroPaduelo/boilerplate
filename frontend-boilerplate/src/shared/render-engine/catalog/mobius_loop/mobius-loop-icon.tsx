@@ -78,8 +78,15 @@ export function MobiusLoopIcon({ size, speed }: MobiusLoopIconProps) {
       // SVG: var() não resolve em atributo de apresentação
       style={{ stroke: 'var(--color-accent)' }}
     >
+      {/* `initial` declara a ORIGEM da morfose. Sem ele o motion entra no
+          primeiro quadro sem valor de partida para `d` e escreve
+          literalmente "undefined" no atributo — o navegador rejeita o path e
+          registra `<path> attribute d: Expected moveto path command`, um erro
+          de console em toda visita à galeria. O `d` estático permanece como
+          desenho de base (movimento reduzido e antes da hidratação). */}
       <motion.path
         d={INFINITY}
+        initial={prefersReducedMotion ? false : { d: CIRCLE_CW }}
         animate={
           prefersReducedMotion
             ? { d: INFINITY }

@@ -19,3 +19,5 @@ export { DashboardRenderer } from './dashboard-renderer';
 export type { DashboardRendererProps } from './dashboard-renderer';
 export { BlockFrame } from './block-frame';
 export type { BlockFrameProps, BlockFrameTakeaway } from './block-frame';
+export { BlockBoundary } from './block-boundary';
+export type { BlockBoundaryProps } from './block-boundary';

@@ -219,12 +219,36 @@ describe('MCP — tools/list', () => {
 });
 
 describe('MCP — catalog & connections', () => {
-  it('list_catalog entrega manifestos (com __example)', async () => {
+  it('list_catalog entrega os manifestos públicos, sem os tipos internos', async () => {
     const result = await callTool('list_catalog');
     expect(result.isError).toBeFalsy();
-    const data = result.structuredContent as { blocks: { type: string }[]; total: number };
+    const data = result.structuredContent as {
+      blocks: { type: string }[];
+      total: number;
+      catalogVersion: number;
+    };
     expect(data.total).toBeGreaterThanOrEqual(1);
-    expect(data.blocks.map((b) => b.type)).toContain(CATALOG_TYPE);
+    expect(data.blocks.map((b) => b.type)).toContain('bar_chart');
+    // `__example` é o bloco-MODELO usado como referência de código. Ele tem um
+    // manifesto válido, mas não representa nada de negócio — oferecê-lo ao
+    // agente é convidar a escolha errada. A galeria já o escondia; a tool passa
+    // a esconder também, para que as duas listas sejam a mesma lista.
+    expect(data.blocks.map((b) => b.type)).not.toContain(CATALOG_TYPE);
+    // A versão acompanha a resposta: é o que diz sob qual catálogo o layout
+    // gerado a partir daqui foi escrito.
+    expect(typeof data.catalogVersion).toBe('number');
+  });
+
+  it('list_catalog filtra por shape (blocos compatíveis com o dado)', async () => {
+    const result = await callTool('list_catalog', { shape: 'scalar' });
+    expect(result.isError).toBeFalsy();
+    const data = result.structuredContent as {
+      blocks: { type: string; dataContract?: { shape?: string } }[];
+    };
+    expect(data.blocks.length).toBeGreaterThan(0);
+    for (const block of data.blocks) {
+      expect(block.dataContract?.shape).toBe('scalar');
+    }
   });
 
   it('list_connections lista a conexão de teste (visibilidade ORG)', async () => {

@@ -2,9 +2,15 @@
  * Editor de UMA prop visual do bloco, gerado a partir do `propsSchema`.
  *
  * O tipo do schema decide o controle: enum → `Selector`, boolean → `Switch`,
- * number/integer → `NumberInput`, resto → `TextInput`. Props de cor ganham um
- * tratamento próprio (`ColorPropField`), porque o enum de acento do DS aceita
- * também um valor livre (classe utilitária) para o playground.
+ * number/integer → `NumberInput`, array → `ArrayPropField`, resto →
+ * `TextInput`. Props de cor ganham um tratamento próprio (`ColorPropField`),
+ * porque o enum de acento do DS aceita também um valor livre (classe
+ * utilitária) para o playground.
+ *
+ * O ramo de `array` NÃO é cosmético: sem ele, listas caíam no `TextInput` e o
+ * `onChange` gravava string onde o bloco espera lista — o que derrubava a
+ * aplicação em `flip_words` e virava no-op em `bar_chart.seriesColors`.
+ * Regra: todo controle daqui emite um valor do TIPO declarado no schema.
  */
 import { NumberInput } from '@astryxdesign/core/NumberInput';
 import { Selector } from '@astryxdesign/core/Selector';
@@ -12,6 +18,7 @@ import { Switch } from '@astryxdesign/core/Switch';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/Layout';
 import { ACCENT_COLORS, isAccentColor } from '@/shared/render-engine/lib/accent';
+import { ArrayPropField } from './array-prop-field';
 import { isColorProp } from './playground-helpers';
 import type { PropField } from './types';
 
@@ -65,6 +72,20 @@ function ColorPropField({ field, value, onChange }: PropFieldEditorProps) {
 
 export function PropFieldEditor({ field, value, onChange }: PropFieldEditorProps) {
   const { key, schema, required } = field;
+
+  // ANTES do enum/cor: uma prop `array` nunca deve virar campo de texto solto,
+  // mesmo quando o nome casa com a heurística de cor (`seriesColors`).
+  if (schema.type === 'array') {
+    return (
+      <ArrayPropField
+        propKey={key}
+        schema={schema}
+        value={value}
+        required={required}
+        onChange={onChange}
+      />
+    );
+  }
 
   if (isColorProp(key, schema)) {
     return <ColorPropField field={field} value={value} onChange={onChange} />;

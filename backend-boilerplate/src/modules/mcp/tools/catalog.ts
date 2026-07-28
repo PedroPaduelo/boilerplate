@@ -10,11 +10,13 @@
  * scalar | series | categorical | table).
  */
 import { z } from 'zod';
-import { getCatalogManifest, listCatalogManifests } from '@/lib/catalog';
+import { getCatalogBlock, listCatalog } from '@/modules/catalog/service';
 import type { ToolDefinition } from './types';
 
 const listCatalogArgs = z.object({
   type: z.string().optional(),
+  kind: z.enum(['chart', 'text', 'title', 'layout']).optional(),
+  shape: z.enum(['scalar', 'series', 'categorical', 'table']).optional(),
 });
 
 const listCatalogTool: ToolDefinition = {
@@ -26,7 +28,9 @@ const listCatalogTool: ToolDefinition = {
     'contra ele), `defaultProps` e, para blocos de gráfico, o `dataContract` com `shape` ' +
     '(scalar | series | categorical | table) que o RESULTADO da sua query precisa respeitar ' +
     'após o `transform`. Consulte SEMPRE este catálogo antes de criar/atualizar um chart. ' +
-    'Passe `type` para obter um único manifesto. Retorna { blocks: BlockManifest[], total }.',
+    'FILTROS: `type` (um manifesto só), `shape` (só os blocos que aceitam o formato de dado ' +
+    'que você tem — o filtro mais útil para escolher um bloco) e `kind`. ' +
+    'Retorna { blocks: BlockManifest[], total, catalogVersion }.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -35,16 +39,30 @@ const listCatalogTool: ToolDefinition = {
         type: 'string',
         description: 'Se informado, retorna só o manifesto desse tipo de bloco.',
       },
+      kind: {
+        type: 'string',
+        enum: ['chart', 'text', 'title', 'layout'],
+        description: 'Filtra pela natureza do bloco.',
+      },
+      shape: {
+        type: 'string',
+        enum: ['scalar', 'series', 'categorical', 'table'],
+        description:
+          'Filtra pelos blocos que consomem esse formato de dado. Use quando já souber o ' +
+          'formato do resultado da query e quiser só os blocos compatíveis.',
+      },
     },
   },
+  // Reusa o service do módulo `catalog` (mesma regra da REST): uma só lista
+  // pública, sem os tipos internos, e o `catalogVersion` junto — o número que
+  // diz sob qual catálogo o layout foi escrito.
   handler: async (rawArgs) => {
-    const { type } = listCatalogArgs.parse(rawArgs ?? {});
+    const { type, kind, shape } = listCatalogArgs.parse(rawArgs ?? {});
     if (type) {
-      const manifest = getCatalogManifest(type);
+      const manifest = getCatalogBlock(type);
       return { blocks: manifest ? [manifest] : [], total: manifest ? 1 : 0 };
     }
-    const blocks = listCatalogManifests();
-    return { blocks, total: blocks.length };
+    return listCatalog({ kind, shape, includeSchemas: true });
   },
 };
 

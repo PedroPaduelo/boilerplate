@@ -48,6 +48,20 @@ const blocks: CatalogBlockManifest[] = Array.isArray(
 
 const byType = new Map<string, CatalogBlockManifest>(blocks.map((b) => [b.type, b]));
 
+/**
+ * Versão do catálogo gerado (`catalogVersion` do artefato de `build:catalog`).
+ *
+ * É o número que permite a um consumidor — o front, o agente ou um snapshot
+ * salvo — saber se o catálogo que ele conhece ainda é o vigente. Um layout
+ * criado sob a versão N referencia tipos que existiam em N; quando a versão
+ * muda, é aí que se decide migrar. Sem expor esse número, o desencontro só
+ * aparece na forma de "bloco não implementado" em tela.
+ */
+export const CATALOG_VERSION: number =
+  typeof (catalogFile as { catalogVersion?: unknown }).catalogVersion === 'number'
+    ? (catalogFile as { catalogVersion: number }).catalogVersion
+    : 1;
+
 /** Lista (cópia) de todos os manifestos do catálogo. */
 export function listCatalogManifests(): CatalogBlockManifest[] {
   return [...blocks];

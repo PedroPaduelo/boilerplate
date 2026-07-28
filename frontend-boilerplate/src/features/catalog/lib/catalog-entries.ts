@@ -11,33 +11,13 @@
 import type { Block, BlockDataResult, DataShape } from '@dashboards/contracts';
 import { listBlocks, type BlockDefinition } from '@/shared/render-engine';
 import { categoryOf, CATEGORY_ORDER, type Category } from './categories';
+import { PREVIEW_PROPS } from './preview-props';
 
 /** Tipos internos/placeholder que NÃO aparecem na galeria. */
 const HIDDEN_TYPES = new Set<string>(['__example']);
 
 /** `kind` do manifesto (chart | text | title | layout). */
 export type CatalogKind = 'chart' | 'text' | 'title' | 'layout';
-
-/**
- * Props de preview para blocos NARRATIVOS (sem `dataContract`), cujo conteúdo
- * vem das PROPS e não de `data`. Para os blocos de dados, `defaultProps` +
- * fixture já bastam.
- */
-const PREVIEW_PROPS: Record<string, Record<string, unknown>> = {
-  title: { text: 'Arrecadação por município', level: 2, align: 'left' },
-  rich_text: {
-    markdown: [
-      '## Resumo executivo',
-      '',
-      'A arrecadação acumulada cresceu **12%** frente ao período anterior, puxada',
-      'pela regularização de débitos no `Centro` e pelo avanço dos parcelamentos.',
-      '',
-      '- **Centro** lidera a arrecadação',
-      '- **Sul** em recuperação consistente',
-      '- Inadimplência em queda',
-    ].join('\n'),
-  },
-};
 
 export const KIND_LABEL: Record<CatalogKind, string> = {
   chart: 'Gráfico',
@@ -136,6 +116,9 @@ export function getCatalogEntries(): CatalogEntry[] {
     .sort((a, b) => {
       const byCat = CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];
       if (byCat !== 0) return byCat;
-      return a.definition.manifest.name.localeCompare(b.definition.manifest.name, 'pt-BR');
+      return a.definition.manifest.name.localeCompare(
+        b.definition.manifest.name,
+        'pt-BR',
+      );
     });
 }

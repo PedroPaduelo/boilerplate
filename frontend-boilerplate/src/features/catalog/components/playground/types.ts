@@ -62,6 +62,13 @@ export interface PropSchema {
   minimum?: number;
   maximum?: number;
   description?: string;
+  /**
+   * Schema dos ITENS, quando `type: 'array'`. É o que decide o controle: lista
+   * de escalares vira campo separado por vírgula; lista de objetos vira JSON.
+   * Sem este campo, props de lista caíam no editor de texto genérico e o valor
+   * salvo virava string — o defeito que derrubava blocos que iteram a lista.
+   */
+  items?: PropSchema;
 }
 
 /** `manifest.propsSchema` na forma que o editor consome. */

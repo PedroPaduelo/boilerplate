@@ -11,12 +11,18 @@
  * "some" da galeria — aparece numa aba "Outros" até ser classificado aqui.
  */
 
-/** Ordem das abas. `outros` é fallback (só renderiza se houver bloco órfão). */
+/**
+ * Ordem das abas. `outros` é fallback (só renderiza se houver bloco órfão).
+ *
+ * `listas` foi REMOVIDA: nenhum bloco apontava para ela (os rankings vivem em
+ * `tabelas` e `bar_list` em `graficos`), então ela era uma aba que nunca
+ * aparecia — código morto que fazia a contagem de categorias do arquivo
+ * discordar do que a tela mostra.
+ */
 export const CATEGORIES = [
   'graficos',
   'indicadores',
   'tabelas',
-  'listas',
   'layout',
   'efeitos',
   'texto',
@@ -30,11 +36,25 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   graficos: 'Gráficos',
   indicadores: 'Cards & Métricas',
   tabelas: 'Tabelas',
-  listas: 'Listas',
   layout: 'Layout',
   efeitos: 'Efeitos',
   texto: 'Texto',
   outros: 'Outros',
+};
+
+/**
+ * Uma linha por categoria explicando QUANDO usar aquele grupo. A aba sozinha
+ * diz "o que é"; isto diz "para qual pergunta serve" — que é como quem monta um
+ * relatório (e o agente) escolhe um bloco.
+ */
+export const CATEGORY_HINT: Record<Category, string> = {
+  graficos: 'Comparar, acompanhar tendência ou mostrar parte do todo.',
+  indicadores: 'Destacar um número único e o seu estado.',
+  tabelas: 'Mostrar os registros linha a linha, com ordenação.',
+  layout: 'Agrupar outros blocos: seções, painéis e containers.',
+  efeitos: 'Enfeite visual — não carrega dado nem informação.',
+  texto: 'Narrativa: títulos, resumos e comentários do relatório.',
+  outros: 'Blocos ainda não classificados.',
 };
 
 /** Índice de ordenação das categorias (segue a ordem de `CATEGORIES`). */
@@ -61,6 +81,9 @@ export const CATEGORY_BY_TYPE: Record<string, Category> = {
   radial_gauge: 'graficos',
   progress_circle: 'graficos',
   progress_bar: 'graficos',
+  // Funil é comparação entre etapas — é gráfico, não "outros". Estava fora do
+  // mapa e caía sozinho na aba de fallback.
+  funnel_stage: 'graficos',
 
   // 🔔 Cards, Métricas & Indicadores — valor único (escalar) + alertas
   kpi: 'indicadores',

@@ -24,18 +24,10 @@ import type {
   Takeaway,
 } from './types';
 
-/**
- * Props de preview para blocos NARRATIVOS (sem `dataContract`), cujo conteúdo
- * vem das PROPS e não de `data`.
- */
-const PREVIEW_PROPS: Record<string, Record<string, unknown>> = {
-  title: { text: 'Arrecadação por município', level: 2, align: 'left' },
-};
-
-/** Props narrativas de preview de um tipo de bloco (ou `undefined`). */
-export function previewPropsFor(type: string): Record<string, unknown> | undefined {
-  return PREVIEW_PROPS[type];
-}
+// Reexporta a fonte ÚNICA: o card da grade e o playground precisam mostrar o
+// MESMO exemplo. Enquanto cada um tinha a sua cópia, o `rich_text` aparecia
+// preenchido no card e vazio ao abrir.
+export { previewPropsFor } from '../../lib/preview-props';
 
 /** Lista as props configuráveis do bloco, na ordem do `propsSchema`. */
 export function fieldsFromSchema(manifest: BlockManifest): PropField[] {
@@ -48,12 +40,19 @@ export function fieldsFromSchema(manifest: BlockManifest): PropField[] {
   }));
 }
 
-/** Valor inicial de uma prop quando o schema não traz `default`. */
+/**
+ * Valor inicial de uma prop quando o schema não traz `default`.
+ *
+ * O fallback respeita o TIPO declarado — em especial `array`, que antes caía no
+ * `''` final e injetava uma string onde o bloco itera uma lista.
+ */
 function fallbackValue(schema: PropSchema): unknown {
   if (schema.default !== undefined) return schema.default;
   if (schema.enum?.length) return schema.enum[0];
   if (schema.type === 'boolean') return false;
   if (schema.type === 'number' || schema.type === 'integer') return 0;
+  if (schema.type === 'array') return [];
+  if (schema.type === 'object') return {};
   return '';
 }
 

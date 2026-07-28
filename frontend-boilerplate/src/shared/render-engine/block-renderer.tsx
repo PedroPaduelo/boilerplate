@@ -21,6 +21,7 @@
 import type { ReactNode } from 'react';
 import type { Block, BlockDataResult, DashboardDataPayload } from '@dashboards/contracts';
 import { BlockPlaceholder, BlockUnknown } from './block-body';
+import { BlockBoundary } from './block-boundary';
 import { BlockContainer } from './block-container';
 import { BlockFrame, type BlockFrameTakeaway } from './block-frame';
 import {
@@ -105,14 +106,16 @@ export function BlockRenderer({
       <BlockRenderer block={child} data={data} result={data?.blocks?.[child.id]} framed />
     );
     return (
-      <BlockContainer
-        block={block}
-        Component={Component}
-        props={props}
-        childBlocks={childBlocks}
-        renderChild={renderChild}
-        className={className}
-      />
+      <BlockBoundary type={block.type} resetKey={props}>
+        <BlockContainer
+          block={block}
+          Component={Component}
+          props={props}
+          childBlocks={childBlocks}
+          renderChild={renderChild}
+          className={className}
+        />
+      </BlockBoundary>
     );
   }
 
@@ -149,21 +152,23 @@ export function BlockRenderer({
       data-block-state={state}
       className={className}
     >
-      {shouldFrame ? (
-        <BlockFrame
-          title={explicitBlockTitle(block) ?? def.manifest.name}
-          chartType={def.manifest.name}
-          query={block.dataBinding?.query}
-          durationMs={durationOf(ownResult)}
-          isLoading={isLoading}
-          takeaways={frameTakeaways(block, def.deriveTakeaway, dataVal, state)}
-          showQuery={showSqlOf(block)}
-        >
-          {isLoading ? null : body}
-        </BlockFrame>
-      ) : (
-        body
-      )}
+      <BlockBoundary type={block.type} resetKey={ownResult ?? props}>
+        {shouldFrame ? (
+          <BlockFrame
+            title={explicitBlockTitle(block) ?? def.manifest.name}
+            chartType={def.manifest.name}
+            query={block.dataBinding?.query}
+            durationMs={durationOf(ownResult)}
+            isLoading={isLoading}
+            takeaways={frameTakeaways(block, def.deriveTakeaway, dataVal, state)}
+            showQuery={showSqlOf(block)}
+          >
+            {isLoading ? null : body}
+          </BlockFrame>
+        ) : (
+          body
+        )}
+      </BlockBoundary>
     </div>
   );
 }
