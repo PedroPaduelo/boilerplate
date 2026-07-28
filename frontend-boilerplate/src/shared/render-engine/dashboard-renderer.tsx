@@ -23,6 +23,7 @@ import { Heading } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 import { BlockGrid } from './block-grid';
+import type { BlockHeight } from './lib/block-sizing';
 import type { BlockItemSizing } from './lib/layout-options';
 import { BlockRenderer } from './block-renderer';
 
@@ -75,6 +76,9 @@ export function DashboardRenderer({
           {row.title ? <Heading level={2}>{row.title}</Heading> : null}
           <BlockGrid
             blocks={row.blocks}
+            // Altura DECLARADA na linha (editor / agente). Ausente, o grid
+            // deriva dos tipos — o comportamento que sempre houve.
+            rowHeight={(row as { height?: BlockHeight }).height}
             itemSizing={itemSizing}
             renderBlock={(block) => (
               <BlockRenderer

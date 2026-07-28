@@ -17,9 +17,21 @@
  * elementos do layout (subset fiel ao contrato).
  */
 import { validateDashboardLayout, formatErrors } from '@dashboards/contracts';
+/**
+ * Import do MÓDULO, não do barril do render-engine: este arquivo é puro (sem
+ * React) e o barril arrasta o registry — que varre o catálogo inteiro por glob.
+ * A altura é a mesma política do motor; só o caminho é mais curto.
+ */
+import {
+  BLOCK_HEIGHT_PX_MAX,
+  BLOCK_HEIGHT_PX_MIN,
+  hasDeclaredHeight,
+  type BlockHeight,
+} from '@/shared/render-engine/lib/block-sizing';
 import type { DashFilter, DashFilterType } from './dashboard-filters';
 
 export type { DashFilter, DashFilterType };
+export type { BlockHeight };
 
 /** Parâmetro de binding (contrato: requer filterId E as). */
 export interface EditorBindingParam {
@@ -40,13 +52,39 @@ export interface EditorBlock {
   id: string;
   type: string;
   span: number;
+  /**
+   * Altura própria do bloco (degrau ou px). Sobrepõe a da linha — exceção
+   * pontual, não o caminho normal (ver `EditorRow.height`).
+   */
+  height?: BlockHeight;
+  /** Título do card. O backend o preenche com o título do Chart referenciado. */
+  title?: string;
+  /** Subtítulo do card (linha de apoio no cabeçalho). */
+  subtitle?: string;
+  /** Linhas ocupadas em containers de mosaico. */
+  rowSpan?: number;
   props?: Record<string, unknown>;
   dataBinding?: EditorDataBinding;
+  /**
+   * Sub-blocos de um bloco CONTAINER (`section`, `grid`). O editor humano não
+   * os edita — mas PRECISA carregá-los, porque `sanitizeLayoutForSave`
+   * reconstrói o bloco campo a campo: sem isto, abrir e salvar um dashboard
+   * montado pelo agente apagaria em silêncio tudo o que estivesse dentro de
+   * uma seção. É o mesmo motivo que trouxe `tabs` para este tipo.
+   */
+  blocks?: EditorBlock[];
 }
 
 export interface EditorRow {
   id: string;
   title?: string;
+  /**
+   * Altura da LINHA (degrau nomeado ou px). A linha é a unidade de decisão de
+   * altura: ela escolhe um tamanho e todos os seus blocos ficam com ele — é o
+   * que impede um gráfico terminar maior que o vizinho. Ausente = o motor
+   * deriva dos tipos que a linha contém.
+   */
+  height?: BlockHeight;
   blocks: EditorBlock[];
 }
 
@@ -90,14 +128,20 @@ interface RawBlock {
   blockId?: unknown;
   type?: unknown;
   span?: unknown;
+  height?: unknown;
+  rowSpan?: unknown;
+  title?: unknown;
+  subtitle?: unknown;
   props?: unknown;
   /** Forma legada: `chartId` no topo do bloco (o contrato espera em `props.chartId`). */
   chartId?: unknown;
   dataBinding?: unknown;
+  blocks?: unknown;
 }
 interface RawRow {
   id?: unknown;
   title?: unknown;
+  height?: unknown;
   blocks?: unknown;
 }
 
@@ -119,6 +163,11 @@ function normalizeBinding(raw: unknown): EditorDataBinding | undefined {
   };
 }
 
+/** Texto do bloco (título/subtítulo): só entra se tiver conteúdo. */
+function normalizeText(raw: unknown): string | undefined {
+  return typeof raw === 'string' && raw.trim().length > 0 ? raw : undefined;
+}
+
 function normalizeBlock(raw: RawBlock): EditorBlock {
   const span = typeof raw.span === 'number' ? raw.span : 12;
   const id =
@@ -137,12 +186,24 @@ function normalizeBlock(raw: RawBlock): EditorBlock {
   if (typeof raw.chartId === 'string' && props.chartId === undefined) {
     props.chartId = raw.chartId;
   }
+  const title = normalizeText(raw.title);
+  const subtitle = normalizeText(raw.subtitle);
+  const children = Array.isArray(raw.blocks)
+    ? (raw.blocks as RawBlock[]).map(normalizeBlock)
+    : [];
   return {
     id,
     type: typeof raw.type === 'string' ? raw.type : 'title',
     span: clampSpan(span),
+    ...(hasDeclaredHeight(raw.height) ? { height: raw.height as BlockHeight } : {}),
+    ...(typeof raw.rowSpan === 'number' && raw.rowSpan >= 1
+      ? { rowSpan: Math.round(raw.rowSpan) }
+      : {}),
+    ...(title ? { title } : {}),
+    ...(subtitle ? { subtitle } : {}),
     ...(Object.keys(props).length > 0 ? { props } : {}),
     ...(raw.dataBinding ? { dataBinding: normalizeBinding(raw.dataBinding) } : {}),
+    ...(children.length > 0 ? { blocks: children } : {}),
   };
 }
 
@@ -167,6 +228,7 @@ export function normalizeLayout(raw: unknown): EditorLayout {
     ? (l.rows as RawRow[]).map((r) => ({
         id: typeof r.id === 'string' ? r.id : genId('row'),
         ...(typeof r.title === 'string' ? { title: r.title } : {}),
+        ...(hasDeclaredHeight(r.height) ? { height: r.height as BlockHeight } : {}),
         blocks: Array.isArray(r.blocks)
           ? (r.blocks as RawBlock[]).map(normalizeBlock)
           : [],
@@ -196,6 +258,21 @@ export function normalizeLayout(raw: unknown): EditorLayout {
 export function clampSpan(span: number): number {
   if (!Number.isFinite(span)) return 12;
   return Math.max(1, Math.min(12, Math.round(span)));
+}
+
+/**
+ * Normaliza uma altura antes de gravá-la no layout: degrau passa direto,
+ * número é grampeado na faixa do contrato (120..1600).
+ *
+ * O grampeamento acontece AQUI, na escrita, e não só na leitura do motor:
+ * assim o valor que vai para o JSON já é válido, e o usuário nunca descobre um
+ * "layout inválido" no clique de Salvar por ter digitado 4000 num campo.
+ */
+export function normalizeHeight(height: BlockHeight): BlockHeight {
+  if (typeof height !== 'number') return height;
+  const rounded = Math.round(height);
+  if (!Number.isFinite(rounded)) return BLOCK_HEIGHT_PX_MIN;
+  return Math.max(BLOCK_HEIGHT_PX_MIN, Math.min(BLOCK_HEIGHT_PX_MAX, rounded));
 }
 
 export interface BlockLocation {
@@ -324,6 +401,62 @@ export function setBlockSpan(
   return patchBlock(layout, blockId, (block) => ({ ...block, span: clampSpan(span) }));
 }
 
+/**
+ * Ajusta a ALTURA declarada de um bloco. `undefined` remove a declaração — e
+ * remover é diferente de zerar: o bloco volta a herdar a altura da linha.
+ */
+export function setBlockHeight(
+  layout: EditorLayout,
+  blockId: string,
+  height: BlockHeight | undefined,
+): EditorLayout {
+  return patchBlock(layout, blockId, (block) => {
+    const next: EditorBlock = { ...block };
+    if (height === undefined) delete next.height;
+    else next.height = normalizeHeight(height);
+    return next;
+  });
+}
+
+/**
+ * Edita um TEXTO do cabeçalho do card (`title` / `subtitle`). Vazio REMOVE o
+ * campo: um título em branco não é um título, e deixá-lo como `''` faria o
+ * render mostrar um cabeçalho vazio em vez de cair no nome do tipo.
+ */
+export function setBlockText(
+  layout: EditorLayout,
+  blockId: string,
+  field: 'title' | 'subtitle',
+  value: string,
+): EditorLayout {
+  return patchBlock(layout, blockId, (block) => {
+    const next: EditorBlock = { ...block };
+    if (value.trim() === '') delete next[field];
+    else next[field] = value;
+    return next;
+  });
+}
+
+/**
+ * Duplica um bloco, logo depois do original, na mesma linha.
+ *
+ * Id NOVO (e não uma cópia do original) porque o id é a chave por onde o
+ * backend devolve os dados: dois blocos com o mesmo id receberiam o mesmo
+ * resultado e o editor não saberia qual está editando. O resto — inclusive o
+ * `dataBinding` — é copiado, que é justamente o ponto: duplicar existe para
+ * quem vai trocar uma linha do SQL, não para recomeçar do zero.
+ */
+export function duplicateBlock(layout: EditorLayout, blockId: string): EditorLayout {
+  const loc = findBlock(layout, blockId);
+  if (!loc) return layout;
+  const copy: EditorBlock = { ...loc.block, id: genId('blk') };
+  return mapRow(layout, loc.row.id, (row) => {
+    const blocks = [...row.blocks];
+    blocks.splice(loc.blockIndex + 1, 0, copy);
+    return { ...row, blocks };
+  });
+}
+
 /** Substitui as `props` de um bloco (usado pelos editores narrativos). */
 export function setBlockProps(
   layout: EditorLayout,
@@ -400,6 +533,59 @@ export function addRow(
       tab.id === targetId ? { ...tab, rowIds: [...tab.rowIds, row.id] } : tab,
     ),
   };
+}
+
+/**
+ * Ajusta a ALTURA da linha. `undefined` remove a declaração e devolve a linha
+ * à derivação automática (a altura que os tipos dela pedem).
+ */
+export function setRowHeight(
+  layout: EditorLayout,
+  rowId: string,
+  height: BlockHeight | undefined,
+): EditorLayout {
+  return mapRow(layout, rowId, (row) => {
+    const next: EditorRow = { ...row };
+    if (height === undefined) delete next.height;
+    else next.height = normalizeHeight(height);
+    return next;
+  });
+}
+
+/**
+ * Reordena uma LINHA (↑/↓). No-op nas bordas.
+ *
+ * Quando há abas, quem manda na ordem de exibição é `tab.rowIds` (é ele que o
+ * `layoutForTab` percorre) — então mover é trocar de lugar DENTRO da aba, e a
+ * troca acontece entre linhas da MESMA aba. Reordenar o array `rows` global
+ * nesse caso não mudaria nada na tela e ainda embaralharia linhas de abas
+ * vizinhas. Sem abas, `rows` é a ordem, e é ele que muda.
+ */
+export function moveRow(
+  layout: EditorLayout,
+  rowId: string,
+  direction: MoveDirection,
+): EditorLayout {
+  const tab = layout.tabs?.find((t) => t.rowIds.includes(rowId));
+  if (tab) {
+    const idx = tab.rowIds.indexOf(rowId);
+    const target = direction === 'up' ? idx - 1 : idx + 1;
+    if (target < 0 || target >= tab.rowIds.length) return layout;
+    const rowIds = [...tab.rowIds];
+    [rowIds[idx], rowIds[target]] = [rowIds[target], rowIds[idx]];
+    return {
+      ...layout,
+      tabs: layout.tabs?.map((t) => (t.id === tab.id ? { ...t, rowIds } : t)),
+    };
+  }
+
+  const idx = layout.rows.findIndex((r) => r.id === rowId);
+  if (idx < 0) return layout;
+  const target = direction === 'up' ? idx - 1 : idx + 1;
+  if (target < 0 || target >= layout.rows.length) return layout;
+  const rows = [...layout.rows];
+  [rows[idx], rows[target]] = [rows[target], rows[idx]];
+  return { ...layout, rows };
 }
 
 /**
@@ -585,16 +771,8 @@ export function sanitizeLayoutForSave(layout: EditorLayout): {
   const rows = layout.rows.map((row) => ({
     id: row.id,
     ...(row.title !== undefined && row.title !== '' ? { title: row.title } : {}),
-    blocks: row.blocks.map((block) => {
-      const out: Record<string, unknown> = {
-        id: block.id,
-        type: block.type,
-        span: block.span,
-      };
-      if (block.props && Object.keys(block.props).length > 0) out.props = block.props;
-      if (block.dataBinding) out.dataBinding = sanitizeBinding(block.dataBinding);
-      return out;
-    }),
+    ...(hasDeclaredHeight(row.height) ? { height: row.height } : {}),
+    blocks: row.blocks.map(sanitizeBlock),
   }));
 
   // ABAS: só vão no payload quando existem. Um layout legado continua sendo
@@ -613,6 +791,34 @@ export function sanitizeLayoutForSave(layout: EditorLayout): {
   }));
 
   return { filters, rows, ...(tabs.length > 0 ? { tabs } : {}) };
+}
+
+/**
+ * Um bloco na forma do contrato.
+ *
+ * A regra aqui é ESCREVER TUDO O QUE FOI LIDO. Este objeto é construído campo a
+ * campo, então toda chave que o normalizador conhece precisa aparecer nesta
+ * função — senão a chave some do dado salvo, e some em SILÊNCIO: sem erro, sem
+ * aviso, só um dashboard que perdeu o título dos cards (ou o conteúdo de uma
+ * seção inteira) porque alguém abriu o editor e clicou em Salvar.
+ *
+ * Recursivo por causa dos containers: `blocks` dentro de `blocks`.
+ */
+function sanitizeBlock(block: EditorBlock): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    id: block.id,
+    type: block.type,
+    span: block.span,
+  };
+  if (hasDeclaredHeight(block.height)) out.height = block.height;
+  if (typeof block.rowSpan === 'number' && block.rowSpan > 1) out.rowSpan = block.rowSpan;
+  if (block.title) out.title = block.title;
+  if (block.subtitle) out.subtitle = block.subtitle;
+  if (block.props && Object.keys(block.props).length > 0) out.props = block.props;
+  if (block.dataBinding) out.dataBinding = sanitizeBinding(block.dataBinding);
+  if (block.blocks && block.blocks.length > 0)
+    out.blocks = block.blocks.map(sanitizeBlock);
+  return out;
 }
 
 function sanitizeBinding(binding: EditorDataBinding): Record<string, unknown> {

@@ -222,3 +222,57 @@ describe('DashboardRenderer — composição das linhas', () => {
     expect(container.querySelectorAll('[data-slot="block-child-cell"]')).toHaveLength(3);
   });
 });
+
+/**
+ * A altura declarada no LAYOUT tem de chegar à tela pelo caminho de produção —
+ * `DashboardRenderer` → `BlockGrid` → célula. O `BlockGrid` já é testado
+ * isolado; o que se prova aqui é a LIGAÇÃO: sem ela, o campo existiria no
+ * contrato, seria salvo pelo editor e não faria nada para quem lê o dashboard.
+ */
+describe('DashboardRenderer — altura declarada na linha', () => {
+  const comAltura: DashboardLayout = {
+    filters: [],
+    rows: [
+      {
+        id: 'row_alta',
+        height: 620,
+        blocks: [
+          { id: 'b1', type: 'bar_chart', span: 6 },
+          { id: 'b2', type: 'bar_chart', span: 6 },
+        ],
+      },
+      {
+        id: 'row_derivada',
+        blocks: [{ id: 'b3', type: 'kpi', span: 12 }],
+      },
+    ],
+  } as unknown as DashboardLayout;
+
+  it('a altura da linha vale para todas as células dela', () => {
+    const { container } = renderWithProviders(<DashboardRenderer layout={comAltura} />);
+    const cells = [
+      ...container.querySelectorAll('[data-slot="dashboard-cell"]'),
+    ] as HTMLElement[];
+    expect(cells[0].style.minHeight).toBe('620px');
+    expect(cells[1].style.minHeight).toBe('620px');
+  });
+
+  it('linha sem altura declarada continua derivando do tipo (nada muda para o legado)', () => {
+    const { container } = renderWithProviders(<DashboardRenderer layout={comAltura} />);
+    const grids = [
+      ...container.querySelectorAll('[data-slot="dashboard-grid"]'),
+    ] as HTMLElement[];
+    // A linha com altura do autor anuncia `custom` — não há degrau a nomear.
+    expect(grids[0].dataset.blockGridRowHeight).toBe('custom');
+    /*
+     * A segunda linha tem um único bloco de largura total, e o degrau da GRADE
+     * ali é `auto` de propósito: quem está sozinho na faixa não divide altura
+     * com ninguém, então a célula usa o degrau do próprio tipo (KPI → 160px).
+     * O que importa para o usuário é a altura da CÉLULA, e é ela que se afere.
+     */
+    const cells = [
+      ...container.querySelectorAll('[data-slot="dashboard-cell"]'),
+    ] as HTMLElement[];
+    expect(cells[2].style.minHeight).toBe('160px');
+  });
+});

@@ -478,3 +478,179 @@
     }
   }
 }
+
+/* --------------------------------------------------------------------------
+   EDITOR DE DASHBOARD — canvas + inspetor
+
+   A tela de edição tem duas regiões com PESOS diferentes: o canvas é a tarefa
+   (o dashboard sendo montado) e o inspetor é o apoio (as propriedades do que
+   está selecionado). Um `Grid` de colunas iguais não expressa isso, e um
+   `HStack` sozinho deixa o inspetor encolher junto com o conteúdo.
+
+   Três decisões moram aqui, todas de COMPOSIÇÃO — geometria que o design
+   system não tem slot para declarar:
+
+     1. a proporção das duas colunas (canvas elástico, inspetor fixo);
+     2. o inspetor grudado no topo enquanto o canvas rola;
+     3. a barra de ações fixa acima de tudo.
+
+   Medido na tela antiga, para dimensionar: 2557px de rolagem de formulários
+   com o preview de 792px de largura — que renderiza DUAS colunas onde a tela
+   publicada mostra três, porque o grid do motor colapsa abaixo de 280px por
+   faixa. Com o canvas em ~1150px numa viewport de 1911px, o editor volta a
+   mostrar as três faixas reais.
+   -------------------------------------------------------------------------- */
+@layer components {
+  .app-editor-shell {
+    align-items: flex-start;
+  }
+
+  /* `min-width: 0` é o que permite o canvas ENCOLHER dentro do flex: sem isso
+     um item flex se recusa a ficar menor que o conteúdo, e a grade de blocos
+     empurraria o inspetor para fora da tela. */
+  .app-editor-canvas {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .app-editor-inspector {
+    /* 400px: cabe o formulário de fonte de dados (SQL, parâmetros) sem quebrar
+       cada campo em duas linhas, e sobra tela para o canvas em 1280px. */
+    flex: 0 0 400px;
+    width: 400px;
+    position: sticky;
+    /* Abaixo da barra de ações fixa (56px) + o respiro da página. */
+    top: calc(56px + var(--spacing-4, 16px));
+    /* O painel rola sozinho quando o conteúdo passa da tela — o canvas atrás
+       continua rolando de forma independente. */
+    max-height: calc(100dvh - 56px - var(--spacing-8, 32px));
+    overflow: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-page);
+    background: var(--color-background-card);
+  }
+
+  .app-editor-inspector__body {
+    /* O corpo do inspetor é a única parte que rola; o cabeçalho da seleção
+       fica no topo do painel. */
+    padding-block-end: var(--spacing-6, 24px);
+  }
+
+  .app-editor-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-background-body);
+  }
+
+  @media (max-width: 1180px) {
+    /* Abaixo disso as duas colunas não convivem: o inspetor vira uma faixa
+       abaixo do canvas, na largura inteira. Empilhar mantendo 400px fixos
+       deixaria um painel estreito e um vazio ao lado. */
+    .app-editor-shell {
+      flex-wrap: wrap;
+    }
+
+    .app-editor-inspector {
+      flex: 1 1 100%;
+      width: 100%;
+      position: static;
+      max-height: none;
+    }
+  }
+
+  /* ---- Bloco no canvas -------------------------------------------------- */
+
+  /*
+     O bloco é o mesmo card do dashboard publicado; o que muda é a casca de
+     edição em volta: um alvo de clique, um anel quando selecionado e a barra
+     de ações que aparece ao aproximar o ponteiro.
+  */
+  .app-canvas-block {
+    position: relative;
+    height: 100%;
+    border-radius: var(--radius-page);
+    /* O anel é desenhado com outline (e não border) para não empurrar o
+       layout: borda soma largura, outline não. */
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    transition: outline-color var(--duration-fast, 200ms) ease;
+  }
+
+  .app-canvas-block[data-editable='true'] {
+    cursor: pointer;
+  }
+
+  .app-canvas-block[data-editable='true']:hover {
+    outline-color: var(--color-border-emphasized);
+  }
+
+  /* Selecionado vence o hover: é estado, não reação ao ponteiro. */
+  .app-canvas-block[data-selected='true'],
+  .app-canvas-block[data-selected='true']:hover {
+    outline-color: var(--color-accent);
+  }
+
+  /*
+     A barra de ações cobre a área inteira do card com `pointer-events: none` e
+     devolve o clique só nos botões. Assim ela funciona igual esteja o card
+     esticado pela grade ou não — a célula do grid aplica `height: 100%` aos
+     filhos, e uma barra posicionada por `top/right` herdaria essa altura.
+  */
+  .app-canvas-block__actions {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: var(--spacing-2, 8px);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--duration-fast, 200ms) ease;
+  }
+
+  .app-canvas-block__actions > * {
+    pointer-events: auto;
+    border-radius: var(--radius-container);
+    background: var(--color-background-popover);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-med);
+  }
+
+  /*
+     Aparece no ponteiro E no foco de teclado. O `:focus-within` não é detalhe:
+     sem ele os botões continuariam alcançáveis por Tab, mas invisíveis — o
+     usuário de teclado ficaria apertando ações que não vê.
+  */
+  .app-canvas-block:hover .app-canvas-block__actions,
+  .app-canvas-block:focus-within .app-canvas-block__actions,
+  .app-canvas-block[data-selected='true'] .app-canvas-block__actions {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-canvas-block,
+    .app-canvas-block__actions {
+      transition: none;
+    }
+  }
+
+  /* ---- Linha vazia ------------------------------------------------------ */
+
+  /*
+     Linha sem blocos precisa OCUPAR espaço, senão o cabeçalho dela cola no da
+     linha seguinte e a estrutura do dashboard some. A borda tracejada é a
+     convenção de "aqui cabe alguma coisa" (a mesma do modo de edição do
+     Metabase e do Grafana).
+  */
+  .app-canvas-row__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 96px;
+    padding: var(--spacing-4, 16px);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-page);
+    background: var(--color-background-muted);
+  }
+}

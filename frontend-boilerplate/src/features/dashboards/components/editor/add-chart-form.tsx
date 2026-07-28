@@ -16,16 +16,22 @@ import { Button } from '@astryxdesign/core/Button';
 import { FormLayout } from '@astryxdesign/core/FormLayout';
 import { Icon } from '@astryxdesign/core/Icon';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
-import { NumberInput } from '@astryxdesign/core/NumberInput';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Text } from '@astryxdesign/core/Text';
 import { useAddChartForm } from '../../use-add-chart-form';
 import type { EditorRow } from '../../lib/layout-editor';
 import type { AddChartInput } from '../../types';
-import { SPAN_MAX, SPAN_MIN, UNSAVED_CHANGES_HINT } from './editor-fields';
+import {
+  UNSAVED_CHANGES_HINT,
+  WIDTH_OPTIONS,
+  spanForWidthOption,
+  widthOptionOf,
+} from './editor-fields';
 
 export interface AddChartFormProps {
   rows: EditorRow[];
+  /** Linha de destino imposta pelo canvas (botão do cabeçalho da linha). */
+  lockedRowId?: string | null;
   /** `true` enquanto houver alterações locais não salvas. */
   isDisabled?: boolean;
   /** `true` enquanto a inserção está no ar. */
@@ -35,11 +41,16 @@ export interface AddChartFormProps {
 
 export function AddChartForm({
   rows,
+  lockedRowId = null,
   isDisabled = false,
   isPending = false,
   onAdd,
 }: AddChartFormProps) {
-  const form = useAddChartForm({ rows, onAdd });
+  const form = useAddChartForm({ rows, lockedRowId, onAdd });
+  const lockedRow = lockedRowId ? rows.find((row) => row.id === lockedRowId) : undefined;
+  const lockedRowName = lockedRow
+    ? lockedRow.title || `Linha ${rows.indexOf(lockedRow) + 1}`
+    : null;
 
   // Um campo desabilitado sem motivo é um beco sem saída: cada causa possível
   // tem a sua própria explicação, da mais específica para a mais geral.
@@ -61,16 +72,19 @@ export function AddChartForm({
 
   return (
     <VStack gap={3}>
-      <Text type="label">Adicionar gráfico</Text>
+      <Text type="label">
+        {lockedRowName ? `Adicionar gráfico em ${lockedRowName}` : 'Adicionar gráfico'}
+      </Text>
 
       {chartDisabledMessage ? (
         <Text type="supporting">{chartDisabledMessage}</Text>
       ) : null}
 
-      <FormLayout direction="horizontal">
+      <FormLayout direction="vertical">
         <Selector
           label="Gráfico a adicionar"
           size="sm"
+          width="100%"
           value={form.chartId}
           options={form.chartOptions}
           placeholder={form.isLoadingCharts ? 'Carregando…' : 'Escolha um gráfico'}
@@ -80,26 +94,28 @@ export function AddChartForm({
           disabledMessage={chartDisabledMessage}
           onChange={form.setChartId}
         />
+        {lockedRowName ? null : (
+          <Selector
+            label="Linha de destino"
+            size="sm"
+            width="100%"
+            value={form.rowId}
+            options={form.rowOptions}
+            isDisabled={isDisabled}
+            disabledMessage={isDisabled ? UNSAVED_CHANGES_HINT : undefined}
+            onChange={form.setRowId}
+          />
+        )}
         <Selector
-          label="Linha de destino"
-          size="sm"
-          value={form.rowId}
-          options={form.rowOptions}
-          isDisabled={isDisabled}
-          disabledMessage={isDisabled ? UNSAVED_CHANGES_HINT : undefined}
-          onChange={form.setRowId}
-        />
-        <NumberInput
           label="Largura"
           size="sm"
-          min={SPAN_MIN}
-          max={SPAN_MAX}
-          isIntegerOnly
-          value={form.span}
-          description={`Colunas de ${SPAN_MAX}.`}
+          width="100%"
+          value={widthOptionOf(form.span)}
+          options={WIDTH_OPTIONS}
+          description="Blocos que dividem a linha recebem faixas iguais."
           isDisabled={isDisabled}
           disabledMessage={isDisabled ? UNSAVED_CHANGES_HINT : undefined}
-          onChange={form.setSpan}
+          onChange={(value) => form.setSpan(spanForWidthOption(value))}
         />
       </FormLayout>
 

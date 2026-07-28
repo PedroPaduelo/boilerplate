@@ -45,6 +45,8 @@ export {
 } from './lib/value-format';
 export {
   BLOCK_COLUMN_MIN_WIDTH,
+  BLOCK_HEIGHT_PX_MAX,
+  BLOCK_HEIGHT_PX_MIN,
   BLOCK_MAX_COLUMNS,
   BLOCK_ROW_HEIGHT,
   CHART_BODY_HEIGHT,
@@ -52,12 +54,15 @@ export {
   COMPACT_CARD_MIN_WIDTH,
   chartBodyHeight,
   columnPolicyFor,
+  declaredHeightPx,
+  hasDeclaredHeight,
+  isBlockRowHeight,
   isCompactCardBlock,
   rowHeightForType,
   rowHeightForTypes,
   rowHeightPx,
 } from './lib/block-sizing';
-export type { BlockRowHeight, ChartBodySize } from './lib/block-sizing';
+export type { BlockHeight, BlockRowHeight, ChartBodySize } from './lib/block-sizing';
 /**
  * Receitas de composição — os layouts prontos que o agente reusa (1, 2 e 3
  * colunas; KPIs + gráficos). Ficam em código, e não só na documentação, porque

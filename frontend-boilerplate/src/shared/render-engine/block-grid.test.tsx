@@ -23,14 +23,20 @@ afterEach(() => cleanup());
 
 /** Monta blocos a partir de `type`/`span`/`rowSpan` (o resto não importa aqui). */
 function blocksOf(
-  specs: { id: string; type: string; span?: number; rowSpan?: number }[],
+  specs: {
+    id: string;
+    type: string;
+    span?: number;
+    rowSpan?: number;
+    height?: string | number;
+  }[],
 ): Block[] {
   return specs as unknown as Block[];
 }
 
 interface RenderOptions {
   columns?: number;
-  rowHeight?: 'auto' | 'compact' | 'default' | 'tall';
+  rowHeight?: 'auto' | 'compact' | 'default' | 'tall' | number;
   itemSizing?: 'equal' | 'span';
 }
 
@@ -380,5 +386,82 @@ describe('readGridOptions', () => {
   it('`columns` é preso à faixa aceita pelo contrato (1..12)', () => {
     expect(readGridOptions({ columns: 0 }).columns).toBe(1);
     expect(readGridOptions({ columns: 99 }).columns).toBe(12);
+  });
+});
+
+/* ========================================================================== *
+ * REGRA 5 — a altura DECLARADA vence a derivada
+ *
+ * A derivação por tipo é um bom padrão, mas era uma parede: não havia como
+ * dizer "esta linha precisa ser mais alta". Os casos abaixo travam a ordem de
+ * quem decide — bloco, linha, derivação — e o degrau de tolerância a lixo, que
+ * é o que separa "layout gerado por IA" de "tela quebrada".
+ * ========================================================================== */
+
+describe('BlockGrid — altura declarada', () => {
+  it('a linha pode declarar um DEGRAU e ele vence a derivação por tipo', () => {
+    // Uma linha de KPIs derivaria `compact` (160px); o autor pediu `tall`.
+    const { grid, cells } = renderGrid(
+      blocksOf([
+        { id: 'a', type: 'kpi', span: 6 },
+        { id: 'b', type: 'kpi', span: 6 },
+      ]),
+      { rowHeight: 'tall' },
+    );
+    expect(grid.dataset.blockGridRowHeight).toBe('tall');
+    expect(cells[0].style.minHeight).toBe(`${BLOCK_ROW_HEIGHT.tall}px`);
+    expect(cells[1].style.minHeight).toBe(`${BLOCK_ROW_HEIGHT.tall}px`);
+  });
+
+  it('a linha pode declarar PIXELS', () => {
+    const { grid, cells } = renderGrid(
+      blocksOf([
+        { id: 'a', type: 'bar_chart', span: 6 },
+        { id: 'b', type: 'bar_chart', span: 6 },
+      ]),
+      { rowHeight: 620 },
+    );
+    // Não há degrau a anunciar quando a medida é do autor.
+    expect(grid.dataset.blockGridRowHeight).toBe('custom');
+    expect(cells[0].style.minHeight).toBe('620px');
+    expect(cells[1].style.minHeight).toBe('620px');
+  });
+
+  it('o BLOCO pode abrir exceção à altura da linha', () => {
+    const { cells } = renderGrid(
+      blocksOf([
+        { id: 'a', type: 'bar_chart', span: 6, height: 300 },
+        { id: 'b', type: 'bar_chart', span: 6 },
+      ]),
+      { rowHeight: 'tall' },
+    );
+    expect(cells[0].style.minHeight).toBe('300px');
+    expect(cells[1].style.minHeight).toBe(`${BLOCK_ROW_HEIGHT.tall}px`);
+  });
+
+  it('altura fora do vocabulário é IGNORADA (o layout degrada, não quebra)', () => {
+    const { cells } = renderGrid(
+      blocksOf([{ id: 'a', type: 'bar_chart', span: 12, height: 'gigante' }]),
+    );
+    // Cai na derivação por tipo — série é `tall`.
+    expect(cells[0].style.minHeight).toBe(`${BLOCK_ROW_HEIGHT.tall}px`);
+  });
+
+  it('pixels absurdos são grampeados na faixa (120..1600)', () => {
+    const { cells } = renderGrid(
+      blocksOf([
+        { id: 'a', type: 'kpi', span: 6, height: 9000 },
+        { id: 'b', type: 'kpi', span: 6, height: 2 },
+      ]),
+    );
+    expect(cells[0].style.minHeight).toBe('1600px');
+    expect(cells[1].style.minHeight).toBe('120px');
+  });
+
+  it('`readGridOptions` aceita px na faixa e ignora número fora dela', () => {
+    expect(readGridOptions({ rowHeight: 500 }).rowHeight).toBe(500);
+    // `rowHeight: 3` é engano de unidade ("3 linhas"), não altura.
+    expect(readGridOptions({ rowHeight: 3 }).rowHeight).toBeUndefined();
+    expect(readGridOptions({ rowHeight: 'tall' }).rowHeight).toBe('tall');
   });
 });

@@ -272,3 +272,60 @@ test('NEGATIVO: aba com campo desconhecido é rejeitada (additionalProperties)',
   };
   assert.equal(validateDashboardLayout(bad), false);
 });
+
+/* ==========================================================================
+ * ALTURA DECLARADA (row.height / block.height)
+ *
+ * A altura é a única decisão de tamanho que o editor humano não tinha, e é a
+ * que mais aparece na queixa de quem monta dashboard. Os casos abaixo travam
+ * as duas formas aceitas (degrau nomeado e pixels) e, principalmente, o que
+ * NÃO é aceito — porque `additionalProperties: false` só protege contra campo
+ * novo, não contra valor absurdo no campo certo.
+ * ========================================================================== */
+test('altura: degrau nomeado é aceito na linha e no bloco', () => {
+  const ok = {
+    filters: [],
+    rows: [
+      {
+        id: 'r1',
+        height: 'tall',
+        blocks: [{ id: 'b1', type: 'bar_chart', span: 6, height: 'compact' }],
+      },
+    ],
+  };
+  assert.equal(validateDashboardLayout(ok), true);
+});
+
+test('altura: pixels dentro da faixa são aceitos (controle fino do autor)', () => {
+  const ok = {
+    filters: [],
+    rows: [
+      {
+        id: 'r1',
+        height: 520,
+        blocks: [{ id: 'b1', type: 'kpi', span: 3, height: 200 }],
+      },
+    ],
+  };
+  assert.equal(validateDashboardLayout(ok), true);
+});
+
+test('NEGATIVO: altura fora da faixa é rejeitada (não é altura, é engano de unidade)', () => {
+  const tooSmall = { filters: [], rows: [{ id: 'r1', height: 3, blocks: [] }] };
+  const tooBig = { filters: [], rows: [{ id: 'r1', height: 9000, blocks: [] }] };
+  assert.equal(validateDashboardLayout(tooSmall), false);
+  assert.equal(validateDashboardLayout(tooBig), false);
+});
+
+test('NEGATIVO: degrau fora do vocabulário é rejeitado', () => {
+  const bad = { filters: [], rows: [{ id: 'r1', height: 'gigante', blocks: [] }] };
+  assert.equal(validateDashboardLayout(bad), false);
+});
+
+test('layout SEM altura continua válido (o campo é opcional — nada quebra)', () => {
+  const legacy = {
+    filters: [],
+    rows: [{ id: 'r1', blocks: [{ id: 'b1', type: 'kpi', span: 3 }] }],
+  };
+  assert.equal(validateDashboardLayout(legacy), true);
+});

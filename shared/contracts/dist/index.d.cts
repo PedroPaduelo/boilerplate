@@ -164,6 +164,9 @@ declare const DashboardLayoutSchema: {
                     readonly type: "integer";
                     readonly minimum: 1;
                 };
+                readonly height: {
+                    readonly $ref: "#/$defs/blockHeight";
+                };
                 readonly title: {
                     readonly type: "string";
                 };
@@ -196,6 +199,9 @@ declare const DashboardLayoutSchema: {
                 readonly title: {
                     readonly type: "string";
                 };
+                readonly height: {
+                    readonly $ref: "#/$defs/blockHeight";
+                };
                 readonly blocks: {
                     readonly type: "array";
                     readonly items: {
@@ -203,6 +209,34 @@ declare const DashboardLayoutSchema: {
                     };
                 };
             };
+        };
+        /**
+         * Altura declarada de uma linha (ou, excepcionalmente, de um bloco).
+         *
+         * DOIS FORMATOS de propósito, e a ordem importa:
+         *
+         *  - DEGRAU NOMEADO (`auto` | `compact` | `default` | `tall`) é o caminho
+         *    normal. Ele não é um apelido para um número: é uma referência à
+         *    calibragem do motor, que foi MEDIDA nos blocos renderizados. Quando
+         *    essa medida mudar, todo dashboard que usa o degrau acompanha — o que
+         *    um número congelado no JSON nunca faria.
+         *  - PIXELS (120..1600) é a válvula de escape para o caso em que a pessoa
+         *    olhou a tela e decidiu outra coisa. Um teto existe porque altura sem
+         *    limite não é liberdade, é um bloco que ninguém consegue ver inteiro.
+         *
+         * `auto` NÃO é "sem altura": é "a altura do conteúdo manda" — o que só faz
+         * sentido em linhas narrativas (título, texto). Reservar altura para texto
+         * abre um buraco branco no meio do relatório.
+         */
+        readonly blockHeight: {
+            readonly anyOf: readonly [{
+                readonly type: "string";
+                readonly enum: readonly ["auto", "compact", "default", "tall"];
+            }, {
+                readonly type: "integer";
+                readonly minimum: 120;
+                readonly maximum: 1600;
+            }];
         };
     };
 };

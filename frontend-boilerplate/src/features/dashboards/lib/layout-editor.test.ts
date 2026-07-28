@@ -15,7 +15,12 @@ import {
   removeFilter,
   removeRow,
   sanitizeLayoutForSave,
+  duplicateBlock,
+  moveRow,
   setBlockDataBinding,
+  setBlockHeight,
+  setBlockText,
+  setRowHeight,
   setBlockProps,
   setBlockSpan,
   setRowTitle,
@@ -324,5 +329,145 @@ describe('abas — operações (criar/renomear/ordenar/remover)', () => {
     const l = addRow(normalizeLayout(dashboardLayoutFixture));
     expect(l.tabs).toBeUndefined();
     expect(l.rows).toHaveLength(4);
+  });
+});
+
+/* ==========================================================================
+ * ALTURA — a decisão que o editor humano não tinha
+ * ========================================================================== */
+describe('altura declarada', () => {
+  it('setRowHeight aceita degrau nomeado e o grava no payload', () => {
+    const l = setRowHeight(base(), 'row_intro', 'tall');
+    expect(l.rows[0].height).toBe('tall');
+    const payload = sanitizeLayoutForSave(l) as { rows: { height?: unknown }[] };
+    expect(payload.rows[0].height).toBe('tall');
+    expect(validateLayoutForSave(l).valid).toBe(true);
+  });
+
+  it('setRowHeight aceita pixels e os grampeia na faixa do contrato', () => {
+    const grande = setRowHeight(base(), 'row_intro', 99999);
+    const pequeno = setRowHeight(base(), 'row_intro', 3);
+    expect(grande.rows[0].height).toBe(1600);
+    expect(pequeno.rows[0].height).toBe(120);
+    // Grampear na ESCRITA é o que garante que o usuário nunca receba um
+    // "layout inválido" por ter digitado um número absurdo.
+    expect(validateLayoutForSave(grande).valid).toBe(true);
+    expect(validateLayoutForSave(pequeno).valid).toBe(true);
+  });
+
+  it('setRowHeight(undefined) devolve a linha à altura automática', () => {
+    const comAltura = setRowHeight(base(), 'row_intro', 'compact');
+    const semAltura = setRowHeight(comAltura, 'row_intro', undefined);
+    expect(semAltura.rows[0].height).toBeUndefined();
+    const payload = sanitizeLayoutForSave(semAltura) as {
+      rows: Record<string, unknown>[];
+    };
+    expect('height' in payload.rows[0]).toBe(false);
+  });
+
+  it('setBlockHeight grava a altura no BLOCO (exceção à altura da linha)', () => {
+    const l = setBlockHeight(base(), 'blk_kpi_total', 240);
+    expect(findBlock(l, 'blk_kpi_total')?.block.height).toBe(240);
+    expect(validateLayoutForSave(l).valid).toBe(true);
+  });
+
+  it('altura não declarada não conta como alteração (dirty-state limpo)', () => {
+    expect(layoutsEqual(base(), base())).toBe(true);
+    expect(layoutsEqual(base(), setRowHeight(base(), 'row_intro', 'tall'))).toBe(false);
+  });
+});
+
+/* ==========================================================================
+ * PRESERVAÇÃO DE CAMPOS — o defeito silencioso que o editor tinha
+ *
+ * `sanitizeLayoutForSave` reconstrói o bloco campo a campo. Enquanto ele não
+ * conhecia `title`, `subtitle`, `rowSpan` e `blocks`, abrir um dashboard
+ * montado pelo agente e clicar em Salvar APAGAVA o título dos cards e o
+ * conteúdo das seções — sem erro e sem aviso. Estes casos existem para que
+ * isso não volte.
+ * ========================================================================== */
+describe('preservação de campos do contrato', () => {
+  const rico = {
+    filters: [],
+    rows: [
+      {
+        id: 'r1',
+        title: 'Faixa',
+        blocks: [
+          {
+            id: 'sec',
+            type: 'section',
+            span: 12,
+            title: 'Resumo executivo',
+            subtitle: 'Trimestre corrente',
+            rowSpan: 2,
+            blocks: [{ id: 'filho', type: 'kpi', span: 4, title: 'Total arrecadado' }],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('normalize → sanitize é IDEMPOTENTE para os campos do contrato', () => {
+    const payload = sanitizeLayoutForSave(normalizeLayout(rico));
+    expect(payload).toEqual(rico);
+  });
+
+  it('abrir e salvar não apaga título, subtítulo, rowSpan nem sub-blocos', () => {
+    const l = normalizeLayout(rico);
+    const bloco = l.rows[0].blocks[0];
+    expect(bloco.title).toBe('Resumo executivo');
+    expect(bloco.subtitle).toBe('Trimestre corrente');
+    expect(bloco.rowSpan).toBe(2);
+    expect(bloco.blocks?.[0].title).toBe('Total arrecadado');
+    expect(validateLayoutForSave(l).valid).toBe(true);
+  });
+
+  it('setBlockText edita o título do card e o vazio REMOVE o campo', () => {
+    const l = setBlockText(normalizeLayout(rico), 'sec', 'title', 'Outro nome');
+    expect(findBlock(l, 'sec')?.block.title).toBe('Outro nome');
+    const limpo = setBlockText(l, 'sec', 'title', '   ');
+    expect(findBlock(limpo, 'sec')?.block.title).toBeUndefined();
+  });
+});
+
+/* ==========================================================================
+ * MOVER LINHA e DUPLICAR BLOCO
+ * ========================================================================== */
+describe('moveRow', () => {
+  it('reordena as linhas quando o layout não tem abas', () => {
+    const l = moveRow(base(), 'row_evolucao', 'up');
+    expect(l.rows.map((r) => r.id)).toEqual(['row_evolucao', 'row_intro', 'row_detalhe']);
+  });
+
+  it('nas bordas é no-op (não some nem duplica linha)', () => {
+    const l = moveRow(base(), 'row_intro', 'up');
+    expect(l.rows.map((r) => r.id)).toEqual(base().rows.map((r) => r.id));
+  });
+
+  it('com abas, reordena DENTRO da aba (é `rowIds` que a visualização percorre)', () => {
+    const comAbas = addTab(base());
+    const primeira = comAbas.tabs?.[0].id as string;
+    const antes = comAbas.tabs?.[0].rowIds ?? [];
+    const l = moveRow(comAbas, antes[1], 'up');
+    expect(l.tabs?.find((t) => t.id === primeira)?.rowIds).toEqual([
+      antes[1],
+      antes[0],
+      antes[2],
+    ]);
+  });
+});
+
+describe('duplicateBlock', () => {
+  it('insere a cópia logo depois do original, com id NOVO e mesma consulta', () => {
+    const l = duplicateBlock(base(), 'blk_kpi_total');
+    const linha = l.rows[0].blocks;
+    expect(linha).toHaveLength(base().rows[0].blocks.length + 1);
+    const original = linha[1];
+    const copia = linha[2];
+    expect(copia.id).not.toBe(original.id);
+    expect(copia.type).toBe(original.type);
+    expect(copia.dataBinding).toEqual(original.dataBinding);
+    expect(validateLayoutForSave(l).valid).toBe(true);
   });
 });

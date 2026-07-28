@@ -87,10 +87,16 @@ const layoutJsonSchema = {
       type: 'array',
       items: {},
       description:
-        'Linhas com blocos. Cada bloco: { id, type, span?, props? }. `type` = catalogType ' +
-        '(de list_catalog); `span` é 1..12 (largura na grade de 12 colunas). Para blocos de ' +
-        'gráfico use props.chartId apontando para um chart EXISTENTE e visível. ' +
-        'Dica: prefira add_chart_to_dashboard para inserir um chart sem montar o JSON na mão.',
+        'Linhas com blocos. Cada linha: { id, title?, height?, blocks }. Cada bloco: ' +
+        '{ id, type, span?, height?, title?, subtitle?, props? }. `type` = catalogType ' +
+        '(de list_catalog); `span` é 1..12 (largura na grade de 12 colunas). ' +
+        '`height` é a ALTURA e vale para a LINHA (o normal — assim os blocos vizinhos ' +
+        'terminam do mesmo tamanho); no bloco é exceção. Aceita um degrau nomeado ' +
+        "('auto' | 'compact' | 'default' | 'tall') ou pixels (120..1600). OMITA `height` " +
+        'quando não houver motivo: sem ele o motor deriva a altura do tipo dos blocos, ' +
+        'que é a escolha calibrada. Para blocos de gráfico use props.chartId apontando ' +
+        'para um chart EXISTENTE e visível. Dica: prefira add_chart_to_dashboard para ' +
+        'inserir um chart sem montar o JSON na mão.',
     },
   },
 };

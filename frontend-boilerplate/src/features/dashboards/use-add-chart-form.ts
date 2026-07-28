@@ -22,6 +22,13 @@ const NEW_ROW_VALUE = '__new_row';
 export interface UseAddChartFormOptions {
   /** Linhas do layout em edição (destinos possíveis do bloco). */
   rows: EditorRow[];
+  /**
+   * Linha de destino imposta de fora — é o que faz "Adicionar gráfico" no
+   * cabeçalho de uma linha significar NAQUELA linha. Quando presente, o
+   * seletor de destino some: escolher de novo o que já foi escolhido é
+   * burocracia, e um seletor que discorda do gesto anterior é armadilha.
+   */
+  lockedRowId?: string | null;
   onAdd: (input: AddChartInput) => void;
 }
 
@@ -43,14 +50,21 @@ export interface AddChartFormState {
 
 export function useAddChartForm({
   rows,
+  lockedRowId,
   onAdd,
 }: UseAddChartFormOptions): AddChartFormState {
   const { data, isLoading } = useCharts();
   const charts = useMemo(() => data?.charts ?? [], [data]);
 
   const [chartId, setChartId] = useState('');
-  const [rowId, setRowId] = useState(NEW_ROW_VALUE);
+  const [ownRowId, setRowId] = useState(NEW_ROW_VALUE);
   const [span, setSpan] = useState(DEFAULT_SPAN);
+
+  // A linha imposta vence a escolhida no seletor — mas só enquanto ela existir:
+  // remover a linha entre o clique e o envio não pode mandar um `rowId` morto
+  // para a API (o backend criaria um bloco órfão).
+  const rowId =
+    lockedRowId && rows.some((row) => row.id === lockedRowId) ? lockedRowId : ownRowId;
 
   const chartOptions = useMemo<SelectorOptionData[]>(
     () => charts.map((chart) => ({ value: chart.id, label: chart.title })),

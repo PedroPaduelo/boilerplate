@@ -126,6 +126,14 @@ export const DashboardLayoutSchema = {
         // altura no mosaico: quantas linhas o bloco ocupa em containers com grid
         // (ex.: bento_grid). Opcional — default 1. Mesma sintaxe de span p/ a IA.
         rowSpan: { type: 'integer', minimum: 1 },
+        // ALTURA do bloco. Sobrepõe a altura da LINHA (`row.height`) só para
+        // este bloco — é a exceção, não a regra: a decisão normal de altura é
+        // da linha, para que vizinhos terminem do mesmo tamanho.
+        //
+        // Dois formatos, como no editor de painéis do Grafana ("Row height:
+        // Standard | Short | Tall | Custom"): um DEGRAU nomeado (que acompanha
+        // a calibragem do motor) ou um número em PIXELS (controle fino).
+        height: { $ref: '#/$defs/blockHeight' },
         // título do card (header do "frame" — chart-widget). Opcional: se ausente, o
         // render usa o `manifest.name` do tipo. Permite a IA nomear o card no relatório.
         title: { type: 'string' },
@@ -151,11 +159,40 @@ export const DashboardLayoutSchema = {
       properties: {
         id: { type: 'string', minLength: 1 },
         title: { type: 'string' },
+        // ALTURA DA LINHA. A linha é a unidade de decisão de altura (ver
+        // `block-sizing` no render-engine): ela escolhe UM tamanho e todos os
+        // seus blocos ficam com ele — é o que impede "um gráfico maior que o
+        // vizinho". Ausente = derive dos tipos que a linha contém.
+        height: { $ref: '#/$defs/blockHeight' },
         blocks: {
           type: 'array',
           items: { $ref: '#/$defs/block' },
         },
       },
+    },
+    /**
+     * Altura declarada de uma linha (ou, excepcionalmente, de um bloco).
+     *
+     * DOIS FORMATOS de propósito, e a ordem importa:
+     *
+     *  - DEGRAU NOMEADO (`auto` | `compact` | `default` | `tall`) é o caminho
+     *    normal. Ele não é um apelido para um número: é uma referência à
+     *    calibragem do motor, que foi MEDIDA nos blocos renderizados. Quando
+     *    essa medida mudar, todo dashboard que usa o degrau acompanha — o que
+     *    um número congelado no JSON nunca faria.
+     *  - PIXELS (120..1600) é a válvula de escape para o caso em que a pessoa
+     *    olhou a tela e decidiu outra coisa. Um teto existe porque altura sem
+     *    limite não é liberdade, é um bloco que ninguém consegue ver inteiro.
+     *
+     * `auto` NÃO é "sem altura": é "a altura do conteúdo manda" — o que só faz
+     * sentido em linhas narrativas (título, texto). Reservar altura para texto
+     * abre um buraco branco no meio do relatório.
+     */
+    blockHeight: {
+      anyOf: [
+        { type: 'string', enum: ['auto', 'compact', 'default', 'tall'] },
+        { type: 'integer', minimum: 120, maximum: 1600 },
+      ],
     },
   },
 } as const;

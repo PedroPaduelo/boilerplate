@@ -16,6 +16,11 @@
  *     linha só de KPIs é baixa, uma linha de séries é alta, uma linha de texto
  *     não reserva altura nenhuma.
  *
+ *     A derivação é o PADRÃO, não uma prisão: `rowHeight` (degrau ou pixels)
+ *     e `block.height` deixam o autor decidir. A ordem é a da especificidade —
+ *     bloco, linha, derivação —, então "esta linha é alta, mas aquele bloco
+ *     dela é baixo" continua sendo uma frase que o layout sabe dizer.
+ *
  *  3. COLAPSO PREVISÍVEL. O número de colunas é declarado como
  *     `{minWidth, max}`: o grid encaixa quantas faixas de `minWidth` couberem,
  *     até o teto. Em tela estreita ele cai sozinho de 3 → 2 → 1 e a última
@@ -35,9 +40,13 @@ import { Grid, GridSpan } from '@astryxdesign/core/Grid';
 import type { GridColumns } from '@astryxdesign/core/Grid';
 import {
   columnPolicyFor,
+  declaredHeightPx,
+  hasDeclaredHeight,
+  isBlockRowHeight,
   rowHeightForType,
   rowHeightForTypes,
   rowHeightPx,
+  type BlockHeight,
   type BlockRowHeight,
 } from './lib/block-sizing';
 import { GAP_STEP, SPAN_COLUMNS, type BlockGridOptions } from './lib/layout-options';
@@ -52,8 +61,12 @@ export interface BlockGridProps extends BlockGridOptions {
   cellSlot: string;
 }
 
-/** Filho com o `rowSpan` opcional do contrato (default 1). */
-type SpannedBlock = Block & { rowSpan?: number };
+/**
+ * Filho com os campos OPCIONAIS de tamanho do contrato: `rowSpan` (linhas do
+ * mosaico, default 1) e `height` (altura declarada, que vence a derivada do
+ * tipo — ver `block-sizing`).
+ */
+type SpannedBlock = Block & { rowSpan?: number; height?: BlockHeight };
 
 /**
  * A célula manda na altura do que está dentro dela.
@@ -115,7 +128,15 @@ export function BlockGrid({
   // Degrau da LINHA: o explícito do autor ou, na ausência dele, o que os tipos
   // dos blocos QUE DIVIDEM A LINHA exigem. `undefined` = "não escreva altura"
   // (linha narrativa), e é diferente de zero.
-  const step = rowHeight ?? rowHeightForTypes(trackItems.map((block) => block.type));
+  //
+  // `rowHeight` aceita px (o autor mediu na tela e decidiu). Nesse caso não há
+  // "degrau" a anunciar: o atributo de inspeção reporta `custom`, e os pixels
+  // vão direto para a célula.
+  const declaredRowPx =
+    typeof rowHeight === 'number' ? declaredHeightPx(rowHeight) : undefined;
+  const step = isBlockRowHeight(rowHeight)
+    ? rowHeight
+    : rowHeightForTypes(trackItems.map((block) => block.type));
 
   const gridColumns: GridColumns = isSpanMode
     ? SPAN_COLUMNS
@@ -138,9 +159,26 @@ export function BlockGrid({
    * células — ali o autor pediu uniformidade de propósito.
    */
   function cellStep(block: Block): BlockRowHeight {
-    if (rowHeight) return rowHeight;
+    if (isBlockRowHeight(rowHeight)) return rowHeight;
     if (isSingleColumn || isFullWidth(block)) return rowHeightForType(block.type);
     return step;
+  }
+
+  /**
+   * Altura FINAL da célula, em px, na ordem de quem decide:
+   *
+   *   1. o BLOCO, se declarou altura própria (exceção pontual);
+   *   2. a LINHA, se declarou (o caminho normal do editor);
+   *   3. a derivação por tipo (o que sempre houve).
+   *
+   * A ordem é a da especificidade — do mais local para o mais geral —, e é o
+   * que permite "esta linha é alta, mas aquele bloco dela é baixo" sem que a
+   * regra vire uma exceção escondida no meio do render.
+   */
+  function cellHeight(block: SpannedBlock): number | undefined {
+    if (hasDeclaredHeight(block.height)) return declaredHeightPx(block.height);
+    if (declaredRowPx != null) return declaredRowPx;
+    return rowHeightPx(cellStep(block));
   }
 
   return (
@@ -150,7 +188,7 @@ export function BlockGrid({
       align={align}
       data-slot={slot}
       data-block-grid-sizing={itemSizing}
-      data-block-grid-row-height={step}
+      data-block-grid-row-height={declaredRowPx != null ? 'custom' : step}
     >
       {blocks.map((block) => (
         <BlockCell
@@ -158,7 +196,7 @@ export function BlockGrid({
           block={block}
           slot={cellSlot}
           isSpanMode={isSpanMode}
-          minHeight={rowHeightPx(cellStep(block))}
+          minHeight={cellHeight(block)}
         >
           {renderBlock(block)}
         </BlockCell>

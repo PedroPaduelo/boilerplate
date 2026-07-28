@@ -1,19 +1,24 @@
 /**
- * Pré-visualização do editor: alterna entre o RASCUNHO em edição e a VERSÃO
- * PUBLICADA, e busca os dados do modo escolhido.
+ * A VERSÃO exibida no canvas do editor e os DADOS dela.
  *
- * O modo `draft` sempre busca dados frescos (staleTime 0 — ver
+ * O editor mostra o rascunho em edição (o caso normal) ou a versão publicada
+ * (para comparar). O modo `draft` sempre busca dados frescos (staleTime 0 — ver
  * `query-policies`/`use-dashboard-data`); `published` só é consultado quando o
  * dashboard está publicado, senão o batch responderia 404.
+ *
+ * Este hook devolve o layout no formato de EDIÇÃO (`EditorLayout`), e não o
+ * sanitizado do contrato, porque quem o consome é o canvas — que precisa dos
+ * campos de trabalho (altura declarada, títulos, abas) para desenhar E para
+ * editar. A conversão para o contrato acontece uma vez só, no salvar.
  */
 import { useMemo, useState } from 'react';
-import type { DashboardDataPayload, DashboardLayout } from '@dashboards/contracts';
+import type { DashboardDataPayload } from '@dashboards/contracts';
 import type { ApiMode } from '@/shared/lib/query-keys';
 import { useDashboardData } from './use-dashboard-data';
 import { initialFilterValues, type DashFilter } from './lib/dashboard-filters';
-import { sanitizeLayoutForSave, type EditorLayout } from './lib/layout-editor';
+import type { EditorLayout } from './lib/layout-editor';
 
-const EMPTY_LAYOUT: DashboardLayout = { filters: [], rows: [] };
+const EMPTY_LAYOUT: EditorLayout = { filters: [], rows: [] };
 
 export interface UseEditorPreviewOptions {
   dashboardId: string;
@@ -26,7 +31,8 @@ export interface UseEditorPreviewOptions {
 export interface EditorPreview {
   mode: ApiMode;
   setMode: (mode: ApiMode) => void;
-  layout: DashboardLayout;
+  /** Layout do modo escolhido — é o que o canvas desenha. */
+  layout: EditorLayout;
   data: DashboardDataPayload | undefined;
 }
 
@@ -43,20 +49,9 @@ export function useEditorPreview({
     [layout.filters],
   );
 
-  // `sanitizeLayoutForSave` devolve o layout na forma do CONTRATO (`{filters,
-  // rows}` + `tabs` quando houver) porém tipado como `unknown[]` — a asserção
-  // aqui é a fronteira única entre o modelo local do editor e o tipo do contrato.
-  //
-  // ABAS (doc 40): o preview mostra TODAS as linhas, achatadas, mesmo quando o
-  // dashboard tem abas — o `DashboardRenderer` só lê `filters`/`rows` e ignora
-  // `tabs`. É intencional: aqui o usuário está editando o dashboard inteiro e
-  // precisa enxergar tudo o que mexeu. Quem quer conferir a divisão por aba usa
-  // a tela de visualização (`/dashboards/:id/view`).
-  const previewLayout = useMemo<DashboardLayout>(() => {
-    const source = mode === 'published' ? publishedLayout : layout;
-    if (!source) return EMPTY_LAYOUT;
-    return sanitizeLayoutForSave(source) as unknown as DashboardLayout;
-  }, [mode, layout, publishedLayout]);
+  // No modo publicado sem publicação, um layout vazio (e não o rascunho): o
+  // canvas mostraria o rascunho dizendo que é o publicado.
+  const shownLayout = mode === 'published' ? (publishedLayout ?? EMPTY_LAYOUT) : layout;
 
   const { payload } = useDashboardData({
     dashboardId,
@@ -65,5 +60,5 @@ export function useEditorPreview({
     enabled: mode === 'draft' || isPublished,
   });
 
-  return { mode, setMode, layout: previewLayout, data: payload };
+  return { mode, setMode, layout: shownLayout, data: payload };
 }

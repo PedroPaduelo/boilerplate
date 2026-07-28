@@ -105,12 +105,17 @@ describe('DashboardEditor (T-G2)', () => {
     detail.draftLayout = dashboardLayoutFixture as never;
   });
 
-  it('renderiza o editor (título, badge rascunho, blocos)', () => {
+  it('renderiza o editor: título, estado e os blocos do dashboard no canvas', () => {
     renderEditor();
     expect(screen.getByDisplayValue('Dívida Ativa 2026')).toBeInTheDocument();
     expect(screen.getByText('Rascunho')).toBeInTheDocument();
-    // bloco do layout aparece no editor
-    expect(screen.getByText('blk_title')).toBeInTheDocument();
+    // O bloco existe no CANVAS (não como item de formulário): a prova é a ação
+    // que só existe sobre um bloco desenhado.
+    expect(
+      screen.getByRole('button', { name: 'Editar o bloco blk_kpi_total' }),
+    ).toBeInTheDocument();
+    // E a linha do layout é uma região nomeada, selecionável.
+    expect(screen.getByRole('button', { name: 'Visão geral' })).toBeInTheDocument();
   });
 
   it('editar e salvar dispara update com draftLayout saneado (e valida ok)', async () => {
@@ -135,11 +140,13 @@ describe('DashboardEditor (T-G2)', () => {
 
   it('layout inválido bloqueia o salvar e mostra erro claro', async () => {
     renderEditor();
-    // esvazia o connectionId do 1º bloco de dados (kpi) → layout inválido
-    const conns = screen.getAllByLabelText(
+    // O bloco é editado onde ele está: seleciona no canvas, o inspetor abre com
+    // a fonte de dados dele. Esvaziar o connectionId invalida o layout.
+    fireEvent.click(screen.getByRole('button', { name: 'Editar o bloco blk_kpi_total' }));
+    const conn = (await screen.findByLabelText(
       /Conexão \(connectionId\)/i,
-    ) as HTMLInputElement[];
-    fireEvent.change(conns[0], { target: { value: '' } });
+    )) as HTMLInputElement;
+    fireEvent.change(conn, { target: { value: '' } });
 
     const save = screen.getByRole('button', { name: /Salvar/i });
     await waitFor(() => expect(save).not.toBeDisabled());
@@ -205,15 +212,14 @@ describe('DashboardEditor — operações e estados da tela', () => {
     detail.draftLayout = dashboardLayoutFixture as never;
   });
 
-  it('vazio: dashboard sem linhas oferece a ação de adicionar (e nada a pré-visualizar)', () => {
+  it('vazio: dashboard sem linhas oferece a ação de adicionar', () => {
     detail.draftLayout = { filters: [], rows: [] } as never;
     renderEditor();
 
-    expect(screen.getByText('Nenhuma linha ainda')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard sem linhas')).toBeInTheDocument();
     expect(
       screen.getAllByRole('button', { name: 'Adicionar linha' }).length,
     ).toBeGreaterThan(0);
-    expect(screen.getByText('Nada para pré-visualizar')).toBeInTheDocument();
     // Sem filtros o vazio também tem saída própria.
     expect(screen.getByText('Nenhum filtro neste dashboard')).toBeInTheDocument();
   });
@@ -227,13 +233,16 @@ describe('DashboardEditor — operações e estados da tela', () => {
     );
   });
 
-  it('remover bloco tira o bloco do editor', async () => {
+  it('remover bloco tira o bloco do canvas', async () => {
     renderEditor();
-    expect(screen.getByText('blk_title')).toBeInTheDocument();
+    const remove = screen.getByRole('button', { name: 'Remover o bloco blk_title' });
+    fireEvent.click(remove);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remover o bloco blk_title' }));
-
-    await waitFor(() => expect(screen.queryByText('blk_title')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Editar o bloco blk_title' }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it('rascunho sem publicação explica por que não dá para comparar as versões', () => {
@@ -241,6 +250,57 @@ describe('DashboardEditor — operações e estados da tela', () => {
     expect(
       screen.getByText('Publique o dashboard para comparar com a versão publicada.'),
     ).toBeInTheDocument();
+  });
+
+  /* ------------------------------------------------- canvas + inspetor ----- */
+
+  it('selecionar um bloco abre as propriedades DELE no inspetor', async () => {
+    renderEditor();
+    // Antes de selecionar, o inspetor é do dashboard (título editável).
+    expect(screen.getByDisplayValue('Dívida Ativa 2026')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar o bloco blk_bar_mes' }));
+
+    // Propriedades do bloco: identidade, tamanho e fonte de dados.
+    expect(await screen.findByText('blk_bar_mes')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Altura do bloco/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Conexão \(connectionId\)/i)).toBeInTheDocument();
+    // Um bloco por vez: a fonte de dados do OUTRO bloco não está mais na tela.
+    expect(screen.getAllByLabelText(/Conexão \(connectionId\)/i)).toHaveLength(1);
+  });
+
+  it('selecionar uma linha abre a ALTURA da linha no inspetor', async () => {
+    renderEditor();
+    fireEvent.click(screen.getByRole('button', { name: 'Visão geral' }));
+
+    expect(await screen.findByLabelText(/Altura da linha/i)).toBeInTheDocument();
+    // O inspetor da linha também é a porta para os blocos dela.
+    expect(screen.getByText('Blocos desta linha')).toBeInTheDocument();
+  });
+
+  it('fechar a seleção devolve o inspetor ao dashboard', async () => {
+    renderEditor();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar o bloco blk_bar_mes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Fechar' }));
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Dívida Ativa 2026')).toBeInTheDocument(),
+    );
+  });
+
+  it('duplicar um bloco coloca a cópia ao lado (mesma consulta, id novo)', async () => {
+    renderEditor();
+    const before = screen.getAllByRole('button', { name: /^Editar o bloco/ }).length;
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Duplicar o bloco blk_kpi_total' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /^Editar o bloco/ })).toHaveLength(
+        before + 1,
+      ),
+    );
   });
 
   it('adicionar gráfico fica bloqueado (com motivo) enquanto há alterações não salvas', async () => {

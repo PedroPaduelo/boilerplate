@@ -19,7 +19,12 @@
  * ganharia a altura de um gráfico.
  */
 import type { SpacingStep } from '@astryxdesign/core/Layout';
-import type { BlockRowHeight } from './block-sizing';
+import {
+  BLOCK_HEIGHT_PX_MAX,
+  BLOCK_HEIGHT_PX_MIN,
+  isBlockRowHeight,
+  type BlockHeight,
+} from './block-sizing';
 
 /** Espaçamento entre células, na escala do design system. */
 export type BlockGridGap = 'none' | 'sm' | 'md' | 'lg';
@@ -67,10 +72,11 @@ export interface BlockGridOptions {
   /** Alinhamento vertical. Default `stretch` (é o que iguala as alturas). */
   align?: BlockGridAlign;
   /**
-   * Degrau de altura da linha. AUSENTE significa "derive dos tipos dos filhos".
-   * Declarar um default de fábrica aqui daria 460px a uma linha de títulos.
+   * Altura da linha: um DEGRAU nomeado ou um número em PIXELS. AUSENTE
+   * significa "derive dos tipos dos filhos" — declarar um default de fábrica
+   * aqui daria 460px a uma linha de títulos.
    */
-  rowHeight?: BlockRowHeight;
+  rowHeight?: BlockHeight;
   /** Largura dos itens: `equal` (default) ou `span` (mosaico). */
   itemSizing?: BlockItemSizing;
 }
@@ -93,13 +99,18 @@ export function readGridOptions(props: Record<string, unknown>): BlockGridOption
   ) {
     options.align = props.align;
   }
-  if (
-    props.rowHeight === 'auto' ||
-    props.rowHeight === 'compact' ||
-    props.rowHeight === 'default' ||
-    props.rowHeight === 'tall'
-  ) {
+  if (isBlockRowHeight(props.rowHeight)) {
     options.rowHeight = props.rowHeight;
+  } else if (
+    typeof props.rowHeight === 'number' &&
+    Number.isFinite(props.rowHeight) &&
+    props.rowHeight >= BLOCK_HEIGHT_PX_MIN &&
+    props.rowHeight <= BLOCK_HEIGHT_PX_MAX
+  ) {
+    // Pixels só entram DENTRO da faixa: um `rowHeight: 3` não é altura, é um
+    // engano de unidade (provavelmente "3 linhas"), e a regra de leitura do
+    // módulo manda ignorar em vez de corrigir.
+    options.rowHeight = Math.round(props.rowHeight);
   }
   if (props.itemSizing === 'equal' || props.itemSizing === 'span') {
     options.itemSizing = props.itemSizing;
