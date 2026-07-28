@@ -98,6 +98,22 @@ const ajv = new Ajv({ strict: false, allErrors: true });
 const validatorCache = new Map<string, ValidateFunction | null>();
 
 /**
+ * Ajv gêmeo, com COERÇÃO de tipo — usado só na fronteira do agente.
+ *
+ * Modelos de linguagem escrevem JSON com o tipo errado por hábito: numa
+ * conversa real, `create_chart` foi recusado com `/smooth must be boolean` e
+ * `/area must be boolean` porque as props vieram como `{"area": "true",
+ * "smooth": "true"}` — as aspas custaram um passo do turno e uma linha vermelha
+ * na trilha, para um dado que estava certo em intenção e errado em notação.
+ *
+ * A coerção fica SEPARADA do validador estrito de propósito: o formulário da UI
+ * manda tipo certo e deve continuar sendo cobrado disso. Quem ganha a folga é
+ * quem escreve JSON de cabeça.
+ */
+const ajvCoercivo = new Ajv({ strict: false, allErrors: true, coerceTypes: true });
+const coercerCache = new Map<string, ValidateFunction | null>();
+
+/**
  * Compila (com cache) o validador do `propsSchema` de um tipo. Retorna `null`
  * quando o tipo não existe, não tem `propsSchema`, ou o schema é inválido (nesse
  * caso a validação é considerada "passada" — não bloqueamos por schema quebrado).
@@ -117,6 +133,41 @@ function getPropsValidator(type: string): ValidateFunction | null {
   }
   validatorCache.set(type, validator);
   return validator;
+}
+
+/**
+ * Ajusta o TIPO das props ao que o `propsSchema` pede, sem julgar o conteúdo.
+ *
+ * `"true"` vira `true`, `"12"` vira `12` — o que o schema não souber converter
+ * passa intacto e será recusado adiante pela validação estrita, com a mensagem
+ * de sempre. Ou seja: isto perdoa notação, não perdoa erro de verdade.
+ *
+ * Devolve uma CÓPIA: o Ajv coerciovo muta o objeto que recebe, e mutar o
+ * argumento de quem chama é o tipo de efeito colateral que ninguém procura
+ * quando o bug aparece.
+ */
+export function coerceProps(type: string, props: unknown): unknown {
+  if (props === null || typeof props !== 'object' || Array.isArray(props)) return props;
+
+  if (!coercerCache.has(type)) {
+    const schema = byType.get(type)?.propsSchema;
+    let coercer: ValidateFunction | null = null;
+    if (schema && typeof schema === 'object') {
+      try {
+        coercer = ajvCoercivo.compile(schema);
+      } catch {
+        coercer = null;
+      }
+    }
+    coercerCache.set(type, coercer);
+  }
+
+  const coercer = coercerCache.get(type);
+  if (!coercer) return props;
+
+  const copia: unknown = structuredClone(props);
+  coercer(copia); // muta `copia` aplicando as coerções possíveis
+  return copia;
 }
 
 /**

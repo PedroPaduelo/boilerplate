@@ -22,6 +22,35 @@ import type {
 } from '@/lib/pg-runner';
 import { applyTransform } from './transform';
 
+/**
+ * Colapsa a lista de erros do contrato numa mensagem que cabe na cabeça.
+ *
+ * O Ajv reporta POR ITEM: uma série de 30 dias com o eixo x no tipo errado
+ * gerava `/0/x must be string,number; /1/x must be string,number; …` trinta
+ * vezes. O agente lê isso, gasta contexto com trinta repetições da mesma
+ * informação e ainda corre o risco de a mensagem ser truncada antes de dizer o
+ * que importa. Agregando por índice, sobra `x must be string,number (em 30
+ * itens)` — mesmo diagnóstico, uma linha.
+ */
+export function resumirErrosDeContrato(bruto: string): string {
+  const itens = bruto
+    .split(';')
+    .map((parte) => parte.trim())
+    .filter((parte) => parte !== '');
+  if (itens.length <= 1) return bruto;
+
+  const contagem = new Map<string, number>();
+  for (const item of itens) {
+    // `/12/x must be string,number` -> `x must be string,number`
+    const semIndice = item.replace(/^\/\d+\//, '').replace(/^\//, '');
+    contagem.set(semIndice, (contagem.get(semIndice) ?? 0) + 1);
+  }
+
+  return [...contagem.entries()]
+    .map(([mensagem, vezes]) => (vezes > 1 ? `${mensagem} (em ${vezes} itens)` : mensagem))
+    .join('; ');
+}
+
 export interface ExecuteBlockInput {
   blockId: string;
   connection: PgRunnerConnection;
@@ -96,7 +125,9 @@ export async function executeBlockData(
         state: 'error',
         error: {
           code: 'contract_violation',
-          message: `result does not match dataContract (${shape}): ${formatErrors(errors)}`,
+          message: `result does not match dataContract (${shape}): ${resumirErrosDeContrato(
+            formatErrors(errors),
+          )}`,
         },
       };
     }

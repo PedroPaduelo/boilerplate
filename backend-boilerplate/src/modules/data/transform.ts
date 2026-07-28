@@ -79,8 +79,8 @@ export function applyTransform(
       const yKey = col(map, 'y', 'y');
       const seriesKey = col(map, 'series', 'series');
       return rows.map((r) => {
-        const o: Row = { x: r[xKey], y: toNumberOrNull(r[yKey]) };
-        if (r[seriesKey] !== undefined) o.series = r[seriesKey];
+        const o: Row = { x: paraRotulo(r[xKey]), y: toNumberOrNull(r[yKey]) };
+        if (r[seriesKey] !== undefined) o.series = paraRotulo(r[seriesKey]);
         return o;
       });
     }
@@ -88,7 +88,10 @@ export function applyTransform(
     case 'categorical': {
       const labelKey = col(map, 'label', 'label');
       const valueKey = col(map, 'value', 'value');
-      return rows.map((r) => ({ label: r[labelKey], value: toNumberOrNull(r[valueKey]) }));
+      return rows.map((r) => ({
+        label: paraRotulo(r[labelKey]),
+        value: toNumberOrNull(r[valueKey]),
+      }));
     }
 
     case 'table': {
@@ -103,6 +106,32 @@ export function applyTransform(
     default:
       return null;
   }
+}
+
+/**
+ * Valor de EIXO/RÓTULO no formato que o contrato aceita (string ou número).
+ *
+ * O driver do Postgres devolve `timestamp`/`date` como `Date` do JavaScript, e
+ * o contrato de `series`/`categorical` só admite string ou número. Resultado:
+ * todo gráfico de evolução com `date_trunc('day', …)` no eixo x — que é como
+ * se escreve uma série temporal — era recusado com `contract_violation:
+ * /0/x must be string,number`, uma vez por linha. O agente então reescrevia a
+ * consulta com `to_char(...)` para contornar. Ele estava certo no SQL; quem
+ * devolvia um tipo que o próprio contrato não aceita éramos nós.
+ *
+ * Uma data à meia-noite vira `YYYY-MM-DD` (é um DIA, e é assim que ele deve
+ * aparecer no eixo); com hora, mantém o ISO completo, que ordena
+ * lexicograficamente igual à ordem cronológica.
+ */
+function paraRotulo(valor: unknown): unknown {
+  if (valor instanceof Date) {
+    if (Number.isNaN(valor.getTime())) return null;
+    const iso = valor.toISOString();
+    return iso.endsWith('T00:00:00.000Z') ? iso.slice(0, 10) : iso;
+  }
+  // `bigint` não sobrevive a JSON.stringify; vira texto, que o contrato aceita.
+  if (typeof valor === 'bigint') return valor.toString();
+  return valor;
 }
 
 /** Primeiro nome de coluna do resultado, ou um fallback se não houver colunas. */

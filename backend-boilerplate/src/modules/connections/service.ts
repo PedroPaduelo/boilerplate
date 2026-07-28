@@ -302,6 +302,30 @@ const Q_COLUMNS = `
   ORDER BY n.nspname, c.relname, a.attnum
 `;
 
+/**
+ * Valores possíveis de cada tipo ENUM do banco.
+ *
+ * Sem isto, a introspecção diz que a coluna é `message_direction` e para por
+ * aí — o nome do tipo, não o que cabe dentro dele. O agente então adivinha:
+ * numa conversa real ele escreveu `direction = 'inbound'` e o Postgres
+ * respondeu `invalid input value for enum message_direction: "inbound"`,
+ * porque os valores são `in` e `out`. Um passo perdido, um erro vermelho na
+ * trilha do usuário, e uma consulta refeita — tudo por uma informação que o
+ * banco tinha e não foi perguntada.
+ *
+ * É barato (uma consulta a `pg_enum`, tipos são poucos) e fecha uma classe
+ * inteira de erro: o agente deixa de ter o que chutar.
+ */
+const Q_ENUMS = `
+  SELECT t.typname AS type_name,
+         array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS values
+  FROM pg_type t
+  JOIN pg_enum e ON e.enumtypid = t.oid
+  JOIN pg_namespace n ON n.oid = t.typnamespace
+  WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+  GROUP BY t.typname
+`;
+
 const Q_PK = `
   SELECT n.nspname AS schema,
          t.relname AS table_name,
@@ -442,9 +466,18 @@ function buildTables(rows: {
   pks: Record<string, unknown>[];
   fks: Record<string, unknown>[];
   indexes: Record<string, unknown>[];
+  enums?: Record<string, unknown>[];
 }): SchemaTable[] {
   const map = new Map<string, SchemaTable>();
   const keyOf = (schema: string, name: string) => `${schema}.${name}`;
+
+  /** Tipo enum -> valores aceitos, para anotar a coluna que o usa. */
+  const valoresPorEnum = new Map<string, string[]>();
+  for (const r of rows.enums ?? []) {
+    const nome = r.type_name != null ? String(r.type_name) : '';
+    const valores = asStringArray(r.values);
+    if (nome && valores.length > 0) valoresPorEnum.set(nome, valores);
+  }
 
   const ensure = (schema: string, name: string): SchemaTable => {
     const key = keyOf(schema, name);
@@ -479,9 +512,13 @@ function buildTables(rows: {
   // Colunas (espinha dorsal — cria a tabela se TABLES não a trouxe)
   for (const r of rows.columns) {
     const t = ensure(String(r.schema), String(r.table_name));
+    const dataType = String(r.data_type);
+    // Enum vira "message_direction (in, out)": quem lê o schema passa a saber
+    // o que cabe na coluna, em vez de descobrir pelo erro do banco.
+    const valores = valoresPorEnum.get(dataType);
     t.columns.push({
       name: String(r.name),
-      dataType: String(r.data_type),
+      dataType: valores ? `${dataType} (${valores.join(', ')})` : dataType,
       nullable: r.nullable === true || String(r.nullable).toUpperCase() === 'YES',
       defaultValue: r.default_value != null ? String(r.default_value) : null,
       isPrimary: false,
@@ -616,11 +653,12 @@ export async function introspectSchema(
   });
 
   // Auxiliares (best-effort, em paralelo).
-  const [pks, fks, indexes, dbmeta] = await Promise.all([
+  const [pks, fks, indexes, dbmeta, enums] = await Promise.all([
     safeIntrospectRows(conn, Q_PK, filterParams),
     safeIntrospectRows(conn, Q_FKS, filterParams),
     safeIntrospectRows(conn, Q_INDEXES, filterParams),
     safeIntrospectRows(conn, Q_DBMETA),
+    safeIntrospectRows(conn, Q_ENUMS),
   ]);
 
   const cappedTables = buildTables({
@@ -629,6 +667,7 @@ export async function introspectSchema(
     pks,
     fks,
     indexes,
+    enums,
   });
 
   const metaRow = dbmeta[0] ?? {};

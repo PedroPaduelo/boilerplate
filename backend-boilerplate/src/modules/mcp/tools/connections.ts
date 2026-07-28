@@ -94,14 +94,61 @@ const SCHEMA_MAX_DETAILED_TABLES = 50;
 const SCHEMA_MAX_TOTAL_COLUMNS = 1500;
 
 const schemaArgs = z.object({
-  connectionId: z.string().min(1),
-  tables: z.array(z.string().min(1)).optional(),
+  // Opcional no PARSE, obrigatório na prática: quando falta, o handler resolve
+  // a conexão em vez de recusar (ver `resolverConexao`). Recusar por um campo
+  // que o sistema consegue deduzir é gastar um passo do turno e uma linha
+  // vermelha na trilha do usuário para nada.
+  connectionId: z.string().min(1).optional(),
+  /*
+   * Uma tabela só chega como texto, não como lista de um item: o agente pediu
+   * `tables: "public.contacts"` e levou "Expected array, received string" —
+   * outro passo gasto com notação. Aceitar as duas formas custa uma linha.
+   */
+  tables: z
+    .union([z.string().min(1), z.array(z.string().min(1))])
+    .optional()
+    .transform((valor) => (typeof valor === 'string' ? [valor] : valor)),
   search: z.string().optional(),
   schema: z.string().optional(),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(SCHEMA_TABLES_PAGE_SIZE_MAX).default(SCHEMA_TABLES_PAGE_SIZE_DEFAULT),
   refresh: z.boolean().optional(),
 });
+
+/**
+ * A conexão a usar quando o agente não informou `connectionId`.
+ *
+ * Aconteceu de verdade: `get_connection_schema` foi chamada com `{}` e o turno
+ * gastou um passo levando "connectionId: Required" de volta. Quando existe UMA
+ * conexão só — que é a situação da maioria das instalações — não há ambiguidade
+ * a resolver: perguntar qual é seria burocracia.
+ *
+ * Com várias, a escolha é do agente, e o erro passa a ENSINAR: lista os ids
+ * disponíveis, em vez de só dizer que falta um campo.
+ */
+async function resolverConexao(
+  connectionId: string | undefined,
+  actor: Parameters<typeof requireConnectionForUse>[1],
+): Promise<string> {
+  if (connectionId) return connectionId;
+
+  // Mesma regra de visibilidade do `list_connections`: só enxerga o que o ator
+  // já poderia ver — deduzir a conexão não pode ser um atalho de permissão.
+  const { connections } = await listConnections({
+    where: buildVisibilityWhere(actor),
+    page: 1,
+    pageSize: 2,
+  });
+  const unica = connections[0];
+  if (connections.length === 1 && unica) return unica.id;
+
+  throw new McpToolError(
+    connections.length === 0
+      ? 'Nenhuma conexão disponível para este usuário.'
+      : `Informe \`connectionId\`: há ${connections.length} conexões disponíveis. Use list_connections para ver as opções.`,
+    'missing_connection_id',
+  );
+}
 
 /** Normaliza um nome pedido em `tables` para casar contra a introspecção. */
 function tableMatches(
@@ -167,7 +214,10 @@ const getConnectionSchemaTool: ToolDefinition = {
     const { connectionId, tables, search, schema, page, pageSize, refresh } = schemaArgs.parse(
       rawArgs ?? {},
     );
-    const conn = await requireConnectionForUse(connectionId, actor);
+    const conn = await requireConnectionForUse(
+      await resolverConexao(connectionId, actor),
+      actor,
+    );
 
     let full;
     try {
@@ -296,12 +346,48 @@ const getConnectionSchemaTool: ToolDefinition = {
 const MCP_RUN_QUERY_DEFAULT_ROWS = 50;
 const MCP_RUN_QUERY_MAX_ROWS = 1000;
 
-const runQueryArgs = z.object({
-  connectionId: z.string().min(1),
-  sql: z.string().min(1),
-  params: z.array(z.unknown()).optional(),
-  maxRows: z.number().int().min(1).max(MCP_RUN_QUERY_MAX_ROWS).default(MCP_RUN_QUERY_DEFAULT_ROWS),
-});
+/**
+ * `sql` é o nome do campo; `query` é o nome que o modelo escreve.
+ *
+ * Medido nas conversas reais: de 15 falhas de ferramenta num dia, **9 eram
+ * exatamente isto** — `{ query: "SELECT …" }` recusado com "sql: Required".
+ * O modelo relia o schema, reescrevia a mesma consulta com a chave certa e
+ * seguia. Ou seja: o turno gastava dois passos e alguns segundos para
+ * atravessar um sinônimo, e a trilha do usuário enchia de vermelho por um
+ * problema que não é dele.
+ *
+ * Aceitar o sinônimo é mais barato e mais robusto do que insistir na instrução:
+ * o esquema publicado continua pedindo `sql` (é o nome canônico e é o que a
+ * descrição ensina), mas quem chegar com `query` é atendido em vez de
+ * corrigido. Vale só para este par — não é licença para aceitar qualquer nome.
+ */
+const runQueryArgs = z
+  .object({
+    // Mesma dedução do `get_connection_schema`: com uma conexão só, exigir o id
+    // é gastar um passo do turno para confirmar o óbvio (ver `resolverConexao`).
+    connectionId: z.string().min(1).optional(),
+    sql: z.string().min(1).optional(),
+    query: z.string().min(1).optional(),
+    params: z.array(z.unknown()).optional(),
+    maxRows: z
+      .number()
+      .int()
+      .min(1)
+      .max(MCP_RUN_QUERY_MAX_ROWS)
+      .default(MCP_RUN_QUERY_DEFAULT_ROWS),
+  })
+  .transform((args, ctx) => {
+    const sql = args.sql ?? args.query;
+    if (!sql) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sql'],
+        message: 'Informe a consulta em `sql` (o campo `query` também é aceito).',
+      });
+      return z.NEVER;
+    }
+    return { ...args, sql };
+  });
 
 const runQueryTool: ToolDefinition = {
   name: 'run_query',
@@ -343,7 +429,10 @@ const runQueryTool: ToolDefinition = {
   },
   handler: async (rawArgs, { actor }) => {
     const { connectionId, sql, params, maxRows } = runQueryArgs.parse(rawArgs ?? {});
-    const conn = await requireConnectionForUse(connectionId, actor);
+    const conn = await requireConnectionForUse(
+      await resolverConexao(connectionId, actor),
+      actor,
+    );
     try {
       return await runConnectionQuery(conn, sql, params, maxRows);
     } catch (err) {

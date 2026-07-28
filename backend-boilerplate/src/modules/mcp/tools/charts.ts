@@ -14,7 +14,7 @@
  * RBAC/ownership/visibilidade) vivem nos services e NÃO são reimplementadas.
  */
 import { z } from 'zod';
-import { getCatalogDataShape } from '@/lib/catalog';
+import { coerceProps, getCatalogDataShape } from '@/lib/catalog';
 import { runQuery } from '@/lib/pg-runner';
 import { buildVisibilityWhere } from '@/lib/visibility';
 import {
@@ -164,6 +164,9 @@ const createChartTool: ToolDefinition = {
   handler: async (rawArgs, { actor }) => {
     assertPermission(actor, 'artifacts:manage');
     const input = createChartBodySchema.parse(rawArgs ?? {});
+    // Notação do agente ajustada ao schema do bloco (`"true"` -> `true`) antes
+    // da validação estrita: erro de aspas não vale um passo perdido do turno.
+    input.draftProps = coerceProps(input.catalogType, input.draftProps) as typeof input.draftProps;
     try {
       const chart = await createChart(actor, input);
       return serializeChart(chart);
@@ -214,6 +217,12 @@ const updateChartTool: ToolDefinition = {
     const input = updateChartBodySchema.parse(rest);
     try {
       const existing = await requireChartForModify(chartId, actor);
+      // Mesma tolerância de notação do `create_chart`. O tipo de referência é o
+      // que vier no update; sem ele, o que o gráfico já tem.
+      if (input.draftProps !== undefined) {
+        const tipo = input.catalogType ?? existing.catalogType;
+        input.draftProps = coerceProps(tipo, input.draftProps) as typeof input.draftProps;
+      }
       const chart = await updateChart(actor, existing, input);
       return serializeChart(chart);
     } catch (e) {
