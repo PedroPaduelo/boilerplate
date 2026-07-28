@@ -49,16 +49,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/users', label: 'Usuários', icon: UsersIcon, roles: ['ADMIN'] },
 ];
 
-/** Título exibido na topbar, derivado do item de navegação ativo. */
-export const FALLBACK_TITLE = 'Painel';
-
 export function canSeeNavItem(item: NavItem, role: Role | null | undefined): boolean {
   if (item.roles && !hasAnyRole(role, item.roles)) return false;
   if (item.permission && !hasPermission(role, item.permission)) return false;
   return true;
-}
-
-/** Item ativo = o de maior prefixo que casa com o pathname atual. */
-export function findActiveNavItem(pathname: string): NavItem | undefined {
-  return NAV_ITEMS.find((item) => pathname.startsWith(item.href));
 }
