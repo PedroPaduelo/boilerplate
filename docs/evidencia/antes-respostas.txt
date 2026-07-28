@@ -1,0 +1,129 @@
+Interpretei como "listar" — vou trazer seus gráficos e dashboards.Assumi que "listi" = **listar**. Se quis outra coisa, me avisa. 👇
+
+## 📊 Dashboards (1)
+
+| Título | Status | Visib. | Publicado em |
+|---|---|---|---|
+| **Mensagens e Eventos — WhatsApp** | 🟢 PUBLISHED | PRIVATE | 28/07 09:58 |
+
+`cms4hgsev001hjy0p51o61zvg`
+
+## 📈 Gráficos (13)
+
+**🟢 Publicados (7)** — todos no dashboard acima, criados hoje 09:58:
+
+| Título | Tipo |
+|---|---|
+| Total de mensagens | kpi |
+| Mensagens recebidas | kpi |
+| Mensagens enviadas | kpi |
+| Eventos de webhook (Meta) | kpi |
+| Mensagens por dia | bar_chart |
+| Tipos de eventos de webhook | bar_list |
+| Mensagens por status | donut |
+
+| Total de Contatos | kpi | (ORG, publicado em 27/07) |
+|---|---|---|
+
+**🟡 Rascunhos (5)** — não estão em nenhum dashboard:
+
+| Título | Tipo | Atualizado |
+|---|---|---|
+| Total de mensagens por tipo | bar_chart | 28/07 08:56 |
+| Total de Mensagens por Dia (últimos 14 dias) | bar_chart | 28/07 08:32 |
+| Mensagens por dia *(duplicado, ORG)* | bar_chart | 27/07 23:56 |
+| Total de Conversas | kpi | 25/07 15:03 |
+| Total de Mensagens *(duplicado)* | kpi | 25/07 15:03 |
+
+⚠️ **Nota:** há **duplicatas** — "Mensagens por dia" e "Total de Mensagens" existem em versão publicada *e* em rascunho antigo. Posso limpar os rascunhos órfãos, ou publicá-los e adicionar ao dashboard. O que prefere?
+Esses dois já existem e estão publicados (foram criados no dashboard anterior). Não precisei recriar — só reconferi os dados, que estão **ao vivo** e já mudaram um pouco desde a última leitura.
+
+## 1️⃣ Mensagens por status
+`donut` · ID `cms4hggm7001fjy0pr2wq7v96`
+
+| Status | Mensagens |
+|---|---:|
+| received | **3.988** |
+| read | 44 |
+| delivered | 43 |
+| failed | 10 |
+| sent | 1 |
+| **Total** | **4.086** |
+
+⚠️ **Leitura importante:** `received` são as mensagens **de entrada** (o contato te mandou). Os outros 4 status são o ciclo de vida das **saídas**. Então, olhando só as 98 enviadas: 44 lidas (45%), 43 entregues, 1 enviada e **10 falharam (~10%)** — essa taxa de falha é o ponto que merece investigação.
+
+## 2️⃣ Mensagens por dia
+`bar_chart` empilhado (Recebidas × Enviadas) · ID `cms4hggm2001bjy0p026c9etr`
+
+| Dia | Recebidas | Enviadas | Total |
+|---|---:|---:|---:|
+| 18/07 | 3 | 2 | 5 |
+| 19/07 | 2 | 3 | 5 |
+| 20/07 | 3 | 2 | 5 |
+| 21/07 | 3 | 2 | 5 |
+| 22/07 | 3 | 2 | 5 |
+| **23/07** | 1.162 | 12 | **1.174** |
+| **24/07** | 1.177 | 25 | **1.202** |
+| 25/07 | 291 | 1 | 292 |
+| 26/07 | 149 | 0 | 149 |
+| **27/07** | 1.165 | 49 | **1.214** |
+| 28/07 * | 30 | 0 | 30 |
+
+\* dia em curso (parcial).
+
+**O que salta aos olhos:** até 22/07 o volume era de ~5 msgs/dia — parece ambiente de teste. A partir de **23/07** virou a chave para ~1.200/dia, com uma queda no fim de semana (25 e 26/07) e retomada forte no dia 27.
+
+Os dois já estão na linha 2 e 3 do dashboard **"Mensagens e Eventos — WhatsApp"**. Quer que eu gere o **link público** para compartilhar, ou prefere que eu ajuste algo (ex.: separar um gráfico só do funil de envio — sent → delivered → read → failed — sem o `received` distorcendo a escala)?
+Agora vou validar as queries com os dados reais.7 gráficos criados. Agora vou conferir que todos renderizam:Todos os 7 em `success`. Publicando os gráficos e criando o dashboard:Agora vou montar o layout do dashboard (linha de KPIs, gráfico diário e distribuições):✅ Dashboard **"Mensagens e Eventos — WhatsApp"** publicado! (`cms4hgsev001hjy0p51o61zvg`)
+
+## O que tem nele
+
+**Linha 1 — KPIs:**
+- 📨 **Total de mensagens: 4.080**
+- ⬇️ **Recebidas: 3.982** | ⬆️ **Enviadas: 98**
+- 📡 **Eventos de webhook (Meta): 15.254**
+
+**Linha 2 — Mensagens por dia** (barras empilhadas, recebidas × enviadas): o volume explodiu a partir de **23/07** (~1.170/dia), com picos em 23, 24 e 27/07.
+
+**Linha 3 — Distribuições:**
+- **Tipos de eventos de webhook** (ranking): `statuses` **11.187** (confirmações de entrega/leitura), `messages` **4.011**, `calls` **54**, e 2 eventos de atualização de template.
+- **Mensagens por status** (donut): `received` 3.982, `read` 44, `delivered` 43, `failed` 10, `sent` 1.
+
+## Destaques rápidos
+- O tráfego é **97,6% de entrada** — quase tudo mensagem recebida de contatos.
+- Das 98 enviadas, **10 falharam** (~10% de falha no envio, vale investigar).
+- Os eventos `statuses` dominam os webhooks (esperado: cada envio gera vários status).
+
+**IDs dos gráficos** (caso queira iterar): KPIs `...hls91`, `...gv20`, `...dyq3`, `...66vh` · barras diárias `cms4hggm2001bjy0p026c9etr` · eventos `cms4hggm6001djy0pa3c9vzvm` · donut `cms4hggm7001fjy0pr2wq7v96`
+
+Quer que eu **gere um link público** para compartilhar esse dashboard? 🔗
+Você tem apenas **1 conexão** disponível: **"teste"** (Postgres, banco `whats`). Vou inspecionar as tabelas dela.A conexão tem **20 tabelas** no schema `public`. Vou buscar as colunas para descrever o que cada uma registra.Você tem **1 conexão** ("teste" — Postgres, banco `whats`), com **20 tabelas** no schema `public`. É claramente o backend de uma **plataforma de atendimento via WhatsApp (API oficial da Meta), multi-organização**. Segue o resumo, ordenado da tabela com mais dados para a menor:
+
+## 📊 Tabelas com mais dados
+
+| Tabela | Linhas (~) | O que registra |
+|---|---|---|
+| **meta_webhook_events** | 14.877 | Log bruto de **todos os webhooks recebidos da Meta** (payload JSON, tipo de evento, se a assinatura era válida, se foi processado ou descartado e o motivo). É a tabela mais pesada (~33 MB). |
+| **messages** | 3.729 | As **mensagens do WhatsApp** em si: direção (entrada/saída), tipo (texto etc.), conteúdo (JSON), status (queued → sent → delivered...), erro, e vínculos com conversa, contato, telefone e template. |
+| **webhook_deliveries** | 3.727 | **Entregas dos webhooks de saída** do sistema: payload enviado, status/corpo da resposta HTTP, tentativas, sucesso/erro — o log de auditoria dos webhooks configurados. |
+| **conversations** | 403 | As **conversas** com cada contato: status (open/resolved), prioridade, atendente responsável, tags, contador de não lidas, preview e data da última mensagem. |
+| **contacts** | 356 | Os **contatos** (clientes finais): nome, telefone e metadados JSON, únicos por organização + telefone. |
+| **refresh_tokens** | 314 | **Tokens de sessão** dos usuários da plataforma (hash, expiração, revogação) — tabela de autenticação. |
+| **message_status_events** | 193 | **Histórico de status de cada mensagem** (sent/delivered/read/failed), com timestamp e código de erro — o "trilho de confirmações" da Meta. |
+| **conversation_billing** | 145 | **Cobrança por conversa** da Meta: categoria (marketing/utility...), se é cobrável, valor, moeda e janela de início/expiração. |
+| **calls** | 68 | **Chamadas de voz/vídeo** via WhatsApp: direção, status (ringing...), início/fim e duração em segundos. |
+
+## 🗂️ Tabelas de apoio (poucas linhas)
+
+- **conversation_events** (17) — eventos internos da conversa (atribuição, mudança de status etc.) com payload JSON.
+- **message_templates** (13) — templates HSM aprovados/pendentes na Meta (nome, idioma, categoria, componentes, motivo de rejeição).
+- **webhooks_outgoing** (1) — configuração dos webhooks de saída (URL, eventos assinados, secret).
+- **conversation_notes** — anotações internas dos atendentes por conversa.
+- **phones** — os números de WhatsApp Business conectados (meta_phone_id, WABA, qualidade, status de verificação).
+- **users** — usuários/atendentes da plataforma (email, papel, ativo), por organização.
+- **organizations** — os tenants (nome, slug) — raiz de quase todas as FKs.
+- **invitations** — convites de novos usuários (email, papel, token, aceite/expiração).
+- **meta_integrations** — credenciais da integração com a Meta por organização (WABA, tokens criptografados, status).
+- **dlq_entries** — *dead letter queue*: jobs de fila que falharam (payload, erro, tentativas).
+
+Se quiser, posso montar gráficos ou um dashboard com esses dados — por exemplo, volume de mensagens por dia, conversas por status, ou custo de billing por categoria. É só pedir! 📈

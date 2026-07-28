@@ -1,0 +1,14 @@
+## Mensagens por dia — últimas 2 semanas
+
+A série tem **3 domingos/quartas (18 a 22/07) cravados em 5 mensagens/dia**, seguidos de uma arrancada forte a partir do dia 23/07. Pico em **27/07 (1.214 mensagens)** e queda brusca em **28/07 (98 — dia parcial, fechado ~12h38)**.
+
+[[grafico:1]]
+
+- **18 a 22/07**: plano em 5 mensagens/dia — comportamento de teste/inatividade por 5 dias seguidos.
+- **23 a 27/07**: média de ~806 mensagens/dia, com pico em **27/07 (1.214)**.
+- **28/07**: 98 mensagens em ~12h38 do dia — segue ritmo, mas o dia está incompleto.
+- **Total no recorte**: **4.154 mensagens** em 11 dias.
+
+**Recorte:** mensagens de `messages` (`created_at >= CURRENT_DATE - 14 days`), agrupadas por dia, todos os canais e direções.
+
+Posso quebrar essa série por **direção** (entregues x recebidas) ou por **status** para entender o que puxou o salto do dia 23, e também isolar o porquê dos 5 dias iniciais com 5 mensagens (sugere inatividade operacional antes do dia 23).
