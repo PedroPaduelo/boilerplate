@@ -22,6 +22,7 @@ import {
   initialConversationState,
   type ConversationState,
 } from './lib/conversation-state';
+import { readPersistedChart } from './lib/chat-tools';
 
 export interface UseConversationStreamResult extends ConversationState {
   send: (text: string) => void;
@@ -29,11 +30,15 @@ export interface UseConversationStreamResult extends ConversationState {
 }
 
 function toUiMessage(record: ChatMessageRecord): ChatMessage {
+  // O gráfico gravado junto da mensagem volta com ela — sem isto, o F5 apagava
+  // o resultado da resposta e sobrava só o texto (metade da evidência).
+  const chart = readPersistedChart(record);
   return {
     id: record.id,
     role: (record.role === 'user' ? 'user' : 'assistant') as ChatRole,
     content: record.content,
     createdAt: record.createdAt,
+    ...(chart ? { chart } : {}),
   };
 }
 

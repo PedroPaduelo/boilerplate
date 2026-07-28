@@ -21,7 +21,7 @@ import type {
   ChatStepStatus,
   ChatTurnUsage,
 } from '../model';
-import type { ChatToolStepPayload } from '../transport/types';
+import type { ChatChartPayload, ChatToolStepPayload } from '../transport/types';
 
 /**
  * Rótulos humanos das tools do MCP — usados como PLANO B.
@@ -310,6 +310,39 @@ export function readPersistedTrail(record: TrailSourceRecord): ChatMessageTrail 
       .filter((artifact): artifact is ChatArtifact => artifact !== null),
     usage: readUsage(isRecord(data) ? data.usage : null, record),
   };
+}
+
+/**
+ * O gráfico persistido junto da mensagem (`toolData.charts`).
+ *
+ * O backend grava os gráficos do turno na mesma linha da mensagem justamente
+ * para isto: o Redis do turno expira em 30 min e o socket só alcança quem
+ * estava com a tela aberta. Sem esta leitura, o gráfico — o PRODUTO da
+ * resposta — sumia no primeiro F5, sobrando o texto e a trilha.
+ *
+ * Quando o turno produziu mais de um gráfico, vale o ÚLTIMO válido: é a mesma
+ * regra do streaming, onde cada evento `chart` sobrescreve o anterior na
+ * mensagem. A validação aqui é de FORMA (título, tipo de bloco e a presença de
+ * `result`); quem valida o conteúdo do bloco é o BlockRenderer, que já trata
+ * bloco inválido — mesmo contrato do transporte por socket.
+ */
+export function readPersistedChart(
+  record: TrailSourceRecord,
+): ChatChartPayload | undefined {
+  const data = record.toolData;
+  if (!isRecord(data) || !Array.isArray(data.charts)) return undefined;
+
+  for (let index = data.charts.length - 1; index >= 0; index -= 1) {
+    const candidate: unknown = data.charts[index];
+    if (!isRecord(candidate)) continue;
+    if (!asString(candidate.title)) continue;
+    if (!asString(candidate.catalogType)) continue;
+    // Sem dados não há o que desenhar — um gráfico gravado sem `result` cai
+    // fora em vez de virar um cartão vazio na conversa.
+    if (candidate.result === undefined || candidate.result === null) continue;
+    return candidate as unknown as ChatChartPayload;
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------

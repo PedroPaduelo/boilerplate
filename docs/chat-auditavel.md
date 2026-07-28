@@ -138,6 +138,11 @@ npx eslint src --max-warnings=0
   ligado: sem endpoint, o botão registraria a opinião em lugar nenhum — e botão
   que não faz nada é pior que botão ausente. Precisa de uma coluna em
   `ChatMessage` e uma rota.
-- **Restaurar o gráfico ao recarregar.** O backend já **grava** os gráficos em
-  `toolData.charts`; falta o front lê-los em `toUiMessage`. Gravar era o
-  pré-requisito.
+- ~~**Restaurar o gráfico ao recarregar.**~~ **Feito.** `readPersistedChart`
+  (em `lib/chat-tools.ts`) lê `toolData.charts` e `toUiMessage` devolve o
+  gráfico junto da mensagem. A validação é de forma (`title`, `catalogType`,
+  `result` presentes) e o **último válido vence** — a mesma regra do streaming,
+  em que cada evento `chart` sobrescreve o anterior na mensagem. Ressalva
+  honesta: um turno que produziu vários gráficos (há um com 7 nesta base)
+  continua exibindo só um; mudar isso mexe no modelo, no reducer e no contrato
+  (ROADMAP § 9).
