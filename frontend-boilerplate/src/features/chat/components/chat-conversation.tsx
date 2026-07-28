@@ -60,6 +60,33 @@ export function ChatConversation({
 
   return (
     <ChatLayout
+      /**
+       * COLUNA DE LEITURA. Sem isto a tela mede assim, num monitor de 1911px:
+       * texto da resposta em 712px, trilha de auditoria em 1332px e composer em
+       * 1340px — três larguras diferentes empilhadas na mesma coluna, o que dá
+       * a sensação de bagunça mesmo com cada peça correta isoladamente.
+       *
+       * O número não é gosto: a 14px, a linha do agente ficava com 97
+       * caracteres. O intervalo em que o olho reencontra o início da linha
+       * seguinte sem esforço é 45–75; acima disso a leitura corrida cansa e o
+       * leitor pula linha. Em 720px a mesma resposta cai para 70 caracteres —
+       * medido na tela, não estimado.
+       *
+       * Aplicado nos FILHOS diretos (mensagens e composer) para que os dois
+       * compartilhem exatamente o mesmo eixo. O fundo continua ocupando a
+       * largura toda: quem centraliza é o conteúdo, não a moldura.
+       *
+       * 56rem (896px) e não 45rem: a primeira tentativa fixou 720px e deixou
+       * 65% do monitor vazio — a tela parecia um formulário no meio do nada.
+       * O que permite alargar sem perder a leitura é a fonte ter subido para
+       * 15,75px (ver `.app-chat` em app/index.css): a conta de caracteres por
+       * linha é largura ÷ tamanho da fonte, então crescer os dois juntos mantém
+       * a linha na faixa confortável e devolve a tela ao usuário.
+       *
+       * `app-chat` é o escopo do redesenho visual — sem ele, as regras de
+       * superfície do chat vazariam para o resto do app.
+       */
+      className="app-chat [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-[56rem]"
       composer={
         <ChatComposer
           value={draft}

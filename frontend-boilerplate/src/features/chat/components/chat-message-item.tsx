@@ -77,6 +77,10 @@ function AssistantMessage({
     <ChatMessageRow sender="assistant" avatar={<Avatar name="Agente" size="sm" />}>
       <ChatMessageBubble
         variant="ghost"
+        // O cursor piscando só existe enquanto o texto está CHEGANDO. É o que
+        // distingue "o modelo pausou entre parágrafos" de "a conexão caiu" —
+        // ver `.app-streaming` em app/index.css.
+        className={isStreaming ? 'app-streaming' : undefined}
         metadata={
           isSettled ? (
             <MessageActions

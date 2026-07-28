@@ -15,6 +15,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { ChatToolCalls } from '@astryxdesign/core/Chat';
+import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Icon } from '@astryxdesign/core/Icon';
 import { Spinner } from '@astryxdesign/core/Spinner';
 import { HStack, VStack } from '@astryxdesign/core/Stack';
@@ -57,6 +58,11 @@ function trailSummary(trail: ChatMessageTrail): string {
   return parts.join(' · ');
 }
 
+/** Um passo que falhou precisa ser visível com a trilha FECHADA. */
+function failedCount(steps: readonly AuditStep[]): number {
+  return steps.filter((step) => step.status === 'error').length;
+}
+
 export function AuditTrail({ trail, phaseLabel, isStreaming = false }: AuditTrailProps) {
   const steps = trail.steps;
   const isWorking = isStreaming && Boolean(phaseLabel);
@@ -71,18 +77,75 @@ export function AuditTrail({ trail, phaseLabel, isStreaming = false }: AuditTrai
     resultDetail: hasStepEvidence(step) ? <AuditStepDetail step={step} /> : undefined,
   }));
 
-  return (
+  const passos = (
     <VStack gap={2}>
-      <HStack gap={2} vAlign="center">
-        {isStreaming ? <Spinner size="sm" /> : null}
-        <Text type="supporting" color="secondary">
-          {isWorking ? phaseLabel : `Trilha de auditoria · ${trailSummary(trail)}`}
-        </Text>
-      </HStack>
-
       {calls.map((call) => (
-        <ChatToolCalls key={call.key} calls={[call]} />
+        <ChatToolCalls
+          key={call.key}
+          calls={[call]}
+          // Só o turno EM ANDAMENTO anima. Numa conversa já carregada os passos
+          // aparecem todos de uma vez: animá-los seria um piscar coletivo que
+          // não corresponde a nada acontecendo.
+          className={isStreaming ? 'app-step-in' : undefined}
+        />
       ))}
     </VStack>
+  );
+
+  /**
+   * Turno EM ANDAMENTO: a trilha fica aberta e é o próprio indicador de
+   * progresso — os passos entram um a um e o usuário vê o trabalho acontecer.
+   */
+  if (isStreaming) {
+    return (
+      <VStack gap={2}>
+        <HStack gap={2} vAlign="center">
+          <Spinner size="sm" />
+          <Text type="supporting" color="secondary">
+            {isWorking ? phaseLabel : 'Trabalhando…'}
+          </Text>
+        </HStack>
+        {passos}
+      </VStack>
+    );
+  }
+
+  /**
+   * Turno CONCLUÍDO: a trilha recolhe.
+   *
+   * O motivo é de proporção. Numa pergunta como "quantos contatos existem?", a
+   * resposta é uma linha — "369 contatos" — e a trilha tem quatro passos. Aberta,
+   * ela ocupa quatro vezes mais espaço que a resposta que o usuário veio ler, e
+   * a evidência (que existe para ser conferida QUANDO se duvida) passa a
+   * atrapalhar a leitura de quem não duvidou.
+   *
+   * Recolhida, ela continua a um clique — e o resumo no gatilho já entrega o
+   * essencial sem abrir: quantos passos, quanto tempo, e se algum falhou.
+   *
+   * A exceção é justamente a falha: um passo com erro fica anunciado no rótulo
+   * (`1 falhou`), porque esconder atrás de um clique um problema que afetou o
+   * resultado seria esconder o que mais importa auditar.
+   */
+  const falhas = failedCount(steps);
+
+  return (
+    <Collapsible
+      defaultIsOpen={false}
+      trigger={
+        <HStack gap={2} vAlign="center">
+          <Text type="supporting" color="secondary">
+            {`Trilha de auditoria · ${trailSummary(trail)}`}
+          </Text>
+          {falhas > 0 ? (
+            <Badge
+              variant="warning"
+              label={`${falhas} ${falhas === 1 ? 'falhou' : 'falharam'}`}
+            />
+          ) : null}
+        </HStack>
+      }
+    >
+      {passos}
+    </Collapsible>
   );
 }

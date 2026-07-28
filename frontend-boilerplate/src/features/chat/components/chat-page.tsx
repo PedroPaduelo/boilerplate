@@ -94,7 +94,31 @@ export function ChatPage() {
           </LayoutHeader>
         }
         content={
-          <LayoutContent padding={0} isScrollable={false}>
+          /**
+           * `flex min-h-0 flex-col` NÃO é enfeite — sem isso a conversa não rola.
+           *
+           * `isScrollable={false}` diz ao `LayoutContent` para não rolar (quem
+           * rola é o `ChatLayout`, que precisa manter a doca do composer fixa).
+           * Só que isso o deixa `display: block` com `overflow: clip`. O
+           * `ChatLayout` se declara `flex: 1 1 0%` esperando um pai flex — num
+           * pai block essas propriedades são INERTES, então ele assume
+           * `height: auto` e cresce com o conteúdo, enquanto o pai corta o que
+           * passa da altura da tela.
+           *
+           * Medido numa conversa real: pai com 779px visíveis, filho com 1413px
+           * — 634px de resposta cortados e SEM scroll em lugar nenhum. O usuário
+           * simplesmente não alcançava o fim da própria conversa.
+           *
+           * `flex-col` dá ao filho um contexto flex de verdade; `min-h-0` é o
+           * que permite ele ENCOLHER (o padrão `min-height: auto` de um item
+           * flex se recusa a ficar menor que o conteúdo — é a origem clássica
+           * desse bug).
+           */
+          <LayoutContent
+            padding={0}
+            isScrollable={false}
+            className="flex min-h-0 flex-col"
+          >
             {isLoading ? (
               // Enquanto a lista não chega não dá para saber se o usuário tem
               // conversas: mostrar o vazio aqui AFIRMARIA que não tem — e quem

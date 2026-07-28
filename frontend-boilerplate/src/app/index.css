@@ -122,3 +122,205 @@
     tab-size: 2;
   }
 }
+
+/* --------------------------------------------------------------------------
+   PASSO DA TRILHA ENTRANDO (chat)
+
+   O único movimento da tela, e ele carrega informação: enquanto o agente
+   trabalha, cada passo que ele conclui ENTRA na lista. É a diferença entre um
+   spinner (que só diz "aguarde") e ver o trabalho acontecendo — e é o que
+   torna os 60s de espera de um turno legíveis em vez de mortos.
+
+   Aplicado SÓ na trilha do turno em andamento. Ao abrir uma conversa antiga,
+   os seis passos já existem: animá-los seria um piscar coletivo sem sentido,
+   porque nada está acontecendo naquele momento.
+
+   `useEntryAnimation` do DS faria isto, mas devolve StyleX — que neste app
+   não compila e falha em SILÊNCIO (ver docs/astryx/MIGRATION.md). Daí o CSS,
+   com o token de duração do próprio tema.
+
+   4px de deslocamento: o suficiente para o olho perceber a chegada, pouco o
+   bastante para não empurrar a leitura de quem já está lendo a resposta.
+   -------------------------------------------------------------------------- */
+@layer components {
+  @keyframes app-step-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .app-step-in {
+    animation: app-step-in var(--duration-fast, 200ms) ease-out both;
+  }
+
+  /* Quem pede menos movimento recebe a informação sem o deslocamento. */
+  @media (prefers-reduced-motion: reduce) {
+    .app-step-in {
+      animation: none;
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   SUPERFÍCIE DO CHAT
+
+   Medido antes de escrever qualquer linha daqui, num monitor de 1911×898:
+
+     campo de digitação ....... 30px de altura, fonte 14px
+     texto de apoio ........... 12,25px
+     largura ocupada .......... 672px de 1911 (35% da tela)
+
+   30px é altura de campo de FORMULÁRIO. Num produto cujo gesto principal é
+   escrever uma pergunta, o campo onde se escreve não pode ser o elemento mais
+   apagado da tela — ele é o convite. E 12,25px de apoio, num painel que a
+   pessoa lê o dia inteiro, é letra miúda de contrato.
+
+   As regras abaixo tratam SÓ da superfície do chat (escopo `.app-chat`), sem
+   tocar em nenhum outro lugar do app. Onde existe token do tema, o token é
+   usado; onde não existe (geometria de composição), o valor vem comentado.
+   -------------------------------------------------------------------------- */
+@layer components {
+  /* ---- Campo de digitação: o protagonista ------------------------------- */
+
+  .app-chat [class*='chat-composer'] {
+    /* `--radius-page` (16px) é o raio das superfícies grandes do tema. */
+    border-radius: var(--radius-page);
+    border: 1px solid var(--color-border);
+    /* Elevação para o campo pousar SOBRE a conversa, não flutuar nela. */
+    box-shadow: var(--shadow-med);
+    transition:
+      border-color var(--duration-fast, 200ms) ease,
+      box-shadow var(--duration-fast, 200ms) ease;
+  }
+
+  /* Foco no elemento inteiro (`:focus-within`), não só no cursor: quem está
+     digitando precisa ver ONDE está digitando sem procurar o cursor. */
+  .app-chat [class*='chat-composer']:focus-within {
+    border-color: var(--color-border-emphasized);
+    box-shadow: var(--shadow-high);
+  }
+
+  .app-chat [aria-label='Mensagem'] {
+    /* 52px: duas linhas de texto a 16px com folga — o campo já nasce com cara
+       de "escreva algo de verdade aqui", em vez de crescer só depois. */
+    min-height: 52px;
+    font-size: var(--font-size-lg); /* 15,75px — some o zoom do iOS e lê melhor */
+    line-height: 1.55;
+  }
+
+  /* ---- Corpo da conversa ------------------------------------------------ */
+
+  /* 14px → 15,75px. Uma resposta de auditoria é lida inteira, não escaneada. */
+  .app-chat .astryx-markdown,
+  .app-chat .astryx-chat-message-bubble {
+    font-size: var(--font-size-lg);
+    line-height: 1.65;
+  }
+
+  /* Apoio sobe de 12,25px para 13,125px: continua secundário, deixa de ser
+     letra miúda. */
+  .app-chat [class*='tool-call'],
+  .app-chat .astryx-chat-message-metadata {
+    font-size: var(--font-size-xs);
+  }
+
+  /* A bolha do usuário ganha peso: numa conversa longa é o marco visual que
+     divide os turnos e permite achar "onde foi que eu perguntei isso". */
+  .app-chat .astryx-chat-message-bubble.filled {
+    border-radius: var(--radius-container);
+  }
+
+  /* ---- Cursor de digitação --------------------------------------------- */
+
+  /*
+     A barra que pisca no fim do texto enquanto a resposta chega.
+
+     Não é enfeite: é o sinal de que o fluxo está VIVO. Sem ele, uma pausa do
+     modelo entre dois parágrafos é indistinguível de uma conexão que caiu — e
+     o usuário fica olhando para um texto parado sem saber se deve esperar ou
+     recarregar. O cursor responde essa pergunta sem ocupar espaço nenhum.
+
+     `steps(2)` em vez de fade: cursor de terminal pisca, não respira. É o
+     vocabulário visual que a pessoa já reconhece.
+  */
+  @keyframes app-caret {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .app-chat .app-streaming .astryx-markdown > *:last-child::after {
+    content: '';
+    display: inline-block;
+    width: 0.45em;
+    height: 1.05em;
+    margin-left: 0.12em;
+    vertical-align: text-bottom;
+    background-color: currentColor;
+    border-radius: 1px;
+    opacity: 0.75;
+    animation: app-caret 1.1s steps(2, start) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-chat .app-streaming .astryx-markdown > *:last-child::after {
+      animation: none;
+    }
+  }
+
+  /* ---- Abertura da conversa -------------------------------------------- */
+
+  /*
+     A tela vazia é a PRIMEIRA coisa que a pessoa vê, e ela responde a uma
+     pergunta prática: "o que dá para fazer aqui?".
+
+     Medido: o convite ("O que você quer investigar hoje?") saía com 19px numa
+     viewport de 898px — do mesmo tamanho de um rótulo de formulário. Uma
+     abertura de tela inteira precisa de escala de abertura, senão a página
+     parece não ter começado.
+  */
+  .app-chat .astryx-empty-state h1,
+  .app-chat .astryx-empty-state h2,
+  .app-chat .astryx-empty-state h3 {
+    font-size: var(--font-size-3xl); /* 28px */
+    line-height: 1.2;
+    letter-spacing: -0.01em; /* títulos grandes pedem tracking negativo */
+  }
+
+  .app-chat .astryx-empty-state p {
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+  }
+
+  /* Os cartões de partida são o menu real da tela: precisam de área de clique
+     e de respiro entre si, não de aparência de item de lista. */
+  .app-chat .astryx-clickable-card {
+    border-radius: var(--radius-container);
+    transition:
+      transform var(--duration-fast, 200ms) ease,
+      border-color var(--duration-fast, 200ms) ease;
+  }
+
+  .app-chat .astryx-clickable-card:hover {
+    /* 1px é o bastante para o cartão responder ao ponteiro sem "pular". */
+    transform: translateY(-1px);
+    border-color: var(--color-border-emphasized);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-chat .astryx-clickable-card,
+    .app-chat .astryx-clickable-card:hover {
+      transition: none;
+      transform: none;
+    }
+  }
+}

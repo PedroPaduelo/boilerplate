@@ -19,7 +19,7 @@ import { HStack } from '@astryxdesign/core/Stack';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Text } from '@astryxdesign/core/Text';
-import { Timestamp } from '@astryxdesign/core/Timestamp';
+import { formatTime } from '@/shared/lib/utils';
 import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { VisuallyHidden } from '@astryxdesign/core/VisuallyHidden';
 import { useAppToast } from '@/shared/hooks/use-app-toast';
@@ -101,7 +101,12 @@ export function MessageActions({
 
   return (
     <ChatMessageMetadata
-      timestamp={createdAt ? <Timestamp value={createdAt} format="time" /> : undefined}
+      // `formatTime` em vez do `Timestamp` do DS: ele formata pelo locale do
+      // NAVEGADOR, e num navegador em inglês o horário saía "9:10 AM" no meio
+      // de uma tela em português. O elemento `<time>` semântico é preservado.
+      timestamp={
+        createdAt ? <time dateTime={createdAt}>{formatTime(createdAt)}</time> : undefined
+      }
       footer={
         <HStack gap={1} vAlign="center" wrap="wrap">
           {usageLabel ? (
