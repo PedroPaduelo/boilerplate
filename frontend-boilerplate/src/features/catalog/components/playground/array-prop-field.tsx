@@ -6,7 +6,7 @@
  * caía no `TextInput` para tudo que não fosse enum/boolean/number. Props
  * declaradas como `array` no `propsSchema` (`flip_words.words`,
  * `bar_chart.seriesColors`, `resizable_panels.defaultSizes`,
- * `card_hover.items`) entravam nesse fallback e o `onChange` gravava uma
+ * `expandable_cards.items`) entravam nesse fallback e o `onChange` gravava uma
  * STRING onde o componente espera uma LISTA. O resultado ia de no-op
  * silencioso (`seriesColors`) a derrubar a aplicação inteira
  * (`words.join is not a function`).

@@ -249,13 +249,13 @@ efeitos específicos (colapsar, painel lateral, cards expansíveis).
 
 ## 8. DECORATIVOS (capa/efeitos - kind=layout, sem dados)
 
-Use só para estética (hero, capa). NÃO servem p/ exibir dados:
-- **background_beams** / **background_boxes** - capas animadas com `title`/`subtitle`.
-- **glowing_effect** - card com borda que brilha no hover (`title`, `description`, `variant`).
-- **pin_3d** - card com inclinação 3D (`pinLabel`, `href`, `title`, `description`).
+Use só para estética. NÃO servem p/ exibir dados:
 - **mobius_loop** - ícone animado de loading (`size`, `speed`).
-- **hover_card** / **tooltip_card** / **tooltip_fluid** - conteúdo flutuante no hover/foco.
-- **card_hover** - grade de cards com destaque no hover (`items[]`).
+- **hover_card** - conteúdo flutuante no hover/foco.
+
+> Sete decorativos saíram do catálogo (`background_beams`, `background_boxes`,
+> `glowing_effect`, `pin_3d`, `tooltip_card`, `tooltip_fluid`, `card_hover`).
+> NÃO os referencie: o tipo não existe mais e o bloco vira "não implementado".
 
 ## 9. Mapa "pedido do usuário -> bloco"
 
@@ -272,7 +272,7 @@ Use só para estética (hero, capa). NÃO servem p/ exibir dados:
 | minigráfico ao lado de um KPI | `spark_chart` |
 | tabela / detalhamento / lista | `data_table`, `table` |
 | etapa de funil / jornada por etapas | `funnel_stage` |
-| capa / hero / animação | `background_beams`, `flip_words`, `callout` |
+| capa / hero / animação | `flip_words`, `callout`, `title` |
 | alerta / observação / análise | `alert`, `callout`, `rich_text`, `title` |
 | agrupar blocos num cartão | `section` (container) |
 | mosaico (1 grande + vários menores) | `bento_grid` (container) |

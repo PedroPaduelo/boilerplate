@@ -3,7 +3,7 @@
  * `propsSchema` SEMPRE sai como array.
  *
  * Era exatamente isso que faltava: o editor genérico devolvia string, e os
- * blocos que iteram a lista (`flip_words`, `resizable_panels`, `card_hover`)
+ * blocos que iteram a lista (`flip_words`, `resizable_panels`, `expandable_cards`)
  * quebravam — um deles derrubando a aplicação inteira.
  */
 import { describe, expect, it, vi } from 'vitest';

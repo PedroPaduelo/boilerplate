@@ -88,3 +88,37 @@ os cinco estados do `ChartFrame`, e um `component.test.tsx` por bloco repaginado
 3. **Forma decorativa SVG** do card de resumo (§04-2.1) — falta o asset.
 4. **Persistir descrição/mensagem de vazio** em `/charts/:id` — precisa de campo
    próprio no contrato de Chart.
+
+---
+
+## Removido — 7 blocos decorativos (decisão de produto)
+
+Saíram do catálogo por não terem uso previsto:
+
+| Bloco            | `catalogType`      |
+| ---------------- | ------------------ |
+| 3D Pin           | `pin_3d`           |
+| Background Beams | `background_beams` |
+| Background Boxes | `background_boxes` |
+| Efeito de Brilho | `glowing_effect`   |
+| Cards com Hover  | `card_hover`       |
+| Tooltip Card     | `tooltip_card`     |
+| Tooltip Fluido   | `tooltip_fluid`    |
+
+**43 → 36 blocos.** O que foi limpo junto:
+
+- as 7 pastas de `render-engine/catalog/` (componente, manifesto, fixture,
+  primitivos próprios e testes) — o auto-registro por glob faz o resto;
+- o mapa `CATEGORY_BY_TYPE` da galeria (a aba **Efeitos** continua, com
+  `mobius_loop` e `hover_card`);
+- as **skills do agente** (`backend-boilerplate/.skills/dashboards-catalogo.md`
+  e `dashboards-layout.md`): a seção de decorativos foi reduzida aos dois que
+  sobraram, o exemplo de hero que usava `background_beams` passou a usar
+  `title`, e ficou um aviso explícito para o agente não referenciar os tipos
+  removidos;
+- `catalog.manifests.json` regenerado (`npm run build:catalog`) — é o que o
+  `/catalog` e o MCP `list_catalog` servem.
+
+⚠️ **Dashboards salvos** que referenciem um desses tipos passam a exibir o aviso
+"Bloco não implementado" (comportamento normal do `BlockRenderer` para tipo
+desconhecido) — a página não quebra.

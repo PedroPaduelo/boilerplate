@@ -1,7 +1,7 @@
 {
   "_generated": "GERADO por `npm run build:catalog` — NÃO edite à mão. Fonte: pastas de bloco em CATALOG_DIR.",
   "catalogVersion": 1,
-  "count": 43,
+  "count": 36,
   "blocks": [
     {
       "type": "__example",
@@ -243,54 +243,6 @@
       },
       "maxRows": 5000,
       "version": "1.1.0"
-    },
-    {
-      "type": "background_beams",
-      "kind": "layout",
-      "name": "Background Beams",
-      "description": "Fundo animado com feixes de luz — capa/hero de relatório com título.",
-      "source": "custom",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "subtitle": {
-            "type": "string"
-          }
-        }
-      },
-      "defaultProps": {
-        "title": "Inteligência de dados",
-        "subtitle": "Transforme números em decisões para a gestão municipal."
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "background_boxes",
-      "kind": "layout",
-      "name": "Background Boxes",
-      "description": "Fundo isométrico de células que acendem no hover — capa decorativa com título.",
-      "source": "custom",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "subtitle": {
-            "type": "string"
-          }
-        }
-      },
-      "defaultProps": {
-        "title": "Painel da Prefeitura",
-        "subtitle": "Indicadores e relatórios em um só lugar."
-      },
-      "version": "1.0.0"
     },
     {
       "type": "bar_chart",
@@ -646,60 +598,6 @@
         "showIcon": true
       },
       "version": "1.1.0"
-    },
-    {
-      "type": "card_hover",
-      "kind": "layout",
-      "name": "Cards com Hover",
-      "description": "Grade de cards com destaque animado ao passar o mouse.",
-      "source": "custom",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "title"
-              ],
-              "properties": {
-                "title": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                },
-                "link": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      },
-      "defaultProps": {
-        "items": [
-          {
-            "title": "Arrecadação",
-            "description": "Receita consolidada por tributo.",
-            "link": "#"
-          },
-          {
-            "title": "Dívida ativa",
-            "description": "Estoque e recuperação da dívida ativa.",
-            "link": "#"
-          },
-          {
-            "title": "Despesas",
-            "description": "Execução orçamentária por órgão.",
-            "link": "#"
-          }
-        ]
-      },
-      "version": "1.0.0"
     },
     {
       "type": "collapsible_block",
@@ -1161,38 +1059,6 @@
         "valueFormat": "BRL"
       },
       "maxRows": 50,
-      "version": "1.0.0"
-    },
-    {
-      "type": "glowing_effect",
-      "kind": "layout",
-      "name": "Efeito de Brilho",
-      "description": "Borda com brilho que reage ao ponteiro — destaca um card.",
-      "source": "custom",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "variant": {
-            "type": "string",
-            "enum": [
-              "default",
-              "white"
-            ]
-          }
-        }
-      },
-      "defaultProps": {
-        "title": "Painel em destaque",
-        "description": "Passe o mouse sobre o card para ativar o brilho.",
-        "variant": "default"
-      },
       "version": "1.0.0"
     },
     {
@@ -1837,38 +1703,6 @@
       "defaultProps": {
         "size": 64,
         "speed": "normal"
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "pin_3d",
-      "kind": "layout",
-      "name": "3D Pin",
-      "description": "Card com efeito de inclinação 3D e \"pin\" animado no hover.",
-      "source": "custom",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "pinLabel": {
-            "type": "string"
-          },
-          "href": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          }
-        }
-      },
-      "defaultProps": {
-        "pinLabel": "relatorios.gov.br",
-        "href": "#",
-        "title": "Relatório de Arrecadação",
-        "description": "Receita consolidada por tributo, com evolução mensal e metas."
       },
       "version": "1.0.0"
     },
@@ -2727,64 +2561,6 @@
       "defaultProps": {
         "level": 2,
         "align": "left"
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "tooltip_card",
-      "kind": "layout",
-      "name": "Tooltip Card",
-      "description": "Tooltip ancorado ao gatilho, exibido no hover ou no foco por teclado.",
-      "source": "astryx:tooltip",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "triggerLabel": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          }
-        }
-      },
-      "defaultProps": {
-        "triggerLabel": "Detalhes do contribuinte",
-        "content": "CPF/CNPJ, situação cadastral e débitos em aberto do contribuinte selecionado."
-      },
-      "version": "1.0.0"
-    },
-    {
-      "type": "tooltip_fluid",
-      "kind": "layout",
-      "name": "Tooltip Fluido",
-      "description": "Tooltip com animação suave exibido ao focar/passar o mouse no gatilho.",
-      "source": "astryx:tooltip",
-      "propsSchema": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "triggerLabel": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          },
-          "side": {
-            "type": "string",
-            "enum": [
-              "top",
-              "right",
-              "bottom",
-              "left"
-            ]
-          }
-        }
-      },
-      "defaultProps": {
-        "triggerLabel": "Passe o mouse",
-        "content": "Receita acumulada no exercício",
-        "side": "top"
       },
       "version": "1.0.0"
     }

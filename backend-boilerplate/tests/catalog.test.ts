@@ -40,10 +40,14 @@ describe('build:catalog', () => {
 
   it('todo manifesto gerado é válido contra o BlockManifestSchema', () => {
     for (const block of catalog.blocks) {
+      // O `type` é lido ANTES da validação: `validateBlockManifest` é um type
+      // guard, e como `block` já é `BlockManifest`, o ramo do `false` estreita
+      // para `never` — ali dentro `block.type` não compila.
+      const { type } = block;
       const ok = validateBlockManifest(block);
       if (!ok) {
         throw new Error(
-          `Manifesto inválido (${block.type}): ${formatErrors(validateBlockManifest.errors)}`,
+          `Manifesto inválido (${type}): ${formatErrors(validateBlockManifest.errors)}`,
         );
       }
       expect(ok).toBe(true);

@@ -114,7 +114,7 @@ layout via `create_dashboard`/`update_dashboard` - bloco com `id`/`type`/`span`/
 `props` e **sem** `chartId`/`dataBinding`:
 ```json
 { "id": "r-hero", "blocks": [
-  { "id": "h1", "type": "background_beams", "span": 12, "props": { "title": "Receitas 2025", "subtitle": "Panorama" } },
+  { "id": "h1", "type": "title", "span": 12, "props": { "text": "Receitas 2025", "level": 2, "align": "center" } },
   { "id": "h2", "type": "flip_words", "span": 12, "props": { "prefix": "Dados", "words": ["claros","rápidos","acionáveis"] } }
 ]}
 ```

@@ -110,15 +110,13 @@ export const CATEGORY_BY_TYPE: Record<string, Category> = {
   divider: 'layout',
 
   // ✨ Efeitos & Decorativos
-  background_beams: 'efeitos',
-  background_boxes: 'efeitos',
-  glowing_effect: 'efeitos',
+  //
+  // Sete blocos saíram do catálogo por decisão de produto (não seriam usados):
+  // `background_beams`, `background_boxes`, `glowing_effect`, `pin_3d`,
+  // `tooltip_card`, `tooltip_fluid` e `card_hover`. Sobraram os dois que ainda
+  // têm papel: um indicador de carregamento e um conteúdo flutuante.
   mobius_loop: 'efeitos',
-  pin_3d: 'efeitos',
   hover_card: 'efeitos',
-  tooltip_card: 'efeitos',
-  tooltip_fluid: 'efeitos',
-  card_hover: 'efeitos',
 
   // 🔤 Texto & Títulos
   title: 'texto',
