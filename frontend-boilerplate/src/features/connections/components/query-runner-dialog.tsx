@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react';
 import { Play } from 'lucide-react';
+import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { Icon } from '@astryxdesign/core/Icon';
@@ -12,9 +13,10 @@ import { QueryResultTable } from './query-result-table';
 /**
  * Executor de query read-only.
  *
- * Erro de execução (SQL inválido, timeout) chega por toast vindo da mutação —
- * aqui só fica o resultado. O botão desabilita com motivo enquanto não houver
- * SQL, e Ctrl/Cmd+Enter executa sem tirar a mão do teclado.
+ * Erro de execução (SQL inválido, timeout) fica INLINE, parado na tela — quem
+ * itera um SQL precisa da mensagem visível enquanto corrige (o toast da
+ * mutação existe, mas some sozinho). O botão desabilita com motivo enquanto
+ * não houver SQL, e Ctrl/Cmd+Enter executa sem tirar a mão do teclado.
  */
 export interface QueryRunnerDialogProps {
   isOpen: boolean;
@@ -25,6 +27,7 @@ export interface QueryRunnerDialogProps {
   onRun: () => void;
   isPending: boolean;
   result: QueryResult | null;
+  errorMessage: string | null;
 }
 
 export function QueryRunnerDialog({
@@ -36,6 +39,7 @@ export function QueryRunnerDialog({
   onRun,
   isPending,
   result,
+  errorMessage,
 }: QueryRunnerDialogProps) {
   const isEmpty = sql.trim().length === 0;
 
@@ -47,7 +51,9 @@ export function QueryRunnerDialog({
   };
 
   return (
-    <Dialog isOpen={isOpen} onOpenChange={onOpenChange} width={880} purpose="form">
+    // 1080px: resultados reais passam fácil de 10 colunas — em 880 a tabela
+    // espremia tudo em truncados. O Dialog do DS limita ao viewport sozinho.
+    <Dialog isOpen={isOpen} onOpenChange={onOpenChange} width={1080} purpose="form">
       <DialogHeader
         title="Executar query"
         subtitle={`${connectionName} · somente SELECT/WITH · máximo de 100 linhas no preview`}
@@ -68,9 +74,9 @@ export function QueryRunnerDialog({
         <HStack gap={2} vAlign="center" justify="between" wrap="wrap">
           <Text type="supporting" color="secondary" hasTabularNumbers>
             {result
-              ? `${result.rowCount} linha(s) · ${result.durationMs}ms${
-                  result.truncated ? ' · truncado' : ''
-                }`
+              ? `${result.rowCount} ${result.rowCount === 1 ? 'linha' : 'linhas'} · ${
+                  result.durationMs
+                }ms${result.truncated ? ' · truncado' : ''}`
               : 'Nenhuma execução nesta sessão.'}
           </Text>
           <Button
@@ -83,6 +89,14 @@ export function QueryRunnerDialog({
             onClick={onRun}
           />
         </HStack>
+        {errorMessage ? (
+          <Banner
+            status="error"
+            container="card"
+            title="A query falhou"
+            description={errorMessage}
+          />
+        ) : null}
         {result ? <QueryResultTable result={result} /> : null}
       </VStack>
     </Dialog>

@@ -160,7 +160,9 @@ export function DbSchemaExplorer({
               density="compact"
               header={
                 <Text type="label" color="secondary">
-                  {countTables(visibleSchemas)} tabela(s)
+                  {countTables(visibleSchemas) === 1
+                    ? '1 tabela'
+                    : `${countTables(visibleSchemas)} tabelas`}
                 </Text>
               }
             />

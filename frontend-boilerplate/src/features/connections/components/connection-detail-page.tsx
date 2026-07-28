@@ -164,6 +164,7 @@ export function ConnectionDetailPage() {
         content={
           <LayoutContent isScrollable padding={4} label="Detalhe da tabela">
             <TableInfoPanel
+              connectionId={id}
               table={selectedTable}
               engine={database?.engine ?? 'postgresql'}
               isFavorite={favorites.isFavorite(selected)}
@@ -224,6 +225,7 @@ export function ConnectionDetailPage() {
         onRun={runner.run}
         isPending={runner.isPending}
         result={runner.result}
+        errorMessage={runner.errorMessage}
       />
 
       {canManage ? (

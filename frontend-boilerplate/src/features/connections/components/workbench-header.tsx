@@ -16,7 +16,7 @@ import { LayoutHeader } from '@astryxdesign/core/Layout';
 import { Link } from '@astryxdesign/core/Link';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { shortServerVersion } from '../lib/schema-mapper';
-import { formatBytes } from '../lib/connection-presentation';
+import { environmentView, formatBytes } from '../lib/connection-presentation';
 import type { Connection, ConnectionSchema } from '../types';
 
 /**
@@ -56,6 +56,10 @@ export function WorkbenchHeader({
     : 'Conexão inativa — reative para usar.';
   const version = shortServerVersion(schema?.database?.version);
   const size = formatBytes(schema?.database?.sizeBytes);
+  // Ambiente DECLARADO no cadastro. Fica na identidade (e não só na lista de
+  // conexões) porque é aqui que se consulta: "Produção" em vermelho é o aviso
+  // de cuidado no momento em que ele importa.
+  const environment = environmentView(connection.environment);
 
   return (
     <LayoutHeader hasDivider padding={2} label="Ações da conexão">
@@ -77,6 +81,7 @@ export function WorkbenchHeader({
               {connection.host}:{connection.port}/{connection.database}
             </Text>
           </VStack>
+          <Badge variant={environment.variant} label={environment.label} />
           <Badge
             variant="info"
             label={version ? `PostgreSQL ${version}` : 'PostgreSQL'}

@@ -61,7 +61,7 @@ export function buildSchemaTreeItems({
           <Badge variant="neutral" label={`${table.foreignKeys.length} FK`} />
         ) : (
           <Text type="supporting" color="secondary" hasTabularNumbers>
-            {table.columns.length}c
+            {table.columns.length} col
           </Text>
         ),
       isSelected: selected?.schema === schema.name && selected?.table === table.name,

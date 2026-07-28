@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { getApiErrorMessage } from '@/shared/lib/api-error';
 import { useRunConnectionQuery } from './hooks';
 import type { QueryResult } from './types';
 
@@ -25,6 +26,12 @@ export interface QueryRunner {
   isOpen: boolean;
   sql: string;
   result: QueryResult | null;
+  /**
+   * Erro da ÚLTIMA execução, exibido inline no executor. O toast da mutação
+   * continua existindo, mas some sozinho — e quem está iterando um SQL precisa
+   * da mensagem parada na tela enquanto corrige a query.
+   */
+  errorMessage: string | null;
   history: QueryHistoryEntry[];
   isPending: boolean;
   lastDurationMs: number | null;
@@ -39,6 +46,7 @@ export function useQueryRunner(connectionId: string): QueryRunner {
   const [isOpen, setIsOpen] = useState(false);
   const [sql, setSql] = useState('');
   const [result, setResult] = useState<QueryResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<QueryHistoryEntry[]>([]);
   const [lastDurationMs, setLastDurationMs] = useState<number | null>(null);
 
@@ -46,6 +54,7 @@ export function useQueryRunner(connectionId: string): QueryRunner {
     if (presetSql) {
       setSql(presetSql);
       setResult(null);
+      setErrorMessage(null);
     }
     setIsOpen(true);
   }, []);
@@ -58,8 +67,12 @@ export function useQueryRunner(connectionId: string): QueryRunner {
     runQuery.mutate(
       { id: connectionId, sql: trimmed, maxRows: 100 },
       {
+        onError: (error) => {
+          setErrorMessage(getApiErrorMessage(error, 'Erro ao executar a query.'));
+        },
         onSuccess: (queryResult) => {
           setResult(queryResult);
+          setErrorMessage(null);
           setLastDurationMs(queryResult.durationMs);
           setHistory((previous) =>
             [
@@ -82,6 +95,7 @@ export function useQueryRunner(connectionId: string): QueryRunner {
     isOpen,
     sql,
     result,
+    errorMessage,
     history,
     isPending: runQuery.isPending,
     lastDurationMs,

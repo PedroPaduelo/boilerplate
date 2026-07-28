@@ -1,17 +1,17 @@
 /**
- * P\u00e1gina de IMPRESS\u00c3O (T-J) \u2014 `/print/dashboards/:id` (rota p\u00fablica, n\u00edvel raiz,
- * FORA do `DashboardLayout`: sem sidebar, topbar ou a\u00e7\u00f5es).
+ * Página de IMPRESSÃO (T-J) — `/print/dashboards/:id` (rota pública, nível raiz,
+ * FORA do `DashboardLayout`: sem sidebar, topbar ou ações).
  *
- * \u00c9 a p\u00e1gina que o servi\u00e7o headless (Playwright, no backend) abre para gerar o
- * PDF. Layout LIMPO: apenas cabe\u00e7alho (t\u00edtulo + marca + data), resumo dos filtros
- * aplicados e o render do dashboard (reusa o `DashboardRenderer` \u2014 T-I).
+ * É a página que o serviço headless (Playwright, no backend) abre para gerar o
+ * PDF. Layout LIMPO: apenas cabeçalho (título + marca + data), resumo dos filtros
+ * aplicados e o render do dashboard (reusa o `DashboardRenderer` — T-I).
  *
- * Autentica\u00e7\u00e3o: via TOKEN DE SERVI\u00c7O passado na query string (`?token=`). Sem
- * token v\u00e1lido a p\u00e1gina N\u00c3O carrega dados e mostra um estado de bloqueio
+ * Autenticação: via TOKEN DE SERVIÇO passado na query string (`?token=`). Sem
+ * token válido a página NÃO carrega dados e mostra um estado de bloqueio
  * (`[data-print-error="unauthorized"]`).
  *
- * Sinaliza\u00e7\u00e3o de pronto: quando a hidrata\u00e7\u00e3o termina, o n\u00f3 raiz ganha
- * `data-print-ready="true"` \u2014 \u00e9 o seletor que o Playwright aguarda antes de
+ * Sinalização de pronto: quando a hidratação termina, o nó raiz ganha
+ * `data-print-ready="true"` — é o seletor que o Playwright aguarda antes de
  * chamar `page.pdf()`.
  */
 import { useMemo } from 'react';
@@ -21,7 +21,7 @@ import { DashboardRenderer } from '@/shared/render-engine';
 import { parsePrintParams } from '../lib/print-params';
 import { usePrintDashboard } from '../use-print-dashboard';
 
-/** Marca de \u00f3rg\u00e3o exibida no cabe\u00e7alho do relat\u00f3rio (texto neutro no MVP). */
+/** Marca de órgão exibida no cabeçalho do relatório (texto neutro no MVP). */
 const BRAND = 'Prefeitura';
 
 export function PrintDashboardView() {
@@ -51,10 +51,10 @@ export function PrintDashboardView() {
       >
         <div className="space-y-2">
           <h1 className="text-xl font-semibold text-neutral-900">
-            Acesso n\u00e3o autorizado
+            Acesso não autorizado
           </h1>
           <p className="text-sm text-neutral-500">
-            Esta p\u00e1gina de impress\u00e3o exige um token de servi\u00e7o v\u00e1lido.
+            Esta página de impressão exige um token de serviço válido.
           </p>
         </div>
       </div>
@@ -70,17 +70,17 @@ export function PrintDashboardView() {
       >
         <div className="space-y-2">
           <h1 className="text-xl font-semibold text-neutral-900">
-            N\u00e3o foi poss\u00edvel montar o relat\u00f3rio
+            Não foi possível montar o relatório
           </h1>
           <p className="text-sm text-neutral-500">
-            Verifique se o dashboard existe e est\u00e1 acess\u00edvel neste modo.
+            Verifique se o dashboard existe e está acessível neste modo.
           </p>
         </div>
       </div>
     );
   }
 
-  const title = detail?.title ?? 'Relat\u00f3rio';
+  const title = detail?.title ?? 'Relatório';
   const layout = (detail?.layout ?? { filters: [], rows: [] }) as DashboardLayout;
   const now = new Date();
 
@@ -101,10 +101,7 @@ export function PrintDashboardView() {
           </div>
 
           {appliedFilters.length > 0 ? (
-            <div
-              data-slot="print-applied-filters"
-              className="mt-3 flex flex-wrap gap-2"
-            >
+            <div data-slot="print-applied-filters" className="mt-3 flex flex-wrap gap-2">
               {appliedFilters.map(([key, value]) => (
                 <span
                   key={key}
@@ -124,7 +121,7 @@ export function PrintDashboardView() {
 }
 
 function formatFilterValue(value: unknown): string {
-  if (value === null || value === undefined) return '\u2014';
+  if (value === null || value === undefined) return '—';
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value);

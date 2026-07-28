@@ -76,7 +76,9 @@ export function WorkbenchStatusBar({
             </Text>
           )}
           <Text type="supporting" color="secondary" hasTabularNumbers>
-            {visibleTables} tabela(s) visível(is)
+            {visibleTables === 1
+              ? '1 tabela visível'
+              : `${visibleTables} tabelas visíveis`}
           </Text>
           {serverVersion ? (
             <HStack gap={1} vAlign="center">

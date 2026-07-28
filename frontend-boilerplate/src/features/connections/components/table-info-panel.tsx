@@ -15,30 +15,36 @@ import { TableColumnsTable } from './table-columns-table';
 import { TableDdlPanel } from './table-ddl-panel';
 import { TableForeignKeysTable } from './table-foreign-keys-table';
 import { TableIndexesTable } from './table-indexes-table';
+import { TablePreviewPanel } from './table-preview-panel';
 
 /**
- * Inspetor da tabela selecionada: identidade + m\u00e9tricas no topo, detalhe em
- * abas (colunas, \u00edndices, FKs, DDL).
+ * Inspetor da tabela selecionada: identidade + métricas no topo, detalhe em
+ * abas.
  *
- * Substitui DOIS blocos legados que mostravam a mesma informa\u00e7\u00e3o em lugares
- * diferentes (o painel lateral `table-info-panel` e o painel de detalhe do
- * explorer). Um s\u00f3 lugar, com largura de verdade para as tabelas.
+ * A ordem das abas segue as personas da tela: **Dados** primeiro (a pergunta
+ * do auditor não técnico — "o que tem aqui dentro?" — respondida sem SQL),
+ * depois a anatomia em profundidade crescente de tecnicidade: Colunas,
+ * Relações, Índices e DDL. "Relações" em vez de "Foreign keys" no rótulo:
+ * quem é técnico entende os dois; quem não é, só o primeiro.
  */
-export type TableDetailTab = 'columns' | 'indexes' | 'fks' | 'ddl';
+export type TableDetailTab = 'data' | 'columns' | 'indexes' | 'fks' | 'ddl';
 
 export interface TableInfoPanelProps {
+  /** Conexão dona da tabela — a aba Dados consulta a amostra por ela. */
+  connectionId: string;
   table: TableDef | null;
   engine: DbEngine;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onNavigateFk: (ref: TableRef) => void;
   onPreviewQuery: (sql: string) => void;
-  /** Bloqueia o atalho de consulta quando a conex\u00e3o est\u00e1 inativa. */
+  /** Bloqueia consultas quando a conexão está inativa. */
   isQueryDisabled?: boolean;
   queryDisabledReason?: string;
 }
 
 export function TableInfoPanel({
+  connectionId,
   table,
   engine,
   isFavorite,
@@ -48,7 +54,7 @@ export function TableInfoPanel({
   isQueryDisabled,
   queryDisabledReason,
 }: TableInfoPanelProps) {
-  const [tab, setTab] = useState<TableDetailTab>('columns');
+  const [tab, setTab] = useState<TableDetailTab>('data');
 
   if (!table) {
     return (
@@ -57,7 +63,7 @@ export function TableInfoPanel({
           headingLevel={3}
           icon={<Icon icon={Table2} size="lg" color="secondary" />}
           title="Nenhuma tabela selecionada"
-          description="Escolha uma tabela na \u00e1rvore \u00e0 esquerda para ver colunas, \u00edndices, chaves estrangeiras e o DDL."
+          description="Escolha uma tabela na árvore à esquerda para ver os dados, colunas, relações e índices."
         />
       </Center>
     );
@@ -80,7 +86,7 @@ export function TableInfoPanel({
           ) : null}
           <HStack gap={1} wrap="wrap" vAlign="center">
             <Badge variant="neutral" label={`${table.columns.length} colunas`} />
-            <Badge variant="neutral" label={`${table.indexes.length} \u00edndices`} />
+            <Badge variant="neutral" label={`${table.indexes.length} índices`} />
             <Badge variant="neutral" label={`${table.foreignKeys.length} FK`} />
             <Badge variant="neutral" label={`${formatCount(table.rowCount)} linhas`} />
             <Badge variant="neutral" label={formatSizeMB(table.sizeMB)} />
@@ -111,12 +117,26 @@ export function TableInfoPanel({
         onChange={(value) => setTab(value as TableDetailTab)}
         hasDivider
       >
+        <Tab value="data" label="Dados" />
         <Tab value="columns" label="Colunas" />
-        <Tab value="indexes" label="\u00cdndices" />
-        <Tab value="fks" label="Foreign keys" />
+        <Tab value="fks" label="Relações" />
+        <Tab value="indexes" label="Índices" />
         <Tab value="ddl" label="DDL" />
       </TabList>
 
+      {tab === 'data' ? (
+        <TablePreviewPanel
+          // `key` remonta o painel ao trocar de tabela: a amostra recarrega e
+          // nenhum resultado da tabela anterior fica visível por engano.
+          key={`${table.schema}.${table.name}`}
+          connectionId={connectionId}
+          schema={table.schema}
+          table={table.name}
+          isDisabled={isQueryDisabled}
+          disabledReason={queryDisabledReason}
+          onOpenSql={() => onPreviewQuery(buildSelectPreview(table.schema, table.name))}
+        />
+      ) : null}
       {tab === 'columns' ? <TableColumnsTable columns={table.columns} /> : null}
       {tab === 'indexes' ? <TableIndexesTable indexes={table.indexes} /> : null}
       {tab === 'fks' ? (
