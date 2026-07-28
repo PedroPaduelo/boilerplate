@@ -15,20 +15,14 @@
 
 export * from './charts';
 
-export { AnimatedNumber } from './animated-number';
 export type { AnimatedNumberProps } from './animated-number';
 export { chartAccentCardVariant, chartAccentColor } from './chart-accent';
 export type { ChartAccentCardVariant } from './chart-accent';
 export { ChartDataTable } from './chart-data-table';
 export type { ChartDataTableProps } from './chart-data-table';
-export { ChartWidget } from './chart-widget';
-export type { ChartWidgetProps, ChartWidgetTakeaway } from './chart-widget';
 export { DeltaBadge } from './delta-badge';
 export type { DeltaBadgeProps } from './delta-badge';
 export { KpiCard } from './kpi-card';
 export type { KpiCardProps } from './kpi-card';
-export { MiddleTruncation } from './middle-truncation';
-export type { MiddleTruncationProps, MiddleTruncationType } from './middle-truncation';
-export { truncateMiddle } from './truncate-middle';
 export { StatTile } from './stat-tile';
 export type { StatTileProps } from './stat-tile';

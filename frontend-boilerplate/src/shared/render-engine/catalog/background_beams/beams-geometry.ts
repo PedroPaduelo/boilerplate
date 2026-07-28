@@ -11,7 +11,7 @@
  */
 
 /** Densidade do efeito: quantos feixes são desenhados. */
-export const BEAM_COUNT = 50;
+const BEAM_COUNT = 50;
 
 /**
  * Curva-base de um feixe em coordenadas do `viewBox` (geometria de desenho,

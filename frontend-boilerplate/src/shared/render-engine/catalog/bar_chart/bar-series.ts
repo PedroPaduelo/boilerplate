@@ -15,7 +15,7 @@ export interface BarPoint {
 }
 
 /** Rótulo de série usado quando o dado não nomeia nenhuma. */
-export const DEFAULT_SERIES_LABEL = 'Valor';
+const DEFAULT_SERIES_LABEL = 'Valor';
 
 export interface BarSeriesResult {
   /** Séries alinhadas ao eixo X, na ordem de aparição. */

@@ -25,7 +25,7 @@ export function seriesIndexFromKey(key: string): number {
 }
 
 /** Nº de pontos do dataset = maior comprimento entre as séries. */
-export function pointCount(series: ChartSeries[]): number {
+function pointCount(series: ChartSeries[]): number {
   return series.reduce((max, item) => Math.max(max, item.data.length), 0);
 }
 

@@ -17,7 +17,7 @@ import type { AddChartInput } from './types';
  * Valor sentinela do seletor de linha. NUNCA vai para a API: quando ele está
  * selecionado, o `rowId` é omitido e o backend cria uma linha ao final.
  */
-export const NEW_ROW_VALUE = '__new_row';
+const NEW_ROW_VALUE = '__new_row';
 
 export interface UseAddChartFormOptions {
   /** Linhas do layout em edição (destinos possíveis do bloco). */

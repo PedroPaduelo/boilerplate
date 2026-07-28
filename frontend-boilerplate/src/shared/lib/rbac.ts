@@ -30,7 +30,7 @@ export type Permission =
  * - VIEWER: apenas visualiza e exporta artefatos.
  * - USER: nenhuma permissão de domínio.
  */
-export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
+const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ADMIN: [
     'departments:manage',
     'connections:manage',
@@ -63,13 +63,19 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
 };
 
 /** `true` se o papel concede a permissão. */
-export function hasPermission(role: Role | null | undefined, permission: Permission): boolean {
+export function hasPermission(
+  role: Role | null | undefined,
+  permission: Permission,
+): boolean {
   if (!role) return false;
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
 /** `true` se o papel está na lista de papéis permitidos. */
-export function hasAnyRole(role: Role | null | undefined, allowed: readonly Role[]): boolean {
+export function hasAnyRole(
+  role: Role | null | undefined,
+  allowed: readonly Role[],
+): boolean {
   if (!role) return false;
   return allowed.includes(role);
 }

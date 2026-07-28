@@ -63,13 +63,5 @@ export function getFixtureVariants(type: string): FixtureVariant[] {
   return BLOCK_FIXTURES[type] ?? [];
 }
 
-/**
- * Devolve a variação default (id `'default'`), ou `undefined` se o bloco não
- * tiver variações cadastradas.
- */
-export function getDefaultVariant(type: string): FixtureVariant | undefined {
-  return getFixtureVariants(type).find((v) => v.id === 'default');
-}
-
 /** Re-export do `DataShape` pra conveniência de quem importa só deste módulo. */
 export type { DataShape };

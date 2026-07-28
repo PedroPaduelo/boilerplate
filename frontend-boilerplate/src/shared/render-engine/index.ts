@@ -6,18 +6,10 @@
  * `catalog/<type>/` e o registry os descobre via glob.
  */
 export * from './types';
-export {
-  getBlock,
-  listBlocks,
-  listBlockTypes,
-  hasBlock,
-  buildRegistry,
-} from './registry';
+export { getBlock, listBlocks, hasBlock } from './registry';
 export { BlockRenderer } from './block-renderer';
 export type { BlockRendererProps } from './block-renderer';
 export { DashboardRenderer } from './dashboard-renderer';
 export type { DashboardRendererProps } from './dashboard-renderer';
-export { BlockFrame } from './block-frame';
 export type { BlockFrameProps, BlockFrameTakeaway } from './block-frame';
-export { BlockBoundary } from './block-boundary';
 export type { BlockBoundaryProps } from './block-boundary';

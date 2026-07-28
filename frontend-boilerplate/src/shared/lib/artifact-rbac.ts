@@ -66,9 +66,7 @@ export function canPublishArtifact(ctx: ArtifactPermContext): boolean {
  * artefato. VIEWER (só `artifacts:view`/`export`) recebe apenas `open` (e
  * `export`); nunca `edit`/`publish`/`delete`.
  */
-export function availableArtifactActions(
-  ctx: ArtifactPermContext,
-): ArtifactActionKey[] {
+export function availableArtifactActions(ctx: ArtifactPermContext): ArtifactActionKey[] {
   const actions: ArtifactActionKey[] = ['open'];
   const isPublished = ctx.status === 'PUBLISHED';
   const modify = canModifyArtifact(ctx);
@@ -84,12 +82,4 @@ export function availableArtifactActions(
   if (modify) actions.push('delete');
 
   return actions;
-}
-
-/** Açúcar: a ação `key` está disponível no contexto? */
-export function canDoArtifactAction(
-  ctx: ArtifactPermContext,
-  key: ArtifactActionKey,
-): boolean {
-  return availableArtifactActions(ctx).includes(key);
 }

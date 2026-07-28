@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { authApi } from '../api';
@@ -37,21 +37,5 @@ export function useRegister() {
       toast.success('Conta criada com sucesso!');
       navigate('/users');
     },
-  });
-}
-
-export function useCurrentUser() {
-  const { token, setUser } = useAuthStore();
-
-  return useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const user = await authApi.getMe();
-      setUser(user);
-      return user;
-    },
-    enabled: !!token,
-    retry: false,
-    staleTime: 1000 * 60 * 5,
   });
 }

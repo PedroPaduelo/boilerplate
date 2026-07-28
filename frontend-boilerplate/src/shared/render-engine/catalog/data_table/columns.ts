@@ -20,7 +20,7 @@ export type ColumnSpec = {
 export type Row = Record<string, unknown>;
 
 /** Valor formatado por tipo (o mesmo formato que o bloco sempre exibiu). */
-export function formatCell(value: unknown, type?: ColumnSpec['type']): string {
+function formatCell(value: unknown, type?: ColumnSpec['type']): string {
   if (value == null) return '—';
   if (type === 'number') {
     // `numeric` do Postgres chega como string — coage antes de formatar.

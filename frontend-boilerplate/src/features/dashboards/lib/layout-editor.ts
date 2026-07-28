@@ -61,7 +61,7 @@ export type MoveDirection = 'up' | 'down';
 
 let idCounter = 0;
 /** Gera um id estável-o-suficiente para itens novos criados no editor. */
-export function genId(prefix: string): string {
+function genId(prefix: string): string {
   idCounter += 1;
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}_${Date.now().toString(36)}${idCounter.toString(36)}${rand}`;
@@ -115,7 +115,9 @@ function normalizeBlock(raw: RawBlock): EditorBlock {
   // Preserva a referência ao chart: o contrato a espera em `props.chartId` (forma
   // que o backend lê em collectChartRefs); seeds legados a põem no topo do bloco.
   const props: Record<string, unknown> = {
-    ...(raw.props && typeof raw.props === 'object' ? (raw.props as Record<string, unknown>) : {}),
+    ...(raw.props && typeof raw.props === 'object'
+      ? (raw.props as Record<string, unknown>)
+      : {}),
   };
   if (typeof raw.chartId === 'string' && props.chartId === undefined) {
     props.chartId = raw.chartId;
@@ -150,7 +152,9 @@ export function normalizeLayout(raw: unknown): EditorLayout {
     ? (l.rows as RawRow[]).map((r) => ({
         id: typeof r.id === 'string' ? r.id : genId('row'),
         ...(typeof r.title === 'string' ? { title: r.title } : {}),
-        blocks: Array.isArray(r.blocks) ? (r.blocks as RawBlock[]).map(normalizeBlock) : [],
+        blocks: Array.isArray(r.blocks)
+          ? (r.blocks as RawBlock[]).map(normalizeBlock)
+          : [],
       }))
     : [];
   return { filters, rows };
@@ -244,7 +248,10 @@ export function moveBlockToRow(
     }
     if (row.id === targetRowId) {
       const blocks = [...row.blocks];
-      const at = position === undefined ? blocks.length : Math.max(0, Math.min(position, blocks.length));
+      const at =
+        position === undefined
+          ? blocks.length
+          : Math.max(0, Math.min(position, blocks.length));
       blocks.splice(at, 0, block);
       return { ...row, blocks };
     }
@@ -365,7 +372,10 @@ export function setRowTitle(
 /* -------------------------------------------------- mutações de filtro ---- */
 
 /** Adiciona um filtro novo (com defaults sensatos). */
-export function addFilter(layout: EditorLayout, filter?: Partial<DashFilter>): EditorLayout {
+export function addFilter(
+  layout: EditorLayout,
+  filter?: Partial<DashFilter>,
+): EditorLayout {
   const f: DashFilter = {
     id: filter?.id ?? genId('filter'),
     type: filter?.type ?? 'select',
@@ -470,5 +480,7 @@ export function validateLayoutForSave(layout: EditorLayout): LayoutValidationRes
 
 /** Compara dois layouts pela forma canônica (sanitizada) — usado p/ dirty-state. */
 export function layoutsEqual(a: EditorLayout, b: EditorLayout): boolean {
-  return JSON.stringify(sanitizeLayoutForSave(a)) === JSON.stringify(sanitizeLayoutForSave(b));
+  return (
+    JSON.stringify(sanitizeLayoutForSave(a)) === JSON.stringify(sanitizeLayoutForSave(b))
+  );
 }

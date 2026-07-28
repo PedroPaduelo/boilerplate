@@ -23,7 +23,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { SearchableItem } from '@astryxdesign/core/Typeahead';
 
 /** Limite de itens por seção — a paleta é para navegar rápido, não paginar. */
-export const MAX_PER_SECTION = 6;
+const MAX_PER_SECTION = 6;
 
 export const COMMAND_GROUPS = {
   actions: 'Ações',

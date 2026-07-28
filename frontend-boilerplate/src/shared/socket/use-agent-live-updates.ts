@@ -22,7 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/lib/query-keys';
 import { useSocket } from './use-socket';
 
-export const ARTIFACT_CHANGED_EVENT = 'artifact:changed';
+const ARTIFACT_CHANGED_EVENT = 'artifact:changed';
 export const CHAT_TURN_COMPLETE_EVENT = 'chat:turn-complete';
 
 interface ArtifactChangedPayload {

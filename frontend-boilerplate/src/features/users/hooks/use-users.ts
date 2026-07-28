@@ -22,14 +22,6 @@ export function useUsers(filters: UserFilters = {}) {
   });
 }
 
-export function useUser(id: string) {
-  return useQuery({
-    queryKey: usersKeys.detail(id),
-    queryFn: () => usersApi.getUserById(id),
-    enabled: !!id,
-  });
-}
-
 export function useUserStats() {
   return useQuery({
     queryKey: usersKeys.stats(),

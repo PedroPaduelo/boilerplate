@@ -16,7 +16,7 @@ import type { ApiMode } from './query-keys';
 
 const MINUTE = 1000 * 60;
 
-export const STALE_TIME = {
+const STALE_TIME = {
   /** Edição/dev — nunca considera fresco. */
   draft: 0,
   /** Publicado — materializado e cacheado no backend. */
@@ -27,7 +27,7 @@ export const STALE_TIME = {
   realtime: 0,
 } as const;
 
-export const GC_TIME = {
+const GC_TIME = {
   default: 5 * MINUTE,
   reference: 30 * MINUTE,
 } as const;

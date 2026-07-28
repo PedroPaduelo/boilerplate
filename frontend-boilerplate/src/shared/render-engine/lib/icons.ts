@@ -58,10 +58,3 @@ export const CATALOG_ICONS = [
 
 /** Nome de ícone aceito (um dos curados). */
 export type CatalogIcon = (typeof CATALOG_ICONS)[number];
-
-/** `true` se `name` é um ícone curado do catálogo. */
-export function isCatalogIcon(name: unknown): name is CatalogIcon {
-  return (
-    typeof name === 'string' && (CATALOG_ICONS as readonly string[]).includes(name)
-  );
-}

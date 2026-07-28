@@ -120,10 +120,7 @@ export function durationOfResult(
  * Valida um dado já parseado contra o shape do bloco. Devolve a mensagem de
  * erro (para o `FieldStatus`) ou `null` quando válido.
  */
-export function validateShape(
-  shape: DataShape | undefined,
-  data: unknown,
-): string | null {
+function validateShape(shape: DataShape | undefined, data: unknown): string | null {
   if (!shape) return null;
   const { valid, errors } = validateBlockDataByShape(shape, data);
   return valid ? null : formatErrors(errors);

@@ -34,7 +34,7 @@ export class ShareLinkError extends Error {
 }
 
 /** Mapeia o status HTTP da rota pública para o motivo de bloqueio. */
-export function reasonFromStatus(status: number | undefined): ShareBlockReason {
+function reasonFromStatus(status: number | undefined): ShareBlockReason {
   switch (status) {
     case 403:
       return 'revoked';

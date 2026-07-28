@@ -44,8 +44,3 @@ export function toChatToolCalls(steps: readonly ChatToolStep[]): ChatToolCallIte
     status: statusOf(step.phase),
   }));
 }
-
-/** Rótulo humano de uma ferramenta (usado também fora da lista de tool calls). */
-export function toolLabel(toolName: string): string {
-  return TOOL_LABELS[toolName] ?? toolName;
-}

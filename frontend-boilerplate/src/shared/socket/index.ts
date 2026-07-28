@@ -7,5 +7,3 @@
  */
 export { SocketProvider } from './socket-provider';
 export { useSocket } from './use-socket';
-export { getSocket, disconnectSocket, type AppSocket } from './socket-client';
-export { SocketContext, type SocketContextValue } from './socket-context';
