@@ -16,7 +16,6 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Pagination } from '@astryxdesign/core/Pagination';
 import { Text } from '@astryxdesign/core/Text';
 
-import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useDepartments } from '@/shared/hooks/use-departments';
@@ -40,6 +39,7 @@ import {
   usePrefetchDashboard,
   usePublishDashboard,
 } from '../hooks';
+import { useExportDashboardPdf } from '../use-export-pdf';
 import type { Dashboard } from '../types';
 import { buildDashboardActions } from './dashboard-actions';
 import { DashboardsEmptyState } from './dashboards-empty-state';
@@ -58,7 +58,6 @@ function modeFor(status: string): ApiMode {
 }
 
 export function DashboardsPage() {
-  const toast = useAppToast();
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -81,6 +80,7 @@ export function DashboardsPage() {
   const remove = useDeleteDashboard();
   const publish = usePublishDashboard();
   const create = useCreateDashboard();
+  const pdfExport = useExportDashboardPdf();
 
   const { deleting, confirmation, openDelete } = useConfirmDelete<Dashboard>({
     mutation: remove,
@@ -129,7 +129,10 @@ export function DashboardsPage() {
         publish: () => publish.mutate({ id: d.id, publish: true }),
         unpublish: () => publish.mutate({ id: d.id, publish: false }),
         share: () => setSharing(d),
-        export: () => toast.info('Exportação em PDF chega em breve (T-J).'),
+        // O PDF reflete o que o leitor veria: a versão publicada quando
+        // existe, senão o rascunho (preview do dono).
+        export: () =>
+          pdfExport.exportPdf({ id: d.id, title: d.title }, { mode: modeFor(d.status) }),
         duplicate: () =>
           duplicate.mutate({
             title: `${d.title} (cópia)`,

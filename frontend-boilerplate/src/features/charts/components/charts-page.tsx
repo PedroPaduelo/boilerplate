@@ -32,7 +32,6 @@ import { Icon } from '@astryxdesign/core/Icon';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Pagination } from '@astryxdesign/core/Pagination';
 import { Text } from '@astryxdesign/core/Text';
-import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useLocalStorage } from '@/shared/hooks/use-local-storage';
 import {
@@ -66,7 +65,6 @@ import { DeleteChartDialog } from './delete-chart-dialog';
 const VIEW_STORAGE_KEY = 'charts:view';
 
 export function ChartsPage() {
-  const toast = useAppToast();
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -111,7 +109,11 @@ export function ChartsPage() {
             publish: () => publish.mutate({ id: chart.id, publish: true }),
             unpublish: () => publish.mutate({ id: chart.id, publish: false }),
             share: () => setSharing(chart),
-            export: () => toast.info('Exportação em PDF chega em breve (T-J).'),
+            // SEM handler de `export` de propósito: não existe export de
+            // gráfico individual no backend, e o builder omite ações sem
+            // handler. Um item de menu que responde "chega em breve" é uma
+            // promessa no lugar de uma função — pior que não existir.
+            // (Export real de gráfico → roadmap; dashboards já exportam PDF.)
             duplicate: () =>
               duplicate.mutate({
                 title: `${chart.title} (cópia)`,

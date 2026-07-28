@@ -8,7 +8,7 @@
  */
 import { useState } from 'react';
 import type { DashboardLayout } from '@dashboards/contracts';
-import { RefreshCw } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { Icon } from '@astryxdesign/core/Icon';
@@ -17,7 +17,10 @@ import { Heading } from '@astryxdesign/core/Text';
 import { Toolbar } from '@astryxdesign/core/Toolbar';
 import { DashboardRenderer } from '@/shared/render-engine';
 import type { ApiMode } from '@/shared/lib/query-keys';
+import { hasPermission } from '@/shared/lib/rbac';
+import { useAuthStore } from '@/features/auth/store';
 import { useDashboardData } from '../use-dashboard-data';
+import { useExportDashboardPdf } from '../use-export-pdf';
 import type { DashboardDetail } from '../types';
 import {
   initialFilterValues,
@@ -51,6 +54,10 @@ export function DashboardViewContent({
     filters: values,
   });
 
+  const role = useAuthStore((s) => s.user?.role);
+  const canExport = hasPermission(role, 'artifacts:export');
+  const pdfExport = useExportDashboardPdf();
+
   const isPublished = mode === 'published';
 
   // O DashboardRenderer recebe `filters: []` (ele desenha chips estáticos); a
@@ -79,12 +86,30 @@ export function DashboardViewContent({
           </HStack>
         }
         endContent={
-          <Button
-            label="Atualizar"
-            icon={<Icon icon={RefreshCw} />}
-            isLoading={isFetching}
-            onClick={refetch}
-          />
+          <HStack gap={2} vAlign="center">
+            <Button
+              label="Atualizar"
+              icon={<Icon icon={RefreshCw} />}
+              isLoading={isFetching}
+              onClick={refetch}
+            />
+            {canExport ? (
+              <Button
+                label="Exportar PDF"
+                icon={<Icon icon={Download} />}
+                isLoading={pdfExport.exportingId === detail.id}
+                tooltip="Gera um PDF desta visão, com os filtros aplicados"
+                // O PDF espelha EXATAMENTE o que está na tela: mesmo modo
+                // (rascunho/publicado) e mesmos valores de filtro.
+                onClick={() =>
+                  pdfExport.exportPdf(
+                    { id: detail.id, title: detail.title },
+                    { mode, filters: values },
+                  )
+                }
+              />
+            ) : null}
+          </HStack>
         }
       />
 
