@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { Icon } from '@astryxdesign/core/Icon';
-import { SideNav, SideNavHeading, SideNavItem } from '@astryxdesign/core/SideNav';
+import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav';
 import { useAuthStore } from '@/features/auth/store';
 import { NAV_ITEMS, canSeeNavItem } from './nav-items';
 import { UserMenu } from './user-menu';
@@ -17,6 +17,11 @@ interface AppSidebarProps {
  * o modo recolhido (com tooltip nos ícones), o drawer no mobile (via `AppShell`)
  * e o estado selecionado acessível (`aria-current`). Os itens navegam
  * client-side porque o `LinkProvider` do shell injeta o adapter do react-router.
+ *
+ * Sem `header`: quem carrega a identidade do produto é o `TopNavHeading` do
+ * shell. Repetir o nome aqui seria branding duplicado — anti-pattern explícito
+ * do DS. O botão de recolher não depende do header (o `SideNav` o renderiza no
+ * rodapé), e no drawer mobile o botão de fechar também é independente.
  */
 export function AppSidebar({ isCollapsed, onCollapsedChange }: AppSidebarProps) {
   const location = useLocation();
@@ -25,25 +30,7 @@ export function AppSidebar({ isCollapsed, onCollapsedChange }: AppSidebarProps) 
   const items = NAV_ITEMS.filter((item) => canSeeNavItem(item, role));
 
   return (
-    <SideNav
-      collapsible={{ isCollapsed, onCollapsedChange }}
-      header={
-        <SideNavHeading
-          heading="auditorIA"
-          headingHref="/home"
-          icon={
-            <img
-              src="/auditoria-icon.png"
-              alt=""
-              width={24}
-              height={24}
-              draggable={false}
-            />
-          }
-        />
-      }
-      footer={<UserMenu />}
-    >
+    <SideNav collapsible={{ isCollapsed, onCollapsedChange }} footer={<UserMenu />}>
       {items.map((item) => (
         <SideNavItem
           key={item.href}

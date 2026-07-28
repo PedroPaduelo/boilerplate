@@ -18,10 +18,16 @@
  * `<body>` é travado no CSS global.
  *
  * jsdom não calcula layout. O que se trava aqui é o contrato observável: a
- * landmark `main` existe, o título da rota é anunciado como `h1`, e o
+ * landmark `main` existe, o topo anuncia a identidade do produto, e o
  * enquadramento do conteúdo MUDA entre as duas famílias de rota. Comparamos as
  * classes entre si (não com um valor literal), porque os nomes são gerados pelo
  * StyleX e mudariam a cada build do design system.
+ *
+ * O topo hoje carrega a MARCA, não o título da rota. Consequência conhecida e
+ * ainda em aberto: nenhuma tela autenticada tem `h1` — o shell deixou de provê-lo
+ * e as páginas ainda não assumiram (todas usam `level={2}` justamente porque o
+ * shell dava o nível 1). Quando isso for resolvido, o teste do `h1` pertence à
+ * página, não a este arquivo.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { Routes, Route } from 'react-router-dom';
@@ -55,11 +61,17 @@ function montar(rota: string) {
 }
 
 describe('DashboardLayout — contrato de enquadramento', () => {
-  it('expõe a landmark principal e o título da rota ativa', () => {
+  it('expõe a landmark principal e a marca do produto', () => {
     montar('/dashboards');
 
     expect(screen.getByRole('main')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dashboards');
+
+    // A marca identifica o produto e leva para a home. Ela NÃO se repete na
+    // navegação lateral: branding duplicado é ruído.
+    expect(screen.getByRole('link', { name: /auditorIA/i })).toHaveAttribute(
+      'href',
+      '/home',
+    );
   });
 
   it('oferece "pular para o conteúdo" (navegação por teclado)', () => {
