@@ -88,14 +88,22 @@ export function DashboardViewContent({
         endContent={
           <HStack gap={2} vAlign="center">
             {/* Porta de entrada do modo de VISUALIZAÇÃO (doc 40): é lá que as
-                abas do dashboard aparecem na barra lateral. Link (`href`), não
-                `onClick` — o LinkProvider do shell converte para client-side e
-                o usuário pode abrir em outra aba do navegador. */}
+                abas do dashboard aparecem na barra lateral.
+
+                Abre em GUIA NOVA (`target="_blank"`) porque a visualização é uma
+                tela autônoma, sem o cromo do app — o uso é deixá-la aberta num
+                telão ou numa segunda guia enquanto se continua trabalhando aqui.
+                Trocar a guia atual por ela obrigaria a voltar para editar.
+
+                `rel="noopener"` é higiene obrigatória de `_blank`: sem isso a
+                página aberta recebe `window.opener` e pode navegar esta aqui. */}
             <Button
               label="Visualização"
               icon={<Icon icon={Maximize2} />}
-              tooltip="Abre o modo de leitura, com navegação por abas"
+              tooltip="Abre o modo de leitura em uma nova guia, com navegação por abas"
               href={`/dashboards/${detail.id}/view`}
+              target="_blank"
+              rel="noopener"
             />
             <Button
               label="Atualizar"

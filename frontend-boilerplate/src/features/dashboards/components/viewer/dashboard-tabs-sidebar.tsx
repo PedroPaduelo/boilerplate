@@ -1,55 +1,76 @@
 /**
  * Navegação lateral entre as ABAS do dashboard (doc 40).
  *
- * Por que `TabList` e não `SideNav`: o próprio DS marca "usar SideNav para
- * filtrar conteúdo" como anti-pattern e manda usar abas. `SideNav` é a navegação
- * PRIMÁRIA do app — ela já existe no shell, com as rotas — e aninhar uma segunda
- * dentro do conteúdo colocaria duas navegações principais competindo pela mesma
- * função. Aqui a troca é de VISTA dentro de uma mesma página, que é literalmente
- * o caso de uso de tabs.
+ * ---------------------------------------------------------------------------
+ * POR QUE `SideNav` E NÃO `TabList` (reversão de uma decisão anterior)
+ * ---------------------------------------------------------------------------
+ * A primeira versão usava `TabList` com `orientation="vertical"`, citando o
+ * anti-pattern do DS ("não use SideNav para filtrar conteúdo, use abas"). Só que
+ * `orientation` do `TabList` **não empilha nada**: a própria doc do componente
+ * diz que ela "controla quais setas movem o foco e o `aria-orientation`
+ * reportado". A faixa continua sendo horizontal. Medido na tela: as duas abas
+ * saíam LADO A LADO dentro de um painel de 220px.
  *
- * ACESSIBILIDADE — vem pronta do `TabList` com `orientation="vertical"`:
- *  - ponto ÚNICO de tabulação (roving tabindex): o Tab do teclado atravessa a
- *    barra inteira em vez de parar em cada aba;
- *  - ↑/↓ (e ←/→) movem entre as abas; Home/End vão para a primeira/última;
- *  - a aba atual é anunciada por `aria-current="page"`;
- *  - o DS renderiza `<nav aria-label>` + `<button>` — navegação semântica de
- *    verdade. O rótulo explícito ("Abas do dashboard") existe para distinguir
- *    esta região do menu principal do app na lista de landmarks, que é como um
- *    usuário de leitor de tela navega entre as áreas da página.
+ * E não havia como corrigir o eixo por fora:
+ *   • `xstyle` é INERTE neste app — não há compilador StyleX (o mesmo achado
+ *     já registrado em `chat-empty-state.tsx`);
+ *   • CSS em `@layer` PERDE das classes atômicas do StyleX, que são injetadas
+ *     fora de layer;
+ *   • `TabList` não expõe `style`.
+ *
+ * Sobrava fabricar um seletor fora de layer para virar o `flex-direction` de
+ * uma classe interna do DS — remendo que quebra na próxima versão dele.
+ *
+ * O anti-pattern citado se aplicava ao contexto ANTIGO, em que esta tela vivia
+ * dentro do shell do app e uma segunda navegação lateral competiria com a
+ * principal. A tela de visualização agora é AUTÔNOMA (rota fora do
+ * `DashboardLayout`): não há outra navegação na página, então esta deixa de ser
+ * "uma segunda nav" e passa a ser A nav — que é exatamente o que `SideNav` é.
+ *
+ * ---------------------------------------------------------------------------
+ * ITEM = LINK, NÃO BOTÃO
+ * ---------------------------------------------------------------------------
+ * A aba ativa já vivia na URL (`?tab=`), então o item é um `href` de verdade e
+ * não um `onClick`. Ganhos que um botão não dá: abrir aba em nova guia com
+ * ⌘/Ctrl+clique ou botão do meio, "copiar endereço do link", e o estado de
+ * visitado do navegador. A navegação continua client-side porque o
+ * `LinkProvider` do shell injeta o adapter do react-router.
  */
-import { LayoutPanel } from '@astryxdesign/core/Layout';
-import { Tab, TabList } from '@astryxdesign/core/TabList';
+import { SideNav, SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav';
 import type { ResolvedDashTab } from '../../lib/dashboard-tabs';
 
 export interface DashboardTabsSidebarProps {
   tabs: ResolvedDashTab[];
   activeTabId: string;
-  onTabChange: (tabId: string) => void;
+  /** Monta o endereço da aba — quem conhece a rota é a tela, não este componente. */
+  hrefForTab: (tabId: string) => string;
 }
 
 export function DashboardTabsSidebar({
   tabs,
   activeTabId,
-  onTabChange,
+  hrefForTab,
 }: DashboardTabsSidebarProps) {
   return (
-    // `LayoutPanel` é o slot lateral do shell de página do DS: já resolve a
-    // largura estável e o divisor. Largura fixa é intencional — rótulo de aba é
-    // texto curto, e uma coluna elástica faria o grid do dashboard reflowar a
-    // cada troca de aba.
-    <LayoutPanel hasDivider width={220} data-testid="dashboard-tabs-sidebar">
-      <TabList
-        value={activeTabId}
-        onChange={onTabChange}
-        orientation="vertical"
-        layout="fill"
-        aria-label="Abas do dashboard"
-      >
+    // `aria-label` explícito: o rótulo padrão do `SideNav` é genérico
+    // ("Navegação lateral"), e quem usa leitor de tela precisa distinguir esta
+    // região — que navega ENTRE ABAS de um dashboard — de um menu de app.
+    <SideNav aria-label="Abas do dashboard" data-testid="dashboard-tabs-sidebar">
+      {/*
+        `isHeaderHidden`: o título da seção existe para o leitor de tela nomear
+        a região ("Abas"), mas escrevê-lo na tela seria repetir o que os próprios
+        itens já dizem — e a página já tem o título do dashboard no cabeçalho.
+      */}
+      <SideNavSection title="Abas do dashboard" isHeaderHidden>
         {tabs.map((tab) => (
-          <Tab key={tab.id} value={tab.id} label={tab.title} />
+          <SideNavItem
+            key={tab.id}
+            label={tab.title}
+            href={hrefForTab(tab.id)}
+            isSelected={tab.id === activeTabId}
+          />
         ))}
-      </TabList>
-    </LayoutPanel>
+      </SideNavSection>
+    </SideNav>
   );
 }

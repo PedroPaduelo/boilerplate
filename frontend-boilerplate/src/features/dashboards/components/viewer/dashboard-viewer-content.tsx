@@ -18,7 +18,7 @@
  * carregado — e o backend já resolve todas as linhas de uma vez, porque `rows`
  * segue sendo a lista canônica (doc 40).
  */
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Download, Pencil, RefreshCw } from 'lucide-react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
@@ -69,7 +69,10 @@ export function DashboardViewerContent({
   layout,
   mode,
 }: DashboardViewerContentProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  // Só LEITURA da query: a troca de aba é navegação por link (ver `hrefForTab`),
+  // então quem escreve a URL é o router, não este componente.
+  const [searchParams] = useSearchParams();
+  const { pathname } = useLocation();
   const filters = (layout?.filters ?? []) as DashFilter[];
 
   const [values, setValues] = useState<FilterValues>(() => initialFilterValues(filters));
@@ -103,10 +106,19 @@ export function DashboardViewerContent({
   // interativa fica acima; ele desenharia chips estáticos duplicados).
   const gridLayout = layoutOfTab(layout, activeTab);
 
-  const handleTabChange = (tabId: string) => {
+  /**
+   * Endereço de uma aba. A barra lateral navega por LINK (`href`), não por
+   * `onClick`: a aba já vivia na URL, então o link é a representação honesta —
+   * e de quebra ganha ⌘/Ctrl+clique para abrir em nova guia, "copiar endereço"
+   * e o botão do meio. Preserva os demais parâmetros da query (filtros, modo).
+   */
+  const hrefForTab = (tabId: string) => {
     const next = new URLSearchParams(searchParams);
     next.set(TAB_SEARCH_PARAM, tabId);
-    setSearchParams(next, { replace: true });
+    // `useLocation()` do router, NÃO o `location` global do navegador: dentro de
+    // um `MemoryRouter` (testes) o global aponta para `/` e o link sairia
+    // apontando para fora da rota.
+    return `${pathname}?${next.toString()}`;
   };
 
   const content = (
@@ -215,7 +227,7 @@ export function DashboardViewerContent({
             <DashboardTabsSidebar
               tabs={tabs}
               activeTabId={activeTab.id}
-              onTabChange={handleTabChange}
+              hrefForTab={hrefForTab}
             />
           ) : undefined
         }

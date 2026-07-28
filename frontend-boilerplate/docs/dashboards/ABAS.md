@@ -7,8 +7,14 @@ Como usar, o que existe no código, e como pedir para a IA.
 ## O que é
 
 Um dashboard pode dividir suas linhas em **abas**. No modo de **Visualização**
-(`/dashboards/:id/view`) as abas viram uma **barra lateral** de 220px à esquerda
-do grid, e o resto da tela é só leitura — sem nada de edição.
+(`/dashboards/:id/view`) as abas viram uma **barra lateral**, empilhadas uma
+abaixo da outra, e o resto da tela é só leitura.
+
+A visualização é uma tela **autônoma**: abre em **guia nova**, sem a barra
+lateral do app, sem topbar e sem menu de usuário. É a tela para projetar numa
+reunião, jogar num telão ou deixar aberta numa segunda guia enquanto se continua
+trabalhando na primeira. "Autônoma" não quer dizer pública — sessão e permissão
+(`artifacts:view`) continuam valendo; o que sai é só o cromo do app.
 
 O modelo é uma **projeção**: a aba guarda os **IDs das linhas** (`rowIds`), não
 as linhas. `layout.rows` continua sendo a lista canônica e completa. É isso que
@@ -96,16 +102,29 @@ POST /dashboards/:id/publish
 | `features/dashboards/routes.tsx`                                     | rota `dashboards/:id/view`, exige `artifacts:view`                                                                   |
 | `modules/dashboards/schema.ts` (backend)                             | aceita `tabs` no `draftLayout`                                                                                       |
 
-**Acessibilidade** (vem do `TabList` com `orientation="vertical"`): ponto único
-de tabulação (roving tabindex), ↑/↓ e ←/→ entre abas, Home/End para
-primeira/última, `aria-current="page"` na aba atual, e `<nav aria-label="Abas do
-dashboard">` para distinguir a região do menu principal na lista de landmarks.
+**Acessibilidade:** `<nav aria-label="Abas do dashboard">` (rótulo explícito — o
+padrão do `SideNav` é o genérico "Navegação lateral"), `aria-current="page"` na
+aba atual, e todas as abas alcançáveis por Tab, como qualquer menu de links.
 
-**Por que `TabList` e não `SideNav`:** o próprio design system marca "usar
-SideNav para filtrar conteúdo" como anti-pattern. `SideNav` é a navegação
-primária do app — já existe no shell, com as rotas. Aninhar uma segunda dentro do
-conteúdo colocaria duas navegações principais competindo pela mesma função. Aqui
-a troca é de VISTA dentro de uma mesma página, que é o caso de uso de abas.
+**Por que `SideNav` e não `TabList` (reversão de uma decisão anterior):** a
+primeira versão usava `TabList` com `orientation="vertical"`, citando o
+anti-pattern do DS ("não use SideNav para filtrar conteúdo"). Só que `orientation`
+**não empilha nada** — a doc do componente diz que ela controla apenas quais
+setas movem o foco e o `aria-orientation` reportado. Medido na tela, as abas
+saíam LADO A LADO. E não havia como corrigir o eixo por fora: `xstyle` é inerte
+neste app (sem compilador StyleX), CSS em `@layer` perde das classes atômicas do
+StyleX, e `TabList` não expõe `style`.
+
+O anti-pattern valia para o contexto antigo, em que a tela vivia dentro do shell
+e uma segunda nav lateral competiria com a principal. Com a visualização
+autônoma não há outra navegação na página — esta deixa de ser "uma segunda nav"
+e passa a ser A nav, que é o propósito do `SideNav`.
+
+**Custo assumido:** perdemos o roving tabindex e a navegação por setas do tab
+strip. Em troca, cada aba virou um LINK de verdade: ⌘/Ctrl+clique abre em nova
+guia, o botão do meio funciona e "copiar endereço do link" funciona — nada disso
+um `<button>` dava. Como a aba já vivia na URL, o link é a representação honesta
+dela.
 
 ---
 

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import type { FeatureRoutes } from '@/shared/lib/feature-routes';
 import { PageLoader } from '@/shared/components/page-loader';
 import { RequireRole } from '@/features/auth/components/require-role';
+import { ProtectedRoute } from '@/features/auth/components/protected-route';
 
 /**
  * Rotas da feature `dashboards`.
@@ -39,6 +40,35 @@ const DashboardEditor = lazy(() =>
 );
 
 export const featureRoutes: FeatureRoutes = {
+  /**
+   * `/dashboards/:id/view` fica no slot RAIZ, e não em `protected`, porque o
+   * modo de visualização é uma tela AUTÔNOMA: sem a barra lateral do app, sem a
+   * topbar, sem o menu de usuário. É a tela que se abre num telão, se projeta
+   * numa reunião ou se deixa aberta numa segunda guia o dia inteiro — e nesse
+   * uso o cromo do app é justamente o que atrapalha.
+   *
+   * "Raiz" aqui NÃO quer dizer pública: o `ProtectedRoute` (sessão) e o
+   * `RequireRole` (permissão) continuam envolvendo a tela, exatamente como nas
+   * rotas de dentro do shell. A única coisa que sai é o `DashboardLayout`.
+   *
+   * Precisa vir ANTES de `dashboards/:id` na lista final de rotas — e vem, pelo
+   * simples fato de as rotas do slot raiz serem registradas antes do `/` no
+   * `app/routes.tsx`.
+   */
+  public: [
+    {
+      path: '/dashboards/:id/view',
+      element: (
+        <ProtectedRoute>
+          <RequireRole permission="artifacts:view">
+            <Suspense fallback={<PageLoader />}>
+              <DashboardViewer />
+            </Suspense>
+          </RequireRole>
+        </ProtectedRoute>
+      ),
+    },
+  ],
   protected: [
     {
       path: 'dashboards',
@@ -60,16 +90,7 @@ export const featureRoutes: FeatureRoutes = {
         </RequireRole>
       ),
     },
-    {
-      path: 'dashboards/:id/view',
-      element: (
-        <RequireRole permission="artifacts:view">
-          <Suspense fallback={<PageLoader />}>
-            <DashboardViewer />
-          </Suspense>
-        </RequireRole>
-      ),
-    },
+
     {
       path: 'dashboards/:id/edit',
       element: (

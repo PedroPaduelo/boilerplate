@@ -182,8 +182,8 @@ describe('DashboardViewer — dashboard com abas', () => {
     expect(screen.getByTestId('dashboard-tabs-sidebar')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Abas do dashboard' });
     expect(nav).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Visão geral' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Evolução' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Visão geral' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Evolução' })).toBeInTheDocument();
   });
 
   it('abre na primeira aba e mostra só o conteúdo dela', () => {
@@ -198,7 +198,7 @@ describe('DashboardViewer — dashboard com abas', () => {
   it('trocar de aba troca o conteúdo renderizado', async () => {
     renderViewer();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Evolução' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Evolução' }));
 
     await waitFor(() =>
       expect(screen.getByText('Evolução e distribuição')).toBeInTheDocument(),
@@ -211,7 +211,7 @@ describe('DashboardViewer — dashboard com abas', () => {
     renderViewer(`/dashboards/${DASH_ID}/view?tab=tab_evolucao`);
 
     expect(screen.getByText('Evolução e distribuição')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Evolução' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Evolução' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -221,7 +221,7 @@ describe('DashboardViewer — dashboard com abas', () => {
     renderViewer(`/dashboards/${DASH_ID}/view?tab=aba_que_nao_existe`);
 
     expect(screen.getByText('Dívida Ativa — 2026')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Visão geral' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Visão geral' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -245,40 +245,52 @@ describe('DashboardViewer — acessibilidade da navegação por abas', () => {
   it('a aba selecionada é anunciada com aria-current e as demais não', () => {
     renderViewer();
 
-    expect(screen.getByRole('button', { name: 'Visão geral' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Visão geral' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(screen.getByRole('button', { name: 'Evolução' })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Evolução' })).not.toHaveAttribute(
       'aria-current',
     );
   });
 
-  it('a barra é UM único ponto de tabulação (roving tabindex)', () => {
-    // Sem isso, um dashboard com 8 abas obrigaria 8 Tabs para atravessar a
-    // navegação — o padrão WAI-ARIA de tab strip existe justamente para evitar.
+  it('cada aba é um LINK de verdade, com endereço próprio', () => {
+    /*
+     * Mudança de padrão consciente: a barra deixou de ser um "tab strip"
+     * (`TabList` + roving tabindex) e virou uma NAVEGAÇÃO DE LINKS (`SideNav`).
+     *
+     * O motivo foi visual — `orientation="vertical"` do `TabList` só troca as
+     * setas do teclado, não empilha, e as abas saíam lado a lado. Mas o ganho é
+     * de comportamento: a aba já vivia na URL, então o link é a representação
+     * honesta dela. ⌘/Ctrl+clique abre em nova guia, o botão do meio funciona,
+     * "copiar endereço do link" funciona — nada disso um `<button>` dá.
+     *
+     * Roving tabindex é o padrão de tab strip; para uma lista de links o
+     * correto é o oposto: TODOS alcançáveis por Tab, como qualquer menu.
+     */
     renderViewer();
 
-    expect(screen.getByRole('button', { name: 'Visão geral' })).toHaveAttribute(
-      'tabindex',
-      '0',
-    );
-    expect(screen.getByRole('button', { name: 'Evolução' })).toHaveAttribute(
-      'tabindex',
-      '-1',
-    );
+    const primeira = screen.getByRole('link', { name: 'Visão geral' });
+    const segunda = screen.getByRole('link', { name: 'Evolução' });
+
+    expect(primeira).toHaveAttribute('href', expect.stringContaining('tab=tab_visao'));
+    expect(segunda).toHaveAttribute('href', expect.stringContaining('tab=tab_evolucao'));
+    // Nenhuma aba fora da ordem de tabulação.
+    expect(primeira).not.toHaveAttribute('tabindex', '-1');
+    expect(segunda).not.toHaveAttribute('tabindex', '-1');
   });
 
-  it('as setas do teclado movem o foco entre as abas', async () => {
-    renderViewer();
+  it('o link da aba preserva os demais parâmetros da URL', async () => {
+    // Filtros e modo vivem na mesma query. Se a troca de aba reescrevesse a URL
+    // inteira, trocar de aba limparia os filtros aplicados — e o usuário veria
+    // números diferentes sem ter mexido em filtro nenhum.
+    renderViewer(`/dashboards/${DASH_ID}/view?tab=tab_visao&zona=norte`);
 
-    const primeira = screen.getByRole('button', { name: 'Visão geral' });
-    const segunda = screen.getByRole('button', { name: 'Evolução' });
+    const segunda = screen.getByRole('link', { name: 'Evolução' });
+    const href = segunda.getAttribute('href') ?? '';
 
-    primeira.focus();
-    fireEvent.keyDown(primeira, { key: 'ArrowDown' });
-
-    await waitFor(() => expect(segunda).toHaveFocus());
+    expect(href).toContain('zona=norte');
+    expect(href).toContain('tab=tab_evolucao');
   });
 
   it('a região de conteúdo é rotulada com o nome da aba ativa', async () => {
@@ -288,7 +300,7 @@ describe('DashboardViewer — acessibilidade da navegação por abas', () => {
       screen.getByRole('region', { name: 'Conteúdo da aba Visão geral' }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Evolução' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Evolução' }));
 
     await waitFor(() =>
       expect(
