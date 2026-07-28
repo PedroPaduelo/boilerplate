@@ -13,10 +13,11 @@
 import { MessageSquare, Trash2 } from 'lucide-react';
 import { Avatar } from '@astryxdesign/core/Avatar';
 import { StatusDot } from '@astryxdesign/core/StatusDot';
-import { Heading, Text } from '@astryxdesign/core/Text';
+import { Text } from '@astryxdesign/core/Text';
 import { HStack, VStack } from '@astryxdesign/core/Stack';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { ConversationTitle } from './conversation-title';
 
 export interface ChatHeaderProps {
   title: string;
@@ -27,6 +28,8 @@ export interface ChatHeaderProps {
   onOpenList: () => void;
   /** Ausente quando não há conversa aberta para excluir. */
   onDelete?: () => void;
+  /** Ausente quando não há conversa aberta para renomear. */
+  onRename?: (title: string) => void;
 }
 
 /**
@@ -60,6 +63,7 @@ export function ChatHeader({
   isCompact,
   onOpenList,
   onDelete,
+  onRename,
 }: ChatHeaderProps) {
   return (
     <HStack gap={3} vAlign="center" justify="between">
@@ -76,9 +80,7 @@ export function ChatHeader({
         ) : null}
         <Avatar name="IA" size="md" />
         <VStack gap={0}>
-          <Heading level={2} maxLines={1}>
-            {title}
-          </Heading>
+          <ConversationTitle title={title} onRename={onRename} />
           {statusLine(isAgentReady)}
         </VStack>
       </HStack>

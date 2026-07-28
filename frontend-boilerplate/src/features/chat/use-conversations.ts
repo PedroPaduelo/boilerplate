@@ -39,6 +39,8 @@ export interface UseConversationsResult {
   reload: () => void;
   create: () => void;
   remove: (id: string) => void;
+  /** Renomeia a conversa. Título vazio é ignorado — a tela não deixa chegar aqui. */
+  rename: (id: string, title: string) => void;
 }
 
 export function useConversations(): UseConversationsResult {
@@ -94,6 +96,37 @@ export function useConversations(): UseConversationsResult {
     },
   });
 
+  /**
+   * Renomear é OTIMISTA: o título novo aparece no cabeçalho e na lista antes da
+   * resposta do servidor. Renomear é uma edição de rótulo, não uma operação de
+   * risco — esperar o ida-e-volta faria o texto "piscar" de volta ao antigo no
+   * meio da digitação de quem está apresentando.
+   *
+   * Falhou? O título anterior volta e o toast explica. Nada de deixar na tela um
+   * nome que o servidor não aceitou.
+   */
+  const renameMutation = useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      agentApi.updateConversation(id, title),
+    onMutate: ({ id, title }) => {
+      const previous = queryClient.getQueryData<Conversation[]>(
+        queryKeys.chat.conversations(),
+      );
+      writeConversations((prev) =>
+        prev.map((conversation) =>
+          conversation.id === id ? { ...conversation, title } : conversation,
+        ),
+      );
+      return { previous };
+    },
+    onError: (err: unknown, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.chat.conversations(), context.previous);
+      }
+      toast.error(getApiErrorMessage(err, 'Não foi possível renomear a conversa.'));
+    },
+  });
+
   const removeMutation = useMutation({
     mutationFn: (id: string) => agentApi.deleteConversation(id),
     onSuccess: (_result, id) => {
@@ -128,5 +161,10 @@ export function useConversations(): UseConversationsResult {
     reload: () => void conversationsQuery.refetch(),
     create: () => createMutation.mutate(),
     remove: (id: string) => removeMutation.mutate(id),
+    rename: (id: string, title: string) => {
+      const clean = title.trim();
+      if (!clean) return;
+      renameMutation.mutate({ id, title: clean });
+    },
   };
 }

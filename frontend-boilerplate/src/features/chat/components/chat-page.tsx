@@ -47,6 +47,7 @@ export function ChatPage() {
     reload,
     create,
     remove,
+    rename,
   } = useConversations();
 
   const isCompact = useMediaQuery(COMPACT_QUERY);
@@ -107,6 +108,7 @@ export function ChatPage() {
               isCompact={isCompact}
               onOpenList={() => setIsListOpen(true)}
               onDelete={activeId ? () => setIsDeleteOpen(true) : undefined}
+              onRename={activeId ? (title) => rename(activeId, title) : undefined}
             />
           </LayoutHeader>
         }
