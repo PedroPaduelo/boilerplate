@@ -37,6 +37,8 @@ import {
   type ScreenNode,
   type Viewport,
 } from './graph-geometry';
+import type { GraphModel } from './graph-data';
+import { layoutGraph, type GraphLayoutKind } from './graph-layout';
 import type { GraphView } from './graph-view';
 
 /** Largura usada até a primeira medição (SSR, impressão, primeiro quadro). */
@@ -54,8 +56,34 @@ const LABEL_GAP = 5;
 /** Tamanho máximo do rótulo; o resto vive no tooltip. */
 const LABEL_MAX_CHARS = 18;
 
+/**
+ * Quantos rótulos no máximo — acima disso, só os MAIORES nós recebem nome.
+ *
+ * Rede grande com nome em tudo não é rede grande com contexto: é uma mancha de
+ * texto sobre o desenho (200 rótulos de 12px não cabem em 280px de altura, e o
+ * que se perde é justamente o desenho). Toda ferramenta do gênero faz esse
+ * corte — o Obsidian esconde o nome enquanto o zoom está longe. Aqui o critério
+ * é o TAMANHO do nó, que já é a medida de importância: os hubs se apresentam, o
+ * satélite se identifica no tooltip.
+ */
+const LABEL_LIMIT = 16;
+
+/**
+ * Degrau de arredondamento da proporção do card.
+ *
+ * O layout depende do formato do retângulo, e o retângulo muda a cada pixel de
+ * arrasto da janela. Sem arredondar, cada pixel dispararia um posicionamento
+ * novo — e o usuário veria a rede se reorganizando enquanto redimensiona.
+ */
+const ASPECT_STEP = 0.25;
+
 export interface GraphCanvasProps {
+  /** Grafo lido do dado — é dele que sai a POSIÇÃO. */
+  model: GraphModel;
+  /** Cor, tamanho e texto de cada marca. */
   view: GraphView;
+  /** Layout escolhido no bloco. */
+  layout: GraphLayoutKind;
   /** Altura da área de plotagem, em px (a mesma reservada pelo `ChartFrame`). */
   height: number;
   showLabels: boolean;
@@ -65,7 +93,9 @@ export interface GraphCanvasProps {
 }
 
 export function GraphCanvas({
+  model,
   view,
+  layout,
   height,
   showLabels,
   showArrows,
@@ -83,26 +113,55 @@ export function GraphCanvas({
   const fontSize = palette.typography.axis.size;
   const maxRadius = view.nodes.reduce((max, node) => Math.max(max, node.radius), 0);
 
-  const screen = useMemo(() => {
-    const viewport: Viewport = {
-      width,
-      height,
-      padding: {
-        top: maxRadius + 4,
-        right: maxRadius + 8,
-        bottom: maxRadius + (showLabels ? LABEL_GAP + fontSize + 2 : 4),
-        left: maxRadius + 8,
-      },
-      fit: view.fit,
-      extent: view.extent,
+  const padding = useMemo(
+    () => ({
+      top: maxRadius + 4,
+      right: maxRadius + 8,
+      bottom: maxRadius + (showLabels ? LABEL_GAP + fontSize + 2 : 4),
+      left: maxRadius + 8,
+    }),
+    [maxRadius, showLabels, fontSize],
+  );
+
+  // Proporção da ÁREA DE DESENHO (já sem as margens), arredondada para não
+  // recalcular o layout a cada pixel de redimensionamento.
+  const aspect = useMemo(() => {
+    const inner = {
+      width: Math.max(width - padding.left - padding.right, 1),
+      height: Math.max(height - padding.top - padding.bottom, 1),
     };
+    return Math.round(inner.width / inner.height / ASPECT_STEP) * ASPECT_STEP;
+  }, [width, height, padding]);
+
+  const { points, fit, extent } = useMemo(
+    () => layoutGraph(model, layout, aspect),
+    [model, layout, aspect],
+  );
+
+  const screen = useMemo(() => {
+    const viewport: Viewport = { width, height, padding, fit, extent };
     const map = new Map<string, ScreenNode>();
     for (const node of view.nodes) {
-      const point = toScreen(node, viewport);
-      map.set(node.id, { x: point.x, y: point.y, r: node.radius });
+      const point = points.get(node.id);
+      const screenPoint = toScreen(point ?? { x: 0.5, y: 0.5 }, viewport);
+      map.set(node.id, { x: screenPoint.x, y: screenPoint.y, r: node.radius });
     }
     return map;
-  }, [view.nodes, view.fit, view.extent, width, height, maxRadius, showLabels, fontSize]);
+  }, [view.nodes, points, fit, extent, width, height, padding]);
+
+  // Quem ganha rótulo: todos, enquanto couber; depois, só os maiores.
+  const labelled = useMemo(() => {
+    if (!showLabels) return new Set<string>();
+    if (view.nodes.length <= LABEL_LIMIT) {
+      return new Set(view.nodes.map((node) => node.id));
+    }
+    return new Set(
+      [...view.nodes]
+        .sort((a, b) => b.radius - a.radius)
+        .slice(0, LABEL_LIMIT)
+        .map((node) => node.id),
+    );
+  }, [view.nodes, showLabels]);
 
   if (view.nodes.length === 0) return null;
 
@@ -198,7 +257,7 @@ export function GraphCanvas({
                   stroke={palette.chrome('surface')}
                   strokeWidth={palette.geometry.markerStrokeWidth / 2}
                 />
-                {showLabels ? (
+                {labelled.has(node.id) ? (
                   <text
                     x={clampLabelX(point.x, estimateTextWidth(label, fontSize), width)}
                     y={point.y + node.radius + LABEL_GAP}

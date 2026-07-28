@@ -35,6 +35,7 @@ import {
   SPARK_CHART_VARIANTS,
 } from './fixtures/series-fixtures';
 import { BAR_LIST_VARIANTS, DONUT_VARIANTS } from './fixtures/categorical-fixtures';
+import { GRAPH_CHART_VARIANTS } from './fixtures/graph-fixtures';
 
 export type { BlockFixtures, FixtureVariant };
 
@@ -56,6 +57,11 @@ export const BLOCK_FIXTURES: BlockFixtures = {
   scatter_chart: SCATTER_CHART_VARIANTS,
   spark_chart: SPARK_CHART_VARIANTS,
   bar_list: BAR_LIST_VARIANTS,
+  /**
+   * Grafo é o caso em que a variação importa MAIS: o que muda a leitura não é a
+   * prop, é a topologia (rede com aglomerados × funil de camadas × só arestas).
+   */
+  graph_chart: GRAPH_CHART_VARIANTS,
 };
 
 /** Devolve as variações disponíveis para um `catalogType`, ou `[]` se não houver. */

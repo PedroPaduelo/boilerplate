@@ -3,25 +3,24 @@
  * no quadrado unitário [0,1]². Quem converte para pixel é o `graph-canvas`.
  *
  * ---------------------------------------------------------------------------
- * POR QUE O LAYOUT É CALCULADO AQUI, E NÃO ANIMADO NA TELA
+ * POR QUE O LAYOUT É CALCULADO, E NÃO ANIMADO NA TELA
  * ---------------------------------------------------------------------------
  * A referência mental de um grafo (Obsidian, Gephi) é uma simulação que roda
  * quadro a quadro e nunca "termina". Isso é ótimo para explorar e péssimo para
  * um painel: o mesmo dado desenharia diferente a cada visita, a exportação em
  * PDF pegaria a simulação no meio, e o teste não teria o que afirmar.
  *
- * Aqui a simulação roda UMA vez, síncrona, com posições iniciais determinísticas
- * (espiral de ângulo áureo — sem número aleatório em lugar nenhum) e um número
- * fixo de iterações. Mesmos dados, mesmo desenho, sempre — na tela, no papel e
- * no teste. O movimento que sobra é o do HOVER, que é resposta ao usuário, não
- * ruído de fundo.
+ * Aqui a simulação roda UMA vez, síncrona e determinística (`graph-force.ts`).
+ * Mesmos dados, mesmo desenho — na tela, no papel e no teste. O movimento que
+ * sobra é o do HOVER, que é resposta ao usuário, não ruído de fundo.
  *
  * Três layouts, cada um respondendo a uma pergunta diferente:
- *   force    — "como isto se conecta?"        (rede sem hierarquia)
- *   layered  — "por onde o volume passa?"     (funil: uma coluna por camada)
- *   radial   — "o que está longe do centro?"  (hierarquia em anéis)
+ *   force    — "como isto se agrupa?"        (aglomerados e satélites)
+ *   layered  — "por onde o volume passa?"    (funil: uma coluna por camada)
+ *   radial   — "o que está longe do centro?" (hierarquia em anéis)
  */
 import type { GraphModel } from './graph-data';
+import { forceLayout } from './graph-force';
 
 /** Layouts publicados no `propsSchema` do bloco. */
 export type GraphLayoutKind = 'force' | 'layered' | 'radial';
@@ -68,26 +67,35 @@ export interface GraphLayout {
 /** Proporção padrão: o desenho ocupa o quadrado inteiro. */
 const FULL_EXTENT = { x: 1, y: 1 } as const;
 
-/** Ângulo áureo — espalha os pontos iniciais sem repetir direção. */
+/** Ângulo áureo — usado para desalinhar os anéis do layout radial. */
 const GOLDEN_ANGLE = 2.399963229728653;
 
-/** Orçamento da simulação: iterações ≈ ORÇAMENTO / nº de nós, dentro da faixa. */
-const FORCE_ITERATIONS = { budget: 3000, min: 60, max: 300 } as const;
+/**
+ * Proporção (largura ÷ altura) assumida quando quem chama não mede o card.
+ * Vale para teste e para o primeiro quadro, antes da medição.
+ */
+export const DEFAULT_ASPECT = 1.6;
 
-/** Passo máximo inicial de um nó por iteração (em fração do quadro). */
-const INITIAL_TEMPERATURE = 0.14;
+/**
+ * Faixa de proporção aceita. O teto existe porque, passando disso, a rede
+ * deixa de ser uma rede e vira uma tira de aglomerados em fila; o piso, porque
+ * um card mais alto que largo não deve empilhar tudo numa coluna.
+ */
+const ASPECT_RANGE = { min: 0.6, max: 5 } as const;
 
-/** Resfriamento por iteração — o passo encolhe até o desenho assentar. */
-const COOLING = 0.95;
-
-/** Atração ao centro: segura os componentes desconexos dentro do quadro. */
-const GRAVITY = 0.02;
-
-/** Distância mínima considerada entre dois nós (evita divisão por zero). */
-const EPSILON = 1e-4;
-
-/** Posiciona o grafo. Nunca devolve `NaN`: grafo vazio → mapa vazio. */
-export function layoutGraph(model: GraphModel, kind: GraphLayoutKind): GraphLayout {
+/**
+ * Posiciona o grafo. Nunca devolve `NaN`: grafo vazio → mapa vazio.
+ *
+ * `aspect` é a proporção do RETÂNGULO em que o desenho vai aparecer. Só o
+ * `force` a usa (os outros dois se ajustam sozinhos pelo `fit`), e ela importa:
+ * uma simulação feita em quadrado, desenhada num card 5:1, aparece como um
+ * quadradinho no meio com 70% do card vazio dos lados.
+ */
+export function layoutGraph(
+  model: GraphModel,
+  kind: GraphLayoutKind,
+  aspect: number = DEFAULT_ASPECT,
+): GraphLayout {
   const layers = computeLayers(model);
   const layerCount = model.nodes.length === 0 ? 0 : Math.max(...layers.values()) + 1;
 
@@ -112,7 +120,11 @@ export function layoutGraph(model: GraphModel, kind: GraphLayoutKind): GraphLayo
     };
   }
 
-  const { points, extent } = forcePoints(model, layers);
+  const safeAspect = Math.min(
+    Math.max(Number.isFinite(aspect) ? aspect : DEFAULT_ASPECT, ASPECT_RANGE.min),
+    ASPECT_RANGE.max,
+  );
+  const { points, extent } = forceLayout(model, layers, safeAspect);
   return { points, layerCount, fit: 'uniform', extent };
 }
 
@@ -148,147 +160,6 @@ export function computeLayers({ nodes, edges }: GraphModel): Map<string, number>
   }
 
   return layers;
-}
-
-/* ========================================================================== *
- * FORCE — simulação de forças (Fruchterman–Reingold), uma passada só
- * ========================================================================== */
-
-function forcePoints(
-  model: GraphModel,
-  layers: Map<string, number>,
-): { points: Map<string, GraphPoint>; extent: { x: number; y: number } } {
-  const { nodes, edges } = model;
-  const count = nodes.length;
-  const index = new Map(nodes.map((node, i) => [node.id, i]));
-
-  const xs = new Float64Array(count);
-  const ys = new Float64Array(count);
-  // Espiral de ângulo áureo: pontos bem distribuídos e SEM aleatoriedade — é o
-  // que torna o desenho reproduzível entre sessões, máquinas e testes.
-  for (let i = 0; i < count; i += 1) {
-    const radius = 0.45 * Math.sqrt((i + 0.5) / count);
-    const angle = i * GOLDEN_ANGLE;
-    xs[i] = 0.5 + radius * Math.cos(angle);
-    ys[i] = 0.5 + radius * Math.sin(angle);
-  }
-
-  const links = edges
-    .map((edge) => [index.get(edge.source), index.get(edge.target)] as const)
-    .filter(
-      (pair): pair is readonly [number, number] => pair[0] != null && pair[1] != null,
-    );
-
-  // Distância de repouso entre nós num quadro de área 1.
-  const k = Math.sqrt(1 / count);
-  const iterations = Math.min(
-    FORCE_ITERATIONS.max,
-    Math.max(FORCE_ITERATIONS.min, Math.round(FORCE_ITERATIONS.budget / count)),
-  );
-
-  const dx = new Float64Array(count);
-  const dy = new Float64Array(count);
-  let temperature = INITIAL_TEMPERATURE;
-
-  for (let step = 0; step < iterations; step += 1) {
-    dx.fill(0);
-    dy.fill(0);
-
-    // Repulsão entre todos os pares (o que abre o desenho).
-    for (let i = 0; i < count; i += 1) {
-      for (let j = i + 1; j < count; j += 1) {
-        const vx = xs[i] - xs[j];
-        const vy = ys[i] - ys[j];
-        const distance = Math.max(Math.hypot(vx, vy), EPSILON);
-        const force = (k * k) / distance;
-        const ux = (vx / distance) * force;
-        const uy = (vy / distance) * force;
-        dx[i] += ux;
-        dy[i] += uy;
-        dx[j] -= ux;
-        dy[j] -= uy;
-      }
-    }
-
-    // Atração ao longo das arestas (o que junta quem se conecta).
-    for (const [from, to] of links) {
-      const vx = xs[from] - xs[to];
-      const vy = ys[from] - ys[to];
-      const distance = Math.max(Math.hypot(vx, vy), EPSILON);
-      const force = (distance * distance) / k;
-      const ux = (vx / distance) * force;
-      const uy = (vy / distance) * force;
-      dx[from] -= ux;
-      dy[from] -= uy;
-      dx[to] += ux;
-      dy[to] += uy;
-    }
-
-    for (let i = 0; i < count; i += 1) {
-      dx[i] += (0.5 - xs[i]) * GRAVITY * count * k;
-      dy[i] += (0.5 - ys[i]) * GRAVITY * count * k;
-      const length = Math.max(Math.hypot(dx[i], dy[i]), EPSILON);
-      const stepSize = Math.min(length, temperature);
-      xs[i] += (dx[i] / length) * stepSize;
-      ys[i] += (dy[i] / length) * stepSize;
-    }
-
-    temperature *= COOLING;
-  }
-
-  return normalize(model, xs, ys, layers);
-}
-
-/**
- * Reenquadra o resultado PRESERVANDO a proporção — um grafo em linha continua
- * uma linha, em vez de ser inflado até virar um quadrado. O reenquadramento é
- * necessário porque a simulação não respeita as bordas: ela só busca o
- * equilíbrio.
- *
- * O maior lado vira 1 e o outro vira a fração correspondente (`extent`), que o
- * canvas usa para escalar pelo conteúdo real. Centralizar aqui dentro de um
- * quadrado seria jogar fora essa informação — e foi assim que uma rede
- * achatada apareceu esticada de ponta a ponta num card largo.
- */
-function normalize(
-  model: GraphModel,
-  xs: Float64Array,
-  ys: Float64Array,
-  layers: Map<string, number>,
-): { points: Map<string, GraphPoint>; extent: { x: number; y: number } } {
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const spanX = maxX - minX;
-  const spanY = maxY - minY;
-  const span = Math.max(spanX, spanY);
-
-  const points = new Map<string, GraphPoint>();
-
-  // Nó único (ou todos no mesmo ponto): centro do quadro, sem divisão por zero.
-  if (span <= EPSILON) {
-    for (const node of model.nodes) {
-      points.set(node.id, {
-        id: node.id,
-        x: 0.5,
-        y: 0.5,
-        layer: layers.get(node.id) ?? 0,
-      });
-    }
-    return { points, extent: { ...FULL_EXTENT } };
-  }
-
-  model.nodes.forEach((node, i) => {
-    points.set(node.id, {
-      id: node.id,
-      x: (xs[i] - minX) / span,
-      y: (ys[i] - minY) / span,
-      layer: layers.get(node.id) ?? 0,
-    });
-  });
-
-  return { points, extent: { x: spanX / span, y: spanY / span } };
 }
 
 /* ========================================================================== *

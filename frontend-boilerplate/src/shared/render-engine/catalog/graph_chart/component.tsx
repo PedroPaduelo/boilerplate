@@ -96,18 +96,24 @@ export const Component: BlockComponent<GraphChartProps, TableData> = ({
   const view = useMemo(
     () =>
       buildGraphView(model, {
-        layout,
         colorAt: (index) => palette.colorAt(index),
         fixedColor,
         formatValue: (value) => formatCatalogValue(value, valueFormat),
       }),
-    [model, layout, palette, fixedColor, valueFormat],
+    [model, palette, fixedColor, valueFormat],
   );
+
+  // Quantas camadas o dado tem — para a leitura textual e o `{{camadas}}`. O
+  // POSICIONAMENTO por camada acontece no canvas, que é quem mede o card.
+  const layerCount = useMemo(() => {
+    if (model.nodes.length === 0) return 0;
+    return Math.max(...computeLayers(model).values()) + 1;
+  }, [model]);
 
   const scope = buildChartScope(data, {
     nos: model.nodes.length,
     ligacoes: model.edges.length,
-    camadas: view.layerCount,
+    camadas: layerCount,
     grupos: view.groups.length,
   });
 
@@ -130,7 +136,7 @@ export const Component: BlockComponent<GraphChartProps, TableData> = ({
   return (
     <ChartFrame
       label={manifest.name}
-      summary={describeGraph(model, view.groups.length, view.layerCount)}
+      summary={describeGraph(model, view.groups.length, layerCount)}
       scope={scope}
       height={CHART_HEIGHT.default}
       isLoading={state === 'loading' || state === 'skeleton'}
@@ -145,7 +151,9 @@ export const Component: BlockComponent<GraphChartProps, TableData> = ({
       footer={legend.length > 0 ? <ChartLegends items={legend} /> : null}
     >
       <GraphCanvas
+        model={model}
         view={view}
+        layout={layout}
         height={CHART_HEIGHT.default}
         showLabels={props.showLabels !== false}
         showArrows={props.showArrows !== false}
@@ -206,7 +214,7 @@ function deriveTakeaway(data: TableData, props?: GraphChartProps): string[] | un
   const flow = biggestFlow(model);
   if (flow) {
     insights.push(
-      `Maior fluxo: ${flow.path} (${formatCatalogValue(flow.value, props?.valueFormat)})`,
+      `Maior ligação: ${flow.path} (${formatCatalogValue(flow.value, props?.valueFormat)})`,
     );
   }
 

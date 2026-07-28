@@ -1,6 +1,12 @@
 /**
- * MODELO DE DESENHO — junta dado (`graph-data`), posição (`graph-layout`) e
- * cor do tema num objeto que o `graph-canvas` só precisa pintar.
+ * MODELO DE DESENHO — junta dado (`graph-data`) e cor do tema num objeto que o
+ * `graph-canvas` só precisa pintar: cor, tamanho, texto de apoio e vizinhança.
+ *
+ * O que NÃO está aqui é a POSIÇÃO. Ela depende da proporção do retângulo em que
+ * o desenho vai aparecer (uma rede num card 5:1 não se organiza como num card
+ * quadrado), e quem mede esse retângulo é o canvas. Misturar as duas coisas
+ * obrigava o layout a adivinhar o formato do card — e a adivinhação errada
+ * aparecia como um desenho pequeno no meio de um card largo e vazio.
  *
  * Continua PURO: as cores entram como função (`colorAt`), já resolvidas pelo
  * `useChartPalette` de quem chama. É o que permite testar tamanho, cor por
@@ -23,7 +29,6 @@
  */
 import { CHART_GEOMETRY } from '@/shared/ui';
 import { degreesOf, groupsOf, type GraphModel, type GraphNode } from './graph-data';
-import { layoutGraph, type GraphFit, type GraphLayoutKind } from './graph-layout';
 
 /** Faixa de DIÂMETRO do nó, em px — degraus de espessura do tema. */
 const NODE_DIAMETER = {
@@ -34,11 +39,33 @@ const NODE_DIAMETER = {
 /** Faixa de espessura da aresta, em px. */
 const EDGE_WIDTH = { min: 1, max: CHART_GEOMETRY.lineWidth } as const;
 
+/**
+ * DENSIDADE — a marca encolhe conforme a rede cresce.
+ *
+ * Os degraus do tema (nó de 12 a 32px, aresta de 1 a 2,5px) foram calibrados
+ * para o card com algumas dezenas de marcas. Aplicados a uma rede de 200 nós no
+ * mesmo card, viram uma mancha: 200 discos de 12px não cabem em 280px de altura
+ * e as arestas de 2,5px empastam o desenho. Um grafo grande é feito de pontos
+ * pequenos e fios finos — é assim em toda ferramenta do gênero.
+ *
+ * O fator é `sqrt(referência / nº de nós)`: a RAIZ porque o que satura a tela é
+ * ÁREA, não diâmetro (dobrar o número de nós pede um raio 1,41× menor, não 2×).
+ * Nunca AUMENTA a marca — rede pequena continua nos degraus do tema.
+ */
+const DENSITY_REFERENCE = 24;
+
+/** Piso absoluto da marca: abaixo disto o nó deixa de ser clicável e visível. */
+const NODE_FLOOR = { min: 3.5, max: 10 } as const;
+
+/** Piso absoluto do fio: abaixo disto a aresta some no fundo. */
+const EDGE_FLOOR = { min: 0.4, max: 0.8 } as const;
+
+/** Fator de encolhimento da marca para uma rede de `count` nós (≤ 1). */
+function densityScale(count: number): number {
+  return Math.min(1, Math.sqrt(DENSITY_REFERENCE / Math.max(count, 1)));
+}
+
 export interface GraphViewNode extends GraphNode {
-  /** Posição no quadrado unitário. */
-  x: number;
-  y: number;
-  layer: number;
   /** Raio em px. */
   radius: number;
   /** Cor RESOLVIDA (vai para atributo de SVG, que não aceita `var()`). */
@@ -64,16 +91,11 @@ export interface GraphView {
   edges: GraphViewEdge[];
   /** Grupos na ordem de aparição — a ordem das cores e da legenda. */
   groups: string[];
-  layerCount: number;
-  fit: GraphFit;
-  /** Proporção ocupada pelo desenho (maior lado = 1) — vem do layout. */
-  extent: { x: number; y: number };
   /** Vizinhança de cada nó — usada pelo realce no hover. */
   neighbours: Map<string, Set<string>>;
 }
 
 export interface GraphViewOptions {
-  layout: GraphLayoutKind;
   /** Cor resolvida do grupo `index` (cicla a paleta categórica). */
   colorAt: (index: number) => string;
   /** Cor única: quando definida, vence o grupo (regra de `chart-accent`). */
@@ -82,9 +104,8 @@ export interface GraphViewOptions {
   formatValue: (value: number) => string;
 }
 
-/** Monta o modelo de desenho do grafo. */
+/** Monta o modelo de desenho do grafo (cor, tamanho e texto — sem posição). */
 export function buildGraphView(model: GraphModel, options: GraphViewOptions): GraphView {
-  const { points, layerCount, fit, extent } = layoutGraph(model, options.layout);
   const degrees = degreesOf(model);
   const groups = groupsOf(model);
 
@@ -93,20 +114,21 @@ export function buildGraphView(model: GraphModel, options: GraphViewOptions): Gr
   const hasValue = model.nodes.some((node) => node.value != null);
   const weightOf = (node: GraphNode) =>
     hasValue ? (node.value ?? 0) : (degrees.get(node.id) ?? 0);
+  const density = densityScale(model.nodes.length);
   const weights = model.nodes.map(weightOf);
-  const nodeScale = makeScale(weights, NODE_DIAMETER.min, NODE_DIAMETER.max);
+  const nodeScale = makeScale(
+    weights,
+    Math.max(NODE_DIAMETER.min * density, NODE_FLOOR.min),
+    Math.max(NODE_DIAMETER.max * density, NODE_FLOOR.max),
+  );
 
   const labels = new Map(model.nodes.map((node) => [node.id, node.label]));
 
   const nodes: GraphViewNode[] = model.nodes.map((node) => {
-    const point = points.get(node.id);
     const degree = degrees.get(node.id) ?? 0;
     const groupIndex = node.group ? groups.indexOf(node.group) : 0;
     return {
       ...node,
-      x: point?.x ?? 0.5,
-      y: point?.y ?? 0.5,
-      layer: point?.layer ?? 0,
       radius: nodeScale(weightOf(node)) / 2,
       color: options.fixedColor ?? options.colorAt(groupIndex),
       degree,
@@ -115,7 +137,11 @@ export function buildGraphView(model: GraphModel, options: GraphViewOptions): Gr
   });
 
   const edgeValues = model.edges.map((edge) => edge.value ?? 0);
-  const edgeScale = makeScale(edgeValues, EDGE_WIDTH.min, EDGE_WIDTH.max);
+  const edgeScale = makeScale(
+    edgeValues,
+    Math.max(EDGE_WIDTH.min * density, EDGE_FLOOR.min),
+    Math.max(EDGE_WIDTH.max * density, EDGE_FLOOR.max),
+  );
 
   const edges: GraphViewEdge[] = model.edges.map((edge, i) => ({
     id: `${edge.source}→${edge.target}#${i}`,
@@ -125,15 +151,7 @@ export function buildGraphView(model: GraphModel, options: GraphViewOptions): Gr
     title: edgeTitle(edge.label, labels, edge, options.formatValue),
   }));
 
-  return {
-    nodes,
-    edges,
-    groups,
-    layerCount,
-    fit,
-    extent,
-    neighbours: neighboursOf(model),
-  };
+  return { nodes, edges, groups, neighbours: neighboursOf(model) };
 }
 
 /**

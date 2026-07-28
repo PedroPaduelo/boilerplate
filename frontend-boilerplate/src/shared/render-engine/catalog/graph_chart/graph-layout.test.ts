@@ -1,6 +1,6 @@
 /**
- * A MATEMÁTICA do grafo — leitura dos dados, camadas, posicionamento e
- * traçado das arestas. Tudo função pura, testada sem montar tela.
+ * A MATEMÁTICA do grafo — leitura dos dados, camadas, posicionamento e traçado
+ * das arestas. Tudo função pura, testada sem montar tela.
  *
  * O que este arquivo trava:
  *  1. AS TOLERÂNCIAS DA LEITURA — nó implícito (o caso que permite desenhar um
@@ -12,7 +12,10 @@
  *     igual à tela.
  *  3. CAMADA — declarada manda; deduzida sai do caminho mais longo; ciclo não
  *     trava o laço.
- *  4. A ARESTA NASCE NA BORDA DO NÓ, não no centro — passar por baixo do
+ *  4. O AGLOMERADO — folha em coroa ao redor do hub e grupo junto na tela. É a
+ *     leitura que o layout existe para dar, e a única prova possível dela é
+ *     medir distância entre nós.
+ *  5. A ARESTA NASCE NA BORDA DO NÓ, não no centro — passar por baixo do
  *     círculo é o que faz um grafo parecer uma teia furada.
  */
 import { describe, expect, it } from 'vitest';
@@ -20,16 +23,21 @@ import type { TableData } from '@dashboards/contracts';
 import { degreesOf, groupsOf, readGraph } from './graph-data';
 import { computeLayers, layoutGraph } from './graph-layout';
 import { edgeShape, toScreen } from './graph-geometry';
-import { fixture } from './fixture';
+import { fixture, funnelFixture } from './fixture';
 
 /** Monta um `TableData` só com as linhas — as colunas não são lidas. */
 function table(rows: Record<string, unknown>[]): TableData {
   return { columns: [{ key: 'tipo', label: 'tipo' }], rows };
 }
 
+/** Distância entre dois pontos do quadrado unitário. */
+function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
 describe('readGraph — leitura das linhas', () => {
   it('lê nós e arestas declarados pela coluna `tipo`', () => {
-    const model = readGraph(fixture);
+    const model = readGraph(funnelFixture);
     expect(model.nodes).toHaveLength(8);
     expect(model.edges).toHaveLength(8);
     expect(model.nodes[0]).toMatchObject({
@@ -87,7 +95,7 @@ describe('readGraph — leitura das linhas', () => {
   });
 
   it('conta as ligações de cada nó e lista os grupos na ordem de aparição', () => {
-    const model = readGraph(fixture);
+    const model = readGraph(funnelFixture);
     expect(degreesOf(model).get('inscrito')).toBe(4);
     expect(groupsOf(model)).toEqual([
       'N1 · Lançamento',
@@ -100,7 +108,7 @@ describe('readGraph — leitura das linhas', () => {
 
 describe('computeLayers — camadas', () => {
   it('respeita a camada declarada', () => {
-    const layers = computeLayers(readGraph(fixture));
+    const layers = computeLayers(readGraph(funnelFixture));
     expect(layers.get('lancado')).toBe(0);
     expect(layers.get('inscrito')).toBe(1);
     expect(layers.get('estoque')).toBe(3);
@@ -132,10 +140,10 @@ describe('computeLayers — camadas', () => {
 });
 
 describe('layoutGraph — posicionamento', () => {
-  const model = readGraph(fixture);
+  const model = readGraph(funnelFixture);
 
   it('é determinístico: o mesmo dado desenha sempre igual', () => {
-    const first = layoutGraph(model, 'force');
+    const first = layoutGraph(readGraph(fixture), 'force');
     const second = layoutGraph(readGraph(fixture), 'force');
     for (const [id, point] of first.points) {
       expect(second.points.get(id)).toEqual(point);
@@ -202,6 +210,31 @@ describe('layoutGraph — posicionamento', () => {
     expect(Math.max(...screen.map((p) => p.y))).toBeLessThanOrEqual(280);
   });
 
+  /**
+   * REGRESSÃO: com a simulação sempre em quadrado, uma rede num card 5:1
+   * aparecia como um quadradinho no meio, com 70% do card vazio dos lados. A
+   * proporção do card entra na simulação (não é um esticão depois de pronta),
+   * então a rede nasce no formato do espaço que tem.
+   */
+  it('a rede se organiza no FORMATO do card', () => {
+    const network = readGraph(fixture);
+    const square = layoutGraph(network, 'force', 1);
+    const wide = layoutGraph(network, 'force', 4);
+
+    const ratio = (layout: { extent: { x: number; y: number } }) =>
+      layout.extent.x / layout.extent.y;
+
+    expect(ratio(square)).toBeLessThan(1.6);
+    expect(ratio(wide)).toBeGreaterThan(2.4);
+  });
+
+  it('proporção absurda não vira uma tira: o valor é grampeado', () => {
+    const network = readGraph(fixture);
+    const extreme = layoutGraph(network, 'force', 40);
+    const capped = layoutGraph(network, 'force', 5);
+    expect(extreme.extent).toEqual(capped.extent);
+  });
+
   it('grafo vazio não produz NaN nem posição órfã', () => {
     const empty = layoutGraph({ nodes: [], edges: [] }, 'force');
     expect(empty.points.size).toBe(0);
@@ -212,6 +245,79 @@ describe('layoutGraph — posicionamento', () => {
     const single = layoutGraph({ nodes: [{ id: 'a', label: 'A' }], edges: [] }, 'force');
     expect(single.points.get('a')).toMatchObject({ x: 0.5, y: 0.5 });
     expect(single.extent).toEqual({ x: 1, y: 1 });
+  });
+});
+
+/**
+ * O AGLOMERADO — o que o usuário chamou de "tipo Obsidian". Aqui a afirmação é
+ * geométrica: satélite perto do seu hub, aglomerado longe do outro aglomerado.
+ * Sem isto o layout continuaria "funcionando" e desenhando um novelo.
+ */
+describe('layoutGraph — aglomerados (força)', () => {
+  const model = readGraph(fixture);
+  const { points } = layoutGraph(model, 'force');
+
+  it('a vitrine tem volume de verdade (não é um exemplo de cinco bolinhas)', () => {
+    expect(model.nodes.length).toBeGreaterThan(150);
+    expect(model.edges.length).toBeGreaterThan(150);
+    expect(groupsOf(model).length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('as folhas de um hub ficam numa COROA — mesma distância do centro', () => {
+    const degrees = degreesOf(model);
+    const hub = points.get('CIV-hub');
+    const leaves = model.edges
+      .filter((edge) => edge.source === 'CIV-hub' && degrees.get(edge.target) === 1)
+      .map((edge) => points.get(edge.target));
+
+    expect(leaves.length).toBeGreaterThan(10);
+    const radii = leaves.map((leaf) => distance(hub!, leaf!));
+    const spread = Math.max(...radii) - Math.min(...radii);
+    // Coroa: a variação do raio é desprezível perto do próprio raio.
+    expect(spread).toBeLessThan(radii[0] * 0.02);
+  });
+
+  it('cada satélite fica MUITO mais perto do seu hub do que de outro hub', () => {
+    const own = distance(points.get('CIV-hub')!, points.get('CIV-n1')!);
+    const other = distance(points.get('VAR-hub')!, points.get('CIV-n1')!);
+    expect(other).toBeGreaterThan(own * 3);
+  });
+
+  it('nós do mesmo grupo ficam mais juntos do que nós de grupos diferentes', () => {
+    const centroids = new Map<string, { x: number; y: number; n: number }>();
+    for (const node of model.nodes) {
+      const point = points.get(node.id);
+      if (!point || !node.group) continue;
+      const acc = centroids.get(node.group) ?? { x: 0, y: 0, n: 0 };
+      centroids.set(node.group, { x: acc.x + point.x, y: acc.y + point.y, n: acc.n + 1 });
+    }
+    const centers = [...centroids.entries()].map(([group, acc]) => ({
+      group,
+      x: acc.x / acc.n,
+      y: acc.y / acc.n,
+    }));
+
+    // Dispersão média DENTRO do grupo, contra a distância média ENTRE grupos.
+    let inside = 0;
+    let insideCount = 0;
+    for (const node of model.nodes) {
+      const point = points.get(node.id);
+      const center = centers.find((c) => c.group === node.group);
+      if (!point || !center) continue;
+      inside += distance(point, center);
+      insideCount += 1;
+    }
+
+    let between = 0;
+    let betweenCount = 0;
+    for (let i = 0; i < centers.length; i += 1) {
+      for (let j = i + 1; j < centers.length; j += 1) {
+        between += distance(centers[i], centers[j]);
+        betweenCount += 1;
+      }
+    }
+
+    expect(between / betweenCount).toBeGreaterThan((inside / insideCount) * 2);
   });
 });
 

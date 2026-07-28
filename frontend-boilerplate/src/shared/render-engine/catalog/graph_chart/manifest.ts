@@ -31,7 +31,7 @@ export const manifest = {
   kind: 'chart',
   name: 'Grafo (rede)',
   description:
-    'Rede de nós ligados por arestas — mostra COMO as coisas se conectam e por onde o volume flui: funil de camadas (N1 → N2 → N3), encadeamento de processos, relação entre entidades. Shape `table`: cada linha tem a coluna `tipo` (no|aresta) que define seu papel. Colunas por tipo: no{id, rotulo?, grupo?, valor?, camada?}; aresta{origem, destino, valor?, rotulo?}. Um id citado em `origem`/`destino` e não declarado vira nó automaticamente — para um fluxo simples basta a lista de arestas. Para declarar nós e arestas na mesma consulta, componha com UNION ALL. O tamanho do nó sai de `valor` (ou, sem ele, do número de ligações); a espessura da aresta sai do `valor` dela.',
+    'Rede de nós ligados por arestas, com AGLOMERADOS visíveis — mostra COMO as coisas se conectam e por onde o volume flui: grupos econômicos e vínculos entre contribuintes, funil de camadas (N1 → N2 → N3), encadeamento de processos. Aguenta centenas de nós: os satélites (nós de uma ligação só) formam uma coroa em volta do seu hub, o `grupo` puxa os seus para a mesma região da tela, e a marca encolhe conforme a rede cresce. Shape `table`: cada linha tem a coluna `tipo` (no|aresta) que define seu papel. Colunas por tipo: no{id, rotulo?, grupo?, valor?, camada?}; aresta{origem, destino, valor?, rotulo?}. Um id citado em `origem`/`destino` e não declarado vira nó automaticamente — para um fluxo simples basta a lista de arestas. Para declarar nós e arestas na mesma consulta, componha com UNION ALL. O tamanho do nó sai de `valor` (ou, sem ele, do número de ligações); a espessura da aresta sai do `valor` dela.',
   source: 'custom',
   propsSchema: {
     type: 'object',
@@ -42,13 +42,13 @@ export const manifest = {
         enum: ['force', 'layered', 'radial'],
         default: 'force',
         description:
-          'Como os nós são posicionados. "force" (default) = simulação de forças, o desenho orgânico de mapa de conhecimento: bom para EXPLORAR uma rede sem hierarquia (quem se conecta com quem, o que é periférico). "layered" = uma COLUNA por camada, da esquerda para a direita — é o layout do FUNIL: use quando o dado tem `camada`, ou quando as arestas descrevem um fluxo com começo e fim (a camada é deduzida do caminho mais longo até o nó). "radial" = anéis concêntricos, uma camada por anel, do centro para fora: mesma leitura hierárquica do "layered" quando há muitos nós por camada. O desenho é DETERMINÍSTICO nos três: os mesmos dados produzem sempre o mesmo desenho (o painel não muda de forma a cada recarga, e a exportação em PDF sai igual à tela).',
+          'Como os nós são posicionados. "force" (default) = simulação de forças, o desenho orgânico de mapa de conhecimento: é o layout dos AGLOMERADOS — satélites em coroa ao redor do hub, grupos separados em regiões da tela — e o que se usa para EXPLORAR volume (quem se conecta com quem, quem é periférico, onde estão as pontes entre grupos). "layered" = uma COLUNA por camada, da esquerda para a direita — é o layout do FUNIL: use quando o dado tem `camada`, ou quando as arestas descrevem um fluxo com começo e fim (a camada é deduzida do caminho mais longo até o nó). "radial" = anéis concêntricos, uma camada por anel, do centro para fora: mesma leitura hierárquica do "layered" quando há muitos nós por camada. O desenho é DETERMINÍSTICO nos três: os mesmos dados produzem sempre o mesmo desenho (o painel não muda de forma a cada recarga, e a exportação em PDF sai igual à tela).',
       },
       showLabels: {
         type: 'boolean',
         default: true,
         description:
-          'Escreve o rótulo de cada nó abaixo dele. Desligue em redes densas (dezenas de nós), onde os textos se sobrepõem e viram ruído — a identificação continua disponível no tooltip de cada nó.',
+          'Escreve o rótulo do nó abaixo dele. Em rede grande o próprio bloco AFINA os rótulos — acima de 16 nós, só os maiores recebem nome, porque duzentos textos de 12px cobririam o desenho —, e o resto continua identificável no tooltip. Desligue para o desenho puro, sem nenhum texto.',
       },
       showArrows: {
         type: 'boolean',
@@ -153,11 +153,14 @@ export const manifest = {
     valueFormat: 'number',
   },
   /**
-   * Teto de LINHAS da consulta (nós + arestas somados). Um grafo deixa de ser
-   * legível muito antes disso — acima de ~120 nós vira uma nuvem —, mas o
-   * limite existe para proteger o desenho: a simulação de forças é O(n²) por
-   * iteração, e o número de iterações já cai conforme a rede cresce.
+   * Teto de LINHAS da consulta (nós + arestas somados).
+   *
+   * Era 600 na 1.0.0, calibrado para uma simulação que colocava TODO nó no laço
+   * O(n²). Na 1.1.0 os satélites saem da simulação (viram coroa em volta do
+   * hub), então o que custa é o ESQUELETO — algumas dezenas de nós numa rede de
+   * centenas. O teto passa a ser o do DESENHO, não o do cálculo: acima disso o
+   * SVG tem mais marcas do que a tela tem pixels, e o que se vê é uma mancha.
    */
-  maxRows: 600,
-  version: '1.0.0',
+  maxRows: 1500,
+  version: '1.1.0',
 } satisfies BlockManifest;
