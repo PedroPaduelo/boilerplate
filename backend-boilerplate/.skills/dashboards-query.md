@@ -37,20 +37,25 @@ mas o contrato é series: `x` = rótulo da barra, `y` = valor. Mandar `label,val
 nele -> `contract_violation: /0 must have required property 'x'`. Só `donut`,
 `bar_list` e `leaderboard` usam `label,value`.
 
-Exemplos:
+Exemplos (nomes ilustrativos — use os do schema que você introspectou):
 ```sql
--- scalar (kpi)
-SELECT SUM("VALOR_PREVISTO")::numeric AS value FROM "SCH"."RECEITAS_PORTAL" WHERE "ANO" = 2025;
+-- scalar (kpi): UMA linha, UMA coluna `value`
+SELECT COUNT(*)::int AS value FROM mensagens WHERE criado_em >= CURRENT_DATE - 30;
 
--- series (h_bar_chart / bar_chart) - x,y!
-SELECT 'Divida Ativa' AS x, SUM("VL_DIVIDA")::numeric AS y FROM "SCH"."DUAM_IT" WHERE ...;
+-- series (bar_chart / h_bar_chart): x,y
+SELECT canal AS x, COUNT(*)::int AS y FROM mensagens GROUP BY canal ORDER BY y DESC;
 
--- series temporal (line_chart)
-SELECT mes AS x, SUM(valor)::numeric AS y FROM arrecadacao GROUP BY mes ORDER BY mes;
+-- series temporal (line_chart): x ordenável como texto ou número
+SELECT to_char(criado_em, 'YYYY-MM-DD') AS x, COUNT(*)::int AS y
+  FROM mensagens GROUP BY 1 ORDER BY 1;
 
--- categorical (donut / bar_list)
-SELECT "NOME" AS label, SUM("VALOR_PREVISTO")::numeric AS value
-  FROM "SCH"."RECEITAS_PORTAL" WHERE "NIVEL" = 1 GROUP BY "NOME" ORDER BY value DESC LIMIT 8;
+-- series com várias linhas no mesmo gráfico: a 3ª coluna `series` separa
+SELECT to_char(criado_em, 'YYYY-MM-DD') AS x, COUNT(*)::int AS y, direcao AS series
+  FROM mensagens GROUP BY 1, 3 ORDER BY 1;
+
+-- categorical (donut / bar_list): label,value
+SELECT status AS label, COUNT(*)::int AS value
+  FROM mensagens GROUP BY status ORDER BY value DESC LIMIT 8;
 ```
 
 ### Transform declarativo (quando NÃO der pra renomear)
@@ -67,7 +72,7 @@ por tipo e garante precisão.
 ## 3. Case-sensitivity do Postgres (armadilha nº 1)
 
 Identificadores maiúsculos/aspas são **case-sensitive**. Use aspas duplas em
-schema, tabela E colunas: `"SCH"."RECEITAS_PORTAL"`, `"VALOR_PREVISTO"`. Vale no
+schema, tabela E colunas: `"APP"."PEDIDOS"`, `"VALOR_TOTAL"`. Vale no
 `get_connection_schema.tables` também.
 
 ## 4. Parâmetros posicionais (nunca interpole)
@@ -90,7 +95,7 @@ AVISO: **NUNCA valide uma coluna com `information_schema.columns ... WHERE table
 IN ('A','B','C')`** - o resultado MISTURA colunas de tabelas diferentes e você
 acha que a coluna existe na tabela errada (causa real do erro
 `column "CCP" does not exist`). Valide UMA tabela por vez, ou melhor: rode
-`SELECT "COLUNA" FROM "SCH"."TABELA" LIMIT 1` - se a coluna não existe, falha na hora.
+`SELECT "COLUNA" FROM "APP"."TABELA" LIMIT 1` - se a coluna não existe, falha na hora.
 
 ## 7. Encoding do banco (LATIN1 - bancos legados de prefeitura)
 
@@ -124,7 +129,7 @@ Faça UM scan com `COUNT(*) FILTER (WHERE ...)` / `SUM(x) FILTER (WHERE ...)`:
 SELECT
   COUNT(*) FILTER (WHERE cond_a) AS a,
   SUM(valor) FILTER (WHERE cond_b) AS b
-FROM "SCH"."TAB" WHERE recorte_comum;
+FROM "APP"."TAB" WHERE recorte_comum;
 ```
 
 **8.3 Transpor uma linha de agregados em várias linhas (categorical/table).** Para
@@ -134,7 +139,7 @@ um donut/tabela a partir de UM scan agregado, agregue numa linha e transponha co
 SELECT label, value FROM (
   SELECT unnest(ARRAY['Fatia A','Fatia B']) AS label,
          unnest(ARRAY[ SUM(v) FILTER (WHERE a), SUM(v) FILTER (WHERE b) ])::numeric AS value
-  FROM (SELECT v, a, b FROM "SCH"."TAB" WHERE recorte) s
+  FROM (SELECT v, a, b FROM "APP"."TAB" WHERE recorte) s
 ) t;
 ```
 
@@ -155,7 +160,7 @@ inesperado. Sempre confira a contagem com `run_query`.
 ## 10. `pg_stat_user_tables.n_live_tup` é ESTIMATIVA
 Pode mostrar `0` numa tabela cheia (autovacuum atrasado). Use só como dica de
 volume. Para saber se uma tabela tem dados de verdade:
-`SELECT COUNT(*) FROM "SCH"."TABELA"`. Nunca conclua "tabela vazia / sem fonte"
+`SELECT COUNT(*) FROM "APP"."TABELA"`. Nunca conclua "tabela vazia / sem fonte"
 sem o `COUNT(*)` real.
 
 ## 11. Permissões por schema

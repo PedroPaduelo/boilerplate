@@ -25,7 +25,7 @@ ANTES de você criar o chart. Pular isso é a causa de TODOS os erros abaixo.
 
 | Erro real visto | Causa | Como prevenir (obrigatório) |
 |---|---|---|
-| `column "X" does not exist` | assumiu uma coluna que não existe (ou viu numa consulta de `information_schema` que MISTURAVA várias tabelas com `IN (...)`) | valide a coluna NA TABELA específica: `SELECT "X" FROM "SCH"."TABELA" LIMIT 1`. NUNCA confie em `information_schema ... WHERE table_name IN (...)` (mistura colunas de tabelas diferentes). Confirme coluna por tabela. |
+| `column "X" does not exist` | assumiu uma coluna que não existe (ou viu numa consulta de `information_schema` que MISTURAVA várias tabelas com `IN (...)`) | valide a coluna NA TABELA específica: `SELECT "X" FROM "APP"."TABELA" LIMIT 1`. NUNCA confie em `information_schema ... WHERE table_name IN (...)` (mistura colunas de tabelas diferentes). Confirme coluna por tabela. |
 | `result does not match dataContract (series): /0 must have required property 'x'` | usou colunas `label,value` num bloco de shape **series** (que exige `x,y`) | conheça o shape do bloco (ver §6 e a skill catálogo). `bar_chart`, `h_bar_chart`, `line_chart`, `area_chart`, `scatter_chart`, `spark_chart`, `signal_card` = **series** (`x,y`). Só `donut`, `bar_list`, `leaderboard` = **categorical** (`label,value`). h_bar PARECE categórico mas é series. |
 | `character with byte sequence 0xe2 0x80 0x94 in encoding "UTF8" has no equivalent in encoding "LATIN1"` | literal de string na query tinha caractere tipográfico Unicode (travessão `-`, seta `>`, reticências `...`, aspas curvas `" " ' '`, bullet `*`) e o banco é **LATIN1** | NUNCA use esses caracteres em literais SQL. Use ASCII: `-` em vez de travessão, `->` em vez de seta, `...` em vez de reticências. Acentos latinos normais (á é í ó ú ã õ ç à â ê ô) SÃO válidos em LATIN1. Cheque o encoding: `SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname=current_database();` |
 | `canceling statement due to statement timeout` | query pesada (COUNT(DISTINCT)/GROUP BY sobre milhões) demorou demais | meça com `run_query` (o resultado traz `durationMs`). Se > ~10s, OTIMIZE (ver skill query §perf): troque COUNT(DISTINCT) por COUNT(*) quando houver chave única; use `FILTER` p/ uma passada em vez de N scans; agregue uma vez e transponha com `unnest`. |
@@ -72,7 +72,7 @@ usuário.
 ### 3.1 Case-sensitivity do Postgres
 Identificadores maiúsculos/custom são case-sensitive. `SELECT * FROM SCH.RECEITAS`
 vira `sch.receitas` e dá `query_failed`. Use aspas duplas em schema, tabela E
-colunas: `"SCH"."RECEITAS_PORTAL"`, `"VALOR_PREVISTO"`. Vale também no
+colunas: `"APP"."PEDIDOS"`, `"VALOR_TOTAL"`. Vale também no
 `get_connection_schema.tables`.
 
 ### 3.2 bigint/numeric como string
@@ -98,7 +98,7 @@ false E null) ou `COALESCE(coluna,false) = false`. Sintoma do erro: KPI retorna
 ### 3.5 `pg_stat_user_tables.n_live_tup` é ESTIMATIVA (pode mentir)
 `n_live_tup` vem do autovacuum e pode estar desatualizado (mostrar `0` numa
 tabela com centenas de milhares de linhas). NUNCA decida "tabela vazia" por
-`pg_stat`. Confirme com `SELECT COUNT(*) FROM "SCH"."TABELA"`. Use `pg_stat` só
+`pg_stat`. Confirme com `SELECT COUNT(*) FROM "APP"."TABELA"`. Use `pg_stat` só
 como dica grosseira de quais tabelas têm volume.
 
 ### 3.6 Aninhamento de `props` (MCP client serializa errado)

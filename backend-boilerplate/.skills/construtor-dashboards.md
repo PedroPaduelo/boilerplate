@@ -89,7 +89,7 @@ confirme com o usuário - tem efeito visível/compartilhável.
 4. **`visibility` é UPPERCASE** (`PRIVATE`|`DEPARTMENT`|`ORG`). DEPARTMENT exige
    `departmentId`. Mandar lowercase (`private`) -> `invalid_arguments`.
 5. **Postgres é CASE-SENSITIVE** em identificadores maiúsculos/custom. Aspas
-   duplas SEMPRE: `"SCH"."RECEITAS_PORTAL"`, `"VALOR_PREVISTO"`. Sem aspas o
+   duplas SEMPRE: `"APP"."PEDIDOS"`, `"VALOR_TOTAL"`. Sem aspas o
    Postgres lowercazeia e dá `query_failed: column "..." does not exist`.
 6. **CAST obrigatório em agregações** (`::int`/`::numeric`) - o node-pg devolve
    `numeric`/`bigint` como string, e sem CAST dá `contract_violation` por tipo.

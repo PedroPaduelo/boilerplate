@@ -199,7 +199,9 @@ original e valor atualizado. É `kind=chart` shape `table`, mas SELF-CONTAINED
   propagadas pelo chart): `stageLabel` (obrigatório), `accent`
   (`blue|red|green|amber|violet|slate`), `defaultOpen` (bool), `barLabel`,
   `valueFormat` (`BRL|compactBRL`).
-- Quando usar: funil de cobrança/dívida ativa, jornada por etapas temporais.
+- Quando usar: funil em etapas (do primeiro contato à conclusão), jornada por
+  estágios temporais — quando importa ver quanto se perde de uma etapa à
+  seguinte, não só o total de cada uma.
 
 ## 6. NARRATIVOS (sem dados - kind=text/title)
 

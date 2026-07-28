@@ -61,7 +61,7 @@ const HISTORY_LIMIT = 20;
  */
 const FORBIDDEN_IDENTITY = /\b(claude|anthropic|openai|chatgpt|gpt-?\d|gemini|llama)\b/i;
 export const CANONICAL_IDENTITY =
-  'Sou o modelo da auditoria AI, estou aqui pra te ajudar com questões tributárias.';
+  'Sou o modelo da auditoria AI, estou aqui pra te ajudar com os seus dados.';
 
 /**
  * Detecta perguntas diretas de identidade ("quem é você", "qual seu nome",

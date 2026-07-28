@@ -44,7 +44,7 @@ role=ADMIN, isActive=false), criado pelo seed. Ver `src/lib/whatsapp-system.ts`.
 ```bash
 # Obrigatórias para HABILITAR o canal (sem as 3, /webhooks/evolution → 503).
 EVOLUTION_API_URL=http://localhost:8080   # base URL da Evolution
-EVOLUTION_INSTANCE=palmas                 # nome da instância (case-sensitive)
+EVOLUTION_INSTANCE=minha-instancia                 # nome da instância (case-sensitive)
 EVOLUTION_APIKEY=troque-pela-apikey       # apikey da instância (header `apikey`)
 
 # Opcional: gate do webhook. Se setado, exige header `x-channel-secret`.
@@ -79,7 +79,7 @@ Pela UI (`http://localhost:8080/manager`) ou via API:
 curl -X POST http://localhost:8080/instance/create \
   -H 'apikey: troque-por-um-token-forte' \
   -H 'Content-Type: application/json' \
-  -d '{ "instanceName": "palmas", "qrcode": true, "integration": "WHATSAPP-BAILEYS" }'
+  -d '{ "instanceName": "minha-instancia", "qrcode": true, "integration": "WHATSAPP-BAILEYS" }'
 ```
 
 Escaneie o QR Code com o WhatsApp do número institucional.
@@ -87,7 +87,7 @@ Escaneie o QR Code com o WhatsApp do número institucional.
 ### 2) Apontar o webhook da instância para o backend
 
 ```bash
-curl -X POST http://localhost:8080/webhook/set/palmas \
+curl -X POST http://localhost:8080/webhook/set/minha-instancia \
   -H 'apikey: troque-por-um-token-forte' \
   -H 'Content-Type: application/json' \
   -d '{
