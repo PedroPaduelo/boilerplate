@@ -61,6 +61,15 @@ pixel-perfect e **sem nenhuma quebra de contrato**.
 - **`block-sizing`**: `CHART_BODY_HEIGHT.series` 312 → **388** e `categorical`
   216 → **328**, para acomodar os 320px da referência + padding + legenda (sem
   isso o card crescia ~35px na chegada do dado).
+- **Espessura de barra com TETO em pixel** (`geometry.barMaxWidth` 32px,
+  `hBarMaxWidth` 24px, via `maxBarSize`). A fração da referência (48/40/36/30%)
+  não tem teto: a mesma coluna que dá 21px num card de 331px dava **118px** num
+  painel de 1.546px e virava um bloco de cor. A fração continua mandando
+  enquanto a faixa é estreita; o teto assume quando ela é larga. Com isso saiu
+  o **§11** (engrossar a coluna por largura de JANELA, que num catálogo de cards
+  media a grandeza errada) e, com ele, `barWidthMd`, `barWidthSm`, `barRadiusSm`
+  e o `useMediaQuery` do `bar-chart`. Detalhes e limitação conhecida em
+  `NOTAS.md` → `[AJUSTE] Espessura de barra`.
 - **Todos os 20 blocos de `kind=chart`** repaginados: linha, área, colunas
   (simples/múltipla/empilhada/negativa), barra horizontal, rosca/pizza, medidores
   radiais (semicircular, radial, tracejado), anel de progresso, dispersão,

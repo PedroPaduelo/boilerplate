@@ -271,20 +271,31 @@ export const CHART_GEOMETRY = {
   markerStrokeWidth: 3,
   /** Raio da coluna — SÓ no topo. §10 */
   barRadius: 4,
-  /** Raio da coluna em telas pequenas (<600px). §11 */
-  barRadiusSm: 3,
   /** Raio da barra horizontal / coluna negativa. §7/§8 */
   barRadiusFlat: 2,
   /** Largura da coluna (fração da faixa). §10 */
   barWidth: 0.48,
-  /** Largura da coluna < 900px. §11 */
-  barWidthMd: 0.6,
-  /** Largura da coluna < 600px. §11 */
-  barWidthSm: 0.8,
   /** Largura da coluna SIMPLES — o §4 estreita para 40%. */
   barWidthSingle: 0.4,
   /** Largura da coluna EMPILHADA — o §6 estreita para 36%. */
   barWidthStacked: 0.36,
+  /**
+   * TETO ABSOLUTO da coluna, em px.
+   *
+   * A referência define a espessura como FRAÇÃO da faixa (48/40/36%), e fração
+   * não tem teto: a mesma regra que dá 21px num card de 330px dá 118px num
+   * painel de 1.500px com cinco categorias — a coluna deixa de ser uma marca de
+   * medida e vira um bloco de cor. Todo sistema de data-viz sério limita a
+   * espessura em pixel por isso.
+   *
+   * 32px é a espessura que a própria referência produz no `demo.html` (fração
+   * aplicada à largura em que os 18 tipos foram desenhados), então o teto não
+   * inventa uma medida nova: ele PRESERVA a da referência quando o contêiner
+   * cresce além dela. Múltiplo de 8 na escala de 4px do tema.
+   */
+  barMaxWidth: 32,
+  /** TETO ABSOLUTO da barra horizontal, em px — mesmo raciocínio de `barMaxWidth`. */
+  hBarMaxWidth: 24,
   /**
    * Respiro entre colunas vizinhas do mesmo grupo (px). No original é um traço
    * de 2px TRANSPARENTE (§5); no recharts, `barGap`.

@@ -17,6 +17,25 @@
  * linha nem marcações, raio 4px SÓ no topo, largura 48%, hover que ESCURECE
  * (a maioria das libs clareia) e entrada de 360ms com 120ms por série.
  *
+ * ---------------------------------------------------------------------------
+ * ESPESSURA: FRAÇÃO **COM TETO** (desvio consciente do §11 — ver NOTAS)
+ * ---------------------------------------------------------------------------
+ * A referência mede a coluna em FRAÇÃO da faixa, e a fração não tem teto: as
+ * mesmas 40% que dão 21px num card de 330px dão 118px num painel de 1.500px
+ * com cinco categorias. A coluna deixa de ser uma marca de medida e vira um
+ * bloco de cor — o gráfico briga com a interface em vez de conversar com ela.
+ *
+ * Então a fração continua sendo a da referência e ganha um TETO EM PIXEL
+ * (`geometry.barMaxWidth`), aplicado pelo recharts via `maxBarSize`. Quando a
+ * faixa é estreita nada muda; quando é larga, a coluna para de engordar e o
+ * respiro entre as categorias cresce no lugar dela.
+ *
+ * O teto também substitui o §11 (engrossar a coluna por LARGURA DE TELA):
+ * aquela regra media a janela para adivinhar a faixa, e num catálogo de cards
+ * a janela não diz nada sobre o card. Com o teto, a espessura passa a depender
+ * só da faixa — a grandeza que ela sempre quis medir —, e o mesmo gráfico fica
+ * com a mesma cara no card, no painel e no PDF.
+ *
  * A cor sai sempre de `useChartPalette` — nenhum hexadecimal atravessa daqui.
  */
 import type { ComponentProps, ReactElement } from 'react';
@@ -31,7 +50,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useMediaQuery } from '@astryxdesign/core/hooks';
 import {
   CHART_MARGIN,
   Y_AXIS_WIDTH,
@@ -97,13 +115,6 @@ export interface BarChartProps extends ChartStateProps {
   /** Escopo de `{{interpolação}}` dos textos do gráfico (`buildChartScope`). */
   scope?: ChartScope;
 }
-
-/**
- * §11 — conforme a tela encolhe, a coluna engrossa para continuar legível:
- * 48% acima de 900px, 60% abaixo disso, 80% (e raio 3) abaixo de 600px.
- */
-const MEDIUM_QUERY = '(max-width: 899px)';
-const NARROW_QUERY = '(max-width: 599px)';
 
 /**
  * Larguras de coluna que a referência sobrepõe à base de 48%: §4 afina a
@@ -194,24 +205,21 @@ function lowestValue(series: ChartSeries[]): number {
 }
 
 /**
- * Largura da coluna (fração da faixa): o responsivo de §11 vence o layout,
- * porque abaixo de 900px a coluna fina simplesmente some.
+ * Largura da coluna como FRAÇÃO da faixa, pelo layout: 36% empilhada (§6),
+ * 48% agrupada (§10 — a faixa é dividida entre as séries) e 40% simples (§4).
+ *
+ * O teto em pixel que impede a coluna de virar bloco é aplicado depois, pelo
+ * recharts (`maxBarSize`) — aqui só mora a proporção da referência.
  */
 function barWidthOf({
   geometry,
   isStacked,
   isGrouped,
-  isMedium,
-  isNarrow,
 }: {
   geometry: ChartPalette['geometry'];
   isStacked: boolean;
   isGrouped: boolean;
-  isMedium: boolean;
-  isNarrow: boolean;
 }): number {
-  if (isNarrow) return geometry.barWidthSm;
-  if (isMedium) return geometry.barWidthMd;
   if (isStacked) return STACKED_BAR_WIDTH;
   return isGrouped ? geometry.barWidth : SINGLE_BAR_WIDTH;
 }
@@ -246,9 +254,6 @@ export function BarChart({
   summary,
 }: BarChartProps) {
   const palette = useChartPalette();
-  // §11 — a geometria da coluna responde à largura da tela, não ao dado.
-  const isMedium = useMediaQuery(MEDIUM_QUERY);
-  const isNarrow = useMediaQuery(NARROW_QUERY);
 
   const isEmpty = isSeriesEmpty(series);
   const rows = toChartRows(series, labels);
@@ -270,23 +275,20 @@ export function BarChart({
   const hasTooltipTitle = isGrouped || isStacked || byCategory;
 
   const geometry = palette.geometry;
-  const barWidth = barWidthOf({ geometry, isStacked, isGrouped, isMedium, isNarrow });
+  const barWidth = barWidthOf({ geometry, isStacked, isGrouped });
   /**
    * O recharts não tem "largura da coluna": ele recorta a faixa pelos DOIS
    * lados (`barCategoryGap` vale para cada um) e o que sobra é a coluna. Daí a
-   * conversão — feita em runtime porque a largura depende do layout e da tela.
+   * conversão — feita em runtime porque a fração depende do layout.
    */
   const categoryGap = `${((1 - barWidth) / 2) * 100}%`;
 
-  /** Raio do topo: 4px na base, 3px abaixo de 600px (§11). */
-  const topRadius = isNarrow
-    ? ([geometry.barRadiusSm, geometry.barRadiusSm, 0, 0] as [
-        number,
-        number,
-        number,
-        number,
-      ])
-    : chartBarRadius(palette);
+  /**
+   * Raio do topo: 4px (§10). Não precisa de exceção para coluna fina — o
+   * recharts já limita o raio a metade do menor lado do retângulo, então uma
+   * coluna de 5px arredonda 2,5px em vez de virar cápsula.
+   */
+  const topRadius = chartBarRadius(palette);
 
   /**
    * §7 arredonda as duas pontas com 2px porque a coluna negativa cresce para
@@ -364,6 +366,10 @@ export function BarChart({
                 stackId={isStacked ? 'stack' : undefined}
                 fill={paint.fill}
                 radius={radiusAt(index)}
+                // TETO da espessura: a fração acima diz a proporção, este
+                // número diz até onde ela pode crescer em pixel. Sem ele, um
+                // painel largo com poucas categorias vira parede de cor.
+                maxBarSize={geometry.barMaxWidth}
                 // Hover ESCURECE (`02-configuracao-base.md` §4).
                 activeBar={hasCells ? renderDarkenedBar : { fill: paint.hover }}
                 {...chartAnimationProps(palette, index)}

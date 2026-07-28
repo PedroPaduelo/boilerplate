@@ -1149,3 +1149,52 @@ comportamento ou por dependerem de decisão do produto:
 - `ChartTooltip` em modo "só o valor" (mini-gráficos);
 - `ChartLegends` com sublabel (§10 pede valores e sublabels na rosca);
 - zoom `xy` da dispersão (§15) — ver CHANGELOG, item 2 do "pendente de decisão".
+
+## [AJUSTE] Espessura de barra: fração da referência **com teto em pixel**
+
+**Sintoma relatado:** a coluna aparecia "muito grossa e não harmônica com a UI".
+
+**Causa.** A referência mede a coluna em FRAÇÃO da faixa (§10: 48%; §4: 40%;
+§6: 36%; §8: 30% na barra horizontal) e fração não tem teto. Medido no
+`/catalog`: o mesmo `bar_chart`, com as mesmas cinco categorias, desenha **21px**
+num card de 331px e **118px** quando o contêiner vai a 1.546px. A partir de umas
+poucas dezenas de pixels a coluna deixa de ser uma marca de medida e vira um
+bloco de cor — o gráfico briga com a interface em vez de conversar com ela.
+É o motivo pelo qual todo sistema de data-viz limita a espessura em pixel.
+
+**Decisão.** A fração continua sendo a da referência e ganha um TETO ABSOLUTO em
+pixel, aplicado pelo recharts (`maxBarSize`):
+
+| token                   | valor | onde                                |
+| ----------------------- | ----- | ----------------------------------- |
+| `geometry.barMaxWidth`  | 32px  | coluna (simples/agrupada/empilhada) |
+| `geometry.hBarMaxWidth` | 24px  | barra horizontal                    |
+
+32px não é medida nova: é a espessura que a PRÓPRIA referência produz no
+`demo.html` (a fração aplicada à largura em que os 18 tipos foram desenhados). O
+teto não muda o desenho da referência — ele o **preserva** quando o contêiner
+cresce além dela. Faixa estreita continua mandando na fração (conferido em teste
+com 40 categorias).
+
+**Consequência: §11 foi retirado.** O §11 engrossava a coluna por LARGURA DE
+TELA (60% abaixo de 900px, 80% e raio 3 abaixo de 600px). Aquela regra media a
+JANELA para adivinhar a FAIXA — e num catálogo de cards a janela não diz nada
+sobre o card: um card de 331px numa tela de 1.911px era tratado como desktop, e
+o mesmo gráfico ficava com espessuras diferentes só por causa do tamanho da
+janela. Com o teto, a espessura passa a depender só da faixa (a grandeza que o
+§11 sempre quis medir) e o mesmo gráfico fica com a mesma cara no card, no painel
+e no PDF. Saíram `barWidthMd`, `barWidthSm` e `barRadiusSm`; saiu também o
+`useMediaQuery` do `bar-chart`.
+
+O `barRadiusSm` não faz falta: o recharts já limita o raio a metade do menor lado
+do retângulo, então coluna fina arredonda proporcionalmente em vez de virar
+cápsula.
+
+**Limitação conhecida.** Quando o teto corta, o recharts recentra cada coluna na
+sua vaga — então num gráfico AGRUPADO muito largo com poucas categorias o
+respiro DENTRO do grupo cresce. Continua muito menor que o respiro ENTRE
+categorias (o teste `bar-thickness` tranca essa proporção), mas quem quiser o
+grupo colado precisa medir o contêiner e passar `barSize` em pixel — não foi
+feito para não trocar uma medição de layout por outra.
+
+**Travado por:** `src/shared/ui/charts/__tests__/bar-thickness.test.tsx`.

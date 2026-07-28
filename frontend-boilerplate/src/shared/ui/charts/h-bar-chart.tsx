@@ -10,7 +10,8 @@
  * ---------------------------------------------------------------------------
  *   orientação   horizontal (`layout="vertical"` na linguagem do recharts)
  *   cor          VERDE80 — `palette.primary80`, a mais recorrente do catálogo
- *   barra        30% da faixa (`geometry.hBarWidth`) → 35% de folga por lado
+ *   barra        30% da faixa (`geometry.hBarWidth`) → 35% de folga por lado,
+ *                com TETO de `geometry.hBarMaxWidth` px (ver nota abaixo)
  *   raio         2px (`geometry.barRadiusFlat`) SÓ NA PONTA (direita)
  *   traço        0
  *   altura       320px (`CHART_HEIGHT.default`)
@@ -118,6 +119,13 @@ function hBarRadius(palette: ChartPalette): [number, number, number, number] {
  *
  * É geometria derivada do DADO em runtime (depende de quantas categorias
  * cabem na faixa), por isso o cálculo mora aqui e não no tema.
+ *
+ * A fração sozinha não basta: um ranking de três linhas numa caixa de 320px de
+ * altura dá uma faixa de ~93px, e 30% dela é uma barra de 28px que continua
+ * engordando conforme a caixa cresce. Por isso a espessura também tem TETO em
+ * pixel (`geometry.hBarMaxWidth`, aplicado por `maxBarSize`): a proporção da
+ * referência vale enquanto a faixa é estreita, e o teto assume quando ela é
+ * larga — o excesso vira respiro entre as linhas, não mais tinta.
  */
 function categoryGap(palette: ChartPalette): string {
   return `${Math.round(((1 - palette.geometry.hBarWidth) / 2) * 100)}%`;
@@ -246,6 +254,8 @@ export function HBarChart({
             radius={radius}
             fill={fillAt(0)}
             strokeWidth={BAR_STROKE_WIDTH}
+            // Teto da espessura em pixel — ver `categoryGap` acima.
+            maxBarSize={palette.geometry.hBarMaxWidth}
             // Hover ESCURECE (§4 da configuração base). O recharts não tem
             // filtro de estado: a barra ativa é redesenhada com a cor da
             // própria célula já escurecida.
