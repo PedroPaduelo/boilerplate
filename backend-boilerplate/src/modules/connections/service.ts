@@ -81,6 +81,7 @@ export async function createConnection(
       ownerId: ctx.userId,
       departmentId: input.departmentId ?? null,
       visibility: input.visibility,
+      environment: input.environment,
       isActive: input.isActive,
     },
   });
@@ -126,6 +127,7 @@ export async function updateConnection(
   if (input.options !== undefined) data.options = normalizeOptions(input.options);
   if (input.departmentId !== undefined) data.departmentId = input.departmentId ?? null;
   if (input.visibility !== undefined) data.visibility = input.visibility;
+  if (input.environment !== undefined) data.environment = input.environment;
   if (input.isActive !== undefined) data.isActive = input.isActive;
 
   const updated = await prisma.connection.update({ where: { id }, data });

@@ -58,6 +58,19 @@ enum ConnectionType {
   POSTGRES
 }
 
+/// Ambiente do banco apontado por uma Connection — DECLARADO por quem cadastra,
+/// nunca inferido. Existiu uma heurística no front que adivinhava o ambiente
+/// procurando "dev"/"local"/"homolog" no nome da conexão e do banco, e caía em
+/// "Produção" quando não reconhecia nada. Isso marcava banco de teste como
+/// produção e, pior, marcava produção como "Dev" sempre que o nome continha
+/// "local" (ex.: `arrecadacao_local`). Numa ferramenta de auditoria o rótulo de
+/// ambiente orienta cuidado — então ele passou a ser um dado de verdade.
+enum ConnectionEnvironment {
+  DEV
+  HOMOLOG
+  PRODUCTION
+}
+
 /// Tipo de alvo de um ShareLink (token público com TTL).
 enum ShareTargetType {
   DASHBOARD
@@ -79,12 +92,12 @@ model User {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  memberships    DepartmentMembership[]
-  connections    Connection[]
-  charts         Chart[]
-  dashboards     Dashboard[]
-  shareLinks     ShareLink[]
-  conversations  Conversation[]
+  memberships   DepartmentMembership[]
+  connections   Connection[]
+  charts        Chart[]
+  dashboards    Dashboard[]
+  shareLinks    ShareLink[]
+  conversations Conversation[]
 
   @@map("users")
 }
@@ -127,26 +140,30 @@ model DepartmentMembership {
 /// (via MCP) e pelo runtime para executar queries. Credencial cifrada
 /// (AES-256-GCM) em `passwordCipher`.
 model Connection {
-  id             String         @id @default(cuid())
+  id             String                @id @default(cuid())
   name           String
   description    String?
-  type           ConnectionType @default(POSTGRES)
+  type           ConnectionType        @default(POSTGRES)
   host           String
-  port           Int            @default(5432)
+  port           Int                   @default(5432)
   database       String
   username       String
-  passwordCipher String         @map("password_cipher")
-  sslMode        String         @default("require") @map("ssl_mode")
+  passwordCipher String                @map("password_cipher")
+  sslMode        String                @default("require") @map("ssl_mode")
   options        Json?
-  ownerId        String         @map("owner_id")
-  departmentId   String?        @map("department_id")
-  visibility     Visibility     @default(DEPARTMENT)
-  isActive       Boolean        @default(true) @map("is_active")
+  ownerId        String                @map("owner_id")
+  departmentId   String?               @map("department_id")
+  visibility     Visibility            @default(DEPARTMENT)
+  /// Ambiente declarado no cadastro. O default só serve ao backfill da
+  /// migração (linhas antigas viram PRODUCTION — o lado seguro do erro);
+  /// a API de criação EXIGE o campo, para ninguém cair num padrão silencioso.
+  environment    ConnectionEnvironment @default(PRODUCTION)
+  isActive       Boolean               @default(true) @map("is_active")
   /// unknown | ok | error — atualizado por `POST /connections/:id/test`.
-  status         String         @default("unknown")
-  lastTestedAt   DateTime?      @map("last_tested_at")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  status         String                @default("unknown")
+  lastTestedAt   DateTime?             @map("last_tested_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
 
   owner      User        @relation(fields: [ownerId], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
@@ -211,16 +228,16 @@ model Dashboard {
   visibility   Visibility     @default(PRIVATE)
   status       ArtifactStatus @default(DRAFT)
 
-  draftLayout     Json      @map("draft_layout")
-  publishedLayout Json?     @map("published_layout")
+  draftLayout          Json      @map("draft_layout")
+  publishedLayout      Json?     @map("published_layout")
   /// Snapshot materializado dos blocos com dados, gerado no publish (T-G1
   /// bugfix do share público). Mesmo shape do batch `POST /dashboards/:id/data`
   /// (`{ dashboardId, mode, generatedAt, blocks }`). Permite que a página
   /// pública anônima `/public/:token` mostre blocos de dados (KPI/gráfico/
   /// tabela) sem precisar executar query ou ter usuário autenticado. Null
   /// até o 1º publish, ou se o dashboard não tem blocos de dados.
-  publishedDataPayload Json? @map("published_data_payload")
-  publishedAt     DateTime? @map("published_at")
+  publishedDataPayload Json?     @map("published_data_payload")
+  publishedAt          DateTime? @map("published_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -263,19 +280,19 @@ model ShareLink {
 /// Conversa (sessão de chat). Cada conversa acumula mensagens e tem um título.
 /// O userId é o dono da conversa (quem está conversando com o agente).
 model Conversation {
-  id        String    @id @default(cuid())
-  title     String    @default("Nova conversa")
-  userId    String    @map("user_id")
+  id        String   @id @default(cuid())
+  title     String   @default("Nova conversa")
+  userId    String   @map("user_id")
   /// Metadados arbitrários em JSON. Hoje: { source: 'whatsapp', phoneNumber,
   /// createdAt, lastInboundMessageId, lastAssistantMessageId, lastReplyAt,
   /// pushName } quando a conversa vem do canal WhatsApp. Null para conversas
   /// criadas pelo app web. Index GIN em `metadata` (migration dedicada).
-  metadata  Json?     @map("metadata")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  metadata  Json?    @map("metadata")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  ChatMessage[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
 
   @@map("conversations")
 }
@@ -293,7 +310,7 @@ model ChatMessage {
   tokensOut      Int?     @map("tokens_out")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
   @@map("chat_messages")

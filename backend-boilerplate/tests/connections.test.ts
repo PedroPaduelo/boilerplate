@@ -236,6 +236,7 @@ describe('connections — CRUD + cifragem', () => {
         password: target.password,
         sslMode: target.sslMode,
         visibility: 'DEPARTMENT',
+        environment: 'HOMOLOG',
         departmentId: dep1Id,
       },
     });
@@ -246,8 +247,43 @@ describe('connections — CRUD + cifragem', () => {
     expect(body.name).toBe(`Conn ${SUFFIX}`);
     expect(body.status).toBe('unknown');
     expect(body.ownerId).toBe(userIds[0]);
+    // Ambiente é DECLARADO: volta exatamente como foi enviado.
+    expect(body.environment).toBe('HOMOLOG');
     // SEGURANÇA: nenhum campo de senha presente.
     esperaSemCamposDeSenha(body);
+  });
+
+  it('POST /connections REJEITA cadastro sem ambiente (400)', async () => {
+    // O ambiente já foi adivinhado no cliente por heurística de nome, o que
+    // rotulava produção como "Dev". Agora é obrigatório e não tem default:
+    // omitir precisa falhar, nunca virar um palpite silencioso.
+    const res = await app.inject({
+      method: 'POST',
+      url: '/connections',
+      headers: authHeader(ownerToken),
+      payload: {
+        name: `Conn sem ambiente ${SUFFIX}`,
+        host: target.host,
+        port: target.port,
+        database: target.database,
+        username: target.username,
+        password: target.password,
+        sslMode: target.sslMode,
+        visibility: 'PRIVATE',
+      },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('PATCH /connections/:id troca o ambiente declarado', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/connections/${connId}`,
+      headers: authHeader(ownerToken),
+      payload: { environment: 'PRODUCTION' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().environment).toBe('PRODUCTION');
   });
 
   it('persiste a senha CIFRADA at-rest (decifra para o plaintext original)', async () => {
@@ -330,6 +366,7 @@ describe('connections — RBAC / visibilidade', () => {
         username: target.username,
         password: 'x',
         visibility: 'PRIVATE',
+        environment: 'DEV',
       },
     });
     expect(res.statusCode).toBe(403);
@@ -504,6 +541,7 @@ describe('connections — SEGURANÇA', () => {
         password: sentinela,
         sslMode: target.sslMode,
         visibility: 'PRIVATE',
+        environment: 'DEV',
       },
     });
     expect(criada.statusCode).toBe(201);

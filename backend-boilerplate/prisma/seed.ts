@@ -179,6 +179,8 @@ async function main() {
     ownerId: admin.id,
     departmentId: null,
     visibility: 'ORG' as const,
+    // Conexão de demonstração apontando para o Postgres local do app.
+    environment: 'DEV' as const,
     status: 'unknown',
   };
   const existingConn = await prisma.connection.findFirst({

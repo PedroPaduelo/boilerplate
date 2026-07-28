@@ -13,6 +13,12 @@ import { z } from 'zod';
 
 export const visibilityEnum = z.enum(['PRIVATE', 'DEPARTMENT', 'ORG']);
 export const connectionTypeEnum = z.enum(['POSTGRES']);
+/**
+ * Ambiente do banco. SEM `.default()` de propósito no create: um default aqui
+ * seria a mesma adivinhação silenciosa que este campo veio eliminar — quem
+ * cadastra precisa declarar.
+ */
+export const connectionEnvironmentEnum = z.enum(['DEV', 'HOMOLOG', 'PRODUCTION']);
 
 /** Resposta pública de uma conexão (SEM senha/cipher). */
 export const connectionResponseSchema = z.object({
@@ -29,6 +35,7 @@ export const connectionResponseSchema = z.object({
   ownerId: z.string(),
   departmentId: z.string().nullable(),
   visibility: z.string(),
+  environment: z.string(),
   isActive: z.boolean(),
   status: z.string(),
   lastTestedAt: z.date().nullable(),
@@ -52,6 +59,7 @@ export const createConnectionBodySchema = z.object({
   options: z.record(z.any()).nullish(),
   departmentId: z.string().nullish(),
   visibility: visibilityEnum.default('DEPARTMENT'),
+  environment: connectionEnvironmentEnum,
   isActive: z.boolean().default(true),
 });
 
@@ -70,6 +78,7 @@ export const updateConnectionBodySchema = z
     options: z.record(z.any()).nullish(),
     departmentId: z.string().nullish(),
     visibility: visibilityEnum.optional(),
+    environment: connectionEnvironmentEnum.optional(),
     isActive: z.boolean().optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, {
@@ -206,6 +215,7 @@ export function serializeConnection(conn: Connection): ConnectionResponse {
     ownerId: conn.ownerId,
     departmentId: conn.departmentId,
     visibility: conn.visibility,
+    environment: conn.environment,
     isActive: conn.isActive,
     status: conn.status,
     lastTestedAt: conn.lastTestedAt,
