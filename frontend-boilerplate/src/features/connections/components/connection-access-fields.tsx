@@ -24,6 +24,18 @@ const VISIBILITY_OPTIONS = [
   { value: 'ORG', label: 'Organização' },
 ];
 
+/**
+ * As três opções de ambiente. Ordenadas do mais inofensivo para o mais
+ * sensível, e SEM opção pré-selecionada: o campo existe justamente para acabar
+ * com o ambiente adivinhado, então um default aqui recriaria o problema em
+ * outro lugar — quem cadastra precisa escolher.
+ */
+const ENVIRONMENT_OPTIONS = [
+  { value: 'DEV', label: 'Dev' },
+  { value: 'HOMOLOG', label: 'Homologação' },
+  { value: 'PRODUCTION', label: 'Produção' },
+];
+
 export function ConnectionAccessFields({
   control,
   errors,
@@ -35,6 +47,23 @@ export function ConnectionAccessFields({
 
   return (
     <>
+      <Controller
+        control={control}
+        name="environment"
+        render={({ field }) => (
+          <Selector
+            label="Ambiente"
+            isRequired
+            placeholder="Selecione o ambiente"
+            description="Define o rótulo que a equipe vê ao abrir esta conexão."
+            options={ENVIRONMENT_OPTIONS}
+            value={field.value}
+            onChange={field.onChange}
+            status={errorStatus(errors.environment?.message)}
+          />
+        )}
+      />
+
       <FormLayout direction="horizontal">
         <Controller
           control={control}

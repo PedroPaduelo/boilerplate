@@ -11,6 +11,11 @@
 
 export type ConnectionVisibility = 'PRIVATE' | 'DEPARTMENT' | 'ORG';
 export type ConnectionType = 'POSTGRES';
+/**
+ * Ambiente do banco, DECLARADO no cadastro (enum `ConnectionEnvironment` do
+ * backend). Substitui a heurística que adivinhava o ambiente pelo nome.
+ */
+export type ConnectionEnvironment = 'DEV' | 'HOMOLOG' | 'PRODUCTION';
 /** Status de conectividade reportado pelo backend (test). */
 export type ConnectionStatus = string; // ex.: 'UNKNOWN' | 'OK' | 'ERROR'
 
@@ -29,6 +34,7 @@ export interface Connection {
   ownerId: string;
   departmentId: string | null;
   visibility: ConnectionVisibility;
+  environment: ConnectionEnvironment;
   isActive: boolean;
   status: ConnectionStatus;
   lastTestedAt: string | null;
@@ -66,6 +72,8 @@ export interface CreateConnectionInput {
   options?: Record<string, unknown> | null;
   departmentId?: string | null;
   visibility: ConnectionVisibility;
+  /** Obrigatório: o backend não assume ambiente por padrão. */
+  environment: ConnectionEnvironment;
   isActive?: boolean;
 }
 
@@ -83,6 +91,7 @@ export interface UpdateConnectionInput {
   options?: Record<string, unknown> | null;
   departmentId?: string | null;
   visibility?: ConnectionVisibility;
+  environment?: ConnectionEnvironment;
   isActive?: boolean;
 }
 

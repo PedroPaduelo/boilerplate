@@ -31,6 +31,7 @@ const editConnection: Connection = {
   ownerId: 'u1',
   departmentId: null,
   visibility: 'ORG',
+  environment: 'PRODUCTION',
   isActive: true,
   status: 'OK',
   lastTestedAt: null,
@@ -66,6 +67,9 @@ describe('ConnectionFormDialog', () => {
     expect(screen.getByText('Informe o banco de dados')).toBeInTheDocument();
     expect(screen.getByText('Informe o usuário')).toBeInTheDocument();
     expect(screen.getByText('Informe a senha')).toBeInTheDocument();
+    // Ambiente não tem padrão: sem escolha explícita o form não passa. Isto é
+    // o que impede o app de voltar a "adivinhar" o ambiente de um banco.
+    expect(screen.getByText('Escolha o ambiente do banco')).toBeInTheDocument();
 
     expect(createMutate).not.toHaveBeenCalled();
   });
@@ -87,6 +91,9 @@ describe('ConnectionFormDialog', () => {
     await user.click(screen.getByRole('combobox', { name: /visibilidade/i }));
     await user.click(await screen.findByRole('option', { name: 'Organização' }));
 
+    await user.click(screen.getByRole('combobox', { name: /ambiente/i }));
+    await user.click(await screen.findByRole('option', { name: 'Homologação' }));
+
     await user.click(screen.getByRole('button', { name: /criar conexão/i }));
 
     await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
@@ -99,6 +106,7 @@ describe('ConnectionFormDialog', () => {
       port: 5432,
       type: 'POSTGRES',
       visibility: 'ORG',
+      environment: 'HOMOLOG',
     });
   });
 
@@ -123,6 +131,8 @@ describe('ConnectionFormDialog', () => {
       database: 'analytics',
       username: 'readonly',
       visibility: 'ORG',
+      // Em edição o ambiente salvo é reidratado e reenviado como está.
+      environment: 'PRODUCTION',
       isActive: true,
     });
     expect(payload).not.toHaveProperty('password');

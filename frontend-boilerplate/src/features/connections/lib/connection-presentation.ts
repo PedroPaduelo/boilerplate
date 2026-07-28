@@ -1,14 +1,14 @@
 import type { BadgeVariant } from '@astryxdesign/core/Badge';
 import type { StatusDotVariant } from '@astryxdesign/core/StatusDot';
-import type { Connection, ConnectionVisibility } from '../types';
+import type { ConnectionEnvironment, ConnectionVisibility } from '../types';
 
 /**
- * Tradu\u00e7\u00e3o de dado de dom\u00ednio \u2192 vocabul\u00e1rio visual do design system.
+ * Tradução de dado de domínio → vocabulário visual do design system.
  *
- * Fica em `lib/` (e n\u00e3o dentro dos componentes) porque \u00e9 a mesma decis\u00e3o em
- * tr\u00eas telas \u2014 lista, workbench e barra de status \u2014 e porque \u00e9 pura: entra
+ * Fica em `lib/` (e não dentro dos componentes) porque é a mesma decisão em
+ * três telas — lista, workbench e barra de status — e porque é pura: entra
  * string do backend, sai variante de token. Sem isto, cada tela reinventaria o
- * mapeamento e \"OK\" ficaria verde num lugar e cinza no outro.
+ * mapeamento e "OK" ficaria verde num lugar e cinza no outro.
  */
 
 export interface ConnectionStatusView {
@@ -16,7 +16,7 @@ export interface ConnectionStatusView {
   label: string;
 }
 
-/** Status de conectividade reportado pelo backend \u2192 ponto de status + r\u00f3tulo. */
+/** Status de conectividade reportado pelo backend (test) → ponto de status + rótulo. */
 export function connectionStatusView(status: string): ConnectionStatusView {
   const normalized = (status ?? '').toUpperCase();
   if (normalized === 'OK' || normalized === 'ACTIVE' || normalized === 'CONNECTED') {
@@ -25,13 +25,13 @@ export function connectionStatusView(status: string): ConnectionStatusView {
   if (normalized === 'ERROR' || normalized === 'FAILED' || normalized === 'INACTIVE') {
     return { variant: 'error', label: 'Falha' };
   }
-  return { variant: 'neutral', label: 'N\u00e3o testado' };
+  return { variant: 'neutral', label: 'Não testado' };
 }
 
 const VISIBILITY_LABELS: Record<ConnectionVisibility, string> = {
   PRIVATE: 'Privada',
   DEPARTMENT: 'Departamento',
-  ORG: 'Organiza\u00e7\u00e3o',
+  ORG: 'Organização',
 };
 
 export function visibilityLabel(visibility: ConnectionVisibility): string {
@@ -43,27 +43,35 @@ export interface EnvironmentView {
   variant: BadgeVariant;
 }
 
+const ENVIRONMENT_VIEWS: Record<ConnectionEnvironment, EnvironmentView> = {
+  DEV: { label: 'Dev', variant: 'neutral' },
+  HOMOLOG: { label: 'Homologação', variant: 'orange' },
+  PRODUCTION: { label: 'Produção', variant: 'red' },
+};
+
 /**
- * Ambiente inferido do nome/banco (heur\u00edstica leve \u2014 o backend n\u00e3o tem o campo).
- * Serve para separar produ\u00e7\u00e3o do resto de relance na lista.
+ * Ambiente DECLARADO no cadastro → rótulo + variante do badge.
+ *
+ * Até esta versão o ambiente era ADIVINHADO no cliente: procurava-se
+ * "homolog"/"staging"/"dev"/"local" no nome da conexão e do banco e, quando
+ * nada casava, cravava-se "Produção". Errava nos dois sentidos — marcava banco
+ * de teste como produção e, pior, dava selo cinza de "Dev" para produção de
+ * verdade sempre que o nome continha "local" (ex.: `arrecadacao_local`). Numa
+ * ferramenta de auditoria o rótulo de ambiente orienta cuidado, então virou
+ * dado de verdade: `Connection.environment`, escolhido por quem cadastra.
+ *
+ * Sem fallback esperto: valor desconhecido é exibido cru, em vez de ser
+ * silenciosamente traduzido para outra coisa.
  */
-export function environmentView(connection: Connection): EnvironmentView {
-  const haystack = `${connection.name} ${connection.database}`.toLowerCase();
-  if (haystack.includes('homolog')) return { label: 'Homolog', variant: 'orange' };
-  if (haystack.includes('staging') || haystack.includes('hml')) {
-    return { label: 'Staging', variant: 'blue' };
-  }
-  if (haystack.includes('dev') || haystack.includes('local')) {
-    return { label: 'Dev', variant: 'neutral' };
-  }
-  return { label: 'Produ\u00e7\u00e3o', variant: 'red' };
+export function environmentView(environment: ConnectionEnvironment): EnvironmentView {
+  return ENVIRONMENT_VIEWS[environment] ?? { label: environment, variant: 'neutral' };
 }
 
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
 
-/** Bytes \u2192 string curta (\"340 MB\", \"1.2 GB\"). `\u2014` quando n\u00e3o h\u00e1 valor. */
+/** Bytes → string curta ("340 MB", "1.2 GB"). "—" quando não há valor. */
 export function formatBytes(bytes?: number | null): string {
-  if (bytes == null || bytes <= 0) return '\u2014';
+  if (bytes == null || bytes <= 0) return '—';
   let value = bytes;
   let unit = 0;
   while (value >= 1024 && unit < BYTE_UNITS.length - 1) {
@@ -75,15 +83,15 @@ export function formatBytes(bytes?: number | null): string {
   return `${rounded} ${BYTE_UNITS[unit]}`;
 }
 
-/** Megabytes (unidade do view-model do schema) \u2192 string curta. */
+/** Megabytes (unidade do view-model do schema) → string curta. */
 export function formatSizeMB(sizeMB?: number | null): string {
-  if (sizeMB == null || sizeMB <= 0) return '\u2014';
+  if (sizeMB == null || sizeMB <= 0) return '—';
   return formatBytes(sizeMB * 1024 * 1024);
 }
 
-/** Contagem compacta: 8_400_000 \u2192 \"8.4M\". */
+/** Contagem compacta: 8_400_000 → "8.4M". */
 export function formatCount(value?: number | null): string {
-  if (value == null) return '\u2014';
+  if (value == null) return '—';
   if (value < 1_000) return String(value);
   if (value < 1_000_000) return `${(value / 1_000).toFixed(value < 10_000 ? 1 : 0)}k`;
   if (value < 1_000_000_000) return `${(value / 1_000_000).toFixed(1)}M`;

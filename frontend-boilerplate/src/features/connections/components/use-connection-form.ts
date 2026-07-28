@@ -30,6 +30,10 @@ const connectionSchema = z.object({
   password: z.string(),
   sslMode: z.string().min(1),
   visibility: z.enum(['PRIVATE', 'DEPARTMENT', 'ORG']),
+  // String vazia = nada escolhido. O enum puro aceitaria só os três válidos,
+  // mas daria a mensagem genérica do Zod ("invalid enum value") no lugar de
+  // dizer o que fazer — daí o union com '' e o refine abaixo.
+  environment: z.union([z.enum(['DEV', 'HOMOLOG', 'PRODUCTION']), z.literal('')]),
   departmentId: z.string(),
   isActive: z.boolean(),
 });
@@ -70,6 +74,15 @@ export function useConnectionForm({
             message: 'Selecione um departamento',
           });
         }
+        if (!values.environment) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['environment'],
+            // Diferente do placeholder de propósito: o placeholder diz o que
+            // fazer antes de agir, o erro diz o que faltou depois.
+            message: 'Escolha o ambiente do banco',
+          });
+        }
       }),
     [isEdit],
   );
@@ -86,6 +99,8 @@ export function useConnectionForm({
       password: '',
       sslMode: 'require',
       visibility: 'DEPARTMENT',
+      // Vazio de propósito: obriga uma escolha explícita.
+      environment: '',
       departmentId: '',
       isActive: true,
     },
@@ -105,6 +120,7 @@ export function useConnectionForm({
       password: '',
       sslMode: connection?.sslMode ?? 'require',
       visibility: connection?.visibility ?? 'DEPARTMENT',
+      environment: connection?.environment ?? '',
       departmentId: connection?.departmentId ?? '',
       isActive: connection?.isActive !== false,
     });
@@ -113,6 +129,9 @@ export function useConnectionForm({
   const submit = form.handleSubmit((values) => {
     const departmentId =
       values.visibility === 'DEPARTMENT' ? values.departmentId || null : null;
+    // O refine acima garante que aqui nunca é '' — o cast só remove o literal
+    // vazio que existe para representar "ainda não escolhido" no formulário.
+    const environment = values.environment as Exclude<typeof values.environment, ''>;
     const shared = {
       name: values.name,
       description: values.description.trim() ? values.description : null,
@@ -122,6 +141,7 @@ export function useConnectionForm({
       username: values.username,
       sslMode: values.sslMode,
       visibility: values.visibility,
+      environment,
       departmentId,
       isActive: values.isActive,
     };

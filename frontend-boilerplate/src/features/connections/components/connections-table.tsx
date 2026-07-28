@@ -61,7 +61,7 @@ export function ConnectionsTable({
         name: connection.name,
         status: connectionStatusView(connection.status).label,
         endpoint: `${connection.host}:${connection.port}/${connection.database}`,
-        environment: environmentView(connection).label,
+        environment: environmentView(connection.environment).label,
         visibility: visibilityLabel(connection.visibility),
         lastTestedAt: connection.lastTestedAt ?? '',
         connection,
@@ -125,7 +125,7 @@ export function ConnectionsTable({
         header: 'Ambiente',
         width: pixel(130),
         renderCell: (row) => {
-          const environment = environmentView(row.connection);
+          const environment = environmentView(row.connection.environment);
           return <Badge variant={environment.variant} label={environment.label} />;
         },
       },
