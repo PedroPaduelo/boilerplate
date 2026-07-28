@@ -293,14 +293,21 @@
   }
 
   /*
-     Sem avatar POR MENSAGEM: quem fala já está identificado no cabeçalho da
-     tela, e o avatar repetido a cada resposta só roubava 40px da largura do
-     cartão e desalinhava o eixo esquerdo (era ele que fazia a resposta parecer
-     "de um lado" em vez de central).
+     Sem avatar POR MENSAGEM — mas o lugar de resolver isso NÃO é aqui.
+
+     A intenção continua a mesma: quem fala já está identificado no cabeçalho
+     da tela, e o avatar repetido a cada resposta só roubava largura do cartão.
+     O que mudou é o meio. A regra que existia neste ponto era
+     `.astryx-avatar { display: none }`, e ela escondia o avatar sem desfazer o
+     estrago: o slot dele continua sendo um item flex na linha, e o `gap` de
+     8px do DS continua contando. O cartão ficava 8px à direita da coluna e a
+     trilha de auditoria — que vive FORA do cartão — começava nesses 8px
+     sobrando, à esquerda da borda do cartão que ela descreve.
+
+     A prop `avatar` simplesmente não é passada (ver `chat-message-item.tsx`):
+     sem ela o DS não renderiza slot nem gap, e cartão e trilha nascem no mesmo
+     eixo esquerdo.
   */
-  .app-chat .astryx-chat-message.assistant .astryx-avatar {
-    display: none;
-  }
 
   .app-chat .astryx-chat-message.user .astryx-chat-message-bubble {
     max-width: 70%;
@@ -308,11 +315,17 @@
     border-radius: var(--radius-container);
   }
 
-  /* Turnos precisam respirar: sem este espaço os cartões da IA emendam um no
-     outro e a conversa vira uma parede. */
-  .app-chat .astryx-chat-message-list {
-    gap: var(--spacing-5);
-  }
+  /*
+     O espaço entre turnos é `gap={6}` na prop do `ChatMessageList`, em
+     `chat-conversation.tsx` — não uma regra aqui.
+
+     Havia neste ponto um `.astryx-chat-message-list { gap: var(--spacing-5) }`
+     que nunca fez efeito: as mensagens não são filhas desse elemento, e sim de
+     um contêiner interno do DS. O seletor pegava o pai, que tem um filho só —
+     `gap` entre um elemento e nada é zero. Os turnos seguiam nos 16px da
+     densidade padrão, que era exatamente a queixa (pergunta colada na trilha
+     do turno seguinte).
+  */
 
   /* ---- Cursor de digitação --------------------------------------------- */
 

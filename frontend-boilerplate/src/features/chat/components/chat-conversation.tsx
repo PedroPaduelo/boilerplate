@@ -19,6 +19,7 @@ import {
   ChatMessageList,
   ChatSendButton,
 } from '@astryxdesign/core/Chat';
+import { VStack } from '@astryxdesign/core/Stack';
 import { useConversationStream } from '../use-conversation-stream';
 import { selectPendingTrail, selectTrail } from '../lib/conversation-state';
 import { ChatEmptyState } from './chat-empty-state';
@@ -119,7 +120,23 @@ export function ChatConversation({
       emptyState={<ChatEmptyState onPick={send} isDisabled={isOffline} />}
     >
       {hasContent ? (
-        <ChatMessageList isStreaming={isStreaming}>
+        /*
+         * `gap={6}` (24px) entre as LINHAS da lista, contra os 16px da
+         * densidade padrão. O que separa aqui não são mensagens soltas: cada
+         * linha é um turno inteiro — a pergunta, e depois o bloco
+         * "trilha + resposta". Com 16px a pergunta encostava na trilha do
+         * turno seguinte e as duas viravam uma coisa só.
+         *
+         * A regra é de proximidade, e por isso o número anda em par com o
+         * `gap={2}` de dentro do turno (abaixo): 8px prendem a trilha à
+         * resposta que ela explica, 24px afastam um turno do outro. É a
+         * diferença entre os dois espaços que agrupa — não o valor absoluto.
+         *
+         * Vai na PROP, não em CSS: o `gap` da lista mora num contêiner interno
+         * do DS, então uma regra em `.astryx-chat-message-list` cai no elemento
+         * errado (ele tem um filho só) e não muda nada — foi o que acontecia.
+         */
+        <ChatMessageList isStreaming={isStreaming} gap={6}>
           {messages.map((message) => {
             const isThisStreaming = isLastStreaming && message.id === lastMessage.id;
             const trail = selectTrail(state, message.id);
@@ -129,7 +146,14 @@ export function ChatConversation({
             }
 
             return (
-              <div key={message.id}>
+              /*
+               * Trilha e resposta são UM bloco: o `gap={2}` (8px) é o que as
+               * mantém juntas sem coladas. Antes era um `div` cru, e a linha
+               * da trilha nascia encostada na borda do cartão — sem folga
+               * nenhuma, a trilha parecia um pedaço solto do cartão em vez do
+               * rótulo que abre o turno.
+               */
+              <VStack key={message.id} gap={2}>
                 <AuditTrail
                   trail={trail}
                   phaseLabel={isThisStreaming ? phaseLabel : null}
@@ -149,7 +173,7 @@ export function ChatConversation({
                   onFollowUp={send}
                   isFollowUpDisabled={isStreaming || isOffline}
                 />
-              </div>
+              </VStack>
             );
           })}
 

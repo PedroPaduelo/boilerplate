@@ -1,8 +1,8 @@
 /**
  * Uma mensagem do chat.
  *
- * `ChatMessage` do DS resolve avatar, alinhamento e densidade a partir do
- * `sender`; a bolha do usuário é `filled` (texto puro) e a do agente é `ghost`
+ * `ChatMessage` do DS resolve alinhamento e densidade a partir do `sender`;
+ * a bolha do usuário é `filled` (texto puro) e a do agente é `ghost`
  * (a resposta é markdown rica e pede uma coluna larga, não um balão).
  *
  * O texto em streaming passa por `useStreamingText`: o socket entrega rajadas
@@ -19,7 +19,6 @@ import {
   ChatMessage as ChatMessageRow,
   ChatMessageBubble,
 } from '@astryxdesign/core/Chat';
-import { Avatar } from '@astryxdesign/core/Avatar';
 import { VStack } from '@astryxdesign/core/Stack';
 import { useStreamingText } from '@astryxdesign/core/hooks';
 import type { ChatMessage } from '../transport';
@@ -74,7 +73,21 @@ function AssistantMessage({
   const charts = message.charts ?? [];
 
   return (
-    <ChatMessageRow sender="assistant" avatar={<Avatar name="Agente" size="sm" />}>
+    /*
+     * SEM avatar por mensagem — e a ausência aqui é estrutural, não estética.
+     *
+     * Quem fala já está identificado no cabeçalho da tela, então o avatar
+     * repetido a cada resposta era só ruído. Mas o custo real era de
+     * alinhamento: com `avatar`, o DS acrescenta um slot flex E um `gap` de
+     * 8px na linha, e o cartão inteiro nasce 8px à direita da coluna. A trilha
+     * de auditoria, que fica FORA do cartão, ficava nesses 8px sobrando —
+     * começando à esquerda do cartão que ela descreve, como se vazasse dele.
+     *
+     * Esconder o avatar por CSS (`display: none`) não resolvia: o slot continua
+     * sendo um item flex e o `gap` continua contando. Só não passar a prop
+     * remove os dois — ver `hasAvatar` em ChatMessage do DS.
+     */
+    <ChatMessageRow sender="assistant">
       <ChatMessageBubble
         variant="ghost"
         // O cursor piscando só existe enquanto o texto está CHEGANDO. É o que
