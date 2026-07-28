@@ -67,7 +67,8 @@ describe('CatalogPage', () => {
       const cards = visibleCards();
       expect(cards.length).toBeGreaterThan(0);
       expect(cards.length).toBeLessThan(getCatalogEntries().length);
-      expect(screen.getByText('donut')).toBeInTheDocument();
+      // O tipo agora vive na ETIQUETA do cabeçalho (`donut · N props`).
+      expect(screen.getByText(/^donut ·/)).toBeInTheDocument();
     },
     GALLERY_TIMEOUT,
   );
@@ -118,7 +119,7 @@ describe('CatalogPage', () => {
   );
 
   it(
-    'cada card tem a mesma anatomia: cabeçalho, palco de preview e rodapé',
+    'cada card tem a mesma anatomia: ações, cabeçalho e palco de preview',
     () => {
       const { container } = renderWithProviders(<CatalogPage />);
 
@@ -126,6 +127,14 @@ describe('CatalogPage', () => {
       const palcos = container.querySelectorAll('[data-slot="catalog-preview-stage"]');
       // Um palco por card: é ele que garante a altura uniforme da grade.
       expect(palcos).toHaveLength(total);
+
+      // E uma barra de ações por card, no TOPO (antes do cabeçalho).
+      expect(
+        container.querySelectorAll('[data-slot="catalog-card-actions"]'),
+      ).toHaveLength(total);
+      expect(
+        container.querySelectorAll('[data-slot="catalog-card-header"]'),
+      ).toHaveLength(total);
 
       // Um título por card. O `ClickableCard` do DS desenha o alvo de clique como
       // um botão-overlay IRMÃO do conteúdo, então o título não está dentro do

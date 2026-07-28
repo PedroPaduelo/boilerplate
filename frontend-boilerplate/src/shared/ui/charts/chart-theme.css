@@ -207,6 +207,29 @@
     padding: 24px 24px 0;
   }
 
+  /*
+     Etiqueta de código do cabeçalho (`demo.html`): identifica o TIPO do bloco
+     em monoespaçada, sobre o verde do produto a 16%.
+
+     `align-self: flex-start` é o que a impede de esticar na largura da coluna —
+     dentro de um `VStack` (que estica os filhos) ela viraria uma faixa.
+  */
+  .chart-card__tag {
+    display: inline-block;
+    align-self: flex-start;
+    margin-top: 8px;
+    padding: 2px 6px;
+    border-radius: var(--radius-inner);
+    font-family: var(--font-family-code);
+    font-size: var(--font-size-4xs);
+    font-weight: 700;
+    line-height: 1.6;
+    background-color: rgba(var(--ds-channel-primary-main) / 0.16);
+    /* No escuro o verde escuro sobre o mesmo fundo perde contraste; o tom
+       claro da mesma família resolve sem sair da paleta. */
+    color: light-dark(var(--ds-color-primary-dark), var(--ds-color-primary-light));
+  }
+
   /* Corpo do card: padding assimétrico (8px à esquerda, onde o eixo Y já
      ocupa espaço; 20px nos demais lados). §4 */
   .chart-body {
