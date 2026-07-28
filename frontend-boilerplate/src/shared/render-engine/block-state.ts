@@ -89,16 +89,28 @@ export function showSqlOf(block: Block): boolean {
 }
 
 /**
+ * Campo de TEXTO explícito do bloco (sem fallback). Procura primeiro no
+ * próprio bloco (`block.<campo>` — é onde o backend grava o que veio do Chart)
+ * e depois nas props (`block.props.<campo>` — é onde o playground grava).
+ *
+ * Um leitor só para todos os campos do cabeçalho porque a regra de prioridade
+ * é a mesma; tê-la repetida quatro vezes garantiria que uma delas divergisse.
+ */
+export function explicitBlockText(block: Block, field: string): string | undefined {
+  const own = (block as unknown as Record<string, unknown>)[field];
+  if (typeof own === 'string' && own.trim().length > 0) return own;
+  const fromProps = (block.props as Record<string, unknown> | undefined)?.[field];
+  if (typeof fromProps === 'string' && fromProps.trim().length > 0) {
+    return fromProps;
+  }
+  return undefined;
+}
+
+/**
  * Título EXPLÍCITO do bloco (sem fallback). Prioridade: `block.title` (o
  * backend o preenche com o título do Chart referenciado) e, como rede de
  * segurança, `block.props.title`.
  */
 export function explicitBlockTitle(block: Block): string | undefined {
-  const title = (block as { title?: unknown }).title;
-  if (typeof title === 'string' && title.trim().length > 0) return title;
-  const propsTitle = (block.props as { title?: unknown } | undefined)?.title;
-  if (typeof propsTitle === 'string' && propsTitle.trim().length > 0) {
-    return propsTitle;
-  }
-  return undefined;
+  return explicitBlockText(block, 'title');
 }

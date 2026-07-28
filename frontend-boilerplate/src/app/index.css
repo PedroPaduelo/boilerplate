@@ -74,6 +74,19 @@
    -------------------------------------------------------------------------- */
 @import '@astryxdesign/core/tailwind-theme.css';
 
+/* --------------------------------------------------------------------------
+   TEMA DOS GRÁFICOS — o que só o CSS resolve.
+
+   Companheiro de `shared/ui/charts/chart-theme.ts` (a especificação em TS).
+   Aqui ficam desfoque do tooltip, a onda do esqueleto e a composição da
+   legenda própria dos circulares — propriedades sem equivalente em prop de
+   componente ou atributo de SVG. Toda cor sai de `--ds-*`.
+
+   O arquivo declara a própria `@layer components`, então entra depois do DS e
+   antes das utilities, como o restante da folha.
+   -------------------------------------------------------------------------- */
+@import './../shared/ui/charts/chart-theme.css';
+
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
 

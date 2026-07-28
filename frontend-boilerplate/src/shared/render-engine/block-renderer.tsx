@@ -27,6 +27,7 @@ import { BlockFrame, type BlockFrameTakeaway } from './block-frame';
 import { chartBodyHeight } from './lib/block-sizing';
 import {
   durationOf,
+  explicitBlockText,
   explicitBlockTitle,
   normalizeTakeaway,
   resolveState,
@@ -125,8 +126,10 @@ export function BlockRenderer({
   const state = resolveState(Boolean(def.manifest.dataContract), ownResult);
   const dataVal =
     ownResult?.state === 'success' ? (ownResult.data as BlockData) : undefined;
-  const isLoading = state === 'skeleton' || state === 'loading';
 
+  // Corpo SEM moldura (cards próprios: KPI, ladrilho, medidor). Com moldura,
+  // quem desenha os estados é o `BlockFrame` — assim o cabeçalho continua
+  // legível enquanto o dado não chega.
   const body =
     state === 'success' ? (
       <Component props={props} data={dataVal} state="success" />
@@ -157,15 +160,29 @@ export function BlockRenderer({
         {shouldFrame ? (
           <BlockFrame
             title={explicitBlockTitle(block) ?? def.manifest.name}
+            subtitle={explicitBlockText(block, 'subtitle')}
+            description={explicitBlockText(block, 'description')}
+            emptyMessage={explicitBlockText(block, 'emptyMessage')}
             chartType={def.manifest.name}
+            data={dataVal}
             query={block.dataBinding?.query}
             durationMs={durationOf(ownResult)}
-            isLoading={isLoading}
+            // A moldura desenha TODOS os estados: assim o cabeçalho continua
+            // legível enquanto o dado não chega (ou quando ele falha), em vez
+            // de o card inteiro sumir e voltar.
+            state={frameState(state)}
+            error={
+              ownResult?.state === 'error'
+                ? (ownResult.error?.message ?? 'Erro ao carregar o bloco')
+                : undefined
+            }
             bodyMinHeight={chartBodyHeight(block.type)}
             takeaways={frameTakeaways(block, def.deriveTakeaway, dataVal, state, props)}
             showQuery={showSqlOf(block)}
           >
-            {isLoading ? null : body}
+            {state === 'success' ? (
+              <Component props={props} data={dataVal} state="success" />
+            ) : null}
           </BlockFrame>
         ) : (
           body
@@ -173,6 +190,14 @@ export function BlockRenderer({
       </BlockBoundary>
     </div>
   );
+}
+
+/** Estado do render → estado da moldura (o `skeleton` do motor é carregamento). */
+function frameState(state: string): 'success' | 'loading' | 'empty' | 'error' {
+  if (state === 'skeleton' || state === 'loading') return 'loading';
+  if (state === 'empty') return 'empty';
+  if (state === 'error') return 'error';
+  return 'success';
 }
 
 /**

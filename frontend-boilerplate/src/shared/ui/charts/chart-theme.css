@@ -1,0 +1,251 @@
+/* ==========================================================================
+   CHART THEME — o que só o CSS resolve
+   ==========================================================================
+
+   Companheiro de `chart-theme.ts`. Aqui ficam APENAS as propriedades que não
+   existem como prop de componente nem como atributo de SVG: desfoque de fundo
+   (`backdrop-filter`), a onda do esqueleto (`@keyframes`) e a composição da
+   legenda própria dos gráficos circulares.
+
+   Toda cor sai de token do DS (`--ds-*`). Os poucos números são medidas da
+   referência (`05-tooltip-legenda-css.md`), com a seção anotada ao lado.
+
+   Vive na camada `components`: depois do Astryx, antes das utilities.
+   ========================================================================== */
+
+@layer components {
+  /* ------------------------------------------------------------------------
+     1. TOOLTIP — §1
+     Branco a 90% com desfoque de 6px. É o elemento que mais denuncia uma
+     reprodução malfeita: a maioria das libs entrega uma caixa opaca.
+     ---------------------------------------------------------------------- */
+  .chart-tooltip {
+    min-width: 80px;
+    border-radius: 10px;
+    border: 0;
+    overflow: hidden;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--ds-color-text-primary);
+    background-color: color-mix(
+      in srgb,
+      var(--ds-color-background-paper) 90%,
+      transparent
+    );
+    box-shadow:
+      0 0 2px 0 rgba(var(--ds-channel-grey-500) / 0.24),
+      -20px 20px 40px -4px rgba(var(--ds-channel-grey-500) / 0.24);
+  }
+
+  /* Faixa cinza no topo, texto centralizado e em negrito. */
+  .chart-tooltip__title {
+    display: block;
+    padding: 6px 12px;
+    font-weight: 700;
+    text-align: center;
+    border: 0;
+    color: var(--ds-color-text-secondary);
+    background-color: var(--ds-color-background-neutral);
+  }
+
+  /* Grupo de série: 4px vertical, 12px horizontal. §1 */
+  .chart-tooltip__group {
+    padding: 4px 12px;
+  }
+
+  /* ------------------------------------------------------------------------
+     2. LEGENDA PRÓPRIA (fora do gráfico) — §3
+     Usada por pizza, rosca e medidores radiais, onde a legenda do motor
+     roubaria área do desenho.
+     ---------------------------------------------------------------------- */
+  .chart-legends {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chart-legends--center {
+    justify-content: center;
+  }
+
+  .chart-legends__item {
+    display: inline-flex;
+    flex-direction: column;
+  }
+
+  .chart-legends__row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    font-size: 11.375px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* A cor vem do `color` do item — o ponto usa `currentColor`. */
+  .chart-legends__dot {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background-color: currentColor;
+  }
+
+  /* Rótulo e valor HERDAM a cor do item, como na referência ("uma variável
+     controla tudo") — só o ponto usa `currentColor` como fundo. */
+  .chart-legends__value {
+    font-size: 14.875px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* ------------------------------------------------------------------------
+     3. LEGENDA NATIVA (topo, à direita) — §2
+     ---------------------------------------------------------------------- */
+  .chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chart-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+    color: var(--ds-color-text-primary);
+  }
+
+  .chart-legend__dot {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background-color: currentColor;
+  }
+
+  /* Diferente da legenda própria: aqui o TEXTO é neutro (#1C252E) e só o
+     marcador carrega a cor da série. §2 */
+  .chart-legend__label {
+    color: var(--ds-color-text-primary);
+  }
+
+  /* ------------------------------------------------------------------------
+     4. ESQUELETO — §6
+     Cobre a área inteira do gráfico com uma onda da esquerda para a direita.
+     Nos circulares vira um círculo.
+     ---------------------------------------------------------------------- */
+  .chart-skeleton {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 12px;
+    background-color: rgba(var(--ds-channel-grey-400) / 0.12);
+  }
+
+  .chart-skeleton--circular {
+    border-radius: 50%;
+  }
+
+  .chart-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ds-color-common-white) 40%, transparent),
+      transparent
+    );
+    animation: chart-skeleton-wave 1.6s linear 0.5s infinite;
+  }
+
+  @keyframes chart-skeleton-wave {
+    0% {
+      transform: translateX(-100%);
+    }
+    60% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Quem pede menos movimento recebe a área reservada, sem a onda. */
+  @media (prefers-reduced-motion: reduce) {
+    .chart-skeleton::after {
+      animation: none;
+    }
+  }
+
+  /* ------------------------------------------------------------------------
+     5. CONTÊINER — §5
+     ---------------------------------------------------------------------- */
+  .chart-root {
+    width: 100%;
+    flex-shrink: 0;
+    position: relative;
+    border-radius: 12px;
+    direction: ltr; /* forçado, mesmo em interfaces RTL */
+  }
+
+  /* Cabeçalho do card: 24px nas laterais e no topo, 0 embaixo — o respiro de
+     baixo vem do padding do corpo. §4 */
+  .chart-card__header {
+    padding: 24px 24px 0;
+  }
+
+  /* Corpo do card: padding assimétrico (8px à esquerda, onde o eixo Y já
+     ocupa espaço; 20px nos demais lados). §4 */
+  .chart-body {
+    padding: 20px 20px 20px 8px;
+  }
+
+  .chart-body--center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  /* Texto interpolado com markdown dentro de um rótulo de gráfico: o markdown
+     aqui é INLINE (ênfase, código, link), nunca blocos. */
+  .chart-md > p {
+    margin: 0;
+    display: inline;
+  }
+
+  .chart-md code {
+    font-family: var(--font-family-code);
+    font-size: 0.9em;
+    padding: 0 4px;
+    border-radius: 4px;
+    background-color: var(--ds-color-background-neutral);
+  }
+
+  .chart-md a {
+    color: var(--ds-color-primary-main);
+    text-decoration: underline;
+  }
+
+  /* Variável não resolvida: aparece marcada em vez de sumir em silêncio —
+     quem está configurando o bloco precisa VER que o campo não existe. */
+  .chart-md__missing {
+    color: var(--ds-color-warning-dark);
+    background-color: rgba(var(--ds-channel-warning-main) / 0.16);
+    border-radius: 4px;
+    padding: 0 4px;
+  }
+}

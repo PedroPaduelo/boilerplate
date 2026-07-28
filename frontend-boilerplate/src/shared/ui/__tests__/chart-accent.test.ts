@@ -45,7 +45,9 @@ describe('acento legado → cor de dado do DS', () => {
 
 describe('acento legado → variante de card do DS', () => {
   it('usa a variante de cor quando ela existe', () => {
-    expect(chartAccentCardVariant('chart-1')).toBe('blue');
+    // `chart-1` é a 1ª cor da referência (#00A76F). No tema, a família `teal`
+    // do Astryx aponta para a `primary` do DS — que é exatamente esse verde.
+    expect(chartAccentCardVariant('chart-1')).toBe('teal');
     expect(chartAccentCardVariant('bg-emerald-500')).toBe('green');
   });
 

@@ -59,11 +59,20 @@ const POINTS = [
 ];
 
 describe('paleta de gráficos', () => {
-  it('só monta nomes de token de data-viz do DS', () => {
+  it('só monta nomes de token do design system', () => {
     for (const color of CHART_SERIES_COLORS) {
-      expect(chartSeriesToken(color)).toBe(`--color-data-categorical-${color}`);
+      expect(chartSeriesToken(color)).toMatch(/^--ds-color-/);
     }
-    expect(chartRampToken('shamrock', 3)).toBe('--color-data-shamrock-3');
+    expect(chartRampToken('shamrock', 3)).toBe('--ds-color-primary-main');
+  });
+
+  it('respeita a ORDEM da paleta da referência (1ª série = verde do produto)', () => {
+    // A ordem é identidade visual: `01-fundamentos.md` §2 da referência.
+    expect(chartSeriesToken(CHART_SERIES_COLORS[0])).toBe('--ds-color-primary-main');
+    expect(chartSeriesToken(CHART_SERIES_COLORS[1])).toBe('--ds-color-warning-main');
+    expect(chartSeriesToken(CHART_SERIES_COLORS[2])).toBe('--ds-color-info-main');
+    expect(chartSeriesToken(CHART_SERIES_COLORS[3])).toBe('--ds-color-error-main');
+    expect(chartSeriesToken(CHART_SERIES_COLORS[8])).toBe('--ds-color-info-darker');
   });
 
   it('entrega ao gráfico valor vindo do tema — cor literal nunca chega', () => {
@@ -71,11 +80,12 @@ describe('paleta de gráficos', () => {
     const probe = screen.getByTestId('palette-probe');
 
     // Forma usada no DOM: sempre `var(--token)`.
-    expect(probe.getAttribute('data-var')).toBe('var(--color-data-categorical-blue)');
-    // Forma usada dentro do SVG: valor resolvido pelo tema (ou o próprio
-    // `var()` como fallback) — nunca vazio, nunca um hex escrito no código.
-    expect(probe.getAttribute('data-color')).toBeTruthy();
+    expect(probe.getAttribute('data-var')).toBe('var(--ds-color-primary-main)');
+    // Forma usada dentro do SVG: valor RESOLVIDO — atributo de apresentação
+    // não aceita `var()`, então uma cadeia de `var()` aqui seria um eixo preto.
+    expect(probe.getAttribute('data-color')).toBe('#00A76F');
     expect(probe.getAttribute('data-grid')).toBeTruthy();
+    expect(probe.getAttribute('data-grid')).not.toMatch(/^var\(/);
   });
 });
 
