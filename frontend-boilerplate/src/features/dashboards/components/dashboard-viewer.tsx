@@ -10,9 +10,13 @@
  * `DashboardLayout` e abre em guia própria, para projetar numa reunião ou ficar
  * num telão. Uma trilha "Dashboards / Fulano / Visualização" é orientação
  * DENTRO de um app — e aqui não há app em volta para se orientar. A saída é
- * fechar a guia, e quem tem permissão de edição ainda tem o botão "Editar" no
- * cabeçalho. As telas que vivem no shell (`/dashboards/:id` e `/edit`) mantêm a
- * trilha, que lá continua fazendo sentido.
+ * fechar a guia. As telas que vivem no shell (`/dashboards/:id` e `/edit`)
+ * mantêm a trilha, que lá continua fazendo sentido.
+ *
+ * E SEM EDIÇÃO: `/view` é modo de LEITURA, ponto. Nenhuma ação daqui leva ao
+ * editor — nem para quem tem permissão. A porta de entrada da edição é a
+ * listagem (`/dashboards` → menu da linha → Editar); ver a nota em
+ * `DashboardViewerContent`.
  *
  * Este componente é só o PORTÃO (carrega, resolve os três estados: carregando,
  * erro e conteúdo). A composição fica em `DashboardViewerContent`, no mesmo

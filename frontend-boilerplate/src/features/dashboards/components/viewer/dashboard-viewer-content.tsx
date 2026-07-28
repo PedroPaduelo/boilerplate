@@ -17,9 +17,17 @@
  * por aba faria cada troca re-disparar consulta e piscar o conteúdo já
  * carregado — e o backend já resolve todas as linhas de uma vez, porque `rows`
  * segue sendo a lista canônica (doc 40).
+ *
+ * SEM AÇÃO DE EDIÇÃO, e isso é a regra da tela, não um esquecimento. `/view` é
+ * modo de CONSUMO: aqui não se edita. As únicas ações do cabeçalho são as que
+ * pertencem a quem está LENDO — reprocessar os dados e levar a visão embora em
+ * PDF. Um "Editar" aqui atravessaria o usuário para outra tela no meio da
+ * leitura (e, num telão de reunião, é justamente o clique que ninguém quer dar
+ * por acidente). Quem vai montar dashboard entra pela listagem (`/dashboards` →
+ * menu da linha → Editar), que é onde a decisão de editar realmente acontece.
  */
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Download, Pencil, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { Icon } from '@astryxdesign/core/Icon';
@@ -35,7 +43,6 @@ import { DashboardRenderer } from '@/shared/render-engine';
 import type { ApiMode } from '@/shared/lib/query-keys';
 import { hasPermission } from '@/shared/lib/rbac';
 import { useAuthStore } from '@/features/auth/store';
-import { canModifyArtifact } from '@/shared/lib/artifact-rbac';
 import { useDashboardData } from '../../use-dashboard-data';
 import { useExportDashboardPdf } from '../../use-export-pdf';
 import type { DashboardDetail } from '../../types';
@@ -89,14 +96,11 @@ export function DashboardViewerContent({
     filters: values,
   });
 
-  const user = useAuthStore((s) => s.user);
-  const canExport = hasPermission(user?.role, 'artifacts:export');
-  const canEdit = canModifyArtifact({
-    role: user?.role,
-    currentUserId: user?.id,
-    ownerId: detail.ownerId,
-    status: detail.status,
-  });
+  // Só o papel: a tela não tem mais nenhuma decisão que dependa de ownership
+  // (era o caso do antigo botão "Editar"). Selecionar o primitivo em vez do
+  // objeto `user` também evita re-render a cada troca de referência no store.
+  const role = useAuthStore((s) => s.user?.role);
+  const canExport = hasPermission(role, 'artifacts:export');
   const pdfExport = useExportDashboardPdf();
 
   const isPublished = mode === 'published';
@@ -186,13 +190,6 @@ export function DashboardViewerContent({
                           { mode, filters: values },
                         )
                       }
-                    />
-                  ) : null}
-                  {canEdit ? (
-                    <Button
-                      label="Editar"
-                      icon={<Icon icon={Pencil} />}
-                      href={`/dashboards/${detail.id}/edit`}
                     />
                   ) : null}
                 </HStack>

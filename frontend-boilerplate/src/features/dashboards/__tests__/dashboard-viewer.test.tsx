@@ -23,6 +23,7 @@ import {
   dashboardDataPayloadFixture,
 } from '@dashboards/contracts';
 import { renderWithProviders } from '@/test/render';
+import { useAuthStore } from '@/features/auth/store';
 import type { DashboardDetail } from '../types';
 
 /* --------------------------------------------------------------- mocks ----- */
@@ -118,11 +119,37 @@ function renderViewer(route = `/dashboards/${DASH_ID}/view`) {
   );
 }
 
+/**
+ * Sessão do teste: o DONO do dashboard, com papel que concede
+ * `artifacts:manage`. É o perfil de MAIOR privilégio que a tela pode receber —
+ * e justamente o único que faria uma ação de edição aparecer no cabeçalho.
+ * Rodar a suíte inteira sob ele é o que dá valor à guarda de "não edita aqui":
+ * sob um usuário anônimo, a ausência do botão seria falta de permissão, não
+ * regra da tela.
+ */
+function signInAsOwner() {
+  useAuthStore.setState({
+    user: {
+      id: 'me',
+      email: 'ana@prefeitura.gov.br',
+      name: 'Ana Souza',
+      role: 'ANALYST',
+      isActive: true,
+      createdAt: '',
+      updatedAt: '',
+    },
+    token: 'tok',
+    isAuthenticated: true,
+    isHydrated: true,
+  });
+}
+
 beforeEach(() => {
   fetchData.mockClear();
   query.data = makeDetail(dashboardLayoutFixture);
   query.isLoading = false;
   query.isError = false;
+  signInAsOwner();
 });
 
 /* -------------------------------------------------------------- testes ----- */
@@ -160,6 +187,40 @@ describe('DashboardViewer — estados da tela', () => {
     renderViewer();
 
     expect(screen.queryByRole('navigation', { name: 'Você está em' })).toBeNull();
+  });
+});
+
+describe('DashboardViewer — `/view` é somente leitura', () => {
+  /*
+   * A REGRA da tela, não uma consequência de permissão: em `/view` não se
+   * edita. A suíte roda logada como o DONO do dashboard com `artifacts:manage`
+   * (ver `signInAsOwner`), ou seja, o único perfil para quem uma ação de edição
+   * chegaria a ser desenhada — então se alguém devolver o botão "Editar" ao
+   * cabeçalho, estes casos quebram em vez de passar por sorte.
+   */
+  it('não oferece ação de "Editar" no cabeçalho', () => {
+    renderViewer();
+
+    expect(screen.queryByRole('link', { name: 'Editar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Editar' })).toBeNull();
+  });
+
+  it('nenhum caminho da tela leva para o editor', () => {
+    // Mais amplo que o caso acima: pega também um link de rótulo diferente
+    // ("Abrir no editor", um ícone de lápis sem texto, etc.) que aponte para
+    // `/edit`. O que não pode existir é a ROTA de edição alcançável daqui.
+    const { container } = renderViewer();
+
+    expect(container.querySelector('a[href*="/edit"]')).toBeNull();
+  });
+
+  it('mantém as ações de LEITURA: atualizar e exportar', () => {
+    // Contrapeso: a remoção da edição não pode levar junto o que o leitor
+    // legitimamente faz nesta tela.
+    renderViewer();
+
+    expect(screen.getByRole('button', { name: 'Atualizar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exportar PDF' })).toBeInTheDocument();
   });
 });
 
