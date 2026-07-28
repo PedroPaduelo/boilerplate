@@ -144,10 +144,22 @@ describe('DashboardViewer — estados da tela', () => {
     expect(
       screen.getByText('Não foi possível carregar este dashboard'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Dashboards' })).toHaveAttribute(
+    // A saída vive no PRÓPRIO aviso, não numa trilha de navegação no topo: esta
+    // tela é autônoma (guia própria, sem o menu do app), então sem uma ação
+    // explícita aqui quem cai num link quebrado fica sem nada para fazer.
+    expect(screen.getByRole('link', { name: 'Ver todos os dashboards' })).toHaveAttribute(
       'href',
       '/dashboards',
     );
+  });
+
+  it('não desenha trilha de navegação — a tela é autônoma', () => {
+    // Guarda de regressão: a trilha é orientação DENTRO de um app, e aqui não há
+    // app em volta. Se alguém a devolver, este caso avisa.
+    query.isError = false;
+    renderViewer();
+
+    expect(screen.queryByRole('navigation', { name: 'Você está em' })).toBeNull();
   });
 });
 

@@ -50,7 +50,6 @@ import {
   resolveTabs,
   shouldShowTabNav,
 } from '../../lib/dashboard-tabs';
-import { DashboardBreadcrumbs } from '../dashboard-breadcrumbs';
 import { FilterBar } from '../filter-bar';
 import { DashboardTabsSidebar } from './dashboard-tabs-sidebar';
 import { useState } from 'react';
@@ -152,12 +151,6 @@ export function DashboardViewerContent({
 
   return (
     <VStack gap={4}>
-      <DashboardBreadcrumbs
-        title={detail.title}
-        dashboardId={detail.id}
-        current="Visualização"
-      />
-
       <Layout
         height="auto"
         header={

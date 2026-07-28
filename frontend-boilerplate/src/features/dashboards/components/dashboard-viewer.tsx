@@ -6,6 +6,14 @@
  * (`/dashboards/:id`), que segue existindo e intocada — esta rota é ADITIVA,
  * então nenhum link, teste ou fluxo existente muda de comportamento.
  *
+ * SEM TRILHA DE NAVEGAÇÃO, de propósito. Esta tela é AUTÔNOMA: roda fora do
+ * `DashboardLayout` e abre em guia própria, para projetar numa reunião ou ficar
+ * num telão. Uma trilha "Dashboards / Fulano / Visualização" é orientação
+ * DENTRO de um app — e aqui não há app em volta para se orientar. A saída é
+ * fechar a guia, e quem tem permissão de edição ainda tem o botão "Editar" no
+ * cabeçalho. As telas que vivem no shell (`/dashboards/:id` e `/edit`) mantêm a
+ * trilha, que lá continua fazendo sentido.
+ *
  * Este componente é só o PORTÃO (carrega, resolve os três estados: carregando,
  * erro e conteúdo). A composição fica em `DashboardViewerContent`, no mesmo
  * arranjo que `DashboardView`/`DashboardViewContent` já usam — inclusive a
@@ -21,7 +29,6 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import type { ApiMode } from '@/shared/lib/query-keys';
 import { useDashboard } from '../hooks';
 import { pickEffectiveLayout } from '../lib/dashboard-filters';
-import { DashboardBreadcrumbs } from './dashboard-breadcrumbs';
 import { DashboardViewerContent } from './viewer/dashboard-viewer-content';
 
 export function DashboardViewer() {
@@ -40,13 +47,31 @@ export function DashboardViewer() {
   if (detailQuery.isError || !detail) {
     return (
       <VStack gap={4}>
-        <DashboardBreadcrumbs current="Visualização" />
         <Banner
           status="error"
           title="Não foi possível carregar este dashboard"
           description="Ele pode não existir, estar inacessível para o seu perfil, ou ainda não ter uma versão neste modo."
+          /*
+           * DUAS saídas, e as duas importam numa guia autônoma.
+           *
+           * Tirar a trilha de navegação desta tela (ver o cabeçalho) levou junto
+           * o único caminho de volta que o estado de erro tinha. Numa tela
+           * dentro do app isso seria inofensivo — o menu está ali do lado. Aqui
+           * não há menu: quem abre um link quebrado ficaria com um aviso e nada
+           * para fazer além de fechar a guia.
+           *
+           * A recuperação volta como AÇÃO do próprio aviso, que é onde ela
+           * pertence, em vez de como resíduo de navegação no topo da página.
+           */
           endContent={
-            <Button label="Tentar de novo" onClick={() => void detailQuery.refetch()} />
+            <HStack gap={2}>
+              <Button label="Tentar de novo" onClick={() => void detailQuery.refetch()} />
+              <Button
+                label="Ver todos os dashboards"
+                variant="ghost"
+                href="/dashboards"
+              />
+            </HStack>
           }
         />
       </VStack>
