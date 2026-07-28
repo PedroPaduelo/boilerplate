@@ -21,8 +21,12 @@ sub-skill certa** (sempre pelo slug, o `skill_list` resolve):
 | **Catálogo de blocos** (43 tipos, qual usar, props) | `dashboards-catalogo` | `list_catalog` vivo + mapa pedido->bloco + props canônicas (accent, palette, valueFormat, deltaPolarity) |
 | **Geração de query SQL** (shape, cast, encoding, perf) | `dashboards-query` | convenção de colunas por shape, LATIN1, `FILTER` em 1 passada, descoberta de schema em 2 passos |
 | **Composição de layout** (dashboard, rows, containers) | `dashboards-layout` | hierarquia, grade 12 colunas + `rowSpan`, 7 containers aninham via `block.blocks`, `add_chart_to_dashboard` |
-| **Tools do MCP** (15 tools, RBAC, ordem) | `dashboards-mcp-tools` | input/output/permissão/ordem/erros de cada uma das 15 tools |
 | **Validação & erros** (códigos, armadilhas) | `dashboards-erros` | `preview_chart_data` antes de publish, tabela de `code`/`detail`, armadilhas reais |
+
+> As **ferramentas do MCP** (o que cada uma faz, quando usar, o que costuma dar
+> errado) não são sub-skill: estão no seu contexto o tempo todo, na seção "As
+> ferramentas, uma a uma". Elas são usadas em todo pedido de construção — não
+> faz sentido carregá-las sob demanda.
 
 > **Regra de ouro:** chame `list_catalog` e `list_connections` como PRIMEIROS
 > passos. Tudo o que você fizer de chart/dashboard depende desses dois.
