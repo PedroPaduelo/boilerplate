@@ -83,6 +83,10 @@ export function TablePreviewPanel({
       {/* ---------------------------- editor ---------------------------- */}
       <VStack gap={2}>
         <TextArea
+          // Campo de CÓDIGO: monoespaçada e na densidade da tela (ver
+          // `.app-code-field` em app/index.css). Sem isto o editor sai em
+          // fonte proporcional e 14px — o maior texto do workbench.
+          className="app-code-field"
           label="Consulta SQL"
           value={sql}
           onChange={onSqlChange}

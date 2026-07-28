@@ -88,7 +88,9 @@ export function ChartCard({
         <VStack gap={2} padding={3}>
           <HStack gap={2} justify="between" align="start">
             <VStack gap={0.5}>
-              <Heading level={3} maxLines={2}>
+              {/* h3 visual, h2 semântico — o h1 é da topbar e a grade não tem
+                  seção intermediária (ver ConnectionCard). */}
+              <Heading level={3} accessibilityLevel={2} maxLines={2}>
                 {chart.title}
               </Heading>
               <Text type="supporting" color="secondary" maxLines={1}>

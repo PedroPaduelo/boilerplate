@@ -43,12 +43,40 @@ papel declarado, cada tela reinventa o próprio peso.
 4. **Não sobrescrever `weight` fora desta tabela.** Se um texto precisa de mais
    destaque, provavelmente o `type` está errado, não o peso.
 
-## Pendência conhecida
+## Escala
 
-Nas telas de lista sem seção intermediária (`/dashboards`, `/charts`,
-`/connections`), a hierarquia pula de `h1` (shell) para `h3` (título de card).
-Não é erro de WCAG, mas é uma quebra da recomendação de não pular níveis. A
-correção limpa é dar à região da lista um `Heading level={2}` visualmente
-discreto ou usar `accessibilityLevel={2}` nos cards — decisão em aberto, porque
-transformar cada card num `h2` semântico muda a navegação por cabeçalhos do
-leitor de tela.
+Os títulos NÃO usam a escala herdada do tema MUI legado (h1 35px/800,
+h2 28px/800 em Barlow ExtraBold). Aquilo vinha de um produto editorial; aqui o
+texto dominante da UI tem **12,25px** (`supporting`), e um h2 de 28px/800 ao
+lado disso é 2,3x o tamanho e 2x o peso.
+
+A escala vigente está em `auditoria-theme.ts` (bloco "ESCALA DE TÍTULO
+PRÓPRIA"), reancorada no corpo real:
+
+| Slot        | Tamanho | Peso |
+| ----------- | ------- | ---- |
+| `heading-1` | 24px    | 700  |
+| `heading-2` | 19px    | 600  |
+| `heading-3` | 16px    | 600  |
+| `heading-4` | 14px    | 600  |
+| `heading-5` | 13px    | 600  |
+| `heading-6` | 12,25px | 600  |
+
+`tokens.generated.ts` continua sendo o registro fiel do sistema legado e **não
+é editado** — a divergência é declarada no tema, com o motivo.
+
+## Campos de código
+
+`TextArea` é um campo de prosa: o override de tema o faz herdar o `TextInput`
+(família proporcional, `--font-size-sm` fixo em 14px). Num editor de SQL isso
+desalinha colunas e ainda o torna o maior texto da tela.
+
+Editor de SQL/JSON usa `className="app-code-field"` (definido em
+`app/index.css`, camada `components`): monoespaçada + `--font-size-2xs`.
+
+## Cabeçalho semântico em cards
+
+Nas listas sem seção intermediária (`/dashboards`, `/charts`, `/connections`) o
+`h1` é da topbar e o card seria `h3` — pulando o `h2`. Os cards resolvem isso
+com `accessibilityLevel={2}`: continuam `h3` no visual e viram `h2` na árvore
+de acessibilidade, sem salto e sem inflar o tamanho na tela.

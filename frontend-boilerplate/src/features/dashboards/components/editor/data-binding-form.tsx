@@ -69,6 +69,7 @@ export function DataBindingForm({
         />
 
         <TextArea
+          className="app-code-field"
           label="Consulta SQL (somente leitura)"
           size="sm"
           rows={4}

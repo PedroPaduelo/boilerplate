@@ -102,7 +102,10 @@ export function ConnectionCard({
             <HStack gap={2} vAlign="center">
               <Icon icon={Database} color="accent" />
               <VStack gap={0}>
-                <Heading level={3} maxLines={1}>
+                {/* Visualmente h3 (título de card), semanticamente h2: o h1 é
+                    da topbar do shell e não há seção intermediária nesta tela,
+                    então sem isto a hierarquia pularia h1 → h3. */}
+                <Heading level={3} accessibilityLevel={2} maxLines={1}>
                   {connection.name}
                 </Heading>
                 <Text

@@ -94,3 +94,31 @@
     font-family: var(--font-family-body);
   }
 }
+
+/* --------------------------------------------------------------------------
+   CAMPO DE CÓDIGO (SQL / JSON)
+
+   O `TextArea` do Astryx é um campo de PROSA: o override de tema o faz herdar
+   a aparência do `TextInput`, com família proporcional e `--font-size-sm`
+   (14px) fixo. Num editor de SQL isso dá dois defeitos reais:
+
+     1. a fonte proporcional desalinha colunas, indentação e dígitos — é o
+        motivo de existir monoespaçada;
+     2. 14px vira o MAIOR texto da tela num workbench cujo texto dominante tem
+        12,25px, então o editor parece "aumentado" no meio da página.
+
+   Não dá para resolver no tema (`textarea` compartilha o objeto de override
+   com `text-input` e `selector`: mudar ali mexeria em todo campo do app), e o
+   `TextArea` não expõe `type="code"`. Uma classe explícita, aplicada só nos
+   campos que são código, é o menor bisturi possível.
+
+   Vive em `components` — depois do DS, antes das utilities do Tailwind.
+   -------------------------------------------------------------------------- */
+@layer components {
+  .app-code-field textarea {
+    font-family: var(--font-family-code);
+    font-size: var(--font-size-2xs);
+    line-height: 1.6;
+    tab-size: 2;
+  }
+}

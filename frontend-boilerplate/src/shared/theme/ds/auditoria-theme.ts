@@ -139,13 +139,56 @@ const typographyTokens = {
   '--font-weight-bold': dsFontWeights.bold,
   '--font-weight-extrabold': dsFontWeights.extraBold, // h1/h2
 
-  // Títulos — 1:1 com h1..h6
+  // Títulos — base 1:1 com h1..h6, RETEMPERADOS logo abaixo.
   ...textSlot('heading-1', 'h1'),
   ...textSlot('heading-2', 'h2'),
   ...textSlot('heading-3', 'h3'),
   ...textSlot('heading-4', 'h4'),
   ...textSlot('heading-5', 'h5'),
   ...textSlot('heading-6', 'h6'),
+
+  /**
+   * ESCALA DE TÍTULO PRÓPRIA — a única divergência deliberada da auditoria.
+   *
+   * A escala herdada vinha do tema MUI legado, que era de um produto
+   * editorial: h1 35px/800 e h2 28px/800 em Barlow ExtraBold. Este produto é
+   * dolorosamente diferente — o texto DOMINANTE da UI tem 12,25px
+   * (`supporting`, usado em tabela, metadados, barra de status). Um h2 de
+   * 28px/800 ao lado disso é 2,3x o tamanho e 2x o peso: no workbench havia
+   * DOIS deles na mesma tela ("teste" no cabeçalho, "contacts" no inspetor),
+   * e o efeito era de cartaz, não de ferramenta.
+   *
+   * Reancorada no corpo real: os saltos ficam ~1,3x entre níveis vizinhos, e
+   * o peso máximo passa a ser 700 no h1 (era 800) e 600 no resto — semibold é
+   * o peso de título de produto denso. A família Barlow continua nos títulos:
+   * o problema era o peso, não a fonte.
+   *
+   * `tokens.generated.ts` NÃO é editado de propósito: ele é o registro fiel do
+   * sistema legado (entrada da migração). A decisão de desenho mora aqui.
+   */
+  '--text-heading-1-size': '24px',
+  '--text-heading-1-weight': dsFontWeights.bold, // 700 (era 800)
+  '--text-heading-1-leading': '1.3',
+
+  '--text-heading-2-size': '19px',
+  '--text-heading-2-weight': dsFontWeights.semiBold, // 600 (era 800)
+  '--text-heading-2-leading': '1.35',
+
+  '--text-heading-3-size': '16px',
+  '--text-heading-3-weight': dsFontWeights.semiBold, // 600 (era 700)
+  '--text-heading-3-leading': '1.4',
+
+  '--text-heading-4-size': '14px',
+  '--text-heading-4-weight': dsFontWeights.semiBold, // 600 (era 700)
+  '--text-heading-4-leading': '1.45',
+
+  '--text-heading-5-size': '13px',
+  '--text-heading-5-weight': dsFontWeights.semiBold,
+  '--text-heading-5-leading': '1.5',
+
+  '--text-heading-6-size': '12.25px',
+  '--text-heading-6-weight': dsFontWeights.semiBold,
+  '--text-heading-6-leading': '1.5',
 
   // Corpo e auxiliares
   ...textSlot('body', 'body1'), // 14 / 400

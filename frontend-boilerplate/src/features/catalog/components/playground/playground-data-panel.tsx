@@ -109,6 +109,7 @@ export function PlaygroundDataPanel({
           ) : null}
 
           <TextArea
+            className="app-code-field"
             label="JSON dos dados"
             size="sm"
             rows={12}
