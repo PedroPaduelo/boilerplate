@@ -340,8 +340,19 @@ function applyEvent(state: ConversationState, event: ChatEvent): ConversationSta
     }
     case 'error':
       return { ...state, ...IDLE, error: event.message };
-    case 'message_end':
-      return { ...state, ...IDLE };
+    case 'message_end': {
+      // Sem texto no fechamento (transporte antigo), nada a reconciliar.
+      if (!event.text) return { ...state, ...IDLE };
+      return {
+        ...state,
+        ...IDLE,
+        messages: state.messages.map((message) =>
+          message.id === event.messageId
+            ? { ...message, content: event.text as string }
+            : message,
+        ),
+      };
+    }
   }
 }
 

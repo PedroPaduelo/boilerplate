@@ -125,7 +125,13 @@ export type ChatEvent =
   | { type: 'message_start'; messageId: string }
   | { type: 'text_delta'; messageId: string; delta: string }
   | { type: 'chart'; messageId: string; chart: ChatChartPayload }
-  | { type: 'message_end'; messageId: string }
+  /**
+   * Fim do turno. `text` traz a RESPOSTA final já separada do raciocínio de
+   * trabalho pelo servidor: quando vem, substitui o que foi acumulado nos
+   * deltas — é o que impede "vou ajustar a query…" de ficar sendo a primeira
+   * linha da mensagem depois que a análise chegou.
+   */
+  | { type: 'message_end'; messageId: string; text?: string }
   | { type: 'error'; message: string }
   /** `messageId` só existe quando o passo chega junto de uma mensagem já aberta. */
   | ({ type: 'tool_step'; messageId?: string } & ChatToolStepPayload)

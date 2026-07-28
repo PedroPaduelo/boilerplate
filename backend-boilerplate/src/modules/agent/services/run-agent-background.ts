@@ -120,6 +120,97 @@ export function startTurnInBackground(params: StartTurnParams): void {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Fronteira entre blocos de texto
+// ---------------------------------------------------------------------------
+
+/**
+ * O que precisa entrar ANTES de um delta para ele não colar no bloco anterior.
+ *
+ * O modelo escreve em BLOCOS: um antes de chamar a ferramenta, outro depois de
+ * ver o resultado. O stream entrega os dois como deltas seguidos e a
+ * concatenação crua os emenda — foi assim que nasceu, numa resposta real, o
+ * `…seus gráficos e dashboards.Assumi que "listi" = listar`. Duas frases de
+ * momentos diferentes viram uma só, sem nem um espaço entre elas.
+ *
+ * A separação vale só na FRONTEIRA (`houveFerramenta`): texto contínuo do mesmo
+ * bloco não é tocado, porque ali a emenda é intencional — o modelo está
+ * escrevendo uma frase, letra a letra.
+ *
+ * Devolve o MÍNIMO necessário para haver parágrafo novo. Se o bloco anterior já
+ * terminou em quebra, completa o que falta em vez de empilhar linhas em branco;
+ * se o próprio modelo abriu linha nova no delta, não mexe no que ele escreveu.
+ */
+export function separadorDeBloco(
+  textoAcumulado: string,
+  delta: string,
+  houveFerramenta: boolean,
+): string {
+  if (!houveFerramenta) return '';
+  if (textoAcumulado === '') return ''; // primeiro bloco do turno: nada a separar
+  if (delta.startsWith('\n')) return '';
+  if (textoAcumulado.endsWith('\n\n')) return '';
+  return textoAcumulado.endsWith('\n') ? '\n' : '\n\n';
+}
+
+/**
+ * O texto acumulado no turno, separado em RESPOSTA e BASTIDOR.
+ *
+ * O modelo escreve entre as ferramentas: "vou conferir o schema", "o contrato
+ * pede x como string, vou ajustar a query". É raciocínio de trabalho, e ia
+ * inteiro para o corpo da mensagem — a primeira coisa que o usuário lia era
+ * `DATE_TRUNC está vindo como string ISO`, antes da análise que ele pediu.
+ *
+ * O prompt manda não narrar progresso, e ainda assim isso acontece: quando o
+ * modelo tropeça e se corrige, ele descreve o tropeço. Instrução não segura
+ * esse caso — a separação precisa ser estrutural.
+ *
+ * A regra: **o último bloco é a resposta**. Os anteriores são bastidor e vão
+ * para a trilha de auditoria (onde continuam auditáveis) em vez do corpo.
+ *
+ * A salvaguarda importa tanto quanto a regra: se o último bloco for curto
+ * demais para ser uma resposta (o modelo encerrou com "pronto!"), devolvemos o
+ * texto INTEIRO. Errar para o lado de mostrar demais é recuperável; comer a
+ * análise do usuário, não.
+ */
+export const MINIMO_DE_RESPOSTA = 120;
+
+export function separarRespostaDoBastidor(
+  texto: string,
+  fronteiras: readonly number[],
+): { resposta: string; bastidor: string[] } {
+  const corte = fronteiras[fronteiras.length - 1];
+
+  // Nenhuma ferramenta interrompeu a escrita: tudo o que existe é a resposta.
+  if (corte === undefined || corte <= 0 || corte >= texto.length) {
+    return { resposta: texto.trim(), bastidor: [] };
+  }
+
+  const resposta = texto.slice(corte).trim();
+
+  /*
+   * A salvaguarda que impede o pior caso.
+   *
+   * A primeira versão desta função cortava por PARÁGRAFO, e foi assim que ela
+   * comeu uma análise inteira: o modelo escreveu conclusão, gráfico e bullets
+   * em parágrafos separados, e só o último ("posso cruzar as recebidas…")
+   * sobrou como mensagem. O corte agora é a fronteira de ferramenta, que é o
+   * conceito certo — mas o princípio continua valendo: na dúvida, mostrar
+   * demais é recuperável; comer a resposta do usuário, não.
+   */
+  if (resposta.length < MINIMO_DE_RESPOSTA) {
+    return { resposta: texto.trim(), bastidor: [] };
+  }
+
+  const bastidor = texto
+    .slice(0, corte)
+    .split(/\n{2,}/)
+    .map((bloco) => bloco.trim())
+    .filter((bloco) => bloco !== '');
+
+  return { resposta, bastidor };
+}
+
 /** Serializa com teto; `undefined` quando não vale a pena mandar pelo fio. */
 function outputParaSocket(output: unknown): unknown {
   if (output === undefined) return undefined;
@@ -287,6 +378,10 @@ async function executarTurno({
     emitirBruto(evento, { conversationId, runId, ...payload });
 
   let texto = '';
+  /** Blocos de raciocínio que saíram do corpo da resposta (ver separação abaixo). */
+  let bastidor: string[] = [];
+  /** Posições em `texto` onde uma ferramenta interrompeu a escrita. */
+  const fronteirasDeFerramenta: number[] = [];
   let usage:
     | { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number }
     | undefined;
@@ -305,6 +400,11 @@ async function executarTurno({
    * tempos, sem depender do que está gravado.
    */
   let seq = 0;
+  /**
+   * Houve ferramenta desde o último pedaço de texto? É o que distingue um delta
+   * que ABRE um bloco novo de um que continua a frase (ver `separadorDeBloco`).
+   */
+  let ferramentaDesdeOUltimoTexto = false;
   /** Um passo por `toolCallId` (chave natural). A ordem de inserção é a ordem das chamadas. */
   const passos = new Map<string, RunToolStep>();
   const graficos: ChatChartPayload[] = [];
@@ -324,6 +424,24 @@ async function executarTurno({
       }).catch(() => {}),
     );
     return flushEmVoo;
+  };
+
+  /**
+   * Aplica a regra da fronteira (`separadorDeBloco`) e fecha o bloco: a partir
+   * daqui os deltas seguintes continuam o MESMO parágrafo, até a próxima
+   * ferramenta. O motor segue entregando os deltas como sempre entregou; o que
+   * muda é uma emenda de dois caracteres entre um bloco e o próximo.
+   */
+  const abrirBloco = (delta: string): string => {
+    const separador = separadorDeBloco(texto, delta, ferramentaDesdeOUltimoTexto);
+    if (ferramentaDesdeOUltimoTexto && texto !== '') {
+      // Onde termina o que foi escrito ANTES desta ferramenta. É esta marca —
+      // e não a linha em branco — que distingue "o modelo comentou o trabalho"
+      // de "o modelo mudou de parágrafo": os dois produzem `\n\n` no texto.
+      fronteirasDeFerramenta.push(texto.length + separador.length);
+    }
+    ferramentaDesdeOUltimoTexto = false;
+    return separador;
   };
 
   /** Agenda um flush no máximo a cada 200ms (o socket já entregou o delta). */
@@ -390,6 +508,9 @@ async function executarTurno({
   // --- trilha --------------------------------------------------------------
 
   const registrarChamada = (toolName: string, toolCallId: string, args: unknown) => {
+    // Fecha o bloco de texto corrente: o que o modelo escrever DEPOIS desta
+    // ferramenta começa em parágrafo novo (ver `separadorDeBloco`).
+    ferramentaDesdeOUltimoTexto = true;
     const campos = describeToolStep(toolName, args, undefined, undefined, {
       connectionName: nomeDaConexao,
     });
@@ -599,12 +720,17 @@ async function executarTurno({
       providerOptions: extrasToProviderOptions(DEFAULT_AGENT_CONFIG.anthropicExtras),
       sink: {
         onTextDelta: (delta) => {
-          texto += delta;
+          // O separador vai JUNTO do delta emitido, não só no acumulado: quem
+          // está com a tela aberta monta o texto concatenando os deltas, e
+          // precisa chegar ao mesmo resultado de quem recarregar a página
+          // depois e ler a mensagem persistida.
+          const pedaco = abrirBloco(delta) + delta;
+          texto += pedaco;
           seq += 1;
           emitirFase('writing');
           // Emite na hora (quem está com a tela aberta vê digitando) e grava
           // com folga: o número do pedaço é o que permite retomar sem buraco.
-          emit(CHAT_EVENTS.DELTA, { messageId, delta, seq });
+          emit(CHAT_EVENTS.DELTA, { messageId, delta: pedaco, seq });
           agendarFlush();
         },
         onStep: (step) => {
@@ -650,7 +776,22 @@ async function executarTurno({
       },
     });
 
-    texto = result.fullText || texto;
+    // O acumulado local VENCE o `fullText` do motor: os dois têm os mesmos
+    // deltas, mas só o nosso tem os separadores de bloco (`separadorDeBloco`).
+    // Sobrescrever aqui devolveria o texto grudado à mensagem persistida — e a
+    // conversa apareceria de um jeito ao vivo e de outro depois do F5.
+    // `fullText` fica como rede de segurança para o caso de nada ter passado
+    // pelo sink.
+    if (!texto) texto = result.fullText;
+
+    // O raciocínio de trabalho sai do corpo e vira bastidor (ver
+    // `separarRespostaDoBastidor`). Só a partir daqui: durante o streaming o
+    // usuário VÊ o modelo trabalhando, o que é informação boa — o que não pode
+    // é isso ficar sendo a mensagem depois que a resposta chegou.
+    const separado = separarRespostaDoBastidor(texto, fronteirasDeFerramenta);
+    texto = separado.resposta;
+    bastidor = separado.bastidor;
+
     totalDePassos = result.steps;
     if (result.usage) usage = result.usage;
   } catch (err: unknown) {
@@ -764,6 +905,10 @@ async function executarTurno({
       steps: [...passos.values()].filter((p) => p.output !== undefined),
       artifacts: artefatos,
       ...(graficosPersistiveis.length > 0 ? { charts: graficosPersistiveis } : {}),
+      // O raciocínio que saiu do corpo fica GRAVADO junto da trilha: sai da
+      // frente de quem só quer a resposta, sem sumir para quem quer auditar
+      // como ela foi obtida.
+      ...(bastidor.length > 0 ? { notes: bastidor } : {}),
       usage: consumo,
     };
 

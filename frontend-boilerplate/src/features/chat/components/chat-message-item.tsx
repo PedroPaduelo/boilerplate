@@ -20,7 +20,6 @@ import {
   ChatMessageBubble,
 } from '@astryxdesign/core/Chat';
 import { Avatar } from '@astryxdesign/core/Avatar';
-import { Markdown } from '@astryxdesign/core/Markdown';
 import { VStack } from '@astryxdesign/core/Stack';
 import { useStreamingText } from '@astryxdesign/core/hooks';
 import type { ChatMessage } from '../transport';
@@ -28,8 +27,8 @@ import type { ChatMessageTrail } from '../model';
 import { deriveFollowUps } from '../lib/follow-ups';
 import { ArtifactCard } from './artifact-card';
 import { FollowUps } from './follow-ups';
-import { InlineChart } from './inline-chart';
 import { MessageActions, type MessageFeedback } from './message-actions';
+import { ResponseBody } from './response-body';
 
 export interface ChatMessageItemProps {
   message: ChatMessage;
@@ -95,21 +94,16 @@ function AssistantMessage({
         }
       >
         <VStack gap={3}>
-          {/* `headingLevelStart={3}` mantém a hierarquia: o título da conversa
-              é o h1 da tela e os cabeçalhos da resposta vêm abaixo dele. */}
-          <Markdown density="compact" headingLevelStart={3} isStreaming={isStreaming}>
-            {text}
-          </Markdown>
-
-          {/* Todos os gráficos do turno, na ordem em que o agente os montou.
-              Um pedido de painel rende vários de uma vez — mostrar só um
-              obrigaria o usuário a sair do chat para ver o que já pediu. */}
-          {charts.map((chart, index) => (
-            <InlineChart
-              key={chart.chartId ?? chart.result?.blockId ?? `${message.id}:${index}`}
-              chart={chart}
-            />
-          ))}
+          {/* Texto e gráficos INTERCALADOS: cada gráfico aparece no ponto da
+              narrativa em que é a evidência, e não empilhado no fim como
+              anexo. Quem decide a ordem é a resposta do agente, através das
+              marcas `[[grafico:N]]` — ver `lib/response-composition.ts`. */}
+          <ResponseBody
+            text={text}
+            charts={charts}
+            messageId={message.id}
+            isStreaming={isStreaming}
+          />
 
           {artifacts.length > 0 ? (
             <VStack gap={2}>

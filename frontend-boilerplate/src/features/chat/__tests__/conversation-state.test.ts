@@ -413,8 +413,10 @@ describe('trilha reconstruída do histórico', () => {
 
     expect(trails.msg_2?.steps[0]).toMatchObject({
       toolCallId: 't1',
-      // Sem `title` gravado, o rótulo vem do nome técnico traduzido.
-      title: 'Executando consulta',
+      // Sem `title` gravado, o rótulo vem do nome técnico traduzido — o mesmo
+      // texto que o backend manda hoje (`TOOL_TITLES`), para o passo não ter um
+      // nome numa conversa velha e outro numa nova.
+      title: 'Consultando os dados',
       status: 'ok',
       sql: 'SELECT 1',
       rowCount: 42,

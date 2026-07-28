@@ -166,7 +166,11 @@ export function attachToConversation(
 
   const onDone = (p: DonePayload) => {
     if (p.conversationId !== conversationId) return;
-    onEvent({ type: 'message_end', messageId: p.messageId });
+    // O texto do fechamento é a RESPOSTA já separada do raciocínio de trabalho
+    // (o servidor tira do corpo o "vou conferir o schema…" e o guarda na
+    // trilha). Durante o streaming o usuário viu tudo — o que é bom, mostra o
+    // trabalho acontecendo; ao fechar, a mensagem passa a ser só a resposta.
+    onEvent({ type: 'message_end', messageId: p.messageId, text: p.text });
   };
 
   const onError = (p: ErrorPayload) => {
