@@ -53,7 +53,7 @@ export function ChartsTable({ rows, onPrefetch }: ChartsTableProps) {
           onMouseEnter={() => onPrefetch(row.id)}
           onFocus={() => onPrefetch(row.id)}
         >
-          <Link href={`/charts/${row.id}`} isStandalone>
+          <Link href={`/charts/${row.id}`} isStandalone weight="medium" maxLines={1}>
             {row.title}
           </Link>
           <Text type="supporting">{row.catalogType}</Text>

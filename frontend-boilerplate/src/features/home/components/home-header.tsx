@@ -29,7 +29,7 @@ export function HomeHeader({
       <VStack gap={1} maxWidth={640}>
         <Text type="supporting">Visão geral</Text>
         <Heading level={2}>{`${greeting()}, ${firstName}`}</Heading>
-        <Text type="body" color="secondary">
+        <Text type="supporting">
           Seu ponto de partida: o estado do ambiente, o que ficou pendente e um atalho
           para perguntar aos seus dados.
         </Text>

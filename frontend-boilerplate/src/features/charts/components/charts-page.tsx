@@ -31,7 +31,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Icon } from '@astryxdesign/core/Icon';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Pagination } from '@astryxdesign/core/Pagination';
-import { Heading, Text } from '@astryxdesign/core/Text';
+import { Text } from '@astryxdesign/core/Text';
 import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
 import { useLocalStorage } from '@/shared/hooks/use-local-storage';
@@ -152,13 +152,11 @@ export function ChartsPage() {
   return (
     <VStack gap={5}>
       <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
-        <VStack gap={1}>
-          <Heading level={2}>Gráficos</Heading>
-          <Text type="supporting">
-            Explore, busque e gerencie os gráficos visíveis para você conforme seu papel e
-            visibilidade.
-          </Text>
-        </VStack>
+        {/* Sem título aqui: o h1 da topbar do shell já diz "Gráficos". */}
+        <Text type="supporting">
+          Explore, busque e gerencie os gráficos visíveis para você conforme seu papel e
+          visibilidade.
+        </Text>
         {canCreate ? (
           <Button
             label="Criar com IA"

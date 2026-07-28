@@ -27,9 +27,9 @@ export function ArtifactListHeader({
   return (
     <HStack gap={4} vAlign="start" hAlign="between" wrap="wrap">
       <VStack gap={1}>
-        <Text type="label" color="secondary">
-          {eyebrow}
-        </Text>
+        {/* Eyebrow e descrição usam o mesmo estilo de apoio; quem separa os
+            dois é a posição em relação ao título, não o peso da fonte. */}
+        <Text type="supporting">{eyebrow}</Text>
         <Heading level={2}>{title}</Heading>
         <Text type="supporting" maxLines={2}>
           {description}

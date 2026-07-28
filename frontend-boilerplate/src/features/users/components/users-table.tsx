@@ -55,7 +55,11 @@ export function UsersTable({ users, currentUserId, onEdit, onDelete }: UsersTabl
             <TableRow key={user.id}>
               <TableCell>
                 <VStack gap={0.5}>
-                  <Text weight="semibold" maxLines={1}>
+                  {/* Identificador da linha em `medium`, igual às outras
+                      tabelas. Aqui é `Text` e não `Link` porque usuário não
+                      tem tela de detalhe — mas o PESO é o mesmo, senão o nome
+                      do usuário ficaria mais forte que o de um dashboard. */}
+                  <Text weight="medium" maxLines={1}>
                     {user.name ?? '—'}
                   </Text>
                   <Text type="supporting" maxLines={1}>

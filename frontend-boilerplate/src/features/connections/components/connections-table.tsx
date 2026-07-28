@@ -84,7 +84,12 @@ export function ConnectionsTable({
         sortable: true,
         renderCell: (row) => (
           <VStack gap={0}>
-            <Link href={`/connections/${row.id}`} maxLines={1}>
+            <Link
+              href={`/connections/${row.id}`}
+              isStandalone
+              weight="medium"
+              maxLines={1}
+            >
               {row.name}
             </Link>
             {row.connection.description ? (

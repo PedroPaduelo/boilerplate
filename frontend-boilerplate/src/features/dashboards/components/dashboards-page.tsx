@@ -14,7 +14,7 @@ import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Pagination } from '@astryxdesign/core/Pagination';
-import { Heading, Text } from '@astryxdesign/core/Text';
+import { Text } from '@astryxdesign/core/Text';
 
 import { useAppToast } from '@/shared/hooks/use-app-toast';
 import { useConfirmDelete } from '@/shared/hooks/use-confirm-delete';
@@ -146,13 +146,13 @@ export function DashboardsPage() {
 
   return (
     <VStack gap={4}>
-      <VStack gap={1}>
-        <Heading level={2}>Dashboards</Heading>
-        <Text type="supporting">
-          Explore, busque e gerencie os dashboards visíveis para você conforme seu papel e
-          a visibilidade de cada painel.
-        </Text>
-      </VStack>
+      {/* O h1 da tela é o título da topbar do shell. Repetir "Dashboards" aqui
+          dava o MESMO nome em dois tamanhos e pesos diferentes na mesma tela —
+          é a convenção já documentada em `/connections` e `/users`. */}
+      <Text type="supporting">
+        Explore, busque e gerencie os dashboards visíveis para você conforme seu papel e a
+        visibilidade de cada painel.
+      </Text>
 
       <DashboardsToolbar
         filters={filters}

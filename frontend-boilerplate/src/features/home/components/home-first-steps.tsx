@@ -78,7 +78,7 @@ export function HomeFirstSteps({
         <VStack gap={1}>
           <Text type="supporting">Comece por aqui</Text>
           <Heading level={3}>Três passos para o primeiro insight</Heading>
-          <Text color="secondary">
+          <Text type="supporting">
             Do banco conectado à resposta publicada — leva poucos minutos.
           </Text>
         </VStack>

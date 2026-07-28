@@ -29,7 +29,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Tab, TabList } from '@astryxdesign/core/TabList';
 import { TextInput } from '@astryxdesign/core/TextInput';
-import { Heading, Text } from '@astryxdesign/core/Text';
+import { Text } from '@astryxdesign/core/Text';
 import type { DataShape } from '@dashboards/contracts';
 import {
   getCatalogEntries,
@@ -130,13 +130,11 @@ export function CatalogPage() {
   return (
     <VStack gap={6}>
       <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
-        <VStack gap={1}>
-          <Heading level={2}>Catálogo de componentes</Heading>
-          <Text type="supporting">
-            Todos os blocos disponíveis para montar relatórios e dashboards — os mesmos
-            que o agente (MCP) usa. Cada um aparece com dados de exemplo.
-          </Text>
-        </VStack>
+        {/* Sem título aqui: o h1 da topbar do shell já diz "Catálogo". */}
+        <Text type="supporting">
+          Todos os blocos disponíveis para montar relatórios e dashboards — os mesmos que
+          o agente (MCP) usa. Cada um aparece com dados de exemplo.
+        </Text>
         <Badge
           variant="neutral"
           icon={<Icon icon={Blocks} size="sm" />}

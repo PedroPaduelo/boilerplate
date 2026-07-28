@@ -81,7 +81,7 @@ export function ConnectionsPage() {
   return (
     <VStack gap={4}>
       <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
-        <Text color="secondary" maxLines={2}>
+        <Text type="supporting" maxLines={2}>
           Bancos PostgreSQL disponíveis para a plataforma. Abra uma conexão para explorar
           schema, índices e chaves — e rodar consultas read-only.
         </Text>

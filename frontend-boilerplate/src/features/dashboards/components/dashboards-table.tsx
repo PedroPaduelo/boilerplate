@@ -53,6 +53,7 @@ const columns: TableColumn<DashboardRow>[] = [
       <VStack gap={0.5}>
         <Link
           href={row.href}
+          isStandalone
           weight="medium"
           maxLines={1}
           onMouseEnter={row.onPrefetch}
