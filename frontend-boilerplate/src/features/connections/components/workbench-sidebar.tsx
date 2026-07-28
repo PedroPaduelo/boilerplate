@@ -79,8 +79,11 @@ export function WorkbenchSidebar({
   onRemoveFavorite,
   onSelectQuery,
 }: WorkbenchSidebarProps) {
+  // `padding` no painel inteiro: as listas eram edge-to-edge e os itens
+  // encostavam nas duas laterais do painel. Os divisores continuam separando
+  // os itens DENTRO de cada seção — só deixaram de raspar a borda da tela.
   return (
-    <VStack gap={1}>
+    <VStack gap={1} padding={2}>
       <Section icon={Wifi} label="Conexões" count={connections.length}>
         <ConnectionList connections={connections} activeId={connectionId} />
       </Section>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Database } from 'lucide-react';
 import { Center } from '@astryxdesign/core/Center';
@@ -15,6 +15,7 @@ import {
   useConnectionSchema,
   useTestConnection,
 } from '../hooks';
+import { buildSelectPreview } from '../lib/ddl';
 import { countTables, findTable } from '../lib/schema-search';
 import { toDatabaseSchema } from '../lib/schema-mapper';
 import { useQueryRunner } from '../use-query-runner';
@@ -22,8 +23,7 @@ import { useWorkbenchFavorites } from '../use-workbench-favorites';
 import { ConnectionFormDialog } from './connection-form-dialog';
 import { DbSchemaExplorer } from './db-schema-explorer';
 import { DeleteConnectionDialog } from './delete-connection-dialog';
-import { QueryRunnerDialog } from './query-runner-dialog';
-import { TableInfoPanel } from './table-info-panel';
+import { TableInfoPanel, type TableDetailTab } from './table-info-panel';
 import { WorkbenchHeader } from './workbench-header';
 import { WorkbenchSidebar } from './workbench-sidebar';
 import { WorkbenchSkeleton } from './workbench-skeleton';
@@ -36,12 +36,18 @@ import type { TableRef } from './db-schema-explorer-types';
  * Um `Layout` único organiza a tela em regiões que se comportam como um IDE:
  *   - `header`  — identidade + ações da conexão;
  *   - `start`   — navegador de schema (árvore), redimensionável;
- *   - `content` — detalhe da tabela selecionada (precisa da largura: tabelas e DDL);
+ *   - `content` — inspetor da tabela: dados, colunas, relações, índices, DDL;
  *   - `end`     — sessão (outras conexões, favoritos, histórico), redimensionável;
  *   - `footer`  — barra de status.
  *
  * Cada região controla o PRÓPRIO scroll (`LayoutContent`/`LayoutPanel`
  * `isScrollable`): nada de scroll duplo, e o cabeçalho/rodapé nunca somem.
+ *
+ * A consulta NÃO é mais um modal. O editor vive na aba "Dados" do inspetor,
+ * em split view — antes o modal cobria a árvore justamente quando o usuário
+ * precisava dela para escrever a query. Por isso a aba ativa é estado DESTA
+ * página: os botões "Query" (cabeçalho) e "Consultar" (inspetor) precisam
+ * conseguir trazer o usuário para a aba certa.
  */
 export function ConnectionDetailPage() {
   const { id = '' } = useParams();
@@ -50,6 +56,7 @@ export function ConnectionDetailPage() {
   const canManage = hasPermission(role, 'connections:manage');
 
   const [selected, setSelected] = useState<TableRef | null>(null);
+  const [tab, setTab] = useState<TableDetailTab>('data');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
@@ -86,6 +93,22 @@ export function ConnectionDetailPage() {
     [database, selected],
   );
 
+  const isActive = connection?.isActive ?? false;
+  const { loadPreset } = runner;
+  const selectedSchema = selectedTable?.schema;
+  const selectedName = selectedTable?.name;
+
+  /**
+   * Trocou de tabela → o editor recebe o SELECT dela e já executa. É o que faz
+   * a aba "Dados" responder "o que tem aqui dentro?" sem ninguém digitar SQL.
+   * Depende só de escalares + do `loadPreset` (estável), nunca do objeto
+   * `runner` — que muda a cada render e viraria laço.
+   */
+  useEffect(() => {
+    if (!selectedSchema || !selectedName || !isActive) return;
+    loadPreset(buildSelectPreview(selectedSchema, selectedName));
+  }, [selectedSchema, selectedName, isActive, loadPreset]);
+
   if (connectionQuery.isLoading) {
     return <WorkbenchSkeleton />;
   }
@@ -115,6 +138,11 @@ export function ConnectionDetailPage() {
   const inactiveReason = connection.isActive
     ? undefined
     : 'Conexão inativa — reative para consultar.';
+  // Sem tabela selecionada não há onde abrir o editor: o botão barra com
+  // motivo em vez de levar a uma aba vazia.
+  const queryDisabledReason =
+    inactiveReason ??
+    (selectedTable ? undefined : 'Selecione uma tabela na árvore para consultar.');
 
   return (
     <>
@@ -127,9 +155,11 @@ export function ConnectionDetailPage() {
             canManage={canManage}
             isTesting={testConnection.isPending}
             isRefreshing={schemaQuery.isFetching}
+            isQueryDisabled={Boolean(queryDisabledReason)}
+            queryDisabledReason={queryDisabledReason}
             onTest={() => testConnection.mutate(connection.id)}
             onRefresh={() => schemaQuery.refetch()}
-            onOpenQueryRunner={() => runner.open()}
+            onOpenQueryRunner={() => setTab('data')}
             onEdit={() => setIsFormOpen(true)}
             onDelete={() => setIsDeleteOpen(true)}
           />
@@ -162,15 +192,22 @@ export function ConnectionDetailPage() {
           </>
         }
         content={
-          <LayoutContent isScrollable padding={4} label="Detalhe da tabela">
+          <LayoutContent isScrollable padding={5} label="Detalhe da tabela">
             <TableInfoPanel
-              connectionId={id}
               table={selectedTable}
               engine={database?.engine ?? 'postgresql'}
+              tab={tab}
+              onTabChange={setTab}
               isFavorite={favorites.isFavorite(selected)}
               onToggleFavorite={() => selected && favorites.toggle(selected)}
               onNavigateFk={setSelected}
-              onPreviewQuery={(sql) => runner.open(sql)}
+              sql={runner.sql}
+              onSqlChange={runner.setSql}
+              onRunQuery={runner.run}
+              isQueryPending={runner.isPending}
+              queryResult={runner.result}
+              queryErrorMessage={runner.errorMessage}
+              onOpenQuery={() => setTab('data')}
               isQueryDisabled={!connection.isActive}
               queryDisabledReason={inactiveReason}
             />
@@ -200,7 +237,10 @@ export function ConnectionDetailPage() {
                   setSelected({ schema: favorite.schema, table: favorite.table })
                 }
                 onRemoveFavorite={favorites.remove}
-                onSelectQuery={(entry) => runner.open(entry.sql)}
+                onSelectQuery={(entry) => {
+                  setTab('data');
+                  runner.loadPreset(entry.sql);
+                }}
               />
             </LayoutPanel>
           </>
@@ -214,18 +254,6 @@ export function ConnectionDetailPage() {
             serverVersion={schema?.database?.version}
           />
         }
-      />
-
-      <QueryRunnerDialog
-        isOpen={runner.isOpen}
-        onOpenChange={(isOpen) => (isOpen ? runner.open() : runner.close())}
-        connectionName={connection.name}
-        sql={runner.sql}
-        onSqlChange={runner.setSql}
-        onRun={runner.run}
-        isPending={runner.isPending}
-        result={runner.result}
-        errorMessage={runner.errorMessage}
       />
 
       {canManage ? (

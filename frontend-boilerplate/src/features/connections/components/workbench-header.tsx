@@ -32,6 +32,9 @@ export interface WorkbenchHeaderProps {
   canManage: boolean;
   isTesting: boolean;
   isRefreshing: boolean;
+  /** Sem tabela selecionada (ou conexão inativa) não há editor para abrir. */
+  isQueryDisabled?: boolean;
+  queryDisabledReason?: string;
   onTest: () => void;
   onRefresh: () => void;
   onOpenQueryRunner: () => void;
@@ -45,6 +48,8 @@ export function WorkbenchHeader({
   canManage,
   isTesting,
   isRefreshing,
+  isQueryDisabled,
+  queryDisabledReason,
   onTest,
   onRefresh,
   onOpenQueryRunner,
@@ -113,8 +118,10 @@ export function WorkbenchHeader({
             size="sm"
             variant="primary"
             icon={<Icon icon={Terminal} />}
-            isDisabled={!connection.isActive}
-            tooltip={inactiveReason ?? 'Executar SELECT read-only'}
+            isDisabled={isQueryDisabled ?? !connection.isActive}
+            tooltip={
+              queryDisabledReason ?? inactiveReason ?? 'Abrir o editor de consulta'
+            }
             onClick={onOpenQueryRunner}
           />
           {canManage ? (

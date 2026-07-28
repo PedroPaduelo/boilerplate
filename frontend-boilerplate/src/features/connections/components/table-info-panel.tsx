@@ -1,15 +1,15 @@
-import { useState } from 'react';
 import { Star, StarOff, Table2, Terminal } from 'lucide-react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { Center } from '@astryxdesign/core/Center';
+import { Divider } from '@astryxdesign/core/Divider';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Icon } from '@astryxdesign/core/Icon';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Tab, TabList } from '@astryxdesign/core/TabList';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { formatCount, formatSizeMB } from '../lib/connection-presentation';
-import { buildSelectPreview } from '../lib/ddl';
+import type { QueryResult } from '../types';
 import type { DbEngine, TableDef, TableRef } from './db-schema-explorer-types';
 import { TableColumnsTable } from './table-columns-table';
 import { TableDdlPanel } from './table-ddl-panel';
@@ -18,44 +18,67 @@ import { TableIndexesTable } from './table-indexes-table';
 import { TablePreviewPanel } from './table-preview-panel';
 
 /**
- * Inspetor da tabela selecionada: identidade + métricas no topo, detalhe em
- * abas.
+ * Inspetor da tabela selecionada.
  *
- * A ordem das abas segue as personas da tela: **Dados** primeiro (a pergunta
- * do auditor não técnico — "o que tem aqui dentro?" — respondida sem SQL),
- * depois a anatomia em profundidade crescente de tecnicidade: Colunas,
- * Relações, Índices e DDL. "Relações" em vez de "Foreign keys" no rótulo:
- * quem é técnico entende os dois; quem não é, só o primeiro.
+ * HIERARQUIA (o que a tela quer que você leia primeiro):
+ *   1. nome da tabela — `Heading`, o maior elemento da região;
+ *   2. as duas métricas que dimensionam o objeto (linhas e tamanho) —
+ *      `Badge` de destaque;
+ *   3. a anatomia (colunas/índices/FKs) — texto de apoio, cinza, menor.
+ *
+ * Antes as cinco métricas eram cinco badges neutros idênticos: com tudo no
+ * mesmo peso, nada se lia. Agora "3.7k linhas · 3.5 MB" salta e o resto recua,
+ * até porque colunas/índices/FKs já aparecem contados nas próprias abas.
+ *
+ * Ordem das abas por persona: **Dados** primeiro (a pergunta do auditor não
+ * técnico, respondida sem escrever SQL), depois profundidade técnica crescente
+ * — Colunas, Relações, Índices, DDL. "Relações" em vez de "Foreign keys": quem
+ * é técnico entende os dois; quem não é, só o primeiro.
+ *
+ * A aba ativa é CONTROLADA pela página: o botão "Query" do cabeçalho precisa
+ * conseguir trazer o usuário para cá, e estado interno não permitiria isso.
  */
 export type TableDetailTab = 'data' | 'columns' | 'indexes' | 'fks' | 'ddl';
 
 export interface TableInfoPanelProps {
-  /** Conexão dona da tabela — a aba Dados consulta a amostra por ela. */
-  connectionId: string;
   table: TableDef | null;
   engine: DbEngine;
+  tab: TableDetailTab;
+  onTabChange: (tab: TableDetailTab) => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onNavigateFk: (ref: TableRef) => void;
-  onPreviewQuery: (sql: string) => void;
-  /** Bloqueia consultas quando a conexão está inativa. */
+  /** Estado do editor de consulta (aba Dados). */
+  sql: string;
+  onSqlChange: (sql: string) => void;
+  onRunQuery: () => void;
+  isQueryPending: boolean;
+  queryResult: QueryResult | null;
+  queryErrorMessage: string | null;
+  /** Leva o usuário para a aba Dados (botão "Consultar"). */
+  onOpenQuery: () => void;
   isQueryDisabled?: boolean;
   queryDisabledReason?: string;
 }
 
 export function TableInfoPanel({
-  connectionId,
   table,
   engine,
+  tab,
+  onTabChange,
   isFavorite,
   onToggleFavorite,
   onNavigateFk,
-  onPreviewQuery,
+  sql,
+  onSqlChange,
+  onRunQuery,
+  isQueryPending,
+  queryResult,
+  queryErrorMessage,
+  onOpenQuery,
   isQueryDisabled,
   queryDisabledReason,
 }: TableInfoPanelProps) {
-  const [tab, setTab] = useState<TableDetailTab>('data');
-
   if (!table) {
     return (
       <Center height="100%">
@@ -70,13 +93,14 @@ export function TableInfoPanel({
   }
 
   return (
-    <VStack gap={3}>
-      <HStack gap={3} justify="between" align="start" wrap="wrap">
-        <VStack gap={1}>
+    <VStack gap={4}>
+      {/* --------------------------- identidade --------------------------- */}
+      <HStack gap={4} justify="between" align="start" wrap="wrap">
+        <VStack gap={1.5}>
           <Text type="supporting" color="secondary">
             {table.schema}
           </Text>
-          <Heading level={3} maxLines={1}>
+          <Heading level={2} maxLines={1}>
             {table.name}
           </Heading>
           {table.description ? (
@@ -84,16 +108,19 @@ export function TableInfoPanel({
               {table.description}
             </Text>
           ) : null}
-          <HStack gap={1} wrap="wrap" vAlign="center">
-            <Badge variant="neutral" label={`${table.columns.length} colunas`} />
-            <Badge variant="neutral" label={`${table.indexes.length} índices`} />
-            <Badge variant="neutral" label={`${table.foreignKeys.length} FK`} />
-            <Badge variant="neutral" label={`${formatCount(table.rowCount)} linhas`} />
-            <Badge variant="neutral" label={formatSizeMB(table.sizeMB)} />
+          <HStack gap={2} wrap="wrap" vAlign="center">
+            {/* Escala do objeto: o que decide se dá para varrer a tabela. */}
+            <Badge variant="info" label={`${formatCount(table.rowCount)} linhas`} />
+            <Badge variant="info" label={formatSizeMB(table.sizeMB)} />
+            {/* Anatomia: apoio — as abas já mostram cada contagem. */}
+            <Text type="supporting" color="secondary">
+              {table.columns.length} colunas · {table.indexes.length} índices ·{' '}
+              {table.foreignKeys.length} relações
+            </Text>
           </HStack>
         </VStack>
 
-        <HStack gap={1} vAlign="center" wrap="wrap">
+        <HStack gap={2} vAlign="center" wrap="wrap">
           <Button
             label={isFavorite ? 'Remover dos favoritos' : 'Favoritar tabela'}
             size="sm"
@@ -106,17 +133,15 @@ export function TableInfoPanel({
             variant="primary"
             icon={<Icon icon={Terminal} />}
             isDisabled={isQueryDisabled}
-            tooltip={queryDisabledReason ?? 'Abre o executor com um SELECT de amostra'}
-            onClick={() => onPreviewQuery(buildSelectPreview(table.schema, table.name))}
+            tooltip={queryDisabledReason ?? 'Abre o editor com um SELECT desta tabela'}
+            onClick={onOpenQuery}
           />
         </HStack>
       </HStack>
 
-      <TabList
-        value={tab}
-        onChange={(value) => setTab(value as TableDetailTab)}
-        hasDivider
-      >
+      <Divider />
+
+      <TabList value={tab} onChange={(value) => onTabChange(value as TableDetailTab)}>
         <Tab value="data" label="Dados" />
         <Tab value="columns" label="Colunas" />
         <Tab value="fks" label="Relações" />
@@ -124,28 +149,31 @@ export function TableInfoPanel({
         <Tab value="ddl" label="DDL" />
       </TabList>
 
-      {tab === 'data' ? (
-        <TablePreviewPanel
-          // `key` remonta o painel ao trocar de tabela: a amostra recarrega e
-          // nenhum resultado da tabela anterior fica visível por engano.
-          key={`${table.schema}.${table.name}`}
-          connectionId={connectionId}
-          schema={table.schema}
-          table={table.name}
-          isDisabled={isQueryDisabled}
-          disabledReason={queryDisabledReason}
-          onOpenSql={() => onPreviewQuery(buildSelectPreview(table.schema, table.name))}
-        />
-      ) : null}
-      {tab === 'columns' ? <TableColumnsTable columns={table.columns} /> : null}
-      {tab === 'indexes' ? <TableIndexesTable indexes={table.indexes} /> : null}
-      {tab === 'fks' ? (
-        <TableForeignKeysTable
-          foreignKeys={table.foreignKeys}
-          onNavigate={onNavigateFk}
-        />
-      ) : null}
-      {tab === 'ddl' ? <TableDdlPanel table={table} engine={engine} /> : null}
+      {/* `paddingBlock` afasta o conteúdo da faixa de abas e da borda inferior
+          da região — antes tabela e DDL encostavam direto na divisória. */}
+      <VStack gap={2} paddingBlock={1}>
+        {tab === 'data' ? (
+          <TablePreviewPanel
+            sql={sql}
+            onSqlChange={onSqlChange}
+            onRun={onRunQuery}
+            isPending={isQueryPending}
+            result={queryResult}
+            errorMessage={queryErrorMessage}
+            isDisabled={isQueryDisabled}
+            disabledReason={queryDisabledReason}
+          />
+        ) : null}
+        {tab === 'columns' ? <TableColumnsTable columns={table.columns} /> : null}
+        {tab === 'indexes' ? <TableIndexesTable indexes={table.indexes} /> : null}
+        {tab === 'fks' ? (
+          <TableForeignKeysTable
+            foreignKeys={table.foreignKeys}
+            onNavigate={onNavigateFk}
+          />
+        ) : null}
+        {tab === 'ddl' ? <TableDdlPanel table={table} engine={engine} /> : null}
+      </VStack>
     </VStack>
   );
 }
