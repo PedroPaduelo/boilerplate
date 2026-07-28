@@ -18,9 +18,13 @@
  *        bloco inteiro, não o tooltip de série do gráfico.
  * [x] 8. VOLTA COMPLETA (0 → 360) começando no topo, sentido horário.
  * [x] 9. TAMANHO 240×240 (`CHART_HEIGHT.circular`), o dos circulares.
- * [x] 10. FURO de 72% da rosca (`geometry.donutHole`).
+ * [x] 10. ESPESSURA DO ANEL de 24px (`CHART_GEOMETRY.ringThickness`, via
+ *         `chartRingInnerRadius`) — a MESMA da rosca e dos três medidores. Era
+ *         o furo de 72% da rosca, que aqui dava 30px de anel enquanto a rosca
+ *         dava 34 e o medidor 88.
  * [x] 11. TRILHA `rgba(145,158,171,.16)` — `chrome('track')`, a trilha de
- *         medidor radial da base (§10).
+ *         medidor radial da base (§10) — com a MESMA espessura do arco de
+ *         valor: a trilha é o anel apagado, muda de cor e nunca de espessura.
  * [x] 12. RÓTULOS CENTRAIS da rosca: valor 17,5px/700 na cor de ênfase e
  *         "Total" 12,25px/600 na cor de rótulo (`01-fundamentos.md` §4).
  * [x] 13. Ponta ARREDONDADA do arco (base §6) — some quando o anel fecha.

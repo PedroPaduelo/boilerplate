@@ -19,8 +19,13 @@
  *                  de `01-fundamentos.md` §3 (rgba(145,158,171,.08))
  *   raio ......... `geometry.barRadiusFlat` — 2px (§8)
  *   traço ........ nenhum (§8)
- *   altura ....... `--spacing-4` (16px): é a altura que a §8 produz numa faixa
- *                  típica — 30% de ~53px, seis categorias numa área de 320px
+ *   altura ....... `geometry.trackThickness` — 12px, o degrau da BARRA DE
+ *                  LISTA (a que acompanha uma linha de texto, sem eixo), o
+ *                  mesmo do ranking e da barra de progresso. Era `--spacing-4`
+ *                  (16px), derivado de "30% de uma faixa típica": uma conta
+ *                  feita sobre um gráfico COM eixo, aplicada a uma barra que
+ *                  não tem eixo nenhum — e que por isso saía mais gorda que as
+ *                  irmãs, na mesma tela.
  *   cor .......... `chartRampToken(cor, passo)`, CLARO → ESCURO (§6)
  *   hover ........ ESCURECE: o segmento avança UM passo na rampa
  *                  (`01-fundamentos.md` §9 — "hover escurece, não clareia")
@@ -58,10 +63,15 @@ export interface FunnelBarProps {
 type FunnelStyle = CSSProperties & Record<`--funnel-${string}`, string>;
 
 /**
- * O trilho: largura cheia, a altura da §8 e recorte — sem `overflow-hidden` o
- * raio de 2px não valeria para os segmentos que encostam nas pontas.
+ * O trilho: largura cheia e recorte — sem `overflow-hidden` o raio de 2px não
+ * valeria para os segmentos que encostam nas pontas.
+ *
+ * A ALTURA saiu daqui de propósito: espessura de marca é decisão do tema
+ * (`geometry.trackThickness`), não de uma classe utilitária deste arquivo. Foi
+ * exatamente assim — cada barra declarando a sua altura no seu próprio CSS —
+ * que o catálogo terminou com cinco espessuras diferentes para a mesma ideia.
  */
-const TRACK_CLASS = 'block w-full h-[var(--spacing-4)] overflow-hidden';
+const TRACK_CLASS = 'block w-full overflow-hidden';
 
 /** O preenchimento: a fatia do universo que a etapa ocupa. */
 const FILL_CLASS = 'flex h-full overflow-hidden';
@@ -109,8 +119,10 @@ export function FunnelBar({ fraction, weights, color, label }: FunnelBarProps) {
   });
 
   const trackStyle: FunnelStyle = {
-    // tema: trilha da §3, raio da barra horizontal da §8 e a duração do hover,
-    // que desce por variável para todos os segmentos
+    // tema: espessura do degrau de barra de lista, trilha da §3, raio da barra
+    // horizontal da §8 e a duração do hover, que desce por variável para todos
+    // os segmentos
+    blockSize: palette.geometry.trackThickness,
     backgroundColor: palette.chromeVar('trackLight'),
     borderRadius: palette.geometry.barRadiusFlat,
     '--funnel-duration': `${palette.motion.duration}ms`,

@@ -17,16 +17,23 @@
  * n/a 7. Tooltip branco 90% com desfoque — o medidor lê o valor no centro.
  * [x] 8. ÂNGULOS: −90° → +90° no semicircular (recharts 180 → 0), volta
  *        completa na barra radial e −135° → +135° no tracejado.
- * [x] 9. TAMANHO: 260×260 (`CHART_HEIGHT.gauge`) no semicircular e no
- *        tracejado; 320×320 (`CHART_HEIGHT.radial`) na barra radial.
- * [x] 10. GRADIENTE entre o par de cores, paradas 0 → 100: roxo
- *         #8E33FF → #C684FF no semicircular (`purple` + tom `-light` da mesma
- *         família), vermelho #FF5630 → #FFAC82 no tracejado.
+ * [x] 9. TAMANHO: 240×240 (`CHART_HEIGHT.circular`) nos TRÊS layouts — o mesmo
+ *        quadro da rosca e do anel de progresso. Eram 260 no semicircular/
+ *        tracejado e 320 na barra radial: três diâmetros para a mesma figura,
+ *        lado a lado na grade do `/catalog`.
+ * [x] 10. GRADIENTE entre o par claro/escuro da MESMA família, paradas 0 → 100.
+ *         A cor padrão é a 1ª do ciclo (o acento do produto, #00A76F → #5BE49B)
+ *         e não mais o roxo do §12 / vermelho do §13: num catálogo inteiro em
+ *         verde, o medidor era o único bloco roxo. `accent` continua pintando o
+ *         arco com a cor pedida — inclusive roxo.
  * [x] 11. TRILHA: `rgba(145,158,171,.16)` (`chrome('track')`) no semicircular;
  *         `rgba(145,158,171,.08)` (`chrome('trackLight')`) na barra radial e no
- *         tracejado, este com a MESMA espessura da barra.
- * [x] 12. FURO: 32% na barra radial (`geometry.radialHole`); 50% nos demais
- *         (trilha de medidor da base, `geometry.trackWidth`).
+ *         tracejado. Em TODOS, a trilha tem a mesma espessura da barra de
+ *         valor: ela muda de cor, nunca de espessura.
+ * [x] 12. ESPESSURA DO ARCO: 24px (`CHART_GEOMETRY.ringThickness`, aplicada por
+ *         `chartRingInnerRadius`), igual à da rosca e à do anel de progresso.
+ *         Eram frações por seção (32% na barra radial, 50% nos demais), que
+ *         davam um anel de 88px contra 34 da rosca e 30 do anel de progresso.
  * [x] 13. TRACEJADO `dashArray: 4` com ponta reta na BARRA DE VALOR do §13 —
  *         nunca na trilha.
  * [x] 14. RÓTULOS CENTRAIS: valor 17,5px/700 (15,75px na barra radial);
@@ -58,8 +65,11 @@
  *
  * COR: `accent` continua aceitando o vocabulário antigo (`chart-1`,
  * `bg-purple-500`, `#40E0D0`), traduzido por `chartAccentColor()` para um token
- * do DS. No valor padrão do manifesto (`chart-1`) o medidor mantém o par de
- * cores do layout da referência — decisão registrada em `docs/charts/NOTAS.md`.
+ * do DS. No valor padrão do manifesto (`chart-1`) o medidor usa a cor padrão do
+ * componente, que passou a ser a 1ª do ciclo — o acento do produto, o mesmo com
+ * que abre qualquer outro gráfico. `chart-1` já apontava para essa mesma cor,
+ * então os dois caminhos (padrão e escolha explícita) agora concordam; antes o
+ * padrão desviava para o roxo da referência.
  */
 import type { ScalarData } from '@dashboards/contracts';
 import {
@@ -109,9 +119,10 @@ function resolveVariant(variant: string | undefined): GaugeVariant {
 }
 
 /**
- * Cor do arco. O valor PADRÃO de `accent` significa "sem escolha": aí o
- * medidor usa o par de cores do layout da referência (roxo no semicircular,
- * vermelho no tracejado). Qualquer outro valor pinta o arco com a cor pedida.
+ * Cor do arco. O valor PADRÃO de `accent` significa "sem escolha": aí o medidor
+ * usa a cor padrão do componente (a 1ª do ciclo, o acento do produto).
+ * Qualquer outro valor pinta o arco com a cor pedida — inclusive o roxo da
+ * referência, que continua disponível como escolha explícita.
  */
 function resolveAccent(accent: string | undefined) {
   if (accent == null || accent === manifest.defaultProps.accent) return undefined;
@@ -137,8 +148,11 @@ export const Component: BlockComponent<GaugeProps, ScalarData> = ({
       value={value}
       min={props.min ?? 0}
       max={props.max ?? 100}
-      // §11 mede 320×320; §12 e §13, 260×260.
-      size={variant === 'radial' ? CHART_HEIGHT.radial : CHART_HEIGHT.gauge}
+      // Quadro ÚNICO dos circulares: o mesmo da rosca e do anel de progresso.
+      // A referência mede §11 em 320 e §12/§13 em 260, mas na grade do catálogo
+      // isso vira três diâmetros para a mesma figura — a leitura de família
+      // vale mais que o número da seção.
+      size={CHART_HEIGHT.circular}
       variant={variant}
       color={resolveAccent(props.accent)}
       label={data?.label ?? manifest.name}

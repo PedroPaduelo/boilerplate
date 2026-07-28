@@ -7,7 +7,9 @@
  *   • sem eixos, sem grade, sem legenda;
  *   • `grid.padding` de 6px em TODOS os lados → `CHART_SPARK_MARGIN`;
  *   • cor = tom **dark** da família (`primary.dark` = #007867), não a `main`;
- *   • `markers.strokeWidth: 0` — marcador sem contorno branco;
+ *   • `markers.strokeWidth: 0` — marcador sem contorno branco (o DIÂMETRO,
+ *     porém, é o mesmo 6px do gráfico com eixo: o card de resumo costuma
+ *     aparecer na mesma tela que a linha);
  *   • tooltip com o VALOR formatado e SEM título.
  *
  * E as três variações do mesmo padrão (§2.4), todas mantidas em `type`:
@@ -36,10 +38,12 @@ import { CHART_SPARK_MARGIN, chartAnimationProps } from './chart-axes';
 import { formatChartValue } from './chart-data';
 import { ChartFrame } from './chart-frame';
 import type { ChartFrameState } from './chart-frame';
+import { chartSparkMarkerProps } from './chart-marker';
 import type { ChartScope } from './chart-template';
 import { ChartTooltip } from './chart-tooltip';
 import type { ChartStateProps, ValueFormatter } from './types';
 import {
+  CHART_GEOMETRY,
   CHART_HEIGHT,
   CHART_RAMP_COLORS,
   darkenColor,
@@ -86,29 +90,28 @@ export interface SparkChartProps extends Omit<ChartStateProps, 'label'> {
   valueFormatter?: ValueFormatter;
 }
 
-/**
- * O que o mini-gráfico SOBREPÕE da base (`04-widgets-prontos.md` §2.3/§2.4).
- * São medidas do DESENHO da referência que a base ainda não publica em
- * `CHART_GEOMETRY` — pedido registrado em `docs/charts/PEDIDOS-BASE.md`.
- */
-const SPARK_SPEC = {
-  /** `markers.strokeWidth: 0` — marcador sem contorno branco. §2.3 */
-  markerStrokeWidth: 0,
-  /** `stroke.width: 0` na variante de barra. §2.4 */
-  barStrokeWidth: 0,
-  /** `bar.borderRadius: 1.5` — arredondado só na ponta. §2.4 */
-  barRadius: 1.5,
-  /** `columnWidth: '64%'` da faixa da categoria. §2.4 */
-  barWidth: 0.64,
-  /** Gradiente da área: 0.4 no topo → 0 na base, vertical. §02-5 */
-  gradientFrom: 0.4,
-  gradientTo: 0,
-} as const;
+/* --------------------------------------------------------------------------
+ * O que o mini-gráfico SOBREPÕE da base (`04-widgets-prontos.md` §2.3/§2.4)
+ * JÁ VIVE em `CHART_GEOMETRY`: `sparkMarkerStrokeWidth` (0), `barStrokeWidth`
+ * (0), `sparkBarRadius` (1,5), `sparkBarWidth` (0,64) e `areaGradient`
+ * (0.4 → 0, paradas 0 e 100).
+ *
+ * Havia aqui um `SPARK_SPEC` com esses mesmos seis números escritos à mão,
+ * herdado de quando a base ainda não os publicava. Cópia local de token é
+ * exatamente como a espessura do catálogo se despadronizou: o `chart-theme`
+ * muda, a cópia não, e ninguém percebe até os dois desenhos aparecerem lado a
+ * lado. Removido — o mini-gráfico lê a escala como todo mundo.
+ * ------------------------------------------------------------------------ */
 
 /**
  * Dimensões da referência por variante (`04-widgets-prontos.md` §1 e §2.4).
  * A ALTURA é o default do componente; a LARGURA fica documentada aqui e é
  * imposta por QUEM USA (nos nossos cards a caixa é fluida — ver `NOTAS.md`).
+ *
+ * ⚠️ Só a altura da variante `line` tem token (`CHART_HEIGHT.spark`); as
+ * outras cinco medidas são números da referência sem degrau na escala. Como
+ * são o DEFAULT de `height`, mexer nelas muda o efeito de uma prop pública —
+ * ficam como estão, com pedido de token registrado no relatório do lote.
  */
 const SPARK_SIZE: Record<SparkChartType, { width: number; height: number }> = {
   line: { width: 84, height: CHART_HEIGHT.spark }, // 84 × 56 — resumo analytics
@@ -118,8 +121,8 @@ const SPARK_SIZE: Record<SparkChartType, { width: number; height: number }> = {
 
 /** Raio da coluna: só no topo (`borderRadiusApplication: 'end'`). §2.4 */
 const BAR_RADIUS: [number, number, number, number] = [
-  SPARK_SPEC.barRadius,
-  SPARK_SPEC.barRadius,
+  CHART_GEOMETRY.sparkBarRadius,
+  CHART_GEOMETRY.sparkBarRadius,
   0,
   0,
 ];
@@ -128,7 +131,7 @@ const BAR_RADIUS: [number, number, number, number] = [
  * `columnWidth: '64%'` no vocabulário do recharts, que mede o VÃO entre
  * categorias em vez da largura da coluna. Derivado, não digitado.
  */
-const BAR_CATEGORY_GAP = `${Math.round((1 - SPARK_SPEC.barWidth) * 100)}%`;
+const BAR_CATEGORY_GAP = `${Math.round((1 - CHART_GEOMETRY.sparkBarWidth) * 100)}%`;
 
 /** Posição do tom `dark` na rampa de 5 passos do tema (claro → escuro). */
 const RAMP_DARK_INDEX = 3;
@@ -201,12 +204,13 @@ export function SparkChart({
   /** 360ms de entrada, como todo desenho do catálogo (`02-configuracao-base` §3). */
   const animation = chartAnimationProps(palette);
 
-  /** Marcador do ponto sob o cursor: tamanho 6, SEM contorno (§2.3). */
-  const activeDot = {
-    r: palette.geometry.markerVisibleSize / 2,
-    fill: stroke,
-    strokeWidth: SPARK_SPEC.markerStrokeWidth,
-  };
+  /**
+   * Marcador do ponto sob o cursor: os MESMOS 6px de diâmetro do gráfico com
+   * eixo, sem contorno (§2.3). A conversão diâmetro → raio era feita aqui, à
+   * mão, e era a única correta do catálogo — agora vem de `chart-marker`, que
+   * é o lugar onde ela vale para os quatro tipos.
+   */
+  const activeDot = chartSparkMarkerProps(palette, stroke);
 
   const tooltip = (
     <Tooltip
@@ -251,7 +255,7 @@ export function SparkChart({
               dataKey="value"
               fill={stroke}
               radius={BAR_RADIUS}
-              strokeWidth={SPARK_SPEC.barStrokeWidth}
+              strokeWidth={palette.geometry.barStrokeWidth}
               // A referência ESCURECE no hover (`02-configuracao-base` §4).
               activeBar={{ fill: darkenColor(stroke) }}
               {...animation}
@@ -277,14 +281,14 @@ export function SparkChart({
               {/* Vertical, 0.4 → 0, paradas 0 e 100 (`02-configuracao-base` §5). */}
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop
-                  offset="0%"
+                  offset={palette.geometry.areaGradient.from}
                   stopColor={stroke}
-                  stopOpacity={SPARK_SPEC.gradientFrom}
+                  stopOpacity={palette.geometry.areaGradient.opacityFrom}
                 />
                 <stop
-                  offset="100%"
+                  offset={palette.geometry.areaGradient.to}
                   stopColor={stroke}
-                  stopOpacity={SPARK_SPEC.gradientTo}
+                  stopOpacity={palette.geometry.areaGradient.opacityTo}
                 />
               </linearGradient>
             </defs>

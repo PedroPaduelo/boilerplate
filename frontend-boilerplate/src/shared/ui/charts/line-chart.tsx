@@ -14,7 +14,9 @@
  *                ciclo da paleta;
  *   altura       320px (o padrão do catálogo);
  *   legenda      LIGADA (na base ela vem desligada);
- *   marcadores   VISÍVEIS, tamanho 6 com contorno de 3 (na base são invisíveis).
+ *   marcadores   VISÍVEIS (na base são invisíveis): 6px de DIÂMETRO — o `r` do
+ *                SVG é METADE disso — com halo na cor da superfície. A conta
+ *                mora em `chart-marker`, que é a única leitura do token.
  *
  * Nenhuma cor, medida, tipografia ou duração é digitada aqui: tudo sai de
  * `useChartPalette()` e dos props compartilhados de `chart-axes`.
@@ -48,6 +50,7 @@ import {
 } from './chart-data';
 import { ChartFrame, type ChartFrameState } from './chart-frame';
 import { ChartLegend } from './chart-legend';
+import { chartMarkerProps } from './chart-marker';
 import { ChartSeriesTooltip } from './chart-series-tooltip';
 import { CHART_GEOMETRY, CHART_HEIGHT } from './chart-theme';
 import { hasVariables, type ChartScope } from './chart-template';
@@ -136,13 +139,6 @@ export function LineChart({
   const tickFormatter = axisFormatter ?? valueFormatter;
   const curve = isSmooth ? palette.geometry.curve : 'linear';
 
-  /** Marcador da §1: 6px de raio, contorno de 3px na cor da superfície. */
-  const marker = {
-    r: palette.geometry.markerVisibleSize,
-    stroke: palette.chrome('markerStroke'),
-    strokeWidth: palette.geometry.markerStrokeWidth,
-  };
-
   return (
     <ChartFrame
       label={label}
@@ -218,13 +214,19 @@ export function LineChart({
               stroke={seriesColorAt(palette, index, item.color)}
               strokeWidth={palette.geometry.lineWidth}
               strokeLinecap={palette.geometry.lineCap}
+              // Marcador da §1 — raio, halo e cor saem todos de `chart-marker`:
+              // é o que garante que este ponto e o do spark tenham o MESMO
+              // diâmetro quando os dois blocos caem na mesma tela.
               dot={
                 showDots
-                  ? { ...marker, fill: seriesColorAt(palette, index, item.color) }
+                  ? chartMarkerProps(palette, seriesColorAt(palette, index, item.color))
                   : false
               }
               // Hover ESCURECE (a maioria das libs clareia) — §4 da base.
-              activeDot={{ ...marker, fill: seriesHoverAt(palette, index, item.color) }}
+              activeDot={chartMarkerProps(
+                palette,
+                seriesHoverAt(palette, index, item.color),
+              )}
               {...chartAnimationProps(palette, index)}
             />
           ))}

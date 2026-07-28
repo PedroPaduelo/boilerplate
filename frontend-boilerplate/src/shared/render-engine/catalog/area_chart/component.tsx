@@ -18,7 +18,10 @@
  * [x] 6. Grade SÓ horizontal, tracejada 3 — `chartGridProps`.
  * [x] 7. Eixos sem linha e sem marcações, texto 12px/400 — `chartAxisProps`;
  *        5 divisões no eixo Y — `chartYAxisProps`.
- * [x] 8. Hover ESCURECE (§4) — ponto ativo com `palette.hoverAt(i)`.
+ * [x] 8. Hover ESCURECE (§4) — ponto ativo com `palette.hoverAt(i)`, no mesmo
+ *        marcador de linha e dispersão (`chartMarkerProps`): 6px de DIÂMETRO
+ *        (`r` = 3) e halo de 1,5px. Antes o `r` recebia o token cru e o ponto
+ *        do hover saía com 12px — do lado de um spark com 6px.
  * [x] 9. Tooltip branco 90% com desfoque — `ChartSeriesTooltip`.
  * [x] 10. Animação 360ms com 120ms de atraso por série (§3) —
  *         `chartAnimationProps(palette, i)`.

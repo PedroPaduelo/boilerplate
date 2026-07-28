@@ -48,7 +48,7 @@ export const manifest = {
         enum: [...ACCENT_COLORS],
         default: 'chart-1',
         description:
-          'Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). No valor PADRÃO (`chart-1`) o medidor usa o par de cores do próprio layout (roxo, no medidor semicircular); qualquer outro valor pinta o arco com a cor escolhida. Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
+          'Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). No valor PADRÃO (`chart-1`) o arco usa o acento do produto — a 1ª cor da paleta, a mesma com que todo bloco do catálogo abre; qualquer outro valor pinta o arco com a cor escolhida (inclusive o par roxo da referência, pedindo `purple`). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
       },
       // LAYOUT — os três medidores da referência de design.
       variant: {

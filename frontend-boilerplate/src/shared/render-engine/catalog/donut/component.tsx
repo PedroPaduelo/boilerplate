@@ -21,7 +21,10 @@
  *   azul petróleo e vermelho, nesta ordem, quando `palette` não fixa uma cor.
  * + 240 × 240 quadrado e centralizado ....... OK — `CHART_HEIGHT.circular` +
  *   `ChartFrame isCircular`.
- * + Furo 72% do raio ........................ OK — `palette.geometry.donutHole`.
+ * + Espessura do anel ....................... OK — 24px do tema
+ *   (`CHART_GEOMETRY.ringThickness`, via `chartRingInnerRadius`), a MESMA do
+ *   anel de progresso e dos medidores. Era o furo de 72% da referência, que
+ *   dava 34px aqui contra 30 e 88 nos vizinhos da mesma grade.
  * + Rótulos centrais 17,5/700 e 12,25/600 ... PARCIAL — `ChartCenterLabel` da
  *   base (17,5px pelo token `--font-size-xl`; peso e o 12,25px do "Total"
  *   dependem de mudança na base — pedido em `docs/charts/PEDIDOS-BASE.md`).
@@ -29,8 +32,8 @@
  * ---------------------------------------------------------------------------
  * O que mudou nesta repaginação
  * ---------------------------------------------------------------------------
- *  - o anel virou o desenho da referência (quadrado, sparkline, furo 72%,
- *    traço 0) e deixou de disputar espaço com a legenda numa `HStack`;
+ *  - o anel virou o desenho da referência (quadrado, sparkline, traço 0) e
+ *    deixou de disputar espaço com a legenda numa `HStack`;
  *  - a legenda passou a ser a `ChartLegends` da base, desenhada pelo próprio
  *    `DonutChart` — quem conhece a cor da fatia é ele. O que continuou do
  *    bloco é o TEXTO do valor ("62 (62%)"), em `donut-legend.tsx`;

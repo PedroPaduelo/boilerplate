@@ -66,8 +66,10 @@ export type ChartCycleColor = (typeof CHART_SERIES_COLORS)[number];
 
 /**
  * Cores aceitas FORA do ciclo. Duas origens:
- *  - `purple`/`lilac`: os medidores radiais da referência (§11–§12), únicos
- *    lugares onde o roxo aparece;
+ *  - `purple`/`lilac`: o par roxo dos medidores radiais da referência
+ *    (§11–§12). Deixou de ser o PADRÃO do medidor — um arco roxo num catálogo
+ *    inteiro verde lia como bloco de outro produto —, mas continua disponível
+ *    para quem pedir a cor explicitamente;
  *  - os nomes do vocabulário ANTIGO (`blue`, `orange`, `pink`, `teal`,
  *    `brown`, `indigo`, `gray`), mantidos porque `accent` é contrato com o
  *    backend e com o agente: um painel salvo não pode perder a cor.
@@ -265,7 +267,14 @@ export const CHART_GEOMETRY = {
   lineCap: 'round',
   /** Marcadores invisíveis por padrão. §6 */
   markerSize: 0,
-  /** Marcador dos tipos que o exibem (linha, dispersão). §1/§15 */
+  /**
+   * Marcador dos tipos que o exibem (linha, dispersão), em DIÂMETRO. §1/§15
+   *
+   * É diâmetro, não raio: o `r` do SVG é `markerVisibleSize / 2`. A ambiguidade
+   * custou caro — o `line-chart` passava o valor direto para `r` e desenhava um
+   * ponto de 12px, o dobro do mini-gráfico, que divide por 2. Um gráfico de
+   * linhas com bolinha de 12px é a mesma queixa de "grosso" das barras.
+   */
   markerVisibleSize: 6,
   /** Contorno do marcador visível (px). §1 */
   markerStrokeWidth: 3,
@@ -296,6 +305,70 @@ export const CHART_GEOMETRY = {
   barMaxWidth: 32,
   /** TETO ABSOLUTO da barra horizontal, em px — mesmo raciocínio de `barMaxWidth`. */
   hBarMaxWidth: 24,
+
+  /* --- ESCALA DE ESPESSURA DA MARCA (px) -------------------------------- *
+   *
+   * O catálogo desenhava a mesma ideia — "a espessura do traço que carrega o
+   * dado" — com sete números diferentes, porque cada tipo herdava a sua da
+   * seção da referência que o descreve, sempre como FRAÇÃO do próprio desenho.
+   * Medido no `/catalog`: anel do medidor radial **88px**, da rosca **34px**,
+   * do anel de progresso **30px**; coluna **21px**, barra horizontal **16px**,
+   * barra de ranking **10px**. Lado a lado na mesma grade isso não lê como uma
+   * família: lê como seis componentes de origens diferentes.
+   *
+   * A partir daqui a espessura é UMA ESCALA EM PIXEL, na base 4 do tema, e
+   * cada tipo escolhe o DEGRAU — não o número. A fração da referência continua
+   * mandando enquanto o desenho é pequeno; o degrau é o teto.
+   *
+   *   2px    traço de mini-gráfico (sem eixo)      `sparkLineWidth`
+   *   2,5px  traço de linha/área com eixo          `lineWidth`
+   *   12px   barra de LISTA (ranking, progresso)   `trackThickness`
+   *   24px   anel de circular / barra horizontal   `ringThickness`, `hBarMaxWidth`
+   *   32px   coluna de gráfico com eixo            `barMaxWidth`
+   */
+
+  /**
+   * Espessura do ANEL de qualquer circular — rosca, anel de progresso e os três
+   * medidores radiais — em px, incluindo a trilha de fundo (que é o mesmo anel
+   * apagado: trilha e valor com espessuras diferentes é o defeito visual mais
+   * fácil de notar num medidor).
+   *
+   * Substitui as frações `donutHole` (0.72), `radialHole` (0.32) e `trackWidth`
+   * (0.5), que davam 34px, 88px e 30px para o mesmo elemento. 24px mantém o
+   * furo grande o bastante para o rótulo central respirar em 240px de lado.
+   */
+  ringThickness: 24,
+  /**
+   * Raio EXTERNO do anel, como fração do lado do quadro.
+   *
+   * A espessura já é única, mas o diâmetro não era: a rosca desenhava com raio
+   * = metade do lado (Ø240, encostando na borda) enquanto o anel de progresso e
+   * os medidores usavam 0,45 (Ø216). Dois círculos concêntricos de tamanhos
+   * diferentes, lado a lado na mesma grade — a mesma queixa de sempre, um nível
+   * abaixo.
+   *
+   * 0,45 é o valor que os medidores já usavam e o que sobra dele (5% de cada
+   * lado, 12px num quadro de 240) é o respiro que os rótulos de ponta do §12 e
+   * do §13 precisam para não encostar na borda do card.
+   */
+  ringOuterRatio: 0.45,
+  /**
+   * Piso do anel, em px. Circular pequeno (spark/medidor em card estreito) não
+   * pode ficar com anel de 24px — ele engoliria o furo e o rótulo central.
+   * Quem desenha aplica `clamp(ringThicknessMin, lado × ringRatio, ringThickness)`.
+   */
+  ringThicknessMin: 8,
+  /**
+   * Fração do LADO usada enquanto o circular é pequeno demais para os 24px.
+   * 10% mantém a proporção da rosca da referência nos tamanhos pequenos.
+   */
+  ringRatio: 0.1,
+  /**
+   * Espessura da barra de LISTA, em px: ranking, barra de progresso linear e
+   * etapa de funil. São barras que acompanham uma LINHA DE TEXTO, não um eixo —
+   * por isso o degrau é menor que o da barra com eixo.
+   */
+  trackThickness: 12,
   /**
    * Respiro entre colunas vizinhas do mesmo grupo (px). No original é um traço
    * de 2px TRANSPARENTE (§5); no recharts, `barGap`.
@@ -311,12 +384,11 @@ export const CHART_GEOMETRY = {
   gridVertical: false,
   /** Divisões do eixo Y. §7 */
   yTickCount: 5,
-  /** Furo da rosca (fração do raio). §10 */
-  donutHole: 0.72,
-  /** Furo da barra radial. §11 */
-  radialHole: 0.32,
-  /** Espessura da trilha do medidor (fração). §base */
-  trackWidth: 0.5,
+  /* `donutHole` (0.72), `radialHole` (0.32) e `trackWidth` (0.5) foram
+     REMOVIDOS: eram três frações para a espessura do MESMO anel, e davam 34px,
+     88px e 30px no mesmo catálogo. Quem manda agora é `ringThickness` (24px),
+     em pixel, via `chartRingInnerRadius()`. Mantê-los aqui como "histórico"
+     seria deixar três armadilhas prontas para o próximo circular nascer torto. */
   /** Raio do contêiner do gráfico (px). §7 */
   containerRadius: 12,
   /** Raio do card que envolve o gráfico (px). §05-4 */
@@ -419,25 +491,34 @@ export const CHART_MOTION = {
  * 7. ALTURAS — `01-fundamentos.md` §7
  * ========================================================================== */
 
+/**
+ * ALTURAS — quatro degraus, e só.
+ *
+ * Havia oito (320, 350, 364, 400, 240, 260, 320, 280, 350, 56), sendo que
+ * `dashboard`, `analysis`, `large` e `radar` tinham **zero usos**: eram quatro
+ * alturas diferentes esperando alguém escolher errado. Pior, `scatter` valia
+ * 350 num palco de catálogo de 360px — com a legenda embaixo, o gráfico não
+ * cabia e a legenda aparecia CORTADA na grade (dá para ver na dispersão).
+ *
+ * Quem precisa de uma altura fora da escala passa `height` explícito no bloco;
+ * o tema só publica os degraus que o sistema realmente usa.
+ */
 export const CHART_HEIGHT = {
-  /** Padrão do catálogo (13 dos 18 tipos). */
+  /** Padrão do catálogo — todo gráfico com eixo. */
   default: 320,
-  /** Padrão dos dashboards do produto. */
-  dashboard: 350,
-  /** Cards de análise. */
-  analysis: 364,
-  /** Gráficos principais. */
-  large: 400,
-  /** Circulares (pizza/rosca). */
+  /**
+   * Circulares — rosca, anel de progresso e TODOS os medidores radiais.
+   *
+   * Era 240 na rosca, 260 no medidor e 320 na barra radial: três diâmetros para
+   * a mesma figura, lado a lado na mesma grade do catálogo. Um número só.
+   */
   circular: 240,
-  /** Medidores. */
-  gauge: 260,
-  /** Barra radial. */
-  radial: 320,
-  /** Radar. */
-  radar: 280,
-  /** Dispersão. */
-  scatter: 350,
+  /**
+   * Dispersão. Era 350 — 30px a mais que todo o resto, o suficiente para a
+   * legenda sair cortada no palco do catálogo. Não havia razão de desenho para
+   * a diferença: é o mesmo plano cartesiano dos outros.
+   */
+  scatter: 320,
   /** Mini-gráfico de card de resumo. */
   spark: 56,
 } as const;
@@ -514,4 +595,53 @@ export function fadeColor(color: string, alpha: number): string {
 /** Referência CSS de um token (`var(--x)`) — forma usada no DOM. */
 export function chartTokenVar(token: string): string {
   return `var(${token})`;
+}
+
+/* ========================================================================== *
+ * 9. ANEL — a espessura de todo circular sai daqui
+ * ========================================================================== */
+
+/**
+ * Espessura do anel, em px, para um circular de lado `size`.
+ *
+ * `clamp(ringThicknessMin, size × ringRatio, ringThickness)`: enquanto o
+ * desenho é pequeno vale a proporção (um anel de 24px num medidor de 80px
+ * fecharia o furo); a partir de ~240px o degrau de 24px assume, e é por isso
+ * que rosca, anel de progresso e medidor passam a ter o MESMO peso visual.
+ *
+ * @example
+ * const band = chartRingThickness(size);          // px
+ * const inner = chartRingInnerRadius(outer, size); // raio interno
+ */
+export function chartRingThickness(size: number, override?: number): number {
+  if (override != null && Number.isFinite(override)) return Math.max(override, 1);
+  const { ringThickness, ringThicknessMin, ringRatio } = CHART_GEOMETRY;
+  return Math.round(
+    Math.min(Math.max(size * ringRatio, ringThicknessMin), ringThickness),
+  );
+}
+
+/**
+ * Raio interno de um anel de raio externo `outerRadius` num circular de lado
+ * `size`. Nunca devolve negativo — anel mais grosso que o raio vira disco.
+ */
+export function chartRingInnerRadius(
+  outerRadius: number,
+  size: number,
+  override?: number,
+): number {
+  return Math.max(outerRadius - chartRingThickness(size, override), 0);
+}
+
+/**
+ * A mesma espessura expressa como FRAÇÃO do raio externo — a forma que o
+ * recharts pede quando o furo é declarado em percentual (`innerRadius="60%"`).
+ */
+export function chartRingHoleRatio(
+  outerRadius: number,
+  size: number,
+  override?: number,
+): number {
+  if (outerRadius <= 0) return 0;
+  return chartRingInnerRadius(outerRadius, size, override) / outerRadius;
 }

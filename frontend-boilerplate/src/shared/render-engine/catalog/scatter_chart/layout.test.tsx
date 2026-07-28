@@ -8,7 +8,9 @@
  * sobre o desenho. O resto do recharts é o de verdade (`importActual`).
  *
  * O que este arquivo trava (`03-tipos-de-grafico.md` §15):
- *  - marcador de RAIO 6px;
+ *  - marcador de DIÂMETRO 6px — o teste afirmava RAIO 6 (ponto de 12px), que
+ *    era o defeito: `markerVisibleSize` é diâmetro e o cálculo da área tratava
+ *    o valor como raio (`π·d²`), entregando quatro vezes a área pretendida;
  *  - eixo X com 8 divisões (9 marcas) e valores com 1 casa decimal;
  *  - grade só HORIZONTAL, tracejada 3;
  *  - eixos sem linha e sem marcações;
@@ -71,11 +73,15 @@ async function renderChart() {
 }
 
 describe('scatter_chart — conformidade visual §15', () => {
-  it('desenha marcadores com o raio do tema (6px)', async () => {
+  it('desenha marcadores com o DIÂMETRO do tema (6px)', async () => {
     const { container, getByTestId } = await renderChart();
-    const radius = getByTestId('palette').dataset.marker;
+    // O token é DIÂMETRO: o raio desenhado tem de ser a metade dele. Escrito
+    // assim, o teste falha tanto se o gráfico voltar a passar o token cru
+    // (ponto de 12px) quanto se alguém mexer no token sem olhar o desenho.
+    const diameter = Number(getByTestId('palette').dataset.marker);
+    const radius = diameter / 2;
     // A animação de entrada cresce o ponto até o tamanho final — esperamos por
-    // ele, e é justamente esse valor que a referência fixa em 6px.
+    // ele, e é justamente esse valor que a referência fixa em 6px de diâmetro.
     await waitFor(() => {
       const symbols = [...container.querySelectorAll('.recharts-symbols')];
       for (const symbol of symbols) {

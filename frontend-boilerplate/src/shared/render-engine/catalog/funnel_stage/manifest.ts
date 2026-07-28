@@ -111,7 +111,15 @@ export const manifest = {
       ],
     },
   },
-  defaultProps: { accent: 'blue', defaultOpen: false, valueFormat: 'BRL' },
+  /**
+   * `accent` NÃO tem default aqui de propósito. O `BlockRenderer` mescla
+   * `defaultProps` em toda renderização, então um default no manifesto chega ao
+   * componente indistinguível de uma escolha do autor — e era por isso que toda
+   * etapa de funil saía azul num catálogo inteiro verde, sem ninguém ter pedido
+   * azul. Ausência = "não escolhi" = acento do produto (ver `DEFAULT_RAMP` no
+   * componente); as seis cores do enum continuam valendo quando pedidas.
+   */
+  defaultProps: { defaultOpen: false, valueFormat: 'BRL' },
   maxRows: 50,
   version: '1.0.0',
 } satisfies BlockManifest;

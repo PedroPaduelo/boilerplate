@@ -22,7 +22,11 @@
  *     seguem a legenda própria (§05-3): 11,375px/500 e peso 600 em 14px.
  *  4. Linha 2,5px, curva suave, sem pontos ... N/A — não há linha.
  *  5. Coluna raio 4px no topo, largura 48% ... adaptado da §8 pela `RankingBar`:
- *     raio 2px, traço 0, altura de 30% da faixa e trilho em `trackLight`.
+ *     raio 2px, traço 0 e espessura pelo degrau de LISTA da escala do tema
+ *     (`geometry.trackThickness`, 12px — a mesma do `bar_list`, do
+ *     `progress_bar` e da etapa de funil), com o trilho em `trackLight` na
+ *     MESMA espessura. As duas listas de ranking do app leem igual porque
+ *     desenham com o mesmo componente, não porque repetem o número.
  *  6. Hover ESCURECE ......................... `darkenColor` sobre a cor da
  *     barra, disparado pelo hover da linha inteira.
  *  7. Tooltip branco 90% com blur ............ N/A — o valor já está escrito ao

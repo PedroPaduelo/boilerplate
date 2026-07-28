@@ -19,15 +19,24 @@
  *  4. Linha 2,5px, suave, sem pontos ..... N/A — não há série contínua
  *  5. Coluna raio 4px no topo, 48% ....... ADAPTADO — a etapa é BARRA HORIZONTAL
  *                                          (§8): raio 2px (`barRadiusFlat`),
- *                                          traço 0, altura de 16px
+ *                                          traço 0 e espessura no degrau de
+ *                                          lista (`trackThickness`, 12px)
  *  6. Hover ESCURECE ..................... SIM — o segmento avança um passo da
  *                                          rampa, em `motion.duration`
  *  7. Tooltip branco 90% com blur ........ N/A — os números da etapa estão na
  *                                          tabela de desfechos, não em tooltip
  *
- * Mais: cor da barra pela RAMPA sequencial (claro → escuro, §6), trilha em
+ * Mais: cor da barra pela RAMPA sequencial (claro → escuro, §6) — o passo é a
+ * posição do desfecho e a FAMÍLIA vem de `accent`, cujo default agora é o acento
+ * do produto (ver `DEFAULT_RAMP`), não mais o azul —, trilha em
  * `chrome('trackLight')` (§3) e os estados (carregando / vazio / erro / sem
  * permissão) delegados ao `ChartFrame` — nenhum é reinventado aqui.
+ *
+ * A barra da etapa é desenhada por `funnel-bar.tsx` e usa o degrau de LISTA
+ * (`geometry.trackThickness`, 12px) — o mesmo do ranking e do progresso linear,
+ * porque as três são a mesma coisa: barra sem eixo ao lado de uma linha de
+ * texto. Antes ela cravava `--spacing-4` (16px) numa classe utilitária e era a
+ * mais grossa das quatro.
  *
  * Comportamento (inalterado): o abre/fecha é o `Collapsible` do DS (foco,
  * teclado e `aria-expanded` prontos), o detalhamento é tabela de verdade
@@ -37,7 +46,12 @@ import type { TableData } from '@dashboards/contracts';
 import { Card } from '@astryxdesign/core/Card';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { VStack } from '@astryxdesign/core/VStack';
-import { CHART_HEIGHT, ChartFrame, buildChartScope } from '@/shared/ui';
+import {
+  CHART_HEIGHT,
+  CHART_SERIES_COLORS,
+  ChartFrame,
+  buildChartScope,
+} from '@/shared/ui';
 import type { ChartFrameState, ChartRampColor } from '@/shared/ui';
 import { formatBRL, formatCompactBRL } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
@@ -70,6 +84,38 @@ const RAMP: Record<AccentKey, ChartRampColor> = {
   violet: 'purple',
   slate: 'gray',
 };
+
+/**
+ * Rampa da etapa quando o bloco não escolhe cor: o ACENTO DO PRODUTO — a 1ª cor
+ * do ciclo (`CHART_SERIES_COLORS[0]`), a mesma com que todo bloco do catálogo
+ * abre sua primeira série.
+ *
+ * Era `blue`, e o resultado se via em `/catalog`: a etapa de funil saía
+ * azul/ciano no meio de uma grade inteiramente verde. Azul não era escolha de
+ * dado — era o nome que veio na primeira posição do enum do bloco. A cor de
+ * abertura de qualquer bloco é o acento do produto; quem quiser outra continua
+ * dizendo qual em `accent`.
+ *
+ * Sai da constante do tema (e não de `'emerald'` escrito aqui) para que reordenar
+ * o ciclo em `chart-theme` reordene isto junto: se a nova 1ª cor não tiver rampa
+ * sequencial, o `tsc` reclama aqui — que é onde tem de reclamar.
+ */
+const DEFAULT_RAMP: ChartRampColor = CHART_SERIES_COLORS[0];
+
+/**
+ * Rampa efetiva da etapa.
+ *
+ * `accent` ausente = "o bloco não escolheu" = acento do produto. Isso só é
+ * verdade porque `accent` foi TIRADO de `manifest.defaultProps`: o
+ * `BlockRenderer` mescla os defaults do manifesto em toda renderização
+ * (`block-renderer.tsx`), então um default de fábrica chega aqui indistinguível
+ * de uma escolha do autor — e era assim que toda etapa saía azul num catálogo
+ * inteiro verde sem ninguém ter pedido azul. Com a ausência preservada, as seis
+ * cores do enum voltam a significar exatamente o que dizem, `'blue'` inclusive.
+ */
+function resolveRamp(accent: AccentKey | undefined): ChartRampColor {
+  return accent == null ? DEFAULT_RAMP : (RAMP[accent] ?? DEFAULT_RAMP);
+}
 
 /** Mensagem padrão quando nenhuma linha da consulta tem papel reconhecido. */
 const EMPTY_MESSAGE = 'Sem dados para esta etapa';
@@ -157,7 +203,7 @@ export const Component: BlockComponent<FunnelStageProps, TableData> = ({
             barLabel={props.barLabel}
             summary={summary}
             weights={outcomeWeights(outcomes)}
-            color={RAMP[props.accent ?? 'blue']}
+            color={resolveRamp(props.accent)}
             scope={scope}
             money={money}
           />

@@ -1198,3 +1198,72 @@ grupo colado precisa medir o contêiner e passar `barSize` em pixel — não foi
 feito para não trocar uma medição de layout por outra.
 
 **Travado por:** `src/shared/ui/charts/__tests__/bar-thickness.test.tsx`.
+
+## [AJUSTE] Escala única de espessura — o catálogo tinha sete
+
+**Sintoma relatado:** "todos estão muito despadronizados, os tamanhos e larguras
+de tudo". Com os blocos lado a lado na grade do `/catalog`, não lia como uma
+família: lia como seis componentes de origens diferentes.
+
+**Causa.** Cada tipo herdava a sua espessura da seção da referência que o
+descreve, e sempre como FRAÇÃO do próprio desenho. Fração de coisas de tamanhos
+diferentes dá números diferentes. Medido no navegador, antes:
+
+| marca                               | antes          | depois             |
+| ----------------------------------- | -------------- | ------------------ |
+| anel do medidor radial              | **88px**       | **24px**           |
+| anel da rosca                       | 34px           | 24px               |
+| anel de progresso (trilha **93px**) | 30px           | 24px (trilha 24px) |
+| coluna (contêiner largo)            | 118px          | 32px (teto)        |
+| barra horizontal                    | 16px           | 16px (teto 24)     |
+| barra de ranking                    | ~10px          | 12px               |
+| barra de progresso / funil          | 8px / 16px     | 12px               |
+| marcador de linha                   | 12px           | 6px                |
+| ponto da dispersão                  | 12px (área 4×) | 6px                |
+
+**Decisão.** A espessura virou UMA ESCALA EM PIXEL, na base 4 do tema, e cada
+tipo escolhe o DEGRAU — não o número:
+
+```
+ 2px    traço de mini-gráfico            sparkLineWidth
+ 2,5px  traço de linha/área com eixo     lineWidth
+ 6px    marcador (DIÂMETRO)              markerVisibleSize
+12px    barra de LISTA                   trackThickness
+24px    anel de circular                 ringThickness
+24px    barra horizontal (teto)          hBarMaxWidth
+32px    coluna (teto)                    barMaxWidth
+```
+
+A fração da referência continua mandando enquanto o desenho é pequeno; o degrau
+é o teto (`clamp`). Junto vieram três consertos de mesma natureza:
+
+- **diâmetro** dos circulares: 240/260/320 → `CHART_HEIGHT.circular` (240), com
+  raio externo único (`ringOuterRatio`) — a espessura já era igual, mas os
+  círculos ainda tinham tamanhos diferentes;
+- **trilha ≡ marca**: trilha de fundo com a espessura EXATA da barra/arco que
+  ela acompanha, mudando só a cor. O anel de progresso tinha trilha de 93px sob
+  um arco de 30px;
+- **`markerVisibleSize` é DIÂMETRO**, e era lido de três formas (`r = d` na
+  linha, `r = d/2` no spark, área `π·d²` na dispersão).
+
+**Cor.** O medidor radial nascia roxo e a etapa de funil, azul — num catálogo
+inteiro verde. Ambos passam a nascer no acento do produto; quem pedir roxo ou
+azul explicitamente continua recebendo. No funil a causa era `accent` ter
+DEFAULT no manifesto: o `BlockRenderer` mescla `defaultProps` em toda
+renderização, então o valor de fábrica chegava ao componente indistinguível de
+uma escolha do autor. `accent` saiu de `defaultProps` — ausência voltou a
+significar ausência.
+
+**Alturas.** `dashboard` (350), `analysis` (364), `large` (400) e `radar` (280)
+tinham ZERO usos: quatro alturas esperando alguém escolher errado. Removidas.
+`scatter` era 350 num palco de catálogo de 360 e a legenda saía cortada → 320,
+igual aos outros. O palco do card passou de 360 a **400**, que é o mais alto
+medido (a rosca com legenda própria dá 399) — antes era um chute de "320 + 40".
+
+**Tokens removidos** (zero consumidores, e três armadilhas prontas para o
+próximo circular nascer torto): `donutHole`, `radialHole`, `trackWidth`,
+`CHART_HEIGHT.gauge`, `CHART_HEIGHT.radial`.
+
+**Travado por:** `bar-thickness`, `ring-thickness`, `list-bar-thickness` e
+`marker-geometry` em `src/shared/ui/charts/__tests__/` — cada degrau é afirmado
+UMA vez e os componentes são verificados contra ele.

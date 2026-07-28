@@ -20,7 +20,10 @@
  *    `chartYAxisProps` (Y com as 5 divisões da base).
  * 3. Texto dos eixos 12px/400/#919EAB ......... vem de `chartAxisProps`.
  * 4. Linhas 2,5px sem pontos .................. N/A (dispersão não tem linha);
- *    o que vale aqui é o MARCADOR tamanho 6 (`geometry.markerVisibleSize`).
+ *    o que vale aqui é o MARCADOR de 6px de DIÂMETRO
+ *    (`geometry.markerVisibleSize`), que o recharts recebe como ÁREA —
+ *    `π·(d/2)²`, via `chartMarkerArea`. A conta antiga era `π·d²`: quatro
+ *    vezes a área, ponto de 12px, o dobro do da linha na mesma grade.
  * 5. Coluna raio 4px/largura 48% .............. N/A (não há coluna).
  * 6. Hover ESCURECE ........................... `activeShape` com
  *    `palette.hoverAt(i)`.

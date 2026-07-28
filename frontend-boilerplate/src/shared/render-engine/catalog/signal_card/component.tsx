@@ -13,6 +13,8 @@
  * 4. Linha, curva suave, sem pontos ........ `SparkChart` (monotone, `dot={false}`)
  * 5. Coluna com raio no topo ............... N/A — a variante do cartão é ÁREA (§2.4)
  * 6. Hover ESCURECE ........................ marcador do `SparkChart` com `strokeWidth: 0` (§2.3)
+ *                                            e 6px de DIÂMETRO — o mesmo ponto do gráfico com eixo,
+ *                                            que é o que sustenta o cartão ao lado de um `line_chart`
  * 7. Tooltip branco 90% com blur ........... `ChartTooltip` com o VALOR e SEM título (§2.3)
  * + Card ................................... padding 24px, `position: relative`, SEM sombra (§2.1)
  * + Tendência .............................. bloco absoluto no topo-direito, gap 4px, ícone 20px (§2.2)

@@ -9,7 +9,10 @@
  *  2. Eixos sem linha e sem marcações ........ `chartAxisProps` / `chartYAxisProps`
  *  3. Texto dos eixos 12px/400/#919EAB ....... `chartAxisProps` (tipografia do tema)
  *  4. Linha 2,5px em curva suave ............. `palette.geometry.lineWidth` + `curve`
- *     …com marcadores VISÍVEIS 6/3 ........... a §1 SOBRESCREVE a base (que os esconde)
+ *     …com marcadores VISÍVEIS ............... a §1 SOBRESCREVE a base (que os esconde):
+ *        6px de DIÂMETRO (`r` = 3) e halo de 1,5px, ambos de `chartMarkerProps`.
+ *        O token `markerVisibleSize` é diâmetro; este bloco o passava direto
+ *        como raio e desenhava um ponto de 12px — o dobro do mini-gráfico.
  *  5. Coluna com raio 4px .................... não se aplica (tipo linha)
  *  6. Hover ESCURECE ......................... `activeDot` com a cor escurecida
  *  7. Tooltip branco 90% com blur ............ `ChartSeriesTooltip` → `ChartTooltip`

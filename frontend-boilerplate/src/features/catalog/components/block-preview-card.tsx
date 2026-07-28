@@ -55,12 +55,20 @@ export interface BlockPreviewCardProps {
 /**
  * Altura do palco do preview, em px.
  *
- * Depois da repaginação os gráficos do catálogo desenham em 320px (o padrão da
- * referência) e ainda somam a legenda no rodapé. 360 é a soma: o gráfico típico
- * aparece INTEIRO, como no `demo.html`, e só os blocos gigantes (tabelas
- * longas) são recortados.
+ * A intenção sempre foi "o gráfico típico aparece INTEIRO, como no `demo.html`,
+ * e só os blocos gigantes são recortados". A conta é que estava errada: 360 =
+ * 320 do gráfico + 40 de chute para a legenda. Medido na grade, o rodapé real
+ * custa mais que isso e CINCO blocos apareciam cortados — a legenda da
+ * dispersão, da área e da linha (386px cada) e a legenda própria da rosca
+ * (399px) morriam no recorte, que é justamente a parte que diz o que é cada
+ * cor.
+ *
+ * 400 é o menor múltiplo da escala de 8 que cobre o mais alto deles (399), ou
+ * seja: o teto passa a ser MEDIDO, não estimado. Blocos gigantes de verdade
+ * (bento grid, 560px) continuam recortados de propósito — para esses o card é
+ * um convite a abrir o playground, não a leitura final.
  */
-const STAGE_HEIGHT = 360;
+const STAGE_HEIGHT = 400;
 
 export function BlockPreviewCard({ entry, onDetails }: BlockPreviewCardProps) {
   const { definition, kind, shape, block, result, propsCount, hasData } = entry;

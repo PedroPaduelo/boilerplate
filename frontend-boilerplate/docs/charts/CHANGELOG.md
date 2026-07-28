@@ -70,6 +70,19 @@ pixel-perfect e **sem nenhuma quebra de contrato**.
   media a grandeza errada) e, com ele, `barWidthMd`, `barWidthSm`, `barRadiusSm`
   e o `useMediaQuery` do `bar-chart`. Detalhes e limitação conhecida em
   `NOTAS.md` → `[AJUSTE] Espessura de barra`.
+- **Escala única de espessura de marca** — o catálogo tinha SETE espessuras para
+  a mesma ideia (anel de 88/34/30px, barra de 21/16/10px, marcador de 12px). Agora
+  há uma escala em pixel na base 4 e cada tipo escolhe o DEGRAU: 2 (spark), 2,5
+  (linha), 6 (marcador, DIÂMETRO), 12 (`trackThickness`, barra de lista), 24
+  (`ringThickness`, anel de circular / teto da barra horizontal) e 32
+  (`barMaxWidth`, teto da coluna). Junto: diâmetro único dos circulares
+  (240/260/320 → 240, com `ringOuterRatio`), trilha com a espessura EXATA da
+  marca que acompanha, alturas mortas removidas (`dashboard`/`analysis`/`large`/
+  `radar`), `scatter` 350 → 320 (a legenda saía cortada) e palco do card do
+  catálogo 360 → 400 (medido, não estimado). Cor: medidor radial e etapa de funil
+  deixam de nascer roxo/azul e passam a nascer no acento do produto — pedindo a
+  cor explicitamente ela continua valendo. Detalhes em `NOTAS.md` →
+  `[AJUSTE] Escala única de espessura`.
 - **Todos os 20 blocos de `kind=chart`** repaginados: linha, área, colunas
   (simples/múltipla/empilhada/negativa), barra horizontal, rosca/pizza, medidores
   radiais (semicircular, radial, tracejado), anel de progresso, dispersão,

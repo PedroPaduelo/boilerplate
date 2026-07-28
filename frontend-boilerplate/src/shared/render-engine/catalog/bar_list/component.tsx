@@ -23,8 +23,12 @@
  *     legenda própria (§05-3): 11,375px/500 e peso 600 no degrau de 14px.
  *  4. Linha 2,5px, curva suave, sem pontos ... N/A — não há linha.
  *  5. Coluna raio 4px no topo, largura 48% ... adaptado da §8: raio 2px
- *     (`geometry.barRadiusFlat`), traço 0 e altura de 30% da faixa da linha
- *     (`geometry.hBarWidth`); trilho em `chrome('trackLight')`.
+ *     (`geometry.barRadiusFlat`) e traço 0. A ESPESSURA não vem da fração da
+ *     §8 (30% da faixa da linha, que dava ≈10px e fazia deste o bloco de barra
+ *     mais fina do catálogo): vem do degrau de LISTA da escala do tema,
+ *     `geometry.trackThickness` (12px) — o mesmo do `progress_bar` e da etapa
+ *     de funil, porque as três são barra SEM eixo ao lado de uma linha de
+ *     texto. Trilho em `chrome('trackLight')`, na MESMA espessura da barra.
  *  6. Hover ESCURECE ......................... `darkenColor` sobre a cor da
  *     barra, disparado pelo hover da linha inteira.
  *  7. Tooltip branco 90% com blur ............ N/A — o valor já está escrito ao

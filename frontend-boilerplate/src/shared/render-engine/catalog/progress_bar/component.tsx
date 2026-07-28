@@ -29,7 +29,14 @@
  * 6. Hover escurece ....................... n/a — a barra não é interativa
  * 7. Tooltip branco 90 % com desfoque ..... n/a — a leitura já está escrita ao
  *    lado do rótulo, não há o que revelar no ponteiro
- * + Trilha `rgba(145,158,171,0.16)` ....... `palette.chrome('track')` (§02-10)
+ * + Espessura da barra .................... `geometry.trackThickness` (12 px),
+ *    o degrau de LISTA da escala do tema, aplicado pelo `ChartBarTrack`: a
+ *    mesma medida do ranking (`bar_list`, `leaderboard`) e da etapa de funil,
+ *    porque as quatro são barra SEM eixo ao lado de uma linha de texto. A
+ *    espessura deixou de depender da prop `size` (era 8 px em `md`, 6 px em
+ *    `sm`) — a escala tem UM degrau para esse papel
+ * + Trilha `rgba(145,158,171,0.16)` ....... `palette.chrome('track')` (§02-10),
+ *    na MESMA espessura da barra: entre trilha e valor muda só a cor
  * + Cor do preenchimento .................. `palette.primary80` — o verde a 80 %,
  *    a cor mais recorrente do catálogo — ou a cor do acento
  * + Animação de entrada 360 ms ............ `palette.motion.duration` na largura
@@ -206,6 +213,12 @@ export const Component: BlockComponent<ProgressBarProps, ScalarData> = ({
           {(props.showValue ?? true) ? <span style={text.value}>{reading}</span> : null}
         </HStack>
 
+        {/*
+          `size="md"` continua declarado: a barra é o elemento principal deste
+          bloco, e a prop segue no contrato do `ChartBarTrack`. Ela não escolhe
+          mais a ESPESSURA (isso agora é o degrau único de lista da escala) —
+          fica como declaração de papel, não como medida.
+        */}
         <ChartBarTrack
           ratio={value == null ? 0 : value / max}
           color={fillColor(palette, variant, props.accent)}

@@ -7,11 +7,22 @@
  *   • modo `sparkline`: sem eixos, sem grade e sem padding — o anel ocupa a
  *     caixa inteira;
  *   • traço 0 entre fatias (nada de contorno branco separando pedaço);
- *   • furo de 72% do raio na rosca; PIZZA é o MESMO componente com furo 0
- *     (`thickness={1}`), como na referência, que só troca `donut.size`;
+ *   • ANEL DE 24px (`chartRingInnerRadius`), o mesmo do anel de progresso e dos
+ *     medidores; PIZZA é o MESMO componente com furo 0 (`thickness={1}`), como
+ *     na referência, que só troca `donut.size`;
  *   • rótulos centrais da base (`ChartCenterLabel`);
  *   • legenda PRÓPRIA, FORA do desenho (`ChartLegends`) — a legenda do motor
  *     roubaria área do anel e a referência é explícita em não usá-la.
+ *
+ * ESPESSURA — por que o furo de 72% saiu:
+ * A referência mede o furo como FRAÇÃO do raio, e cada circular herdou a
+ * fração da sua própria seção: 72% aqui, 32% na barra radial, 50% na trilha do
+ * medidor. Lado a lado na grade do `/catalog` isso dava anéis de 34px, 88px e
+ * 30px para a MESMA figura — três componentes de origens diferentes, não uma
+ * família. Agora a espessura é um DEGRAU EM PIXEL do tema
+ * (`CHART_GEOMETRY.ringThickness`, 24px), aplicado por `chartRingInnerRadius`,
+ * e a fração da referência só volta a mandar quando o desenho é pequeno demais
+ * para os 24px (o `clamp` do helper).
  *
  * COR — a sequência é a da PROPORÇÃO (§9), não o ciclo de 9 cores dos
  * cartesianos: verde escuro a 80%, âmbar, azul petróleo e vermelho.
@@ -31,7 +42,7 @@ import { ChartFrame, type ChartFrameState } from './chart-frame';
 import { ChartLegends } from './chart-legend';
 import { buildChartScope } from './chart-template';
 import { chartPlainText } from './chart-text-html';
-import { CHART_HEIGHT, CHART_NO_MARGIN } from './chart-theme';
+import { CHART_HEIGHT, CHART_NO_MARGIN, chartRingInnerRadius } from './chart-theme';
 import { ChartTooltip } from './chart-tooltip';
 import type { ChartPoint, ChartStateProps, ValueFormatter } from './types';
 import {
@@ -47,8 +58,15 @@ export interface DonutChartProps extends ChartStateProps {
   /** Lado da plotagem em px — o desenho é quadrado (240 × 240 na referência). */
   height?: number;
   /**
-   * Espessura do anel, de 0 (sem anel) a 1 (**pizza**, furo 0). Sem valor, usa
-   * o furo de 72% da referência (`palette.geometry.donutHole`).
+   * Espessura do anel, de 0 (sem anel) a 1 (**pizza**, furo 0), como FRAÇÃO do
+   * raio — o tipo e o efeito são os de sempre. Sem valor, a espessura sai do
+   * degrau do tema (24px, `CHART_GEOMETRY.ringThickness`) em vez do antigo
+   * furo de 72%.
+   *
+   * Em pixel, esta fração é exatamente o `override` de `chartRingInnerRadius`:
+   * quem declara espessura continua vencendo o token. Único efeito colateral
+   * da mudança: o helper tem piso de 1px, então `thickness={0}` desenha um fio
+   * de cabelo em vez de nada — na prática ninguém pede anel de espessura zero.
    */
   thickness?: number;
   /** Leitura principal no vão central. Aceita Markdown e `{{variaveis}}`. */
@@ -113,11 +131,6 @@ function proportionSlices(palette: ChartPalette): SliceInk[] {
   ];
 }
 
-/** Raio como percentual do raio máximo, com uma casa (evita `58.0000001%`). */
-function asRadius(fraction: number): string {
-  return `${Math.round(fraction * 1000) / 10}%`;
-}
-
 /** Rosca (ou pizza, com `thickness={1}`) com leitura central e legenda própria. */
 export function DonutChart({
   data,
@@ -155,12 +168,22 @@ export function DonutChart({
         }
       : slices[index % slices.length];
 
-  // Furo de 72% do raio (§10). `thickness` continua sendo a ESPESSURA do anel
-  // como fração do raio — `thickness={1}` zera o furo e o desenho vira pizza.
-  const hole =
-    thickness == null
-      ? palette.geometry.donutHole
-      : 1 - Math.min(Math.max(thickness, 0), 1);
+  // Os dois raios vão em PIXEL para o `<Pie>` porque a espessura do anel agora
+  // é um degrau em pixel: em percentual ela voltaria a depender do que o
+  // recharts calcula como raio máximo, e 24px deixariam de ser 24px.
+  //
+  // O raio externo sai de `ringOuterRatio` — o MESMO do anel de progresso e dos
+  // medidores. Antes era `height / 2` (o anel encostando na borda, Ø240) contra
+  // os 0,45 dos outros (Ø216): a espessura já estava unificada, mas os círculos
+  // continuavam de tamanhos diferentes um ao lado do outro na grade.
+  const outerRadius = Math.round(height * palette.geometry.ringOuterRatio);
+  // `thickness` é fração do raio (contrato público); em pixel ela é exatamente
+  // o `override` do helper — espessura declarada continua vencendo o token.
+  const innerRadius = chartRingInnerRadius(
+    outerRadius,
+    height,
+    thickness == null ? undefined : Math.min(Math.max(thickness, 0), 1) * outerRadius,
+  );
 
   // Contrato comum: todo texto do bloco aceita Markdown + `{{variavel}}`.
   const centerText = chartPlainText(centerValue, scope);
@@ -218,8 +241,8 @@ export function DonutChart({
           data={rows}
           dataKey="value"
           nameKey={CATEGORY_KEY}
-          innerRadius={asRadius(hole)}
-          outerRadius="100%"
+          innerRadius={innerRadius}
+          outerRadius={outerRadius}
           paddingAngle={0}
           stroke="none"
           onMouseEnter={(_point: unknown, index: number) => setActiveSlice(index)}

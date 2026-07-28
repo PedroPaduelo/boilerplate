@@ -17,7 +17,9 @@
  *  4. preenchimento em GRADIENTE VERTICAL, 0.4 no topo → 0 na base, paradas
  *     0 e 100 (`02-configuracao-base.md` §5) — `<linearGradient>` com id único
  *     por série, porque a cor de cada série entra nos `stop`s;
- *  5. linha 2,5px, curva suave, ponta arredondada e SEM pontos (§6);
+ *  5. linha 2,5px, curva suave, ponta arredondada e SEM pontos (§6) — o único
+ *     marcador é o do HOVER, e ele usa o mesmo `chart-marker` da linha e da
+ *     dispersão: 6px de DIÂMETRO (o `r` do SVG é metade), halo proporcional;
  *  6. grade só horizontal tracejada 3; eixos sem linha e sem marcações; 5
  *     divisões no Y (§7) — tudo de `chart-axes`;
  *  7. hover ESCURECE a série (§4) — `palette.hoverAt(i)` no ponto ativo;
@@ -57,6 +59,7 @@ import {
 import { ChartFrame } from './chart-frame';
 import type { ChartFrameState } from './chart-frame';
 import { ChartLegend } from './chart-legend';
+import { chartMarkerProps } from './chart-marker';
 import { ChartSeriesTooltip } from './chart-series-tooltip';
 import type { ChartScope } from './chart-template';
 import { chartPlainText } from './chart-text-html';
@@ -248,12 +251,10 @@ export function AreaChart({
                 fill === 'gradient' ? 1 : fill === 'solid' ? SOLID_FILL_OPACITY : 0
               }
               dot={false}
-              activeDot={{
-                r: palette.geometry.markerVisibleSize,
-                fill: palette.hoverAt(index, item.color),
-                stroke: palette.chrome('markerStroke'),
-                strokeWidth: palette.geometry.markerStrokeWidth,
-              }}
+              // §6 não desenha ponto em repouso; o do HOVER é o mesmo marcador
+              // dos outros tipos (`chart-marker`), e não uma cópia local — foi
+              // a cópia que fez este ponto sair com o dobro do diâmetro.
+              activeDot={chartMarkerProps(palette, palette.hoverAt(index, item.color))}
               {...chartAnimationProps(palette, index)}
             />
           ))}

@@ -17,9 +17,12 @@
  * A referência não tem "ranking em DOM". Este componente combina os dois
  * layouts mais próximos, sem inventar um terceiro:
  *
- *  • a BARRA segue a barra horizontal (`03-tipos-de-grafico.md` §8): cor
- *    `VERDE80` (`palette.primary80`), raio 2px, traço 0 e altura de 30% da
- *    faixa da linha (`geometry.hBarWidth`), com o trilho em `trackLight`;
+ *  • a BARRA segue a barra horizontal (`03-tipos-de-grafico.md` §8) na COR
+ *    (`VERDE80`, `palette.primary80`), no RAIO (2px) e no TRAÇO (0); a
+ *    ESPESSURA, porém, sai da escala do tema e não da fração:
+ *    `geometry.trackThickness` (12px), o degrau das barras de LISTA — sem eixo
+ *    e ao lado de uma linha de texto. O trilho é a MESMA barra apagada
+ *    (`trackLight`): mesma espessura, muda só a cor;
  *  • o par RÓTULO/VALOR segue a legenda própria (`05-tooltip-legenda-css.md`
  *    §3): rótulo 11,375px/500, valor com peso 600;
  *  • o hover ESCURECE a barra (`02-configuracao-base.md` §4) — a linha inteira
@@ -43,10 +46,24 @@ import { CHART_SERIES_COLORS, darkenColor, useChartPalette } from './use-chart-p
 
 /**
  * Faixa vertical de UMA linha do ranking, em px — a analogia, no DOM, da faixa
- * de categoria de uma barra horizontal. A barra ocupa `geometry.hBarWidth`
- * (30%) dela, exatamente como na §8; a linha inteira também é a área de hover.
+ * de categoria de uma barra horizontal. É o espaço que a linha reserva (par
+ * rótulo/valor + barra) e a unidade com que o esqueleto calcula a área a
+ * segurar, para o card não pular quando o dado chega. A linha inteira também é
+ * a área de hover.
+ *
+ * NÃO é mais a origem da espessura da barra. A `RankingBar` derivava a altura
+ * de `RANKING_ROW_BAND × geometry.hBarWidth` (30% de 32 ≈ 10px) — a fração da
+ * §8 aplicada a uma faixa de DOM —, e era isso que fazia do ranking a barra
+ * mais fina do catálogo. Agora a espessura é o degrau de lista da escala
+ * (`geometry.trackThickness`).
+ *
+ * O valor é 37 porque é o que a linha MEDE hoje no navegador (par rótulo/valor
+ * + respiro + os 12px da barra), não um número redondo escolhido a olho. Ficou
+ * em 32 desde que a barra tinha 10px: a reserva do esqueleto ficava ~5px curta
+ * POR LINHA, e num ranking de cinco o card pulava ~25px na chegada do dado —
+ * exatamente o salto que esta constante existe para evitar.
  */
-export const RANKING_ROW_BAND = 32;
+export const RANKING_ROW_BAND = 37;
 
 /**
  * Tipografia do par rótulo/valor — a legenda própria da referência (§3).
@@ -95,9 +112,9 @@ export interface RankingBarProps {
 }
 
 /**
- * Trilho + barra proporcional de uma linha de ranking (§8: raio 2px, traço 0,
- * altura de 30% da faixa). Decorativa (`aria-hidden`): o valor já está escrito
- * ao lado, em texto.
+ * Trilho + barra proporcional de uma linha de ranking (§8: raio 2px, traço 0;
+ * espessura pelo degrau de lista da escala). Decorativa (`aria-hidden`): o
+ * valor já está escrito ao lado, em texto.
  *
  * O hover escurece quando a LINHA recebe o ponteiro — quem usa marca a linha
  * com a classe `group`.
@@ -105,6 +122,20 @@ export interface RankingBarProps {
 export function RankingBar({ ratio, color }: RankingBarProps) {
   const palette = useChartPalette();
   const percent = Math.min(Math.max(ratio, 0), 1) * 100;
+  /**
+   * Raio das barras de lista: `barRadiusFlat` (2px), o raio da barra horizontal
+   * da §8 — e o mesmo nas quatro (ranking, trilho da base, progresso linear,
+   * etapa de funil), porque raio diferente na mesma espessura é a segunda coisa
+   * mais visível depois da espessura diferente.
+   *
+   * Por que não os outros dois candidatos: 4px é o raio da COLUNA (§10), do
+   * degrau de 32px — numa barra de 12px arredondaria um terço da espessura;
+   * cápsula (raio = metade, 6px) arredonda a PONTA que carrega o dado, encurta
+   * a leitura do valor e faz a marca de medida parecer um chip de status. 2px é
+   * 1/6 da espessura: suaviza o canto e mantém a ponta reta.
+   *
+   * O trilho recebe o MESMO raio porque é ele que recorta o preenchimento.
+   */
   const radius = palette.geometry.barRadiusFlat;
 
   return (
@@ -113,15 +144,22 @@ export function RankingBar({ ratio, color }: RankingBarProps) {
       data-slot="ranking-bar"
       className="block w-full overflow-hidden"
       style={{
-        // runtime: medidas e cores do DESENHO, todas do `chart-theme` — §8 pede
-        // altura de 30% da faixa, raio 2px e traço 0; o trilho é `trackLight`.
-        blockSize: Math.round(RANKING_ROW_BAND * palette.geometry.hBarWidth),
+        // runtime: medidas e cores do DESENHO, todas do `chart-theme`. A
+        // espessura é o DEGRAU DE LISTA da escala (`trackThickness`, 12px), o
+        // mesmo do progresso linear e da etapa de funil: as três são a mesma
+        // marca — barra SEM eixo, acompanhando uma linha de texto —, e o que as
+        // separava era só a seção da referência de onde cada uma herdou a sua
+        // fração. Aqui isso dava `RANKING_ROW_BAND × hBarWidth` ≈ 10px, a barra
+        // mais fina do catálogo, ao lado de uma coluna de 21px.
+        blockSize: palette.geometry.trackThickness,
         borderRadius: radius,
         backgroundColor: palette.chromeVar('trackLight'),
       }}
     >
       <span
         data-slot="ranking-bar-fill"
+        // TRILHA = BARRA: o preenchimento é `h-full`, então ele tem exatamente a
+        // espessura do trilho — entre os dois muda só a cor.
         className="block h-full bg-[color:var(--chart-bar)] group-hover:bg-[color:var(--chart-bar-hover)]"
         style={
           {

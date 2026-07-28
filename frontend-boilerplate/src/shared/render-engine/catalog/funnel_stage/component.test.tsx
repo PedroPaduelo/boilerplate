@@ -8,6 +8,9 @@
  *    RAMPA sequencial (`chartRampToken`) e a trilha, do chrome do tema.
  * 2. RAMPA CLARO → ESCURO E HOVER QUE ESCURECE — cada segmento declara o
  *    próprio passo e o passo seguinte (o do hover), na ordem da referência.
+ * 2b. COR PADRÃO É A DO PRODUTO — sem escolha de `accent`, a etapa abre no
+ *    acento do produto (1ª cor do ciclo), como todo bloco do catálogo. Era
+ *    azul, e a etapa saía ciano no meio de uma grade verde.
  * 3. ABRE E FECHA DE VERDADE — o gatilho é um botão com `aria-expanded`; o
  *    resumo e a barra continuam visíveis com a etapa fechada.
  * 4. CONTRATO COMUM — Markdown + `{{variavel}}` nos textos e os quatro estados
@@ -21,10 +24,11 @@
 import { describe, expect, it } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 import type { TableData } from '@dashboards/contracts';
-import { CHART_CHROME_TOKENS, chartRampToken } from '@/shared/ui';
+import { CHART_CHROME_TOKENS, CHART_SERIES_COLORS, chartRampToken } from '@/shared/ui';
 import { renderWithProviders } from '@/test/render';
 import { definition } from './component';
 import { fixture } from './fixture';
+import { manifest } from './manifest';
 
 const Block = definition.Component;
 const PROPS = { stageLabel: 'N1 · MOMENTO LANÇAMENTO' };
@@ -61,6 +65,44 @@ describe('bloco funnel_stage — cor', () => {
       // Hover ESCURECE: a cor de hover é o passo SEGUINTE da mesma rampa.
       expect(style).toContain(chartRampToken('shamrock', index + 2));
     });
+  });
+
+  it('sem accent, abre no acento do produto — não em azul', () => {
+    const { container } = renderWithProviders(
+      <Block props={PROPS} data={fixture} state="success" />,
+    );
+    const styles = segmentStyles(container);
+    expect(styles).toHaveLength(3);
+
+    // A 1ª cor do ciclo é a que abre qualquer bloco do catálogo; a etapa passa
+    // a abrir nela também, em vez de na rampa azul que vinha do enum do bloco.
+    styles.forEach((style, index) => {
+      expect(style).toContain(chartRampToken(CHART_SERIES_COLORS[0], index + 1));
+    });
+    expect(styles.join(' ')).not.toContain(chartRampToken('blue', 1));
+  });
+
+  it('respeita `accent: "blue"` pedido explicitamente', () => {
+    // A etapa saía azul num catálogo inteiro verde porque `accent: 'blue'` era
+    // o default do MANIFESTO, e o `BlockRenderer` mescla `defaultProps` em toda
+    // renderização — o valor de fábrica chegava ao componente indistinguível de
+    // uma escolha do autor. A correção foi tirar `accent` de `defaultProps`
+    // (ausência volta a significar ausência), e não ensinar o componente a
+    // ignorar um azul pedido: quem pede azul tem de receber azul.
+    const { container } = renderWithProviders(
+      <Block props={{ ...PROPS, accent: 'blue' }} data={fixture} state="success" />,
+    );
+
+    segmentStyles(container).forEach((style, index) => {
+      expect(style).toContain(chartRampToken('blue', index + 1));
+    });
+  });
+
+  it('não declara `accent` em defaultProps — ausência tem de continuar ausente', () => {
+    // Guarda de arquitetura: se alguém devolver um default de cor ao manifesto,
+    // TODA etapa volta a nascer colorida sem ninguém ter pedido, e o bug
+    // ressuscita silenciosamente (o teste acima continuaria verde).
+    expect(manifest.defaultProps).not.toHaveProperty('accent');
   });
 
   it('tira a trilha da barra de um token de chrome do tema', () => {

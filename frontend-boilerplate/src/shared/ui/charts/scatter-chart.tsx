@@ -14,7 +14,9 @@
  * ---------------------------------------------------------------------------
  *   cores       paleta base NA ORDEM, uma por categoria (`palette.colorAt(i)`)
  *   altura      350px (`CHART_HEIGHT.scatter`)
- *   marcadores  tamanho 6 (`geometry.markerVisibleSize`), contorno da superfície
+ *   marcadores  6px de DIÂMETRO (`geometry.markerVisibleSize`), com o contorno
+ *               da superfície — os dois vêm de `chart-marker`, que converte o
+ *               diâmetro na ÁREA que o recharts pede
  *   eixo X      8 divisões, valores com 1 casa decimal
  *   legenda     ligada
  *   grade       só horizontal, tracejada 3 (herdada da base)
@@ -51,6 +53,7 @@ import { formatChartValue } from './chart-data';
 import { ChartFrame } from './chart-frame';
 import type { ChartFrameState } from './chart-frame';
 import { ChartLegend } from './chart-legend';
+import { chartMarkerArea, chartMarkerStrokeWidth } from './chart-marker';
 import { CHART_GEOMETRY, CHART_HEIGHT } from './chart-theme';
 import { buildChartScope } from './chart-template';
 import type { ChartScope } from './chart-template';
@@ -80,7 +83,15 @@ export interface ScatterChartProps extends ChartStateProps {
   xLabel?: string;
   /** Nome do eixo Y, exibido no tooltip. Aceita Markdown e `{{variavel}}`. */
   yLabel?: string;
-  /** Faixa de área da bolha quando os pontos trazem `size`. */
+  /**
+   * Faixa de ÁREA da bolha (px²) quando os pontos trazem `size` — a mesma
+   * unidade de `chartMarkerArea`, e não um diâmetro.
+   *
+   * ⚠️ O default `[60, 500]` (≈ 8,7px a 25,2px de diâmetro) é a única medida
+   * de desenho deste arquivo que NÃO sai do tema: a escala não publica degrau
+   * de bolha. Fica como está para não mudar o efeito de uma prop pública —
+   * pedido de token registrado no relatório do lote.
+   */
   sizeRange?: [number, number];
   /** Linhas de grade. */
   showGrid?: boolean;
@@ -118,8 +129,10 @@ const DEFAULT_CATEGORY = 'Série';
  * Divisões do eixo X (§15). O recharts conta os LIMITES, então 8 divisões são
  * 9 marcas — a mesma conta que `chartYAxisProps` faz para o eixo Y.
  *
- * Fica aqui, e não em `chart-theme`, porque é a única métrica do §15 que a base
- * ainda não expõe; o pedido está em `docs/charts/PEDIDOS-BASE.md` (`[SUB-07]`).
+ * Era uma constante local enquanto a base não expunha a métrica (o pedido está
+ * em `docs/charts/PEDIDOS-BASE.md`, `[SUB-07]`); a escala publicou
+ * `scatterXTickCount` e isto virou o apelido dela. Fica como apelido só porque
+ * o nome curto explica a conta do `tickCount` logo abaixo.
  */
 const X_TICK_COUNT = CHART_GEOMETRY.scatterXTickCount;
 
@@ -185,11 +198,14 @@ export function ScatterChart({
   const yTickFormatter = yAxisFormatter ?? axisFormatter ?? valueFormatter;
 
   /**
-   * O recharts mede o símbolo pela ÁREA; a referência dá o RAIO (6px). Para um
-   * círculo, `área = π·r²` — a conversão é geometria do desenho, não estilo
-   * cravado: o raio continua vindo do tema.
+   * O recharts mede o símbolo pela ÁREA, e o token é DIÂMETRO — a conversão
+   * (`π·(d/2)²`) mora em `chart-marker`, junto com a dos outros tipos.
+   *
+   * Aqui é onde a ambiguidade do token doeu mais: a conta antiga era `π·d²`,
+   * isto é, tratava 6 como raio. Quatro vezes a área pretendida, ponto de 12px
+   * — o dobro do diâmetro do ponto da linha, na mesma tela do `/catalog`.
    */
-  const markerArea = Math.PI * palette.geometry.markerVisibleSize ** 2;
+  const markerArea = chartMarkerArea(palette);
 
   // `success` explícito não pode mascarar "carregando"/"sem dados" — esses dois
   // continuam derivados dos dados pelo próprio `ChartFrame`.
@@ -276,7 +292,9 @@ export function ScatterChart({
               data={points}
               fill={palette.colorAt(index)}
               stroke={palette.chrome('markerStroke')}
-              strokeWidth={palette.geometry.markerStrokeWidth}
+              // Halo proporcional ao raio: com os 3px crus do token, um ponto
+              // de 6px ficaria com metade do miolo comida — anel, não ponto.
+              strokeWidth={chartMarkerStrokeWidth(palette)}
               // O hover da referência ESCURECE a série (a maioria das libs clareia).
               activeShape={{ fill: palette.hoverAt(index) }}
               {...chartAnimationProps(palette, index)}

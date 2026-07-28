@@ -6,10 +6,14 @@
  * O que este arquivo trava:
  * 1. VALOR DE VERDADE — o medidor se anuncia como `meter` com valor, mínimo e
  *    máximo; a leitura não existe só como desenho.
- * 2. LAYOUT DA REFERÊNCIA — gradiente roxo #8E33FF → #C684FF no semicircular,
- *    vermelho #FF5630 → #FFAC82 no tracejado, trilha de 16% (semicircular) e de
- *    8% (barra radial e tracejado), traço `dashArray: 4` com ponta reta SÓ na
- *    barra de valor do §13 e legenda própria embaixo na barra radial.
+ * 2. LAYOUT DA REFERÊNCIA — trilha de 16% (semicircular) e de 8% (barra radial
+ *    e tracejado), traço `dashArray: 4` com ponta reta SÓ na barra de valor do
+ *    §13 e legenda própria embaixo na barra radial.
+ * 2b. COR DO PRODUTO — o arco NASCE no acento do produto (#00A76F → #5BE49B),
+ *    a 1ª cor do ciclo, e não mais no roxo do §12 / vermelho do §13: num
+ *    catálogo inteiro em verde, o medidor era o único bloco roxo. O roxo da
+ *    referência continua alcançável por `accent` — o que mudou é só o DEFAULT,
+ *    e os testes abaixo travam as duas metades disso.
  * 3. TIPOGRAFIA — valor central 17,5px/700 e "Total" 10,5px/400 (§12) ou
  *    12,25px/600 na cor de erro (§13).
  * 4. PARÂMETROS — `max`, `min`, `unit`, `accent` e `variant` continuam com
@@ -23,7 +27,7 @@
 import { describe, expect, it } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
-import { RadialGauge } from '@/shared/ui';
+import { CHART_HEIGHT, RadialGauge } from '@/shared/ui';
 import { definition } from './component';
 import { fixture } from './fixture';
 
@@ -45,6 +49,11 @@ function fills(container: HTMLElement): string[] {
   return [...container.querySelectorAll('path[fill]')].map(
     (path) => path.getAttribute('fill') ?? '',
   );
+}
+
+/** Lado do quadro desenhado, lido do `<svg>` do recharts. */
+function drawnSide(container: HTMLElement): number {
+  return Number(container.querySelector('svg.recharts-surface')?.getAttribute('width'));
 }
 
 describe('bloco radial_gauge — leitura e acessibilidade', () => {
@@ -85,9 +94,22 @@ describe('bloco radial_gauge — leitura e acessibilidade', () => {
 });
 
 describe('bloco radial_gauge — layout §12 (medidor semicircular)', () => {
-  it('pinta o arco com o par roxo #8E33FF → #C684FF', () => {
+  it('pinta o arco com o acento do produto (#00A76F → #5BE49B)', () => {
+    // Era o par roxo do §12 (#8E33FF → #C684FF). O medidor é o ÚNICO bloco do
+    // catálogo que trazia a cor da referência em vez da cor do produto — lado a
+    // lado na grade, lia como componente de outra origem. O padrão agora é a 1ª
+    // cor do ciclo, a mesma que abre qualquer outro gráfico.
     const { container } = renderWithProviders(
       <Block props={{}} data={fixture} state="success" />,
+    );
+    expect(gradientStops(container)).toEqual(['#00A76F', '#5BE49B']);
+  });
+
+  it('quem pede roxo continua recebendo roxo', () => {
+    // A outra metade da mudança: mudou o DEFAULT, não o vocabulário. Um painel
+    // salvo com o roxo (ou qualquer outra cor) tem de continuar roxo.
+    const { container } = renderWithProviders(
+      <Block props={{ accent: 'bg-purple-500' }} data={fixture} state="success" />,
     );
     expect(gradientStops(container)).toEqual(['#8E33FF', '#C684FF']);
   });
@@ -123,7 +145,7 @@ describe('bloco radial_gauge — layout §12 (medidor semicircular)', () => {
     expect(total).toHaveAttribute('fill', '#919EAB');
   });
 
-  it('deixa o acento escolhido vencer o par de cores do layout', () => {
+  it('deixa o acento escolhido vencer a cor padrão', () => {
     const { container } = renderWithProviders(
       <Block props={{ accent: 'chart-2' }} data={fixture} state="success" />,
     );
@@ -146,17 +168,23 @@ describe('bloco radial_gauge — layout §13 (medidor tracejado)', () => {
     expect(container.querySelectorAll('[stroke-dasharray]')).toHaveLength(1);
   });
 
-  it('usa o par vermelho, a trilha de 8% e o "Total" na cor de erro', () => {
+  it('usa o acento do produto na barra E no "Total" — nada de vermelho fixo', () => {
     const { container } = renderWithProviders(
       <Block props={{ variant: 'dashed' }} data={fixture} state="success" />,
     );
-    expect(gradientStops(container)).toEqual(['#FF5630', '#FFAC82']);
+    // A barra era vermelha FIXA (o par #FF5630 → #FFAC82 do §13): cor de erro
+    // como padrão de um medidor que nem sempre mede erro. Agora ela segue a
+    // paleta, como os outros dois layouts.
+    expect(gradientStops(container)).toEqual(['#00A76F', '#5BE49B']);
     expect(fills(container)).toContain('rgba(145 158 171 / 0.08)');
 
     const total = screen.getByText('Cobertura da meta');
+    // Tamanho e peso do §13 continuam; a COR sai. Um "Total" vermelho embaixo
+    // de um arco verde não é ênfase, é um alarme sem causa — status tem de vir
+    // do DADO (`thresholds`), nunca da variante escolhida para desenhar.
     expect(total).toHaveAttribute('font-size', '12.25');
     expect(total).toHaveAttribute('font-weight', '600');
-    expect(total).toHaveAttribute('fill', '#FF5630');
+    expect(total).not.toHaveAttribute('fill', '#FF5630');
   });
 });
 
@@ -179,7 +207,25 @@ describe('bloco radial_gauge — layout §11 (barra radial)', () => {
       <Block props={{ variant: 'radial' }} data={fixture} state="success" />,
     );
     expect(fills(container)).toContain('rgba(145 158 171 / 0.08)');
-    expect(gradientStops(container)).toEqual(['#C684FF', '#8E33FF']);
+    // §11 é o único layout que inverte o gradiente (claro → escuro); o par é o
+    // do acento do produto, não mais o roxo da referência.
+    expect(gradientStops(container)).toEqual(['#5BE49B', '#00A76F']);
+  });
+
+  it('desenha no quadro único dos circulares, não nos 320 do §11', () => {
+    // O bloco escolhia o quadro por variante (320 na barra radial, 260 nas
+    // outras duas), então a MESMA figura aparecia em três diâmetros na grade do
+    // `/catalog`. Agora os três layouts usam `CHART_HEIGHT.circular`.
+    const radial = renderWithProviders(
+      <Block props={{ variant: 'radial' }} data={fixture} state="success" />,
+    );
+    expect(drawnSide(radial.container)).toBe(CHART_HEIGHT.circular);
+    radial.unmount();
+
+    const semicircle = renderWithProviders(
+      <Block props={{}} data={fixture} state="success" />,
+    );
+    expect(drawnSide(semicircle.container)).toBe(CHART_HEIGHT.circular);
   });
 });
 

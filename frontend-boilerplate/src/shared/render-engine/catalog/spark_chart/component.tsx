@@ -13,6 +13,8 @@
  * 4. Linha, curva suave, sem pontos ........ `geometry.sparkLineWidth` + `curve` (monotone) + `dot={false}`
  * 5. Coluna com raio no topo ............... §2.4 SOBREPÕE a base: raio 1,5px só na ponta, coluna 64%, traço 0
  * 6. Hover ESCURECE ........................ `darkenColor` no `activeBar`; marcador com `strokeWidth: 0` (§2.3)
+ *    …e o marcador com 6px de DIÂMETRO ..... `chartSparkMarkerProps` — o MESMO ponto da linha e da dispersão
+ *                                            (o spark já dividia o token por 2; agora todos dividem)
  * 7. Tooltip branco 90% com blur ........... `ChartTooltip` com o VALOR formatado e SEM título (§2.3)
  * + Margem ................................. `CHART_SPARK_MARGIN` — `grid.padding` de 6px em todos os lados (§2.3)
  * + Cor .................................... tom `dark` da família (`primary.dark`), não a `main` (§2.3)

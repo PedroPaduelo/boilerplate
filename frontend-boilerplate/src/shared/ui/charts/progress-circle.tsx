@@ -16,9 +16,14 @@
  * e o dos medidores (§11–§13) — decisão registrada em `docs/charts/NOTAS.md`.
  *
  *   1. volta completa (0 → 360) começando no topo;
- *   2. anel com o furo da rosca, 72% (`geometry.donutHole`);
+ *   2. anel de 24px — o degrau de espessura dos circulares
+ *      (`CHART_GEOMETRY.ringThickness`, via `chartRingInnerRadius`). Era o furo
+ *      de 72% da rosca, que num quadro de 240 dava 30px de anel enquanto a
+ *      rosca dava 34 e o medidor 88: a mesma figura com três pesos;
  *   3. trilha `rgba(145,158,171,.16)` — `palette.chrome('track')`, a trilha de
- *      medidor radial da base (§10);
+ *      medidor radial da base (§10). A trilha muda de COR, NUNCA de espessura:
+ *      ela é o mesmo anel apagado, e por isso sai da MESMA geometria do arco de
+ *      valor (o objeto `ring` abaixo, espalhado nos dois `<Pie>`);
  *   4. valor central 17,5px/700 na cor de ênfase e rótulo "Total" 12,25px/600
  *      na cor de rótulo — os rótulos centrais da rosca (`01-fundamentos.md` §4);
  *   5. ponta ARREDONDADA do arco (base §6);
@@ -35,7 +40,7 @@ import { ChartFrame } from './chart-frame';
 import type { ChartFrameState } from './chart-frame';
 import type { ChartScope } from './chart-template';
 import { chartPlainText } from './chart-text-html';
-import { CHART_HEIGHT, CHART_NO_MARGIN } from './chart-theme';
+import { CHART_HEIGHT, CHART_NO_MARGIN, chartRingInnerRadius } from './chart-theme';
 import type { ChartStateProps } from './types';
 import { useChartPalette } from './use-chart-palette';
 import type { ChartPalette } from './use-chart-palette';
@@ -55,7 +60,11 @@ export interface ProgressCircleProps extends Omit<ChartStateProps, 'label'> {
   max?: number;
   /** Diâmetro do anel em px. */
   size?: number;
-  /** Espessura do anel em px. Sem isto, sai do furo da rosca (72%). */
+  /**
+   * Espessura do anel em px — mesmo nome, mesmo tipo e mesmo efeito de antes.
+   * Sem isto, sai do degrau do tema (24px): é o `override` de
+   * `chartRingInnerRadius`, então espessura declarada continua vencendo o token.
+   */
   thickness?: number;
   /** Tom semântico do preenchimento. */
   tone?: ProgressCircleTone;
@@ -87,8 +96,12 @@ const START_ANGLE = 90;
 /** Volta completa, em graus. */
 const FULL_TURN = 360;
 
-/** Raio externo do anel, como fração do lado do quadro. */
-const OUTER_RADIUS_RATIO = 0.45;
+/**
+ * Raio externo do anel, como fração do lado do quadro — agora do tema
+ * (`geometry.ringOuterRatio`). Este 0,45 vivia copiado aqui E no
+ * `radial-gauge`, e a rosca usava outro valor: três arquivos decidindo o
+ * diâmetro do mesmo círculo é como o catálogo terminou com três tamanhos.
+ */
 
 /** Modo `sparkline`: o anel encosta nas bordas do quadro, sem padding. */
 const NO_MARGIN = CHART_NO_MARGIN;
@@ -148,14 +161,20 @@ export function ProgressCircle({
 
   const cx = size / 2;
   const cy = size / 2;
-  const outerRadius = Math.round(size * OUTER_RADIUS_RATIO);
-  const innerRadius = Math.max(
-    thickness == null
-      ? Math.round(outerRadius * palette.geometry.donutHole)
-      : outerRadius - thickness,
-    0,
-  );
+  const outerRadius = Math.round(size * palette.geometry.ringOuterRatio);
+  // Espessura do degrau do tema (24px), com `thickness` como override em px.
+  const innerRadius = chartRingInnerRadius(outerRadius, size, thickness);
   const band = outerRadius - innerRadius;
+  /**
+   * A geometria do anel, UMA VEZ, espalhada na trilha e no arco de valor.
+   *
+   * Não é economia de digitação: trilha e valor com espessuras diferentes é o
+   * defeito mais fácil de notar num medidor (o anel de progresso chegou a ter
+   * trilha visivelmente mais larga que o arco), e ele nasce justamente de os
+   * dois `<Pie>` calcularem raio por conta própria. Com um objeto só, a trilha
+   * NÃO TEM COMO divergir — a única diferença permitida entre eles é a cor.
+   */
+  const ring = { cx, cy, innerRadius, outerRadius } as const;
   // §6: ponta ARREDONDADA — no recharts, raio de canto igual à meia espessura.
   // Um anel fechado (100%) não tem ponta para arredondar.
   const cornerRadius = fraction >= 1 ? 0 : band / 2;
@@ -193,12 +212,9 @@ export function ProgressCircle({
         <Pie
           data={[{ value: 1 }]}
           dataKey="value"
-          cx={cx}
-          cy={cy}
+          {...ring}
           startAngle={START_ANGLE}
           endAngle={START_ANGLE - FULL_TURN}
-          innerRadius={innerRadius}
-          outerRadius={outerRadius}
           isAnimationActive={false}
           stroke="none"
         >
@@ -240,12 +256,9 @@ export function ProgressCircle({
           <Pie
             data={[{ value: 1 }]}
             dataKey="value"
-            cx={cx}
-            cy={cy}
+            {...ring}
             startAngle={START_ANGLE}
             endAngle={START_ANGLE - FULL_TURN * fraction}
-            innerRadius={innerRadius}
-            outerRadius={outerRadius}
             cornerRadius={cornerRadius}
             stroke="none"
             {...chartAnimationProps(palette)}
