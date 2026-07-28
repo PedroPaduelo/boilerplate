@@ -9,12 +9,11 @@
  * para que a promessa venha com exemplos do que pedir.
  */
 import { Bot } from 'lucide-react';
-import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { Grid } from '@astryxdesign/core/Grid';
 import { HStack, VStack } from '@astryxdesign/core/Stack';
 import { Icon } from '@astryxdesign/core/Icon';
-import { Text } from '@astryxdesign/core/Text';
+import { Heading, Text } from '@astryxdesign/core/Text';
 import { SUGGESTED_PROMPTS } from '../lib/suggested-prompts';
 
 export interface ChatEmptyStateProps {
@@ -29,15 +28,68 @@ const DISABLED_REASON =
 
 export function ChatEmptyState({ onPick, isDisabled = false }: ChatEmptyStateProps) {
   return (
-    <VStack gap={6} hAlign="center" maxWidth={640} width="100%">
-      <EmptyState
-        icon={<Icon icon={Bot} size="lg" />}
-        headingLevel={2}
-        title="O que você quer investigar hoje?"
-        description="Pergunte em português. O agente lê o schema das suas conexões, escreve o SQL, mostra a evidência de cada passo e devolve a resposta — com o gráfico pronto para salvar num dashboard."
-      />
+    /**
+     * `maxWidth={720}` e não 640: a grade de cartões abaixo tem duas colunas e
+     * ocupava ~660px, enquanto o texto ficava preso em 410px — o bloco de
+     * abertura era MAIS ESTREITO que o menu que ele apresenta, e o título de
+     * 28px quebrava em "investigar / hoje?" sem necessidade. Um eixo só para
+     * os dois.
+     */
+    // `app-chat-empty` é o gancho que centraliza o bloco no eixo vertical
+    // enquanto a conversa está vazia (ver `.app-chat` em app/index.css).
+    // `gap={8}` e não 7: a escala de espaçamento do tema é discreta
+    // (0, .5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10) e 7 não existe nela.
+    <VStack
+      className="app-chat-empty"
+      gap={8}
+      hAlign="center"
+      maxWidth={720}
+      width="100%"
+    >
+      {/**
+       * Escrito à mão em vez do `EmptyState` do DS. Aquele componente desenha
+       * um CARD (fundo + borda), porque foi feito para ocupar o vazio DENTRO
+       * de um painel — uma tabela sem resultados, uma listagem vazia. Aqui ele
+       * é a abertura da tela inteira, e a moldura só apertava o texto contra
+       * as bordas, criando uma caixa cinza no meio de uma área livre.
+       */}
+      <VStack gap={3} hAlign="center">
+        <Icon icon={Bot} size="lg" color="accent" />
+        {/**
+         * O `style` aqui é o ÚNICO caminho que funciona, e isso foi verificado
+         * na tela antes de escrever a linha:
+         *
+         *   prop `type="display-2"` .... aplica `data-type` e a classe, mas o
+         *                                tamanho continua o do `level` (19px).
+         *                                Bug do DS nesta versão (0.1.8).
+         *   CSS em `@layer` ............ perde: as classes atômicas do StyleX
+         *                                são injetadas FORA de layer, e regra
+         *                                em layer nunca ganha delas.
+         *   utility do Tailwind ........ mesmo motivo — também vive em layer.
+         *   `style` inline ............. funciona.
+         *   `xstyle` ................... inerte (sem compilador StyleX aqui).
+         *
+         * Não é valor mágico: o tamanho vem do MESMO token que o `display-2`
+         * usaria. O `level={2}` preserva o `h2` semântico para o leitor de tela.
+         */}
+        <Heading
+          level={2}
+          justify="center"
+          textWrap="balance"
+          style={{ fontSize: 'var(--text-display-2-size)', lineHeight: 1.2 }}
+        >
+          O que você quer investigar hoje?
+        </Heading>
+        {/* `textWrap="balance"` reparte as linhas por igual em vez de deixar
+            uma órfã curta na última — some o efeito de texto "picado". */}
+        <Text type="supporting" justify="center" textWrap="balance">
+          Pergunte em português. O agente lê o schema das suas conexões, escreve o SQL,
+          mostra a evidência de cada passo e devolve a resposta — com o gráfico pronto
+          para salvar num dashboard.
+        </Text>
+      </VStack>
 
-      <Grid columns={{ minWidth: 260, max: 2 }} gap={2} width="100%">
+      <Grid columns={{ minWidth: 260, max: 2 }} gap={3} width="100%">
         {SUGGESTED_PROMPTS.map(({ icon, title, prompt }) => (
           <ClickableCard
             key={title}

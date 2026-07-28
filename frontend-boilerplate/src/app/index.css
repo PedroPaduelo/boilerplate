@@ -287,18 +287,67 @@
      viewport de 898px — do mesmo tamanho de um rótulo de formulário. Uma
      abertura de tela inteira precisa de escala de abertura, senão a página
      parece não ter começado.
+
+     O TAMANHO do título NÃO é definido aqui: vem da prop `type="display-2"`
+     do `Heading` (ver chat-empty-state.tsx). Tentar por CSS não funciona —
+     as classes atômicas do StyleX que o DS injeta ficam FORA de `@layer`, e
+     regra dentro de layer perde para elas por mais específica que seja.
+     Registrado para ninguém tentar de novo.
   */
-  .app-chat .astryx-empty-state h1,
-  .app-chat .astryx-empty-state h2,
-  .app-chat .astryx-empty-state h3 {
-    font-size: var(--font-size-3xl); /* 28px */
-    line-height: 1.2;
-    letter-spacing: -0.01em; /* títulos grandes pedem tracking negativo */
+
+  /*
+     Abertura centrada — e sem scroll fantasma.
+
+     Medido na tela vazia: 779px visíveis para 956px de conteúdo, ou seja
+     177px de rolagem em uma tela que só tem um título e quatro cartões. Os
+     177px são EXATAMENTE a altura da doca do campo de digitação: a área de
+     mensagens já pede `min-height: 100%` e a doca soma a sua altura por cima.
+     Pior: o auto-scroll do `ChatLayout` então rolava 173px sozinho, e a
+     abertura aparecia deslocada para cima com um vão morto embaixo.
+
+     A correção não centraliza à força — ela para de ESTICAR o bloco.
+     `flex: 0 0 auto` o deixa com a altura do próprio conteúdo e
+     `margin-block: auto` distribui a folga que sobra igualmente em cima e
+     embaixo. Sem altura inventada, sem constante mágica, e o scroll zera.
+
+     `:has()` mira só a tela vazia: com mensagens, a conversa volta a fluir do
+     topo, como conversa deve fluir.
+  */
+  /*
+     Duas coisas precisam ser verdade ao mesmo tempo, e uma quase estragou a
+     outra:
+
+       1. o campo de digitação fica ANCORADO no rodapé;
+       2. a abertura fica centrada no espaço que sobra.
+
+     A doca é `position: sticky; bottom: 0`, e sticky só gruda quando há
+     rolagem. Ao matar o scroll fantasma (item 1 acima), a doca perdeu o que a
+     segurava e subiu para o meio da tela, deixando 227px vazios embaixo —
+     troquei um defeito por outro.
+
+     A âncora de verdade é o contêiner virar uma COLUNA flex: a área de
+     mensagens cresce (`flex: 1`) e empurra a doca para baixo por geometria,
+     sem depender de rolagem. `min-height: 0` é o que autoriza essa área a
+     encolher (item flex se recusa a ficar menor que o conteúdo por padrão).
+
+     Restrito a `:has(.app-chat-empty)`: com mensagens na tela o layout do DS
+     já funciona, e mexer nele seria risco sem ganho.
+  */
+  .app-chat:has(.app-chat-empty) {
+    display: flex;
+    flex-direction: column;
   }
 
-  .app-chat .astryx-empty-state p {
-    font-size: var(--font-size-base);
-    line-height: 1.6;
+  .app-chat:has(.app-chat-empty) > div:first-child {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* O bloco não estica: fica do tamanho do conteúdo e a folga se reparte
+     igualmente acima e abaixo dele. */
+  .app-chat div:has(> .app-chat-empty) {
+    flex: 0 0 auto;
+    margin-block: auto;
   }
 
   /* Os cartões de partida são o menu real da tela: precisam de área de clique
