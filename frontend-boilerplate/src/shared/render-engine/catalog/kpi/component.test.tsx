@@ -82,6 +82,78 @@ describe('bloco kpi', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * TODO nome do enum `icon` tem de desenhar um ícone — e ícones DIFERENTES.
+   *
+   * Cinco deles (`BarChart3`, `LineChart`, `PieChart`, `AlertTriangle`,
+   * `CheckCircle2`) foram aposentados pelo lucide e sumiram do registry por
+   * onde o resolver procura: resolviam para `undefined` e o card saía SEM
+   * ícone. Cinco valores do enum, um desenho só — a auditoria de inércia
+   * mostrava os cinco empatados. A tradução mora em `lib/lucide-resolver.ts`.
+   */
+  describe('icon', () => {
+    const iconPathOf = (icon: string) => {
+      const view = renderWithProviders(
+        <Block props={{ icon }} data={fixture} state="success" />,
+      );
+      const svg = view.container.querySelector('[data-slot="summary-card-icon"] svg');
+      const drawing = svg?.innerHTML ?? '';
+      view.unmount();
+      return drawing;
+    };
+
+    it.each(['BarChart3', 'LineChart', 'PieChart', 'AlertTriangle', 'CheckCircle2'])(
+      'desenha o ícone aposentado "%s" pelo nome atual do lucide',
+      (icon) => {
+        expect(iconPathOf(icon)).not.toBe('');
+      },
+    );
+
+    it('os cinco ícones aposentados desenham figuras distintas', () => {
+      const drawings = [
+        'BarChart3',
+        'LineChart',
+        'PieChart',
+        'AlertTriangle',
+        'CheckCircle2',
+      ].map(iconPathOf);
+      expect(new Set(drawings).size).toBe(drawings.length);
+    });
+
+    it('nome desconhecido continua degradando para "sem ícone"', () => {
+      const { container } = renderWithProviders(
+        <Block props={{ icon: 'NaoExiste' }} data={fixture} state="success" />,
+      );
+      expect(container.querySelector('[data-slot="summary-card-icon"]')).toBeNull();
+    });
+  });
+
+  /**
+   * CABEÇALHO — o texto de apoio era cravado no componente ("vs. período
+   * anterior") e aparecia até em métrica que não compara período nenhum. A
+   * prop existia no card e no bloco irmão (`stat_tile`); faltava no manifesto
+   * deste, então nem o autor nem o agente tinham como corrigir.
+   */
+  describe('hint (texto de apoio)', () => {
+    it('sem a prop, mantém o texto padrão do card', () => {
+      renderWithProviders(<Block props={{}} data={fixture} state="success" />);
+      expect(screen.getByText('vs. período anterior')).toBeInTheDocument();
+    });
+
+    it('troca o texto quando o bloco declara outro', () => {
+      renderWithProviders(
+        <Block props={{ hint: 'acumulado no ano' }} data={fixture} state="success" />,
+      );
+      expect(screen.getByText('acumulado no ano')).toBeInTheDocument();
+      expect(screen.queryByText('vs. período anterior')).not.toBeInTheDocument();
+    });
+
+    it('string vazia esconde a linha inteira', () => {
+      renderWithProviders(<Block props={{ hint: '' }} data={fixture} state="success" />);
+      expect(screen.queryByText('vs. período anterior')).not.toBeInTheDocument();
+    });
+  });
+
   it('carregando: mantém o título e troca o número por esqueleto', () => {
     renderWithProviders(<Block props={{}} data={fixture} state="loading" />);
 

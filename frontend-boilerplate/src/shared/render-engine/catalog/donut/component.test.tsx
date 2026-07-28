@@ -122,6 +122,87 @@ describe('bloco donut', () => {
     expect(container.innerHTML).not.toContain('emerald');
   });
 
+  /**
+   * PALETA × ACENTO — a regra de precedência de `chart-accent.ts`.
+   *
+   * Antes, `accent` só valia com `palette: "single"` e `palette: "none"`
+   * desenhava exatamente o mesmo que `"multi"` (medido na auditoria de
+   * inércia). Agora acento vence paleta, e `none` — que saiu do enum — segue
+   * traduzido para "multi", que é o que ele sempre fez neste bloco.
+   */
+  describe('paleta e acento', () => {
+    /**
+     * Cor de cada item da legenda própria — a MESMA que pinta a fatia (as duas
+     * saem do mesmo resolvedor, de propósito). A legenda é o lugar honesto de
+     * medir: as fatias do motor só existem depois da animação de entrada.
+     */
+    const swatchColors = (container: HTMLElement) =>
+      [...container.querySelectorAll('.chart-legends__item')].map((node) =>
+        (node as HTMLElement).style.getPropertyValue('color'),
+      );
+
+    it('"single" e "multi" desenham cores diferentes', () => {
+      const single = renderWithProviders(
+        <Block props={{ palette: 'single' }} data={DATA} state="success" />,
+      );
+      const singleColors = swatchColors(single.container);
+      single.unmount();
+
+      const multi = renderWithProviders(
+        <Block props={{ palette: 'multi' }} data={DATA} state="success" />,
+      );
+      const multiColors = swatchColors(multi.container);
+      multi.unmount();
+
+      // Uma cor só contra uma cor por categoria.
+      expect(new Set(singleColors).size).toBe(1);
+      expect(new Set(multiColors).size).toBe(DATA.length);
+    });
+
+    it('acento vence "multi" — pedir uma cor é pedir cor única', () => {
+      const { container } = renderWithProviders(
+        <Block
+          props={{ palette: 'multi', accent: 'chart-3' }}
+          data={DATA}
+          state="success"
+        />,
+      );
+      expect(new Set(swatchColors(container)).size).toBe(1);
+    });
+
+    it('acento vale mesmo sem declarar paleta', () => {
+      const withAccent = renderWithProviders(
+        <Block props={{ accent: 'chart-4' }} data={DATA} state="success" />,
+      );
+      const painted = swatchColors(withAccent.container);
+      withAccent.unmount();
+
+      const plain = renderWithProviders(<Block props={{}} data={DATA} state="success" />);
+      const standard = swatchColors(plain.container);
+      plain.unmount();
+
+      expect(new Set(painted).size).toBe(1);
+      expect(painted[0]).not.toBe(standard[0]);
+    });
+
+    it('"none" (valor antigo, fora do enum) continua ciclando como "multi"', () => {
+      // A limpeza do vocabulário não pode trocar o desenho de um painel salvo.
+      const legacy = renderWithProviders(
+        <Block props={{ palette: 'none' }} data={DATA} state="success" />,
+      );
+      const legacyColors = swatchColors(legacy.container);
+      legacy.unmount();
+
+      const multi = renderWithProviders(
+        <Block props={{ palette: 'multi' }} data={DATA} state="success" />,
+      );
+      const multiColors = swatchColors(multi.container);
+      multi.unmount();
+
+      expect(legacyColors).toEqual(multiColors);
+    });
+  });
+
   it('sem acento fixo, a 1ª fatia é o verde escuro a 80% da referência', () => {
     // `03-tipos-de-grafico.md` §9: a sequência da proporção começa no VERDE80
     // (`rgba(0, 120, 103, 0.8)`), não na 1ª cor do ciclo dos cartesianos.

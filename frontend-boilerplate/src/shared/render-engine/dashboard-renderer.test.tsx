@@ -110,3 +110,115 @@ describe('render-engine (DashboardRenderer + BlockRenderer)', () => {
     expect(screen.getByText('Sem dados')).toBeInTheDocument();
   });
 });
+
+/**
+ * As regras de composição chegando à TELA — o mesmo que `block-grid.test.tsx`
+ * prova na unidade, aqui prova no caminho que o dashboard percorre de verdade
+ * (layout JSON → linha → célula), inclusive dentro de um container aninhado.
+ */
+describe('DashboardRenderer — composição das linhas', () => {
+  /** Duas famílias diferentes com spans desiguais: o caso da queixa. */
+  const layoutDesigual: DashboardLayout = {
+    filters: [],
+    rows: [
+      {
+        id: 'row_graficos',
+        blocks: [
+          { id: 'blk_serie', type: 'line_chart', span: 7 },
+          { id: 'blk_rosca', type: 'donut', span: 5 },
+        ],
+      },
+      {
+        id: 'row_kpis',
+        blocks: [
+          { id: 'blk_k1', type: 'kpi', span: 3 },
+          { id: 'blk_k2', type: 'kpi', span: 3 },
+          { id: 'blk_k3', type: 'kpi', span: 3 },
+          { id: 'blk_k4', type: 'kpi', span: 3 },
+        ],
+      },
+    ],
+  };
+
+  function gridsOf(container: HTMLElement): HTMLElement[] {
+    return [...container.querySelectorAll<HTMLElement>('[data-slot="dashboard-grid"]')];
+  }
+
+  it('spans desiguais na mesma linha não viram larguras desiguais', () => {
+    const { container } = renderWithProviders(
+      <DashboardRenderer layout={layoutDesigual} />,
+    );
+
+    const cells = container.querySelectorAll('[data-slot="dashboard-cell"]');
+    for (const cell of cells) {
+      // Nenhuma célula reivindica colunas próprias — todas ocupam uma faixa.
+      expect((cell as HTMLElement).style.gridColumn).toBe('');
+    }
+  });
+
+  it('cada linha recebe o degrau de altura da sua própria família', () => {
+    const { container } = renderWithProviders(
+      <DashboardRenderer layout={layoutDesigual} />,
+    );
+
+    const [graficos, kpis] = gridsOf(container);
+    // A linha de séries é alta; a de cartões de número é compacta. Antes as
+    // duas herdavam a altura do bloco mais alto que caísse ali.
+    expect(graficos.dataset.blockGridRowHeight).toBe('tall');
+    expect(kpis.dataset.blockGridRowHeight).toBe('compact');
+  });
+
+  it('e todas as células da MESMA linha ficam com a mesma altura', () => {
+    const { container } = renderWithProviders(
+      <DashboardRenderer layout={layoutDesigual} />,
+    );
+
+    for (const grid of gridsOf(container)) {
+      const alturas = [...grid.children].map(
+        (cell) => (cell as HTMLElement).style.minHeight,
+      );
+      expect(new Set(alturas).size).toBe(1);
+    }
+  });
+
+  it('a tela pode restaurar o mosaico assimétrico de propósito', () => {
+    const { container } = renderWithProviders(
+      <DashboardRenderer layout={layoutDesigual} itemSizing="span" />,
+    );
+
+    const [primeira] = container.querySelectorAll('[data-slot="dashboard-cell"]');
+    expect((primeira as HTMLElement).style.gridColumn).toBe('span 7');
+  });
+
+  it('um container aninhado herda a grade das PRÓPRIAS props', () => {
+    // O `grid` declara `columns: 2`; o motor monta a grade dos filhos com isso
+    // sem que o componente do bloco precise fazer nada.
+    const layout: DashboardLayout = {
+      filters: [],
+      rows: [
+        {
+          id: 'row_container',
+          blocks: [
+            {
+              id: 'blk_grid',
+              type: 'grid',
+              span: 12,
+              props: { columns: 2 },
+              blocks: [
+                { id: 'blk_a', type: 'bar_chart', span: 6 },
+                { id: 'blk_b', type: 'donut', span: 6 },
+                { id: 'blk_c', type: 'bar_list', span: 6 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = renderWithProviders(<DashboardRenderer layout={layout} />);
+
+    const inner = container.querySelector('[data-slot="block-children"]') as HTMLElement;
+    expect(inner.style.getPropertyValue('--x-gridTemplateColumns')).toContain('/ 2)');
+    expect(container.querySelectorAll('[data-slot="block-child-cell"]')).toHaveLength(3);
+  });
+});

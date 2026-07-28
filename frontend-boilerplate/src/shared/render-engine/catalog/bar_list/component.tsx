@@ -7,7 +7,11 @@
  *    luminância WCAG, o parser de cor e o contorno de texto que o legado
  *    carregava só para o nome não sumir na barra colorida;
  *  - COR: `accent` continua aceitando o vocabulário antigo, mas vira token de
- *    dado do DS; `palette: "multi"` cicla a paleta por item;
+ *    dado do DS e VENCE a paleta (regra de `chart-accent.ts`); `palette:
+ *    "multi"` cicla a paleta por item quando não há acento;
+ *  - `textColor` foi REMOVIDA na 1.2.0: existia só para corrigir o contraste do
+ *    rótulo escrito DENTRO da barra colorida, e o rótulo saiu de lá nesta
+ *    migração. Ver a justificativa no manifesto;
  *  - a lista já é texto (`<ol>` com rótulo e valor), então não precisa de
  *    equivalente acessível extra — leitor de tela lê a linha inteira.
  *
@@ -40,7 +44,7 @@
  *    em `ChartFrame state="error"`. A lista NÃO é `role="img"` — é texto.
  */
 import type { CategoricalData } from '@dashboards/contracts';
-import { BarList, ChartFrame, chartAccentColor } from '@/shared/ui';
+import { BarList, ChartFrame, chartAccentColor, isMultiColorPalette } from '@/shared/ui';
 import type { BarListItem } from '@/shared/ui';
 import type { ValueFormat } from '@/shared/lib/format';
 import { CHART_BODY_HEIGHT } from '../../lib/block-sizing';
@@ -52,17 +56,16 @@ import { fixture } from './fixture';
 
 type BarListProps = {
   sortOrder?: 'ascending' | 'descending' | 'none';
+  /**
+   * Modo de paleta. `none` saiu do enum do manifesto por ser redundante (ver
+   * lá), mas continua ACEITO aqui: painel salvo com ele lê como "não
+   * multicolorido", que é o que ele sempre desenhou.
+   */
   palette?: 'single' | 'multi' | 'none';
-  /** Cor das barras em palette="single"; resolvida para token do DS. */
+  /** Cor das barras; resolvida para token do DS. Vence `palette: "multi"`. */
   accent?: string;
   /** Formato do valor ao lado da barra (enum fechado do catálogo). */
   valueFormat?: ValueFormat;
-  /**
-   * Mantida por compatibilidade de contrato: com o rótulo FORA da barra, a cor
-   * do texto passou a ser a de leitura do DS e não precisa (nem deve) ser
-   * escolhida por bloco. Ignorada.
-   */
-  textColor?: string;
 };
 
 type CategoryPoint = { label: string; value: number | null };
@@ -76,8 +79,17 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({
   const items = (data ?? []) as CategoryPoint[];
   const formatValue = (value: number) => formatCatalogValue(value, props.valueFormat);
 
-  // `single` fixa a cor de destaque; `multi` cicla a paleta por item.
-  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  /**
+   * COR — a regra de precedência publicada em `chart-accent.ts`:
+   *  1. `accent` reconhecível vence sempre (pedir uma cor É pedir cor única);
+   *  2. `multi` só cicla a paleta quando NÃO há acento.
+   *
+   * Era `props.palette === 'single' ? chartAccentColor(...) : undefined`: o
+   * acento só valia se o autor TAMBÉM escolhesse a paleta certa, e quem pedia
+   * só a cor não via mudança nenhuma.
+   */
+  const isMulti = isMultiColorPalette(props.palette, props.accent);
+  const accent = isMulti ? undefined : chartAccentColor(props.accent);
   const rows: BarListItem[] = items.map((item) => ({
     label: item.label,
     value: item.value ?? 0,
@@ -103,7 +115,7 @@ export const Component: BlockComponent<BarListProps, CategoricalData> = ({
     <BarList
       data={rows}
       sortOrder={props.sortOrder ?? 'descending'}
-      hasColorByItem={props.palette === 'multi'}
+      hasColorByItem={isMulti}
       valueFormatter={formatValue}
       isLoading={state === 'loading' || state === 'skeleton'}
     />

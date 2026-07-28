@@ -1267,3 +1267,42 @@ próximo circular nascer torto): `donutHole`, `radialHole`, `trackWidth`,
 **Travado por:** `bar-thickness`, `ring-thickness`, `list-bar-thickness` e
 `marker-geometry` em `src/shared/ui/charts/__tests__/` — cada degrau é afirmado
 UMA vez e os componentes são verificados contra ele.
+
+## [AJUSTE] Altura do card: 320 → 280 de desenho, e o cromo medido
+
+**Sintoma relatado:** "os gráficos continuam altos demais, e um deles está com
+altura muito acima do esperado, quebrando o layout".
+
+**Medido no dashboard, antes:** card de série **536px** para 320px de desenho —
+216px de moldura em volta de cada gráfico. Numa tela de 900px isso é um gráfico
+e meio por rolagem.
+
+**Decisões (três, todas com número medido depois):**
+
+1. **`CHART_HEIGHT.default` 320 → 280.** A referência fixa 320px de desenho
+   (§7), mas descreve um gráfico que ocupa a tela sozinho; aqui ele vive dentro
+   de card com cabeçalho, legenda e takeaways. 280px mantém as 5 divisões do
+   eixo Y legíveis (56px cada) e leva o card para **498px**. `scatter` segue o
+   mesmo degrau.
+2. **`funnel_stage` sai de `series` e vai para `compact`.** Reservava 388px para
+   ~142px de conteúdo — 246px de vazio, o "bloco excessivamente alto". Etapa de
+   funil é uma LINHA (cabeçalho + resumo + barra) que só cresce quando o usuário
+   abre a tabela de desfechos.
+3. **Gap do ranking `gap={3}` (12px) → `gap={1.5}` (6px).** A linha do ranking
+   mede 37px; 12px de vão eram 32% da altura da lista. Num "Top 10" isso somava
+   108px e o card ia a **628px** — o bloco mais alto do dashboard. Agora 574px,
+   e um ranking mais junto é mais fácil de comparar linha a linha.
+
+**`FRAME_CHROME_HEIGHT` 72 → 112.** O valor era uma conta de cabeça (cabeçalho +
+respiro). No navegador o cromo real é 110px, porque a faixa de takeaways (~59px)
+também vive fora do corpo. Com 72, `BLOCK_ROW_HEIGHT` nascia MENOR que o card
+que deveria pisar — ou seja, não pisava nada.
+
+**Resultado conferido na tela:** série 536 → **498**; ranking 628 → **574**;
+linhas do grid com altura idêntica entre si (498/498, 548/548). O palco do card
+do catálogo segue em 400 porque continua sendo o mínimo exato: a rosca com
+legenda própria mede 399.
+
+**Nota de método:** o teste do `area_chart` afirmava `height: '320px'` cravado e
+quebrou nesta recalibragem. Passou a ler `CHART_HEIGHT.default` — um teste que
+repete a constante trava o ajuste em vez de proteger o contrato.

@@ -49,8 +49,12 @@ import { fixture } from './fixture';
 type SparkProps = {
   type?: 'area' | 'bar' | 'line';
   curveType?: 'linear' | 'monotone' | 'step';
-  palette?: 'single' | 'multi' | 'none';
-  /** Cor da série; resolvida para token do DS. */
+  /**
+   * Cor da série; resolvida para token do DS. Sem ela, o mini-gráfico usa o tom
+   * `dark` da cor principal, como manda a §2.3.
+   *
+   * (A prop `palette` foi REMOVIDA — ver a nota no manifesto.)
+   */
   accent?: string;
 };
 
@@ -82,9 +86,17 @@ export const Component: BlockComponent<SparkProps, SeriesData> = ({
   const values = points.map((point) => point.y ?? 0);
   const scope = buildChartScope(data);
 
-  // `multi` era o gradiente arco-íris do legado: numa série só, cor não carrega
-  // informação nenhuma. Nesse modo a série cai na cor padrão do mini-gráfico.
-  const accent = props.palette === 'multi' ? undefined : chartAccentColor(props.accent);
+  /**
+   * COR — o mini-gráfico tem UMA série, então `accent` é a única decisão de cor
+   * que existe aqui: declarado, pinta traço e preenchimento; ausente, vale o
+   * tom `dark` da cor principal (§2.3).
+   *
+   * Era `props.palette === 'multi' ? undefined : chartAccentColor(props.accent)`
+   * — ou seja, um modo de paleta ANULAVA a cor pedida. Num desenho de série
+   * única não há o que ciclar, então `palette` só servia para desligar `accent`
+   * em silêncio; foi removida do contrato (ver o manifesto).
+   */
+  const accent = chartAccentColor(props.accent);
 
   return (
     <>

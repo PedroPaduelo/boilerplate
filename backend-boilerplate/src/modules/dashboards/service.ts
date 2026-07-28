@@ -63,9 +63,18 @@ interface RowShape {
   blocks: BlockShape[];
   [key: string]: unknown;
 }
+/** Aba do layout (doc 40): referencia rows por id, não as contém. */
+interface TabShape {
+  id: string;
+  title: string;
+  rowIds: string[];
+  [key: string]: unknown;
+}
 interface LayoutShape {
   filters: unknown[];
   rows: RowShape[];
+  /** ausente nos layouts legados — ver `resolveDashboardTabs` no contrato. */
+  tabs?: TabShape[];
 }
 
 /** Chave Redis do cache de LAYOUT publicado de um dashboard (doc 20). */
@@ -393,6 +402,14 @@ export async function addChartToDashboard(
     props: { ...(input.props ?? {}), chartId: chart.id },
   };
 
+  // ABAS (doc 40): copiadas para não serem perdidas — este método RECONSTRÓI o
+  // layout, e antes montava só `{ filters, rows }`. Num dashboard com abas isso
+  // apagaria a organização inteira a cada gráfico inserido pelo agente.
+  const tabs: TabShape[] | undefined = layout.tabs?.map((t) => ({
+    ...t,
+    rowIds: [...(t.rowIds ?? [])],
+  }));
+
   let targetRow: RowShape | undefined = input.rowId
     ? rows.find((r) => r.id === input.rowId)
     : undefined;
@@ -403,6 +420,15 @@ export async function addChartToDashboard(
     // sem rowId → cria uma nova row ao final.
     targetRow = { id: `row_${Date.now()}`, blocks: [] };
     rows.push(targetRow);
+    // Row nova num layout COM abas precisa de dono explícito, senão nasce órfã.
+    // O normalizador do contrato a recuperaria na primeira aba de qualquer
+    // forma, mas deixar isso implícito no JSON salvo é pedir divergência entre
+    // o que está no banco e o que a tela mostra — registramos a filiação.
+    // Primeira aba (e não a última) porque é a aba que abre por padrão: o
+    // gráfico recém-inserido pelo agente fica visível sem o usuário procurar.
+    if (tabs && tabs.length > 0) {
+      tabs[0].rowIds = [...tabs[0].rowIds, targetRow.id];
+    }
   }
 
   const blocks = targetRow.blocks;
@@ -410,7 +436,11 @@ export async function addChartToDashboard(
     input.position !== undefined ? Math.min(input.position, blocks.length) : blocks.length;
   blocks.splice(at, 0, newBlock);
 
-  const nextLayout = { filters: layout.filters, rows };
+  const nextLayout = {
+    filters: layout.filters,
+    rows,
+    ...(tabs ? { tabs } : {}),
+  };
   // re-valida o layout resultante contra o contrato (defensivo).
   assertValidLayout(nextLayout);
 

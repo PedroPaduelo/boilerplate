@@ -23,8 +23,9 @@ export const manifest = {
       // Suaviza a curva entre pontos.
       smooth: {
         type: 'boolean',
+        default: true,
         description:
-          'Se true, desenha as linhas como curvas suaves; se false, segmentos retos entre os pontos.',
+          'Se true (default), desenha as linhas como curvas suaves; se false, segmentos retos entre os pontos.',
       },
       // Preenche a área abaixo de cada linha (além do traço).
       area: {
@@ -34,20 +35,24 @@ export const manifest = {
           'Se true, preenche a área abaixo de cada linha, bem discreta, além do traço.',
       },
       // Modo de paleta — o gráfico aceita multi-série nativamente.
+      // O valor "none" foi REMOVIDO na 1.2.0: medido na auditoria de inércia,
+      // desenhava igual a "multi". Painéis salvos com "none" seguem valendo.
       palette: {
         type: 'string',
-        enum: ['single', 'multi', 'none'],
+        enum: ['single', 'multi'],
         default: 'multi',
         description:
-          'Modo de paleta: "multi" (default) e "none" ciclam a paleta categórica do design system, uma cor por série; "single" fixa a cor de `accent` em todas as linhas.',
+          'Modo de paleta: "multi" (default) cicla a paleta categórica do design system, UMA COR POR SÉRIE; "single" pinta TODAS as linhas com uma cor só. Em ambos, um `accent` declarado vence e fixa a cor.',
       },
       // COR — enum do catálogo; o componente resolve para token de dado do DS.
+      // SEM `default`: o BlockRenderer mescla `defaultProps` em toda
+      // renderização e `accent` VENCE a paleta, então um default de fábrica
+      // desligaria o modo "multi" — que é o próprio default de `palette`.
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
-        default: 'chart-1',
         description:
-          'Cor base da(s) série(s), usada quando palette="single". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão.',
+          'Cor de TODAS as séries. Declarar `accent` é pedir cor única: ele vence o modo de paleta (inclusive "multi"). OMITA para que cada linha receba a próxima cor da paleta categórica do design system — que é o padrão e o que mantém séries vizinhas distinguíveis. O valor é resolvido para uma cor de dado do DS (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta); valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta.',
       },
       // valueFormat — ENUM FECHADO, default 'number' (contagem). NOVO na
       // 1.1.0: o tooltip formatava em BRL por código, sem prop nenhuma, então
@@ -98,13 +103,13 @@ export const manifest = {
       { x: '2026-02', y: 18 },
     ],
   },
+  // `accent` NÃO tem default (ver a nota no schema).
   defaultProps: {
     smooth: true,
     area: true,
     palette: 'multi',
-    accent: 'chart-1',
     valueFormat: 'number',
   },
   maxRows: 5000,
-  version: '1.1.0',
+  version: '1.2.0',
 } satisfies BlockManifest;

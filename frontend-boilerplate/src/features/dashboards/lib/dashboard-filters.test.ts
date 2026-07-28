@@ -19,9 +19,7 @@ describe('dashboard-filters (helpers puros)', () => {
   });
 
   it('initialFilterValues ignora filtros sem default', () => {
-    const values = initialFilterValues([
-      { id: 'f1', type: 'search', label: 'Busca' },
-    ]);
+    const values = initialFilterValues([{ id: 'f1', type: 'search', label: 'Busca' }]);
     expect(values).toEqual({});
   });
 

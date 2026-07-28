@@ -80,7 +80,7 @@ export const manifest = {
         enum: [...ACCENT_COLORS],
         default: 'chart-1',
         description:
-          'Cor de CATEGORIZAÇÃO do ladrilho. O valor é resolvido para uma variante de cor do design system (chart-1..5 e primary mapeiam para as cores de dado, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade; quando não descrevem uma cor do sistema, o ladrilho fica no visual padrão.',
+          'Cor de CATEGORIZAÇÃO do ladrilho. O valor é resolvido para uma variante de cor do design system (chart-1..5 mapeiam para as cores de dado, na mesma ordem da paleta; `primary` é sinônimo de `chart-1` — as duas são a 1ª cor, e por isso pintam o ladrilho igual). Valores fora do enum são aceitos por compatibilidade; quando não descrevem uma cor do sistema, o ladrilho fica no visual padrão.',
       },
       showDelta: {
         type: 'boolean',

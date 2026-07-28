@@ -21,6 +21,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
+import type { ValueFormat } from '@/shared/lib/format';
 import { renderWithProviders } from '@/test/render';
 import { definition, toLineSeries } from './component';
 import { fixture } from './fixture';
@@ -116,14 +117,67 @@ describe('bloco line_chart — contrato comum', () => {
   });
 
   it('deriva pico e vale como insights do rodapé', () => {
-    expect(definition.deriveTakeaway?.(fixture)).toEqual([
-      'Pico: 2026-05 (30)',
-      'Vale: 2026-01 (9)',
+    // `Intl` separa o sufixo compacto com espaço FINO/NÃO-QUEBRÁVEL.
+    const plain = (value: string) => value.replace(/[\u00a0\u202f]/g, ' ');
+    expect([definition.deriveTakeaway?.(fixture)].flat().map(String).map(plain)).toEqual([
+      'Pico: 2026-05 (3 mil)',
+      'Vale: 2026-01 (900)',
     ]);
   });
 });
 
+describe('bloco line_chart — desenho da linha', () => {
+  /** Traçados das linhas desenhadas (a curva de cada série). */
+  const curves = (container: HTMLElement) =>
+    [...container.querySelectorAll('path.recharts-line-curve')].map((node) =>
+      node.getAttribute('d'),
+    );
+
+  /**
+   * `smooth` e `area` só agem DENTRO do SVG. Enquanto o `ResponsiveContainer`
+   * não media nada em teste, as duas apareciam como inertes na auditoria — não
+   * porque estivessem quebradas, mas porque o gráfico não era desenhado.
+   */
+  it('smooth alterna entre curva suave (Bézier) e segmentos retos', () => {
+    const { container: soft, unmount } = renderWithProviders(
+      <Block props={{ smooth: true }} data={fixture} state="success" />,
+    );
+    // `C` é o comando de Bézier cúbica: só aparece na curva `monotone`.
+    expect(curves(soft)[0]).toContain('C');
+    unmount();
+
+    const { container: straight } = renderWithProviders(
+      <Block props={{ smooth: false }} data={fixture} state="success" />,
+    );
+    expect(curves(straight)[0]).not.toContain('C');
+    // Segmento reto = `L` (lineTo) entre os pontos.
+    expect(curves(straight)[0]).toContain('L');
+  });
+
+  it('area preenche (ou não) a faixa sob cada linha', () => {
+    const { container: filled, unmount } = renderWithProviders(
+      <Block props={{ area: true }} data={fixture} state="success" />,
+    );
+    // Uma área de contexto por série, além das duas linhas.
+    expect(filled.querySelectorAll('path.recharts-area-area')).toHaveLength(2);
+    unmount();
+
+    const { container: bare } = renderWithProviders(
+      <Block props={{ area: false }} data={fixture} state="success" />,
+    );
+    expect(bare.querySelectorAll('path.recharts-area-area')).toHaveLength(0);
+    // A linha continua lá: `area` mexe no preenchimento, não no traço.
+    expect(curves(bare)).toHaveLength(2);
+  });
+});
+
 describe('bloco line_chart — cor', () => {
+  /** Cor do traço de cada linha, na ordem das séries. */
+  const strokes = (container: HTMLElement) =>
+    [...container.querySelectorAll('path.recharts-line-curve')].map((node) =>
+      node.getAttribute('stroke'),
+    );
+
   it('resolve o acento antigo para um token de dado do DS', () => {
     const { container } = renderWithProviders(
       <Block
@@ -134,6 +188,36 @@ describe('bloco line_chart — cor', () => {
     );
     // A legenda é a única marca de cor que existe fora do SVG.
     expect(container.innerHTML).toContain('--ds-color-info-main');
+  });
+
+  /**
+   * REGRESSÃO da causa raiz: `accent` só valia com `palette: "single"`, e o
+   * default deste bloco é `multi` — ou seja, pedir a cor pelo manifesto não
+   * mudava nada. Agora o pedido explícito vence a paleta.
+   */
+  it('aplica o accent mesmo com palette="multi" (o pedido explícito vence)', () => {
+    const { container } = renderWithProviders(
+      <Block
+        props={{ palette: 'multi', accent: 'chart-3' }}
+        data={fixture}
+        state="success"
+      />,
+    );
+    expect(strokes(container)).toEqual(['#00B8D9', '#00B8D9']);
+  });
+
+  it('sem accent, "multi" cicla a paleta e "single" usa uma cor só', () => {
+    const { container: multi, unmount } = renderWithProviders(
+      <Block props={{ palette: 'multi' }} data={fixture} state="success" />,
+    );
+    // §1: a 1ª série é o verde a 80%; a 2ª, o âmbar do ciclo.
+    expect(strokes(multi)).toEqual([REFERENCE_GREEN_80, '#FFAB00']);
+    unmount();
+
+    const { container: single } = renderWithProviders(
+      <Block props={{ palette: 'single' }} data={fixture} state="success" />,
+    );
+    expect(new Set(strokes(single)).size).toBe(1);
   });
 
   it('não deixa uma cor crua legada chegar ao desenho', () => {
@@ -149,6 +233,25 @@ describe('bloco line_chart — cor', () => {
   });
 });
 
+describe('bloco line_chart — formato do valor', () => {
+  it('separa a forma CHEIA da COMPACTA em cada formato', () => {
+    const plain = (value: string | null) => (value ?? '').replace(/[\u00a0\u202f]/g, ' ');
+    const cell = (valueFormat: ValueFormat) => {
+      const { unmount } = renderWithProviders(
+        <Block props={{ valueFormat }} data={fixture} state="success" />,
+      );
+      const text = within(screen.getByRole('table')).getAllByRole('cell')[0].textContent;
+      unmount();
+      return plain(text);
+    };
+
+    expect(cell('number')).toBe('1.200');
+    expect(cell('compactNumber')).toBe('1,2 mil');
+    expect(cell('BRL')).toBe('R$ 1.200,00');
+    expect(cell('compactBRL')).toBe('R$ 1,20 mil');
+  });
+});
+
 describe('bloco line_chart — adaptação dos dados', () => {
   it('agrupa os pontos por série mantendo a ordem do eixo X', () => {
     const { series, labels, isNamed } = toLineSeries(fixture);
@@ -161,7 +264,7 @@ describe('bloco line_chart — adaptação dos dados', () => {
       '2026-06',
     ]);
     expect(series.map((item) => item.label)).toEqual(['Arrecadado', 'Previsto']);
-    expect(series[0].data).toEqual([12, 18, 15, 24, 30, 28]);
+    expect(series[0].data).toEqual([1200, 1800, 1500, 2400, 3000, 2800]);
     expect(isNamed).toBe(true);
   });
 

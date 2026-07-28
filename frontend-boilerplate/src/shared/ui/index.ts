@@ -16,7 +16,11 @@
 export * from './charts';
 
 export type { AnimatedNumberProps } from './animated-number';
-export { chartAccentCardVariant, chartAccentColor } from './chart-accent';
+export {
+  chartAccentCardVariant,
+  chartAccentColor,
+  isMultiColorPalette,
+} from './chart-accent';
 export type { ChartAccentCardVariant } from './chart-accent';
 export { ChartDataTable } from './chart-data-table';
 export type { ChartDataTableProps } from './chart-data-table';

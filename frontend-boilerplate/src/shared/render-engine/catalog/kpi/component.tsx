@@ -56,6 +56,13 @@ type KpiProps = {
   icon?: string;
   showDelta?: boolean;
   deltaPolarity?: 'up-good' | 'up-bad';
+  /**
+   * Texto de apoio sob o número. AUSENTE (`undefined`) cai no padrão do card
+   * ("vs. período anterior"); string VAZIA esconde a linha. É por isso que a
+   * prop não tem default no manifesto — com um, o card perderia a diferença
+   * entre "não escolheram" e "escolheram nada".
+   */
+  hint?: string;
 };
 
 /** Estado do motor → estado do card (o `skeleton` do motor é carregamento). */
@@ -104,6 +111,8 @@ export const Component: BlockComponent<KpiProps, ScalarData> = ({
         LucideIcon ? <Icon icon={LucideIcon} size="lg" color="inherit" /> : undefined
       }
       variant={chartAccentCardVariant(props.accent)}
+      // `undefined` deixa o card no texto padrão; `''` esconde a linha.
+      hint={props.hint}
       state={cardState(state, data)}
       error={error}
       scope={buildChartScope(data)}

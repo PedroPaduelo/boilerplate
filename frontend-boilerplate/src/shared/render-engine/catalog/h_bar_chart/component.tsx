@@ -40,6 +40,7 @@ import {
 } from '@/shared/ui';
 import type { ChartPoint } from '@/shared/ui';
 import { type ValueFormat } from '@/shared/lib/format';
+import { isMultiColorMode, type PaletteMode } from '../../lib/series-color';
 import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
@@ -47,8 +48,11 @@ import { manifest } from './manifest';
 import { fixture } from './fixture';
 
 type HBarProps = {
-  palette?: 'single' | 'multi' | 'none';
-  /** Cor das barras em palette="single"; resolvida para token do DS. */
+  palette?: PaletteMode;
+  /**
+   * Cor das barras. Declarada, VENCE o modo de paleta — pedir uma cor é pedir
+   * cor única (regra em `shared/ui/chart-accent.ts`).
+   */
   accent?: string;
   /** Formato do valor no eixo e no tooltip (enum fechado do catálogo). */
   valueFormat?: ValueFormat;
@@ -75,8 +79,17 @@ export const Component: BlockComponent<HBarProps, SeriesData> = ({
   // é o MESMO escopo que o gráfico usa nos rótulos e na mensagem de vazio.
   const scope = buildChartScope(points);
 
-  // `single` fixa a cor de destaque; `multi` cicla a paleta por categoria.
-  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  /**
+   * COR — `accent` declarado fixa a cor de TODAS as barras e vence o modo de
+   * paleta; sem ele, `multi` cicla uma cor por categoria e `single` deixa o
+   * tipo usar a sua cor padrão (o VERDE80 da §8).
+   *
+   * Era `props.palette === 'single' ? chartAccentColor(props.accent) : undefined`:
+   * quem escolhesse `multi` perdia a cor pedida em silêncio, e quem escolhesse
+   * a cor sem lembrar de trocar a paleta não via nada mudar.
+   */
+  const accent = chartAccentColor(props.accent);
+  const byCategory = isMultiColorMode(props);
   const chartData: ChartPoint[] = points.map((point) => ({
     label: chartPlainText(String(point.x), scope) || String(point.x),
     value: point.y ?? 0,
@@ -87,7 +100,7 @@ export const Component: BlockComponent<HBarProps, SeriesData> = ({
     <>
       <HBarChart
         data={chartData}
-        hasColorByCategory={props.palette === 'multi'}
+        hasColorByCategory={byCategory}
         valueFormatter={formatValue}
         scope={scope}
         isLoading={state === 'loading' || state === 'skeleton'}

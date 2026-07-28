@@ -50,6 +50,7 @@ import {
   toPointRows,
 } from './chart-data';
 import { ChartFrame, type ChartFrameState } from './chart-frame';
+import { useChartMotion } from './chart-motion';
 import { buildChartScope, type ChartScope } from './chart-template';
 import { chartPlainText } from './chart-text-html';
 import { ChartTooltip } from './chart-tooltip';
@@ -157,6 +158,8 @@ export function HBarChart({
   errorMessage,
 }: HBarChartProps) {
   const palette = useChartPalette();
+  // Entrada animada só quando o usuário não pediu redução de movimento.
+  const isAnimationActive = useChartMotion();
 
   // Contrato comum: as `{{variáveis}}` de todo texto do bloco saem dos DADOS.
   const scope = useMemo(() => buildChartScope(data, extraScope), [data, extraScope]);
@@ -273,6 +276,7 @@ export function HBarChart({
             // Entrada de 360ms. O atraso de 120ms da referência é a cascata
             // ENTRE SÉRIES, e este tipo tem uma só — logo, índice 0.
             {...chartAnimationProps(palette, 0)}
+            isAnimationActive={isAnimationActive}
           >
             {points.map((point, index) => (
               <Cell key={`${point.label}-${index}`} fill={fillAt(index, point.color)} />

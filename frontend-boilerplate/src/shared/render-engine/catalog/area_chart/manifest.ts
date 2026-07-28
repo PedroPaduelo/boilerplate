@@ -53,20 +53,27 @@ export const manifest = {
           'Exibe as linhas de grade horizontais, alinhadas aos ticks do eixo Y.',
       },
       // Modo de paleta — area chart aceita multi-série nativamente.
+      // O valor "none" foi REMOVIDO na 1.2.0: media igual a "multi" em todos os
+      // dados (auditoria de inércia), ou seja, era um terceiro nome para o
+      // mesmo desenho. Painéis salvos com "none" continuam funcionando.
       palette: {
         type: 'string',
-        enum: ['single', 'multi', 'none'],
+        enum: ['single', 'multi'],
         default: 'multi',
         description:
-          'Modo de paleta: "multi" (default) e "none" ciclam a paleta categórica do design system, uma cor por série; "single" fixa a cor de `accent` em todas as séries.',
+          'Modo de paleta: "multi" (default) cicla a paleta categórica do design system, UMA COR POR SÉRIE; "single" pinta TODAS as séries com uma cor só. Em ambos, um `accent` declarado vence e fixa a cor.',
       },
       // COR — enum do catálogo; o componente resolve para token de dado do DS.
+      // SEM `default` de propósito: o BlockRenderer mescla `defaultProps` em
+      // toda renderização, então um default de fábrica chegaria ao componente
+      // indistinguível de um pedido do autor — e, como `accent` vence a
+      // paleta, ele desligaria o modo "multi" (o default!) em todo gráfico.
+      // Ausência aqui PRECISA significar "não pedi cor: use a paleta".
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
-        default: 'chart-1',
         description:
-          'Cor base da(s) série(s), usada quando palette="single". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta padrão.',
+          'Cor de TODAS as séries. Declarar `accent` é pedir cor única: ele vence o modo de paleta (inclusive "multi"). OMITA para que cada série receba a próxima cor da paleta categórica do design system — que é o padrão e o que mantém séries vizinhas distinguíveis. O valor é resolvido para uma cor de dado do DS (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta); valores fora do enum são aceitos por compatibilidade e, quando não descrevem uma cor do sistema, caem na paleta.',
       },
       // valueFormat — ENUM FECHADO, default 'number' (contagem). NOVO na
       // 1.1.0: o tooltip formatava em BRL por código, sem prop nenhuma, então
@@ -118,15 +125,17 @@ export const manifest = {
       { x: '2026-01', y: 80, series: 'Despesa' },
     ],
   },
+  // `accent` NÃO tem default (ver a nota no schema): com ele aqui, todo
+  // gráfico nasceria com cor única e o modo "multi" — o próprio default de
+  // `palette` — nunca ciclaria.
   defaultProps: {
     type: 'default',
     fill: 'gradient',
     showLegend: true,
     showGridLines: true,
     palette: 'multi',
-    accent: 'chart-1',
     valueFormat: 'number',
   },
   maxRows: 5000,
-  version: '1.1.0',
+  version: '1.2.0',
 } satisfies BlockManifest;

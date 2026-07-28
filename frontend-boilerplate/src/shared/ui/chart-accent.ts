@@ -134,6 +134,53 @@ export function chartAccentColor(
 }
 
 /**
+ * O bloco deve pintar UMA COR POR CATEGORIA (modo multicolorido)?
+ *
+ * ---------------------------------------------------------------------------
+ * A REGRA DE PRECEDÊNCIA entre `palette` e `accent` — leia antes de usar
+ * ---------------------------------------------------------------------------
+ * Cada bloco escrevia a regra à mão, sempre assim:
+ *
+ * ```ts
+ * const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+ * ```
+ *
+ * Ou seja: `accent` só valia se o autor TAMBÉM tivesse escolhido
+ * `palette: 'single'`. Medido na auditoria de inércia
+ * (`catalog/__audit__/prop-effect.audit.test.tsx`), em OITO gráficos — área,
+ * coluna, barra horizontal, linha, dispersão, mini-gráfico, anel de progresso
+ * e cartão de sinal — percorrer os seis valores de `accent` produzia
+ * **exatamente o mesmo desenho**, porque o default de `palette` não era
+ * `single`. Para quem usa, e principalmente para o agente de IA que lê o
+ * manifesto e escolhe as props, isso lê como prop quebrada: pedi a cor, a cor
+ * não mudou.
+ *
+ * A regra passa a ser a que qualquer um deduz lendo o contrato:
+ *
+ * 1. `accent` reconhecível **vence sempre** — pedir uma cor É pedir cor única.
+ *    O bloco chama `chartAccentColor(props.accent)` sem condicionar a
+ *    `palette`.
+ * 2. `palette: 'multi'` só liga o modo multicolorido quando NÃO há `accent` —
+ *    senão a escolha mais específica seria descartada em silêncio. É o que
+ *    esta função decide.
+ *
+ * Mora aqui, e não dentro de cada bloco, porque a decisão é a mesma nos
+ * dezesseis blocos que expõem `accent`: duplicada, ela divergiu na primeira
+ * correção — foi exatamente como o catálogo chegou neste estado.
+ *
+ * @example
+ * isMultiColorPalette('multi', undefined);   // true  → uma cor por categoria
+ * isMultiColorPalette('multi', 'chart-3');   // false → o pedido explícito vence
+ * isMultiColorPalette('single', undefined);  // false → uma cor por série
+ */
+export function isMultiColorPalette(
+  palette: string | null | undefined,
+  accent: string | null | undefined,
+): boolean {
+  return palette === 'multi' && !chartAccentColor(accent);
+}
+
+/**
  * Traduz um `accent` para a variante de COR do `Card` do DS — o jeito
  * suportado de categorizar um card (KPI, ladrilho, métrica) sem pintar borda
  * ou faixa à mão.

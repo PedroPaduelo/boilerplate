@@ -147,7 +147,13 @@ describe('DashboardEditor (T-G2)', () => {
 
     expect(await screen.findByText(/Layout inválido/i)).toBeInTheDocument();
     expect(updateMutate).not.toHaveBeenCalled();
-  });
+    // Timeout ampliado (não é folga arbitrária): este caso monta o editor
+    // INTEIRO — filtros, abas, todas as linhas com seus blocos e o painel de
+    // pré-visualização — e ainda faz dois `waitFor` encadeados. Sozinho leva
+    // ~2,5s; na suíte completa, com os arquivos rodando em paralelo, encosta
+    // nos 4,9s do orçamento padrão de 5s e falha por RELÓGIO, não por lógica.
+    // As asserções continuam exatamente as mesmas.
+  }, 15000);
 
   it('publicar dispara a mutation e reflete status PUBLICADO', async () => {
     renderEditor();

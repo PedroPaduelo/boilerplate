@@ -104,12 +104,66 @@ describe('bloco scatter_chart — legenda e cor', () => {
     expect(legend.innerHTML).toContain('var(--ds-color-');
   });
 
+  /**
+   * REGRESSÃO: `accent` estava declarado no manifesto (e na interface do
+   * bloco), aparecia no contrato que o agente de IA lê — e o componente NUNCA
+   * lia o valor. Percorrer os seis acentos desenhava exatamente a mesma coisa.
+   */
+  it('aplica o accent declarado, fixando a cor de todos os grupos', () => {
+    const { container } = renderWithProviders(
+      <Block props={{ accent: 'chart-3' }} data={DATA} state="success" />,
+    );
+    // Duas categorias, uma cor: a pedida (ciano = chart-3).
+    const dots = [...container.querySelectorAll('.recharts-symbols')].map((node) =>
+      node.getAttribute('fill'),
+    );
+    expect(dots.length).toBeGreaterThan(0);
+    expect(new Set(dots)).toEqual(new Set(['#00B8D9']));
+    // E a legenda acompanha o desenho, sempre por token.
+    expect(screen.getByRole('list').innerHTML).toContain('var(--ds-color-info-main)');
+  });
+
+  it('sem accent, cada categoria pega a próxima cor do ciclo', () => {
+    const { container } = renderWithProviders(
+      <Block props={{}} data={DATA} state="success" />,
+    );
+    const dots = [...container.querySelectorAll('.recharts-symbols')].map((node) =>
+      node.getAttribute('fill'),
+    );
+    expect(new Set(dots)).toEqual(new Set(['#00A76F', '#FFAB00']));
+  });
+
   it('esconde a legenda quando o bloco pede', () => {
     renderWithProviders(
       <Block props={{ showLegend: false }} data={DATA} state="success" />,
     );
     expect(screen.queryByText('Zona A')).not.toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+});
+
+describe('bloco scatter_chart — grade', () => {
+  /**
+   * `showGridLines` só age DENTRO do SVG. Enquanto o `ResponsiveContainer` não
+   * media nada em teste, ela aparecia como inerte na auditoria — não porque
+   * estivesse quebrada, mas porque o gráfico não era desenhado.
+   */
+  it('showGridLines liga e desliga as guias da grade', () => {
+    const { container: withGrid, unmount } = renderWithProviders(
+      <Block props={{ showGridLines: true }} data={fixture} state="success" />,
+    );
+    const lines = withGrid.querySelectorAll('.recharts-cartesian-grid line');
+    expect(lines.length).toBeGreaterThan(0);
+    // A grade herda o tracejado 3 da configuração base.
+    expect(lines[0].getAttribute('stroke-dasharray')).toBe('3 3');
+    unmount();
+
+    const { container: bare } = renderWithProviders(
+      <Block props={{ showGridLines: false }} data={fixture} state="success" />,
+    );
+    expect(bare.querySelector('.recharts-cartesian-grid')).toBeNull();
+    // O desenho continua: a grade é chrome, não dado.
+    expect(bare.querySelectorAll('.recharts-symbols').length).toBeGreaterThan(0);
   });
 });
 

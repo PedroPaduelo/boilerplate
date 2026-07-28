@@ -4,9 +4,11 @@
  * capacidades além do "desenhar o componente":
  *
  *  1) COMPOSIÇÃO RECURSIVA (hierarquia): se `block.blocks` existir, o bloco é
- *     um CONTAINER (ex.: `section`, `bento`). O BlockRenderer monta o sub-grid
- *     de 12 colunas dos filhos (recursivo) e o injeta como `children` no
- *     componente do container — que só desenha o "shell" (header + moldura).
+ *     um CONTAINER (`grid`, `section`, `collapsible_block`, `sheet`). O
+ *     BlockRenderer delega ao `BlockContainer`, que monta a GRADE dos filhos
+ *     (recursiva, com as opções declaradas nas props do próprio container) e a
+ *     injeta como `children` — o componente do container só desenha o "shell"
+ *     (cabeçalho, superfície, disclosure).
  *
  *  2) ENCAPSULAMENTO VISUAL (frame): quando `framed`, blocos de VISUALIZAÇÃO
  *     (kind=chart, exceto KPIs/métricas que já são cards) são envolvidos no
@@ -98,12 +100,12 @@ export function BlockRenderer({
     if (title) props.label = title;
   }
 
-  // ----- CONTAINER (composição recursiva: section / bento / ...) -----
+  // ----- CONTAINER (composição recursiva: grid / section / ...) -----
   const childBlocks = Array.isArray(block.blocks) ? block.blocks : [];
   if (childBlocks.length > 0) {
-    // Renderiza UM filho com a moldura/estado certos. Containers que dispõem
-    // os filhos manualmente (bento, resizable, expandable) usam `renderChild`;
-    // o grid padrão de 12 colunas do `BlockContainer` também.
+    // Renderiza UM filho com a moldura/estado certos. É o que a grade padrão do
+    // `BlockContainer` usa em cada célula — e também a válvula de escape
+    // (`renderChild`) para um container que precise dispor os filhos à mão.
     const renderChild = (child: Block): ReactNode => (
       <BlockRenderer block={child} data={data} result={data?.blocks?.[child.id]} framed />
     );

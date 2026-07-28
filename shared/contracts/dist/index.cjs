@@ -6911,6 +6911,8 @@ __export(index_exports, {
   DashboardDetailSchema: () => DashboardDetailSchema,
   DashboardLayoutSchema: () => DashboardLayoutSchema,
   DashboardSummarySchema: () => DashboardSummarySchema,
+  IMPLICIT_TAB_ID: () => IMPLICIT_TAB_ID,
+  IMPLICIT_TAB_TITLE: () => IMPLICIT_TAB_TITLE,
   SOCKET_EVENTS: () => SOCKET_EVENTS,
   ScalarDataSchema: () => ScalarDataSchema,
   SeriesDataSchema: () => SeriesDataSchema,
@@ -6923,11 +6925,16 @@ __export(index_exports, {
   dashboardConfigFixture: () => dashboardConfigFixture,
   dashboardDataPayloadFixture: () => dashboardDataPayloadFixture,
   dashboardLayoutFixture: () => dashboardLayoutFixture,
+  dashboardLayoutWithTabsFixture: () => dashboardLayoutWithTabsFixture,
   dashboardRoom: () => dashboardRoom,
   donutManifest: () => donutManifest,
   formatErrors: () => formatErrors,
+  hasExplicitTabs: () => hasExplicitTabs,
   kpiManifest: () => kpiManifest,
+  layoutForTab: () => layoutForTab,
   lineChartManifest: () => lineChartManifest,
+  pickActiveTab: () => pickActiveTab,
+  resolveDashboardTabs: () => resolveDashboardTabs,
   richTextManifest: () => richTextManifest,
   tableManifest: () => tableManifest,
   titleManifest: () => titleManifest,
@@ -6961,6 +6968,8 @@ var DashboardLayoutSchema = {
   title: "DashboardLayout",
   type: "object",
   additionalProperties: false,
+  // `tabs` NÃO entra em `required`: é essa ausência que mantém válido todo
+  // layout já salvo no banco (`{ filters, rows }`). Ver `$defs.tab`.
   required: ["filters", "rows"],
   properties: {
     filters: {
@@ -6970,9 +6979,48 @@ var DashboardLayoutSchema = {
     rows: {
       type: "array",
       items: { $ref: "#/$defs/row" }
+    },
+    // ABAS (opcional). Agrupa as `rows` acima em páginas navegáveis. É uma
+    // PROJEÇÃO sobre `rows` (referencia por id), não um novo container de
+    // blocos — ver a nota de decisão em `$defs.tab`.
+    tabs: {
+      type: "array",
+      items: { $ref: "#/$defs/tab" }
     }
   },
   $defs: {
+    /**
+     * Aba do dashboard. Ela NÃO carrega `rows` dentro de si — carrega os IDS
+     * das rows que exibe (`rowIds`).
+     *
+     * PORQUÊ (decisão de arquitetura, doc 40): se as rows morassem dentro da
+     * aba, `rows` deixaria de ser o único lugar onde vivem os blocos, e TODO
+     * consumidor que hoje percorre `layout.rows` ficaria cego para os blocos
+     * das abas — resolução de dados (`resolveBlocks`), validação de
+     * `props.chartId`, injeção do título do chart, snapshot do publish, export
+     * de PDF, MCP e agente. São 7 travessias, e cada uma esquecida vira falha
+     * SILENCIOSA (bloco vazio, sem erro). Mantendo `rows` como lista canônica
+     * e completa, nenhum desses caminhos precisa mudar.
+     *
+     * A leitura passa SEMPRE por `resolveDashboardTabs` (layout/tabs.ts), que
+     * normaliza rowIds desconhecidos, duplicados e linhas órfãs.
+     */
+    tab: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id", "title", "rowIds"],
+      properties: {
+        id: { type: "string", minLength: 1 },
+        // rótulo exibido na navegação lateral (obrigatório: aba sem nome é
+        // inacessível — o leitor de tela anunciaria só a posição).
+        title: { type: "string", minLength: 1 },
+        // ids de `rows` que compõem a aba, NA ORDEM de exibição.
+        rowIds: {
+          type: "array",
+          items: { type: "string", minLength: 1 }
+        }
+      }
+    },
     filter: {
       type: "object",
       additionalProperties: false,
@@ -7081,6 +7129,12 @@ var DashboardConfigSchema = {
     rows: {
       type: "array",
       items: { $ref: "dashboard-layout.json#/$defs/row" }
+    },
+    // Espelha `DashboardLayout.tabs` (opcional) — o config completo precisa
+    // carregar as abas, senão o MCP/API devolveria um dashboard \"achatado\".
+    tabs: {
+      type: "array",
+      items: { $ref: "dashboard-layout.json#/$defs/tab" }
     }
   }
 };
@@ -7495,6 +7549,68 @@ function assertValid(validate, data, label = "payload") {
   return data;
 }
 
+// src/layout/tabs.ts
+var IMPLICIT_TAB_ID = "__default__";
+var IMPLICIT_TAB_TITLE = "Vis\xE3o geral";
+function hasExplicitTabs(layout) {
+  return Array.isArray(layout?.tabs) && layout.tabs.length > 0;
+}
+function resolveDashboardTabs(layout) {
+  const rows = Array.isArray(layout?.rows) ? layout.rows : [];
+  const tabs = Array.isArray(layout?.tabs) ? layout.tabs : [];
+  if (tabs.length === 0) {
+    return [
+      { id: IMPLICIT_TAB_ID, title: IMPLICIT_TAB_TITLE, rows, isImplicit: true }
+    ];
+  }
+  const rowById = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    if (row && typeof row.id === "string" && row.id.length > 0 && !rowById.has(row.id)) {
+      rowById.set(row.id, row);
+    }
+  }
+  const claimed = /* @__PURE__ */ new Set();
+  const resolved = tabs.map((tab, index) => {
+    const ids = Array.isArray(tab?.rowIds) ? tab.rowIds : [];
+    const tabRows = [];
+    for (const rowId of ids) {
+      if (claimed.has(rowId)) continue;
+      const row = rowById.get(rowId);
+      if (!row) continue;
+      claimed.add(rowId);
+      tabRows.push(row);
+    }
+    return {
+      id: typeof tab?.id === "string" && tab.id.length > 0 ? tab.id : `tab_${index}`,
+      title: typeof tab?.title === "string" && tab.title.trim().length > 0 ? tab.title : `Aba ${index + 1}`,
+      rows: tabRows,
+      isImplicit: false
+    };
+  });
+  const orphans = rows.filter(
+    (row) => row && typeof row.id === "string" && !claimed.has(row.id)
+  );
+  const first = resolved[0];
+  if (orphans.length > 0 && first) {
+    resolved[0] = { ...first, rows: [...first.rows, ...orphans] };
+  }
+  return resolved;
+}
+function pickActiveTab(tabs, requestedId) {
+  if (tabs.length === 0) return void 0;
+  if (requestedId) {
+    const found = tabs.find((tab) => tab.id === requestedId);
+    if (found) return found;
+  }
+  return tabs[0];
+}
+function layoutForTab(layout, tab) {
+  return {
+    filters: Array.isArray(layout?.filters) ? layout.filters : [],
+    rows: tab ? tab.rows : []
+  };
+}
+
 // src/socket/events.ts
 function dashboardRoom(dashboardId) {
   return `dashboard:${dashboardId}`;
@@ -7816,6 +7932,14 @@ var dashboardLayoutFixture = {
   filters: dashboardConfigFixture.filters,
   rows: dashboardConfigFixture.rows
 };
+var dashboardLayoutWithTabsFixture = {
+  filters: dashboardConfigFixture.filters,
+  rows: dashboardConfigFixture.rows,
+  tabs: [
+    { id: "tab_visao", title: "Vis\xE3o geral", rowIds: ["row_evolucao", "row_intro"] },
+    { id: "tab_detalhe", title: "Detalhamento", rowIds: ["row_fantasma"] }
+  ]
+};
 
 // src/fixtures/data-payload.ts
 var dashboardDataPayloadFixture = {
@@ -7885,6 +8009,8 @@ var dashboardDataPayloadFixture = {
   DashboardDetailSchema,
   DashboardLayoutSchema,
   DashboardSummarySchema,
+  IMPLICIT_TAB_ID,
+  IMPLICIT_TAB_TITLE,
   SOCKET_EVENTS,
   ScalarDataSchema,
   SeriesDataSchema,
@@ -7897,11 +8023,16 @@ var dashboardDataPayloadFixture = {
   dashboardConfigFixture,
   dashboardDataPayloadFixture,
   dashboardLayoutFixture,
+  dashboardLayoutWithTabsFixture,
   dashboardRoom,
   donutManifest,
   formatErrors,
+  hasExplicitTabs,
   kpiManifest,
+  layoutForTab,
   lineChartManifest,
+  pickActiveTab,
+  resolveDashboardTabs,
   richTextManifest,
   tableManifest,
   titleManifest,

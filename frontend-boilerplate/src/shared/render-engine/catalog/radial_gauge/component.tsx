@@ -65,11 +65,15 @@
  *
  * COR: `accent` continua aceitando o vocabulário antigo (`chart-1`,
  * `bg-purple-500`, `#40E0D0`), traduzido por `chartAccentColor()` para um token
- * do DS. No valor padrão do manifesto (`chart-1`) o medidor usa a cor padrão do
- * componente, que passou a ser a 1ª do ciclo — o acento do produto, o mesmo com
- * que abre qualquer outro gráfico. `chart-1` já apontava para essa mesma cor,
- * então os dois caminhos (padrão e escolha explícita) agora concordam; antes o
- * padrão desviava para o roxo da referência.
+ * do DS e repassado ao medidor SEM condição — é a regra de precedência de
+ * `chart-accent.ts`. Sem acento reconhecível, vale a cor padrão do componente
+ * (a 1ª do ciclo, o acento do produto), que é para onde `chart-1` também
+ * aponta: por isso "vazio" e "chart-1" desenham igual, de propósito.
+ *
+ * O bloco chegou a comparar `accent` com o próprio `manifest.defaultProps` para
+ * decidir se alguém tinha escolhido cor — sintoma de default declarado onde a
+ * AUSÊNCIA precisa significar algo. O default saiu do manifesto e a comparação
+ * saiu daqui.
  */
 import type { ScalarData } from '@dashboards/contracts';
 import {
@@ -118,17 +122,6 @@ function resolveVariant(variant: string | undefined): GaugeVariant {
     : 'semicircle';
 }
 
-/**
- * Cor do arco. O valor PADRÃO de `accent` significa "sem escolha": aí o medidor
- * usa a cor padrão do componente (a 1ª do ciclo, o acento do produto).
- * Qualquer outro valor pinta o arco com a cor pedida — inclusive o roxo da
- * referência, que continua disponível como escolha explícita.
- */
-function resolveAccent(accent: string | undefined) {
-  if (accent == null || accent === manifest.defaultProps.accent) return undefined;
-  return chartAccentColor(accent);
-}
-
 export const Component: BlockComponent<GaugeProps, ScalarData> = ({
   props,
   data,
@@ -154,7 +147,10 @@ export const Component: BlockComponent<GaugeProps, ScalarData> = ({
       // vale mais que o número da seção.
       size={CHART_HEIGHT.circular}
       variant={variant}
-      color={resolveAccent(props.accent)}
+      // A cor pedida vale sempre (regra de `chart-accent.ts`); sem acento
+      // reconhecível, `undefined` deixa o medidor na cor padrão dele — a 1ª do
+      // ciclo, que é justamente para onde `chart-1` também aponta.
+      color={chartAccentColor(props.accent)}
       label={data?.label ?? manifest.name}
       caption={data?.label ?? TOTAL_LABEL}
       valueFormatter={readingFormatter(unit)}

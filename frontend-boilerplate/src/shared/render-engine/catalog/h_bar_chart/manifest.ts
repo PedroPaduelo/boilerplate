@@ -27,21 +27,27 @@ export const manifest = {
     type: 'object',
     additionalProperties: false,
     properties: {
-      // Modo de paleta.
+      // Modo de paleta. O valor "none" foi REMOVIDO na 1.2.0: medido na
+      // auditoria de inércia, os três valores desenhavam a MESMA coisa, e o
+      // que "none" fazia — deixar a cor padrão do tipo — passou a ser o que
+      // "single" faz quando não há `accent`. Painéis salvos com "none"
+      // continuam funcionando.
       palette: {
         type: 'string',
-        enum: ['single', 'multi', 'none'],
+        enum: ['single', 'multi'],
         default: 'single',
         description:
-          'Modo de paleta: "single" (default) = todas as barras na cor de `accent`; "multi" = cicla a paleta categórica do design system, uma cor por categoria; "none" = deixa a cor padrão da paleta.',
+          'Modo de paleta: "single" (default) = todas as barras na MESMA cor (a de `accent`; sem ele, a cor padrão do tipo); "multi" = cicla a paleta categórica do design system, uma cor por categoria. Perde para `accent` quando ele é declarado.',
       },
       // COR — enum do catálogo; o componente resolve para token de dado do DS.
+      // SEM `default`: o BlockRenderer mescla `defaultProps` em toda
+      // renderização e `accent` VENCE a paleta, então um default de fábrica
+      // desligaria `palette: "multi"` para sempre.
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
-        default: 'chart-1',
         description:
-          'Cor das barras em palette="single". O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Em "multi" é IGNORADO. Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
+          'Cor de TODAS as barras. Declarar `accent` é pedir cor única: ele vence o modo de paleta (inclusive "multi"). OMITA para que a cor venha de `palette`. O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta); valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
       },
       // valueFormat — ENUM FECHADO, default 'number' (contagem).
       valueFormat: {
@@ -88,8 +94,9 @@ export const manifest = {
       { x: 'Norte', y: 980 },
     ],
   },
-  defaultProps: { palette: 'single', accent: 'chart-1', valueFormat: 'number' },
+  // `accent` NÃO tem default (ver a nota no schema).
+  defaultProps: { palette: 'single', valueFormat: 'number' },
   minColumns: 1,
   maxRows: 5000,
-  version: '1.1.0',
+  version: '1.2.0',
 } satisfies BlockManifest;

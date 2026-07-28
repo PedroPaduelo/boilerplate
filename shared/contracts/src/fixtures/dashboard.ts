@@ -128,3 +128,28 @@ export const dashboardLayoutFixture = {
   filters: dashboardConfigFixture.filters,
   rows: dashboardConfigFixture.rows,
 } satisfies DashboardLayout;
+
+/**
+ * Mesmo layout, agora com ABAS (doc 40). Existe para exercitar de uma vez os
+ * três casos que o normalizador precisa aguentar:
+ *
+ *  - `tab_visao`   → duas linhas, ordem EXPLÍCITA e diferente da ordem de `rows`
+ *    (prova que quem manda na ordem é `rowIds`, não a posição em `rows`);
+ *  - `tab_detalhe` → cita um `rowId` INEXISTENTE (`row_fantasma`), que deve ser
+ *    ignorado sem quebrar;
+ *  - `row_detalhe` → linha ÓRFÃ (não citada por nenhuma aba), que deve ser
+ *    recuperada na primeira aba — é o caso real de quando o agente insere uma
+ *    linha via `add_chart_to_dashboard` sem saber que existem abas.
+ *
+ * Reusa as MESMAS `rows` do fixture legado de propósito: os dois fixtures têm
+ * exatamente o mesmo conjunto de blocos, então dá para afirmar em teste que
+ * ligar abas não muda o total de blocos renderizados.
+ */
+export const dashboardLayoutWithTabsFixture = {
+  filters: dashboardConfigFixture.filters,
+  rows: dashboardConfigFixture.rows,
+  tabs: [
+    { id: 'tab_visao', title: 'Visão geral', rowIds: ['row_evolucao', 'row_intro'] },
+    { id: 'tab_detalhe', title: 'Detalhamento', rowIds: ['row_fantasma'] },
+  ],
+} satisfies DashboardLayout;

@@ -18,9 +18,10 @@
  * a cada build). As poucas classes usadas aqui são do RECHARTS (`recharts-*`),
  * que são estáveis e a única forma de inspecionar o desenho dentro do SVG.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
+import { CHART_HEIGHT } from '@/shared/ui';
 import { definition } from './component';
 import { fixture } from './fixture';
 
@@ -36,36 +37,15 @@ const HALVES = [
   { x: 'Jan', y: 25, series: 'Despesa' },
 ];
 
-/**
- * O `ResponsiveContainer` do recharts só desenha depois de MEDIR o container, e
- * o polyfill global de `ResizeObserver` (`src/test/setup.ts`) nunca chama o
- * callback — no jsdom o gráfico ficaria vazio e nenhuma regra de layout seria
- * verificável. Este observador entrega uma medida fixa assim que é acionado.
+/*
+ * O `ResponsiveContainer` do recharts só desenha depois de MEDIR o container.
+ * Este arquivo trazia um `ResizeObserver` próprio no `beforeAll` porque o
+ * polyfill global nunca chamava o callback; o polyfill (`src/test/setup.ts`)
+ * agora MEDE, então a cópia local saiu. Não é detalhe de arrumação: enquanto a
+ * medida era local, todo teste que não a copiasse — inclusive a auditoria de
+ * inércia — via o gráfico como uma caixa vazia e acusava como "inerte"
+ * qualquer prop cujo efeito é dentro do SVG.
  */
-beforeAll(() => {
-  class MeasuringResizeObserver {
-    private readonly callback: ResizeObserverCallback;
-
-    constructor(callback: ResizeObserverCallback) {
-      this.callback = callback;
-    }
-
-    observe(target: Element) {
-      this.callback(
-        [
-          {
-            target,
-            contentRect: { width: 640, height: 320, top: 0, left: 0 },
-          } as unknown as ResizeObserverEntry,
-        ],
-        this as unknown as ResizeObserver,
-      );
-    }
-    unobserve() {}
-    disconnect() {}
-  }
-  globalThis.ResizeObserver = MeasuringResizeObserver as unknown as typeof ResizeObserver;
-});
 
 /** Atalho: renderiza o bloco com a fixture e devolve o container. */
 function renderBlock(props: Record<string, unknown> = {}, data = fixture) {
@@ -199,9 +179,15 @@ describe('bloco area_chart — layout da referência (§2 Área)', () => {
     expect(tick?.getAttribute('fill')).toBe('#919EAB');
   });
 
-  it('usa a altura padrão do catálogo (320px)', () => {
+  it('usa a altura padrão do catálogo, seja ela qual for', () => {
+    // Do TOKEN, não de um `320px` cravado: o número é decisão de composição e já
+    // mudou uma vez (320 → 280, para o card parar de sair com 536px). Um teste
+    // que repete a constante trava a recalibragem em vez de proteger o contrato
+    // — o que importa aqui é que o bloco use o degrau padrão, não qual é ele.
     renderBlock();
-    expect(screen.getByRole('img', { name: /área/i })).toHaveStyle({ height: '320px' });
+    expect(screen.getByRole('img', { name: /área/i })).toHaveStyle({
+      height: `${CHART_HEIGHT.default}px`,
+    });
   });
 });
 
@@ -252,7 +238,54 @@ describe('bloco area_chart — parâmetros continuam funcionando', () => {
     unmount();
 
     renderBlock({ valueFormat: 'BRL' });
-    expect(within(screen.getByRole('table')).getByText('R$ 120,00')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('table')).getByText('R$ 1.240,00'),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A fixture vive na casa dos milhares justamente para separar o par
+   * cheio/compacto de cada formato: abaixo de mil os dois imprimem o mesmo
+   * texto e metade do enum de `valueFormat` fica indistinguível.
+   */
+  it('separa a forma CHEIA da COMPACTA em cada formato', () => {
+    const cell = (props: Record<string, unknown>) => {
+      const { unmount } = renderBlock(props);
+      const text = within(screen.getByRole('table')).getAllByRole('cell')[0].textContent;
+      unmount();
+      return text;
+    };
+
+    // O `Intl` separa símbolo e sufixo com espaço FINO/NÃO-QUEBRÁVEL: sem
+    // normalizar, a comparação falha por um byte invisível.
+    const plain = (value: string | null) => (value ?? '').replace(/[\u00a0\u202f]/g, ' ');
+
+    expect(plain(cell({ valueFormat: 'number' }))).toBe('1.240');
+    expect(plain(cell({ valueFormat: 'compactNumber' }))).toBe('1,24 mil');
+    expect(plain(cell({ valueFormat: 'BRL' }))).toBe('R$ 1.240,00');
+    expect(plain(cell({ valueFormat: 'compactBRL' }))).toBe('R$ 1,24 mil');
+  });
+
+  it('type="stacked" empilha as áreas; "default" as sobrepõe', () => {
+    const { container: overlaid, unmount } = renderBlock({ type: 'default' });
+    // Sobreposta: cada área vai da BASE ao seu valor, então as duas terminam na
+    // mesma linha de base e os caminhos têm alturas independentes.
+    const overlaidPaths = [...overlaid.querySelectorAll('path.recharts-area-area')].map(
+      (node) => node.getAttribute('d'),
+    );
+    unmount();
+
+    const { container: stacked } = renderBlock({ type: 'stacked' });
+    const stackedPaths = [...stacked.querySelectorAll('path.recharts-area-area')].map(
+      (node) => node.getAttribute('d'),
+    );
+
+    expect(overlaidPaths).toHaveLength(2);
+    expect(stackedPaths).toHaveLength(2);
+    // Empilhar muda o traçado das DUAS: a 2ª série passa a começar no topo da
+    // 1ª, e o eixo Y tem de acomodar a SOMA — o que reposiciona a 1ª também.
+    expect(stackedPaths[0]).not.toBe(overlaidPaths[0]);
+    expect(stackedPaths[1]).not.toBe(overlaidPaths[1]);
   });
 });
 
@@ -267,6 +300,38 @@ describe('bloco area_chart — cor', () => {
     ).toBe('#00B8D9');
   });
 
+  /**
+   * REGRESSÃO da causa raiz: `accent` só valia se o autor TAMBÉM escolhesse
+   * `palette: "single"` — e como o default deste bloco é `multi`, pedir a cor
+   * pelo manifesto não mudava um pixel. Agora o pedido explícito vence o modo
+   * de paleta, que é o que qualquer um deduz lendo o contrato.
+   */
+  it('aplica o accent mesmo com palette="multi" (o pedido explícito vence)', () => {
+    const { container } = renderBlock({ palette: 'multi', accent: 'chart-3' });
+    const stops = [...container.querySelectorAll('linearGradient')].map((node) =>
+      node.querySelector('stop')?.getAttribute('stop-color'),
+    );
+    // Duas séries, UMA cor: foi ela que o autor pediu.
+    expect(stops).toEqual(['#00B8D9', '#00B8D9']);
+  });
+
+  it('sem accent, "multi" cicla a paleta e "single" usa uma cor só', () => {
+    const { container: multi, unmount } = renderBlock({ palette: 'multi' });
+    expect(
+      [...multi.querySelectorAll('linearGradient')].map((node) =>
+        node.querySelector('stop')?.getAttribute('stop-color'),
+      ),
+    ).toEqual([CYCLE_1, CYCLE_2]);
+    unmount();
+
+    const { container: single } = renderBlock({ palette: 'single' });
+    expect(
+      [...single.querySelectorAll('linearGradient')].map((node) =>
+        node.querySelector('stop')?.getAttribute('stop-color'),
+      ),
+    ).toEqual([CYCLE_1, CYCLE_1]);
+  });
+
   it('não deixa uma cor crua legada chegar ao desenho', () => {
     const { container } = renderBlock({ palette: 'single', accent: '#40E0D0' });
     expect(container.innerHTML).not.toContain('#40E0D0');
@@ -274,5 +339,58 @@ describe('bloco area_chart — cor', () => {
     expect(
       container.querySelector('linearGradient stop')?.getAttribute('stop-color'),
     ).toBe(CYCLE_1);
+  });
+});
+
+describe('bloco area_chart — dados fora do feliz caminho', () => {
+  it('desenha uma série só, sem legenda (não há o que distinguir)', () => {
+    const { container } = renderWithProviders(
+      <Block
+        props={{}}
+        data={[
+          { x: 'Jan', y: 10 },
+          { x: 'Fev', y: 14 },
+        ]}
+        state="success"
+      />,
+    );
+    expect(container.querySelectorAll('path.recharts-area-area')).toHaveLength(1);
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+  });
+
+  it('aguenta MUITAS séries: cada uma ganha a próxima cor da paleta', () => {
+    const many = Array.from({ length: 6 }, (_, index) => index).flatMap((index) => [
+      { x: 'Jan', y: 10 * (index + 1), series: `S${index}` },
+      { x: 'Fev', y: 12 * (index + 1), series: `S${index}` },
+    ]);
+    const { container } = renderWithProviders(
+      <Block props={{}} data={many} state="success" />,
+    );
+    const colors = [...container.querySelectorAll('linearGradient')].map((node) =>
+      node.querySelector('stop')?.getAttribute('stop-color'),
+    );
+    expect(colors).toHaveLength(6);
+    // Vizinhos distinguíveis é o serviço da paleta: nenhuma cor se repete.
+    expect(new Set(colors).size).toBe(6);
+  });
+
+  it('trata ponto nulo como zero em vez de quebrar o traçado', () => {
+    renderWithProviders(
+      <Block
+        props={{}}
+        data={[
+          { x: 'Jan', y: 10 },
+          { x: 'Fev', y: null },
+          { x: 'Mar', y: 30 },
+        ]}
+        state="success"
+      />,
+    );
+    const table = screen.getByRole('table');
+    expect(
+      within(table)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['10', '0', '30']);
   });
 });

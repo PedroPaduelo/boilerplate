@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { MockChatTransport } from '../transport/mock-transport';
-import type {
-  ChatEvent,
-  ChatMessage,
-  ChatTransport,
-} from '../transport/types';
+import type { ChatEvent, ChatMessage, ChatTransport } from '../transport/types';
 
 function userMsg(content: string): ChatMessage {
   return { id: 'u1', role: 'user', content, createdAt: '2026-01-01T00:00:00Z' };

@@ -2,10 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useState, createContext, useContext, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {
-  useConfirmDelete,
-  type UseConfirmDeleteMutation,
-} from '../use-confirm-delete';
+import { useConfirmDelete, type UseConfirmDeleteMutation } from '../use-confirm-delete';
 
 /** Item usado nos testes. */
 interface Item {
@@ -61,9 +58,7 @@ function makeHarness() {
     };
     return (
       <MutationContext.Provider value={wrappedMutation}>
-        <QueryClientProvider client={new QueryClient()}>
-          {children}
-        </QueryClientProvider>
+        <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
       </MutationContext.Provider>
     );
   }
@@ -76,9 +71,7 @@ function makeHarness() {
   };
 }
 
-const MutationContext = createContext<UseConfirmDeleteMutation<string> | null>(
-  null,
-);
+const MutationContext = createContext<UseConfirmDeleteMutation<string> | null>(null);
 
 /** Hook consumidora do stub — usado DENTRO do hook testado. */
 function useStubMutation(): UseConfirmDeleteMutation<string> {

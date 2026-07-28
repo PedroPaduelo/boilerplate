@@ -53,14 +53,61 @@ export function toBarSeries(data: SeriesData): BarSeriesResult {
   return { series, labels, hasNamedSeries };
 }
 
+/** Separador entre categoria e série no rótulo da barra horizontal. */
+const LABEL_SEPARATOR = ' · ';
+
+/** Uma barra do modo horizontal: o ponto + a série de onde ele veio. */
+export interface BarPointWithSeries extends ChartPoint {
+  /** Índice da série na ordem de aparição — é ele que escolhe a cor. */
+  seriesIndex: number;
+}
+
+export interface BarPointsResult {
+  /** Uma barra por par (categoria × série), na ordem do dado. */
+  points: BarPointWithSeries[];
+  /** `true` quando o dado nomeia séries. */
+  hasNamedSeries: boolean;
+}
+
 /**
  * Converte a lista longa em pontos categóricos — o formato do gráfico de
  * barras horizontais, que não empilha (uma barra por linha do dado).
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE O RÓTULO GANHA A SÉRIE
+ * ---------------------------------------------------------------------------
+ * A versão anterior fazia `points.map((p) => ({ label: String(p.x) }))`,
+ * ignorando o campo `series`. Com dado multi-série — que é o que o próprio
+ * `dataContract.example` do bloco anuncia — o eixo saía com a categoria
+ * REPETIDA ("Jan", "Jan", "Fev", "Fev"…) e duas barras indistinguíveis; e a
+ * cor, que era escolhida pelo índice da LINHA, mudava de série a cada mês.
+ *
+ * Agora cada barra é o par categoria × série, com rótulo composto quando há
+ * série nomeada. Repetições do mesmo par são SOMADAS, como no modo vertical —
+ * é o que faz os dois modos fecharem com o mesmo total.
  */
-export function toBarPoints(data: SeriesData): ChartPoint[] {
-  const points = (data ?? []) as BarPoint[];
-  return points.map((point) => ({
-    label: String(point.x),
-    value: point.y ?? 0,
-  }));
+export function toBarPoints(data: SeriesData): BarPointsResult {
+  const rows = (data ?? []) as BarPoint[];
+  const hasNamedSeries = rows.some((point) => point.series != null);
+  const seriesOrder: string[] = [];
+  const byKey = new Map<string, BarPointWithSeries>();
+
+  for (const point of rows) {
+    const name = point.series != null ? String(point.series) : DEFAULT_SERIES_LABEL;
+    if (!seriesOrder.includes(name)) seriesOrder.push(name);
+    const category = String(point.x);
+    const key = `${category}\u0000${name}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.value += point.y ?? 0;
+      continue;
+    }
+    byKey.set(key, {
+      label: hasNamedSeries ? `${category}${LABEL_SEPARATOR}${name}` : category,
+      value: point.y ?? 0,
+      seriesIndex: seriesOrder.indexOf(name),
+    });
+  }
+
+  return { points: [...byKey.values()], hasNamedSeries };
 }

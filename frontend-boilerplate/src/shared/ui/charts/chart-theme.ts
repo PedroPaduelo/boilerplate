@@ -502,10 +502,26 @@ export const CHART_MOTION = {
  *
  * Quem precisa de uma altura fora da escala passa `height` explícito no bloco;
  * o tema só publica os degraus que o sistema realmente usa.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE 280 E NÃO OS 320 DA REFERÊNCIA
+ * ---------------------------------------------------------------------------
+ * A referência fixa 320px de DESENHO (§7), e foi o que valeu até aqui. Só que
+ * ela descreve um gráfico que ocupa a largura da tela, sozinho. No produto o
+ * gráfico vive dentro de um card com cabeçalho, legenda e leitura ("takeaways")
+ * — e o card medido no dashboard dava **536px** para 320px de desenho: 216px de
+ * moldura em volta de cada gráfico. Numa tela de 900px isso é um gráfico e meio
+ * por rolagem.
+ *
+ * 280px é o desenho que mantém as 5 divisões do eixo Y legíveis (56px por
+ * divisão) e leva o card para ~496px. A referência continua valendo onde ela
+ * mede: a proporção do desenho, a espessura, a cor. A ALTURA do card é decisão
+ * de composição do produto, e essa é minha — registrada aqui em vez de virar um
+ * `height` avulso espalhado pelos blocos.
  */
 export const CHART_HEIGHT = {
   /** Padrão do catálogo — todo gráfico com eixo. */
-  default: 320,
+  default: 280,
   /**
    * Circulares — rosca, anel de progresso e TODOS os medidores radiais.
    *
@@ -516,9 +532,10 @@ export const CHART_HEIGHT = {
   /**
    * Dispersão. Era 350 — 30px a mais que todo o resto, o suficiente para a
    * legenda sair cortada no palco do catálogo. Não havia razão de desenho para
-   * a diferença: é o mesmo plano cartesiano dos outros.
+   * a diferença: é o mesmo plano cartesiano dos outros, e agora acompanha o
+   * mesmo degrau.
    */
-  scatter: 320,
+  scatter: 280,
   /** Mini-gráfico de card de resumo. */
   spark: 56,
 } as const;

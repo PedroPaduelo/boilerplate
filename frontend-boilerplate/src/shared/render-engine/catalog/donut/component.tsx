@@ -44,7 +44,13 @@
  *    que garante fatias vizinhas distinguíveis.
  */
 import type { CategoricalData } from '@dashboards/contracts';
-import { CHART_HEIGHT, DonutChart, chartAccentColor } from '@/shared/ui';
+import {
+  CHART_HEIGHT,
+  CHART_SERIES_COLORS,
+  DonutChart,
+  chartAccentColor,
+  isMultiColorPalette,
+} from '@/shared/ui';
 import type { ChartPoint } from '@/shared/ui';
 import { formatPercentBR, type ValueFormat } from '@/shared/lib/format';
 import { formatCatalogValue } from '../../lib/value-format';
@@ -57,8 +63,12 @@ import { fixture } from './fixture';
 type DonutProps = {
   showLegend?: boolean;
   centerLabel?: string;
+  /**
+   * Modo de paleta. `none` saiu do enum do manifesto por ser redundante, mas
+   * continua aceito aqui como sinônimo histórico de `multi` (ver o componente).
+   */
   palette?: 'single' | 'multi' | 'none';
-  /** Cor das fatias em palette="single"; resolvida para token do DS. */
+  /** Cor das fatias; resolvida para token do DS. Vence `palette: "multi"`. */
   accent?: string;
   /** Formato do valor no centro e na legenda (enum fechado do catálogo). */
   valueFormat?: ValueFormat;
@@ -79,10 +89,27 @@ export const Component: BlockComponent<DonutProps, CategoricalData> = ({
   const items = (data ?? []) as CategoryPoint[];
   const formatValue = (value: number) => formatCatalogValue(value, props.valueFormat);
 
-  // `single` pinta todas as fatias com a cor de destaque; nos demais modos o
-  // anel cicla a sequência da proporção da referência (§9), que é o que
-  // distingue uma fatia da outra.
-  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  /**
+   * COR — a regra de precedência publicada em `chart-accent.ts`:
+   *  1. `accent` reconhecível vence sempre (pedir uma cor É pedir cor única);
+   *  2. `multi` só cicla a sequência da proporção (§9) quando NÃO há acento.
+   *
+   * Era `props.palette === 'single' ? chartAccentColor(...) : undefined`: quem
+   * pedia só a cor não via mudança, porque o acento dependia de a paleta estar
+   * no valor certo.
+   *
+   * `none` é o nome ANTIGO de "multi" NESTE bloco (ele sempre ciclou aqui, ao
+   * contrário do `bar_list`, onde caía em cor única). Ele saiu do enum por ser
+   * redundante, mas continua sendo traduzido: painel salvo não pode trocar de
+   * desenho por causa de uma limpeza de vocabulário.
+   */
+  const palette = props.palette === 'none' ? 'multi' : props.palette;
+  const isMulti = isMultiColorPalette(palette, props.accent);
+  // Sem acento e sem "multi", a fatia usa a 1ª cor da paleta — o desenho que o
+  // default `accent: "chart-1"` produzia antes de ele sair dos `defaultProps`.
+  const accent = isMulti
+    ? undefined
+    : (chartAccentColor(props.accent) ?? CHART_SERIES_COLORS[0]);
   const points: ChartPoint[] = items.map((item) => ({
     label: item.label,
     value: item.value ?? 0,

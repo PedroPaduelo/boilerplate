@@ -21,6 +21,11 @@ import {
   setRowTitle,
   updateBlockProps,
   updateFilter,
+  addTab,
+  moveTab,
+  removeTab,
+  renameTab,
+  setRowTab,
   validateLayoutForSave,
   type EditorLayout,
 } from './layout-editor';
@@ -38,7 +43,9 @@ describe('normalizeLayout', () => {
       'blk_bar_mes',
     ]);
     // binding preservado nos blocos de dados, ausente nos narrativos
-    expect(findBlock(l, 'blk_kpi_total')?.block.dataBinding?.connectionId).toBe('conn_fazenda');
+    expect(findBlock(l, 'blk_kpi_total')?.block.dataBinding?.connectionId).toBe(
+      'conn_fazenda',
+    );
     expect(findBlock(l, 'blk_title')?.block.dataBinding).toBeUndefined();
   });
 
@@ -138,7 +145,11 @@ describe('rows e filtros', () => {
 
   it('addFilter / updateFilter / removeFilter', () => {
     let l = addFilter(base(), { id: 'f_novo', type: 'search', label: 'Busca' });
-    expect(l.filters.at(-1)).toMatchObject({ id: 'f_novo', type: 'search', label: 'Busca' });
+    expect(l.filters.at(-1)).toMatchObject({
+      id: 'f_novo',
+      type: 'search',
+      label: 'Busca',
+    });
     l = updateFilter(l, 'f_novo', { label: 'Busca livre' });
     expect(l.filters.at(-1)?.label).toBe('Busca livre');
     l = removeFilter(l, 'f_novo');
@@ -182,5 +193,136 @@ describe('layoutsEqual', () => {
   });
   it('ignora identidade de referência (mesma forma → igual)', () => {
     expect(layoutsEqual(base(), base())).toBe(true);
+  });
+});
+
+// =============================================================================
+// ABAS (doc 40)
+// =============================================================================
+//
+// O teste mais importante deste bloco é o de PRESERVAÇÃO: `normalizeLayout` e
+// `sanitizeLayoutForSave` reconstroem o layout campo a campo, então qualquer
+// chave que o editor não conheça é descartada. Antes do suporte a abas, bastava
+// abrir e salvar um dashboard com abas para elas SUMIREM — sem erro na tela.
+
+const withTabs = (): EditorLayout =>
+  normalizeLayout({
+    ...dashboardLayoutFixture,
+    tabs: [
+      { id: 'tab_1', title: 'Resumo', rowIds: ['row_intro'] },
+      { id: 'tab_2', title: 'Detalhe', rowIds: ['row_evolucao', 'row_detalhe'] },
+    ],
+  });
+
+describe('abas — preservação no ciclo abrir → salvar', () => {
+  it('normalizeLayout mantém as abas do layout carregado', () => {
+    const l = withTabs();
+    expect(l.tabs?.map((t) => t.id)).toEqual(['tab_1', 'tab_2']);
+    expect(l.tabs?.[1].rowIds).toEqual(['row_evolucao', 'row_detalhe']);
+  });
+
+  it('REGRESSÃO: abrir e salvar NÃO apaga as abas', () => {
+    const payload = sanitizeLayoutForSave(withTabs());
+    expect(payload.tabs).toHaveLength(2);
+    expect(payload.tabs?.[0]).toEqual({
+      id: 'tab_1',
+      title: 'Resumo',
+      rowIds: ['row_intro'],
+    });
+  });
+
+  it('RETROCOMPAT: layout legado continua saindo SEM a chave `tabs`', () => {
+    // Se o editor injetasse `tabs: []` em todo dashboard antigo, (a) o
+    // dirty-state acusaria alteração só por abrir a tela e (b) o dado salvo de
+    // todo mundo ganharia ruído. O layout legado tem de sair idêntico.
+    const legacy = normalizeLayout(dashboardLayoutFixture);
+    expect(legacy.tabs).toBeUndefined();
+    expect('tabs' in sanitizeLayoutForSave(legacy)).toBe(false);
+  });
+
+  it('o layout com abas é VÁLIDO contra o contrato', () => {
+    expect(validateLayoutForSave(withTabs()).valid).toBe(true);
+  });
+
+  it('rowIds órfãos são limpos no save (aba não referencia linha inexistente)', () => {
+    const removed = removeRow(withTabs(), 'row_evolucao');
+    const payload = sanitizeLayoutForSave(removed);
+    expect(payload.tabs?.[1]).toMatchObject({ rowIds: ['row_detalhe'] });
+    expect(validateLayoutForSave(removed).valid).toBe(true);
+  });
+});
+
+describe('abas — operações (criar/renomear/ordenar/remover)', () => {
+  it('a PRIMEIRA aba criada herda todas as linhas existentes', () => {
+    // Sem isso, ligar abas num dashboard pronto jogaria todo o conteúdo para o
+    // limbo das linhas órfãs — o normalizador o recuperaria na leitura, mas o
+    // JSON salvo mentiria sobre a organização do dashboard.
+    const l = addTab(normalizeLayout(dashboardLayoutFixture));
+    expect(l.tabs).toHaveLength(1);
+    expect(l.tabs?.[0].rowIds).toEqual(['row_intro', 'row_evolucao', 'row_detalhe']);
+  });
+
+  it('a segunda aba nasce vazia', () => {
+    const l = addTab(addTab(normalizeLayout(dashboardLayoutFixture)), 'Nova');
+    expect(l.tabs?.[1]).toMatchObject({ title: 'Nova', rowIds: [] });
+  });
+
+  it('renomeia uma aba', () => {
+    const l = renameTab(withTabs(), 'tab_2', 'Detalhamento');
+    expect(l.tabs?.[1].title).toBe('Detalhamento');
+  });
+
+  it('reordena abas e faz no-op nas bordas', () => {
+    const l = withTabs();
+    expect(moveTab(l, 'tab_2', 'up').tabs?.map((t) => t.id)).toEqual(['tab_2', 'tab_1']);
+    // primeira aba não sobe; última não desce.
+    expect(moveTab(l, 'tab_1', 'up').tabs?.map((t) => t.id)).toEqual(['tab_1', 'tab_2']);
+    expect(moveTab(l, 'tab_2', 'down').tabs?.map((t) => t.id)).toEqual([
+      'tab_1',
+      'tab_2',
+    ]);
+  });
+
+  it('remover uma aba NÃO apaga as linhas dela', () => {
+    // Remover aba é gesto de ORGANIZAÇÃO. Apagar o conteúdo junto seria perda
+    // de trabalho num clique — para isso existe "remover linha".
+    const l = removeTab(withTabs(), 'tab_2');
+    expect(l.tabs).toHaveLength(1);
+    expect(l.rows.map((r) => r.id)).toEqual(['row_intro', 'row_evolucao', 'row_detalhe']);
+  });
+
+  it('remover a ÚLTIMA aba devolve o layout ao formato legado', () => {
+    let l = removeTab(withTabs(), 'tab_1');
+    l = removeTab(l, 'tab_2');
+    expect(l.tabs).toBeUndefined();
+    expect('tabs' in sanitizeLayoutForSave(l)).toBe(false);
+  });
+
+  it('setRowTab move a linha e a tira das outras abas (linha pertence a UMA aba)', () => {
+    const l = setRowTab(withTabs(), 'row_intro', 'tab_2');
+    expect(l.tabs?.[0].rowIds).toEqual([]);
+    expect(l.tabs?.[1].rowIds).toContain('row_intro');
+    // e não duplicou em nenhum lugar
+    const todas = (l.tabs ?? []).flatMap((t) => t.rowIds);
+    expect(new Set(todas).size).toBe(todas.length);
+  });
+
+  it('addRow filia a linha nova à primeira aba (senão ela nasce órfã)', () => {
+    const l = addRow(withTabs(), 'Nova linha');
+    const novaId = l.rows[l.rows.length - 1].id;
+    expect(l.tabs?.[0].rowIds).toContain(novaId);
+  });
+
+  it('addRow aceita a aba de destino explicitamente', () => {
+    const l = addRow(withTabs(), 'Nova linha', 'tab_2');
+    const novaId = l.rows[l.rows.length - 1].id;
+    expect(l.tabs?.[1].rowIds).toContain(novaId);
+    expect(l.tabs?.[0].rowIds).not.toContain(novaId);
+  });
+
+  it('addRow em layout legado segue funcionando (sem abas)', () => {
+    const l = addRow(normalizeLayout(dashboardLayoutFixture));
+    expect(l.tabs).toBeUndefined();
+    expect(l.rows).toHaveLength(4);
   });
 });

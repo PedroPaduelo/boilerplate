@@ -20,8 +20,12 @@
  * grossa que o arco de valor (o anel de progresso já teve) é o defeito mais
  * fácil de notar num medidor. Trilha muda de COR, nunca de espessura.
  *
- * O `waitFor` não é folclore: o arco de valor entra animado (360ms) e, no
- * primeiro quadro, o recharts ainda não escreveu o caminho.
+ * O `waitFor` não é folclore NOS DESENHOS DO MOTOR: o arco de valor da rosca e
+ * dos medidores entra animado (360ms) e, no primeiro quadro, o recharts ainda
+ * não escreveu o caminho. O ANEL DE PROGRESSO não precisa mais dele — ele
+ * deixou de ser um `<Pie>` justamente por isso (ver o cabeçalho de
+ * `progress-circle.tsx`): agora é um `<circle>` com `stroke-dasharray`, então
+ * a espessura é o `stroke-width` e o anel existe desde o primeiro render.
  */
 import { describe, expect, it } from 'vitest';
 import { waitFor } from '@testing-library/react';
@@ -80,13 +84,38 @@ async function sectors(container: HTMLElement, expected: number): Promise<Elemen
   return [...container.querySelectorAll('.recharts-sector')];
 }
 
-/** Lado do quadro desenhado, lido do `<svg>` do recharts. */
+/**
+ * Lado do quadro desenhado, lido do `<svg>` — o do recharts nos desenhos do
+ * motor, o do próprio componente no anel de progresso.
+ */
 function drawnSide(container: HTMLElement): { width: number; height: number } {
-  const svg = container.querySelector('svg.recharts-surface');
+  const svg = container.querySelector(
+    'svg.recharts-surface, svg[data-slot="progress-circle"]',
+  );
   return {
     width: Number(svg?.getAttribute('width')),
     height: Number(svg?.getAttribute('height')),
   };
+}
+
+/**
+ * Trilha e arco de valor do ANEL DE PROGRESSO, com a espessura e o raio que o
+ * DOM realmente tem.
+ *
+ * O anel é um traço, não um setor preenchido: o `stroke` é centrado no caminho,
+ * então `stroke-width` É a espessura da faixa e `r` é a linha do meio dela. É a
+ * mesma leitura que o teste já fazia na barra pontilhada do medidor §13.
+ */
+function progressRing(container: HTMLElement) {
+  const read = (slot: string) => {
+    const circle = container.querySelector(`[data-slot="progress-circle-${slot}"]`);
+    expect(circle).toBeInTheDocument();
+    return {
+      band: Number(circle?.getAttribute('stroke-width')),
+      radius: Number(circle?.getAttribute('r')),
+    };
+  };
+  return { track: read('track'), value: read('value') };
 }
 
 describe('espessura do anel — a mesma nos cinco circulares', () => {
@@ -101,17 +130,16 @@ describe('espessura do anel — a mesma nos cinco circulares', () => {
     }
   });
 
-  it('anel de progresso: 24px no arco de valor E na trilha', async () => {
+  it('anel de progresso: 24px no arco de valor E na trilha', () => {
     const { container } = renderWithProviders(
       <ProgressCircle value={73} label="Cobertura" />,
     );
 
-    // 1º setor = trilha (volta completa), 2º = arco de valor.
-    const [track, value] = await sectors(container, 2);
-    expect(ringOf(track).band).toBe(RING);
-    expect(ringOf(value).band).toBe(RING);
+    const { track, value } = progressRing(container);
+    expect(track.band).toBe(RING);
+    expect(value.band).toBe(RING);
     // O defeito de origem: trilha de 93px atrás de um arco de 30px.
-    expect(ringOf(track)).toEqual(ringOf(value));
+    expect(track).toEqual(value);
   });
 
   it.each(['semicircle', 'radial'] as const)(
@@ -161,15 +189,15 @@ describe('diâmetro dos circulares — um quadro só', () => {
 });
 
 describe('espessura declarada continua vencendo o token', () => {
-  it('anel de progresso: `thickness` em px é o override do helper', async () => {
+  it('anel de progresso: `thickness` em px é o override do helper', () => {
     const { container } = renderWithProviders(
       <ProgressCircle value={73} label="Cobertura" thickness={40} />,
     );
 
-    const [track, value] = await sectors(container, 2);
-    expect(ringOf(value).band).toBe(40);
+    const { track, value } = progressRing(container);
+    expect(value.band).toBe(40);
     // Override também vale para a trilha: ela não pode destoar do valor.
-    expect(ringOf(track).band).toBe(40);
+    expect(track.band).toBe(40);
   });
 
   it('medidor: `thickness` em px é o override do helper', async () => {
@@ -218,15 +246,15 @@ describe('espessura declarada continua vencendo o token', () => {
 });
 
 describe('circular pequeno demais para os 24px', () => {
-  it('volta a valer a PROPORÇÃO, para o anel não engolir o furo', async () => {
+  it('volta a valer a PROPORÇÃO, para o anel não engolir o furo', () => {
     const small = 100;
     const { container } = renderWithProviders(
       <ProgressCircle value={73} label="Cobertura" size={small} />,
     );
 
-    const [track] = await sectors(container, 2);
+    const { track } = progressRing(container);
     // `clamp(ringThicknessMin, lado × ringRatio, ringThickness)`.
-    expect(ringOf(track).band).toBe(Math.round(small * CHART_GEOMETRY.ringRatio));
-    expect(ringOf(track).band).toBeLessThan(RING);
+    expect(track.band).toBe(Math.round(small * CHART_GEOMETRY.ringRatio));
+    expect(track.band).toBeLessThan(RING);
   });
 });

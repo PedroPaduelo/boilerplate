@@ -80,11 +80,7 @@ describe('filterArtifacts', () => {
   });
 
   it('combinação sem resultado retorna vazio', () => {
-    const r = filterArtifacts(
-      items,
-      filters({ status: 'DRAFT', owner: 'MINE' }),
-      ME,
-    );
+    const r = filterArtifacts(items, filters({ status: 'DRAFT', owner: 'MINE' }), ME);
     expect(r).toHaveLength(0);
   });
 });

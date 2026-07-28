@@ -108,16 +108,34 @@ describe('catálogo base — render com fixture', () => {
     expect(screen.getByText('Total arrecadado')).toBeInTheDocument();
   });
 
+  /**
+   * Os rótulos aparecem DUAS vezes de propósito: como marca do eixo, dentro do
+   * SVG, e como cabeçalho de linha da tabela equivalente, que é o que um leitor
+   * de tela lê. Por isso a consulta é escopada ao eixo — `getByText` solto
+   * encontraria os dois e falharia por ambiguidade.
+   *
+   * (Até o polyfill de `ResizeObserver` passar a MEDIR — ver `src/test/setup.ts`
+   * —, o SVG não era desenhado em jsdom e estes testes só viam a tabela.)
+   */
+  const axisLabels = (container: HTMLElement) =>
+    [...container.querySelectorAll('.recharts-cartesian-axis-tick-value')].map(
+      (node) => node.textContent,
+    );
+
   it('bar_chart desenha os rótulos do eixo (categorias)', () => {
-    render(<barChart.Component props={{}} data={barChart.fixture!} state="success" />);
-    expect(screen.getByText('Jan')).toBeInTheDocument();
-    expect(screen.getByText('Mai')).toBeInTheDocument();
+    const { container } = render(
+      <barChart.Component props={{}} data={barChart.fixture!} state="success" />,
+    );
+    expect(axisLabels(container)).toContain('Jan');
+    expect(axisLabels(container)).toContain('Mai');
   });
 
   it('line_chart desenha os rótulos temporais do eixo X', () => {
-    render(<lineChart.Component props={{}} data={lineChart.fixture!} state="success" />);
-    expect(screen.getByText('2026-01')).toBeInTheDocument();
-    expect(screen.getByText('2026-06')).toBeInTheDocument();
+    const { container } = render(
+      <lineChart.Component props={{}} data={lineChart.fixture!} state="success" />,
+    );
+    expect(axisLabels(container)).toContain('2026-01');
+    expect(axisLabels(container)).toContain('2026-06');
   });
 
   it('donut lista as categorias na legenda', () => {

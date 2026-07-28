@@ -1,6 +1,8 @@
 /**
  * TAMANHO PADRÃO por tipo de bloco — quanta altura o corpo de um gráfico
- * reserva, e quais blocos são compactos a ponto de caberem lado a lado.
+ * reserva, quais blocos são compactos a ponto de caberem lado a lado, e (a
+ * partir da repaginação de layout) qual é a ALTURA e a LARGURA de uma LINHA de
+ * blocos.
  *
  * Dois problemas resolvidos aqui, ambos observados na tela (uma resposta com
  * 7 gráficos seguidos):
@@ -21,6 +23,12 @@
  * ~194 px), arredondados para cima na escala de 4 px do design system. Reservar
  * pelo MAIOR caso comum é deliberado — sobrar 12 px de respiro é invisível,
  * faltar 27 px é o pulo que se quer eliminar.
+ *
+ * É de propósito que este arquivo concentre NÚMEROS: é o mesmo padrão do
+ * `chart-theme` ("um arquivo com as medidas, o resto consumindo"). Altura de
+ * linha e piso de coluna são medidas de COMPOSIÇÃO — o design system não tem
+ * slot para elas, e espalhá-las pelos blocos é como o catálogo chegou a ter
+ * sete espessuras para a mesma barra.
  */
 
 /**
@@ -60,7 +68,15 @@ const SIZE_BY_TYPE: Record<string, ChartBodySize> = {
   h_bar_chart: 'series',
   line_chart: 'series',
   scatter_chart: 'series',
-  funnel_stage: 'series',
+  /**
+   * Etapa de funil NÃO é série: é uma LINHA (cabeçalho + resumo + barra) que só
+   * cresce quando o usuário abre a tabela de desfechos. Estava em `series` e
+   * reservava **388px para ~142px de conteúdo** — 246px de vazio dentro do card,
+   * o bloco visivelmente mais alto do que qualquer outro no mesmo dashboard.
+   * `compact` é a medida do que ele desenha fechado; abrir a tabela é ação do
+   * usuário, e crescer aí não é pulo de layout.
+   */
+  funnel_stage: 'compact',
   // Composição de um todo / rankings.
   donut: 'categorical',
   bar_list: 'categorical',
@@ -118,3 +134,160 @@ export const COMPACT_CARD_MIN_WIDTH = 220;
 
 /** Teto de colunas da grade de cartões compactos. */
 export const COMPACT_CARD_MAX_COLUMNS = 4;
+
+/* ========================================================================== *
+ * LINHA DE BLOCOS — altura e largura de uma faixa do grid
+ * ========================================================================== *
+ *
+ * A queixa que originou esta seção: "gráficos na mesma linha devem ter sempre o
+ * mesmo tamanho — nunca um maior que o outro" e "a linha precisa ter altura
+ * definida, senão as linhas ficam grandes demais".
+ *
+ * As duas têm a MESMA causa: até aqui ninguém decidia o tamanho de uma linha.
+ * A largura saía do `span` que o autor tivesse escrito em cada bloco (7 e 5
+ * viram 58% e 42% — desiguais por acidente) e a altura saía do bloco mais alto
+ * que tivesse caído ali (um KPI ao lado de uma série herdava os 388px da
+ * série e virava um retângulo vazio).
+ *
+ * A partir daqui a LINHA é a unidade de decisão: ela escolhe UM degrau de
+ * altura — o da família mais alta que ela contém — e todos os seus itens ficam
+ * com esse tamanho. Uma linha só de KPIs é baixa; uma linha de séries é alta;
+ * uma linha de texto não reserva altura nenhuma. É isso que impede tanto o
+ * "desigual" quanto o "grande demais".
+ */
+
+/**
+ * Degrau de altura de uma linha de blocos.
+ *
+ * `auto` NÃO é "sem altura": é "a altura do conteúdo manda", o que só vale para
+ * linhas inteiramente narrativas (título, texto, divisor). Reservar altura para
+ * texto abriria justamente o buraco que a seção acima descreve.
+ */
+export type BlockRowHeight = 'auto' | 'compact' | 'default' | 'tall';
+
+/**
+ * Cromo do card emoldurado (`BlockFrame`) somado ao corpo do gráfico: o
+ * cabeçalho, o padding do corpo e a faixa de leitura (`takeaways`).
+ * `CHART_BODY_HEIGHT` já cobre o desenho e a legenda; o que falta para a
+ * altura TOTAL do card é isto.
+ *
+ * Por que somar em vez de chutar um número redondo: a altura da linha precisa
+ * ser MAIOR OU IGUAL ao que o card pede, senão ela deixa de ser um piso e vira
+ * um corte — e um gráfico cortado é pior que um gráfico grande.
+ *
+ * 112 é MEDIDO, não estimado. O valor anterior (72) era uma conta de cabeça que
+ * só somava cabeçalho e respiro; no navegador, um card de série dá 498px para
+ * um corpo de 388px — 110px de cromo, porque a faixa de takeaways (2 linhas,
+ * ~59px) também mora fora do corpo. Com 72 a "altura de linha" nascia menor que
+ * o card que ela deveria pisar, ou seja: não pisava nada.
+ */
+const FRAME_CHROME_HEIGHT = 112;
+
+/**
+ * Altura de cada degrau, em px. Derivada de `CHART_BODY_HEIGHT` (medida) e não
+ * arbitrada: assim a linha acompanha automaticamente qualquer recalibragem da
+ * altura de corpo, sem duas escalas divergirem com o tempo.
+ *
+ *   compact  160  cartão de número — rótulo, valor e variação, nada mais
+ *   default  440  328 (composição/ranking/tabela) + 112 de cromo
+ *   tall     500  388 (série temporal)            + 112 de cromo
+ *
+ * Conferido no navegador depois de calibrar: card de série 498px, card de
+ * composição 485px — ou seja, os degraus passam a pisar de verdade o que o
+ * card mede, em vez de ficar 40px abaixo dele.
+ */
+export const BLOCK_ROW_HEIGHT = {
+  compact: CHART_BODY_HEIGHT.compact,
+  default: CHART_BODY_HEIGHT.categorical + FRAME_CHROME_HEIGHT,
+  tall: CHART_BODY_HEIGHT.series + FRAME_CHROME_HEIGHT,
+} as const;
+
+/**
+ * Piso de largura de uma coluna de bloco de DADOS. Abaixo disto o eixo Y come
+ * o desenho e a legenda quebra em três linhas — é o que decide quantas colunas
+ * cabem antes de a grade colapsar.
+ *
+ * É maior que `COMPACT_CARD_MIN_WIDTH` (220) de propósito: um cartão de número
+ * cabe em 220px, um gráfico com eixo não.
+ */
+export const BLOCK_COLUMN_MIN_WIDTH = 280;
+
+/**
+ * Teto de colunas de uma linha de blocos de dados.
+ *
+ * Três, e não quatro: a partir da quarta coluna um gráfico com eixo fica mais
+ * alto que largo em telas de trabalho — a forma que a queixa chamou de
+ * "gráfico grande demais quando a linha não exige isso". Cartões de número
+ * continuam podendo quatro (`COMPACT_CARD_MAX_COLUMNS`), porque um número não
+ * tem eixo para espremer.
+ */
+export const BLOCK_MAX_COLUMNS = 3;
+
+/** Ordem dos degraus — a linha adota o MAIOR entre os seus blocos. */
+const ROW_HEIGHT_ORDER: BlockRowHeight[] = ['auto', 'compact', 'default', 'tall'];
+
+/** Família de corpo → degrau de linha. */
+const ROW_HEIGHT_BY_SIZE: Record<ChartBodySize, BlockRowHeight> = {
+  compact: 'compact',
+  categorical: 'default',
+  table: 'default',
+  series: 'tall',
+};
+
+/** Degrau de linha exigido por UM bloco, isoladamente. */
+export function rowHeightForType(type: string): BlockRowHeight {
+  if (COMPACT_CARD_TYPES.has(type)) return 'compact';
+  const size = SIZE_BY_TYPE[type];
+  return size ? ROW_HEIGHT_BY_SIZE[size] : 'auto';
+}
+
+/**
+ * Degrau de uma LINHA a partir dos tipos que ela contém: o maior exigido por
+ * qualquer um deles.
+ *
+ * Adotar o maior (e não a média, nem o do primeiro) é o que garante que a
+ * altura seja um PISO e nunca um corte: o bloco mais exigente cabe, e os
+ * demais esticam até ele — que é exatamente "todos do mesmo tamanho".
+ *
+ * Linha vazia → `auto`: um grid sem filhos não deve reservar 460px de nada.
+ */
+export function rowHeightForTypes(types: readonly string[]): BlockRowHeight {
+  let step: BlockRowHeight = 'auto';
+  for (const type of types) {
+    const candidate = rowHeightForType(type);
+    if (ROW_HEIGHT_ORDER.indexOf(candidate) > ROW_HEIGHT_ORDER.indexOf(step)) {
+      step = candidate;
+    }
+  }
+  return step;
+}
+
+/**
+ * Altura em px de um degrau. `undefined` em `auto` — e `undefined` aqui
+ * significa "não escreva altura nenhuma", não "escreva zero".
+ */
+export function rowHeightPx(step: BlockRowHeight): number | undefined {
+  return step === 'auto' ? undefined : BLOCK_ROW_HEIGHT[step];
+}
+
+/**
+ * Política de COLUNA de uma linha: qual o piso de largura de cada coluna e
+ * quantas cabem, no máximo.
+ *
+ * Depende do degrau porque as duas famílias têm pisos diferentes: quatro
+ * cartões de número numa linha é uma leitura de painel; quatro gráficos com
+ * eixo na mesma largura é um amontoado. Ter a política aqui (e não no
+ * componente) é o que mantém dashboard, seção e chat com a mesma grade.
+ */
+export function columnPolicyFor(step: BlockRowHeight): {
+  minWidth: number;
+  maxColumns: number;
+} {
+  if (step === 'compact' || step === 'auto') {
+    return {
+      minWidth: COMPACT_CARD_MIN_WIDTH,
+      maxColumns: COMPACT_CARD_MAX_COLUMNS,
+    };
+  }
+  return { minWidth: BLOCK_COLUMN_MIN_WIDTH, maxColumns: BLOCK_MAX_COLUMNS };
+}

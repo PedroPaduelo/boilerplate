@@ -50,9 +50,24 @@ export interface EditorRow {
   blocks: EditorBlock[];
 }
 
+/** Aba do dashboard (doc 40) — referencia rows por id, não as contém. */
+export interface EditorTab {
+  id: string;
+  title: string;
+  rowIds: string[];
+}
+
 export interface EditorLayout {
   filters: DashFilter[];
   rows: EditorRow[];
+  /**
+   * OPCIONAL — ausente em layout legado. É *decisivo* que este campo exista
+   * aqui: `normalizeLayout` e `sanitizeLayoutForSave` RECONSTROEM o layout campo
+   * a campo, então uma chave que o editor não conhece é descartada. Sem `tabs`
+   * neste tipo, bastaria abrir e salvar um dashboard no editor para as abas
+   * SUMIREM — perda de dados silenciosa, sem erro nenhum na tela.
+   */
+  tabs?: EditorTab[];
 }
 
 export type MoveDirection = 'up' | 'down';
@@ -157,7 +172,23 @@ export function normalizeLayout(raw: unknown): EditorLayout {
           : [],
       }))
     : [];
-  return { filters, rows };
+
+  // ABAS (doc 40). Só entram no layout de trabalho quando existem de verdade:
+  // um layout legado tem de continuar saindo daqui SEM a chave `tabs`, senão o
+  // dirty-state acusaria alteração ("{} → tabs: []") em todo dashboard antigo
+  // que fosse apenas aberto no editor.
+  const rawTabs = (l as { tabs?: unknown }).tabs;
+  const tabs: EditorTab[] = Array.isArray(rawTabs)
+    ? (rawTabs as Record<string, unknown>[]).map((t, index) => ({
+        id: typeof t.id === 'string' && t.id ? t.id : genId('tab'),
+        title: typeof t.title === 'string' && t.title ? t.title : `Aba ${index + 1}`,
+        rowIds: Array.isArray(t.rowIds)
+          ? (t.rowIds as unknown[]).filter((r): r is string => typeof r === 'string')
+          : [],
+      }))
+    : [];
+
+  return { filters, rows, ...(tabs.length > 0 ? { tabs } : {}) };
 }
 
 /* ------------------------------------------------------- helpers ---------- */
@@ -344,15 +375,143 @@ function patchBlock(
 
 /* ----------------------------------------------------- mutações de row ---- */
 
-/** Acrescenta uma row vazia ao final. */
-export function addRow(layout: EditorLayout, title?: string): EditorLayout {
+/**
+ * Acrescenta uma row vazia ao final.
+ *
+ * `tabId` diz em qual aba a linha nasce. Se o layout tem abas e nenhuma aba for
+ * informada, ela entra na PRIMEIRA — o mesmo critério do backend em
+ * `add_chart_to_dashboard`: a linha nova precisa ser visível sem o usuário sair
+ * procurando por ela. Layout sem abas ignora o parâmetro.
+ */
+export function addRow(
+  layout: EditorLayout,
+  title?: string,
+  tabId?: string,
+): EditorLayout {
   const row: EditorRow = { id: genId('row'), blocks: [], ...(title ? { title } : {}) };
-  return { ...layout, rows: [...layout.rows, row] };
+  const next: EditorLayout = { ...layout, rows: [...layout.rows, row] };
+  if (!next.tabs || next.tabs.length === 0) return next;
+
+  const targetId =
+    tabId && next.tabs.some((t) => t.id === tabId) ? tabId : next.tabs[0].id;
+  return {
+    ...next,
+    tabs: next.tabs.map((tab) =>
+      tab.id === targetId ? { ...tab, rowIds: [...tab.rowIds, row.id] } : tab,
+    ),
+  };
 }
 
-/** Remove uma row inteira (e seus blocos). */
+/**
+ * Remove uma row inteira (e seus blocos) — e o id dela das abas, senão a aba
+ * ficaria referenciando uma linha inexistente.
+ */
 export function removeRow(layout: EditorLayout, rowId: string): EditorLayout {
-  return { ...layout, rows: layout.rows.filter((r) => r.id !== rowId) };
+  return {
+    ...layout,
+    rows: layout.rows.filter((r) => r.id !== rowId),
+    ...(layout.tabs
+      ? {
+          tabs: layout.tabs.map((tab) => ({
+            ...tab,
+            rowIds: tab.rowIds.filter((id) => id !== rowId),
+          })),
+        }
+      : {}),
+  };
+}
+
+/* -------------------------------------------------- mutações de aba ------- */
+
+/**
+ * Cria uma aba.
+ *
+ * A PRIMEIRA aba criada num layout legado herda TODAS as rows existentes. Sem
+ * isso, ligar abas num dashboard pronto jogaria todo o conteúdo para o limbo
+ * das linhas órfãs — o normalizador do contrato o recuperaria na leitura, mas o
+ * JSON salvo ficaria mentindo sobre a organização do dashboard.
+ */
+export function addTab(layout: EditorLayout, title?: string): EditorLayout {
+  const isFirst = !layout.tabs || layout.tabs.length === 0;
+  const tab: EditorTab = {
+    id: genId('tab'),
+    title:
+      title?.trim() ||
+      (isFirst ? 'Visão geral' : `Aba ${(layout.tabs?.length ?? 0) + 1}`),
+    rowIds: isFirst ? layout.rows.map((row) => row.id) : [],
+  };
+  return { ...layout, tabs: [...(layout.tabs ?? []), tab] };
+}
+
+/** Renomeia uma aba. Título vazio é ignorado (aba sem nome é inacessível). */
+export function renameTab(
+  layout: EditorLayout,
+  tabId: string,
+  title: string,
+): EditorLayout {
+  if (!layout.tabs) return layout;
+  return {
+    ...layout,
+    tabs: layout.tabs.map((tab) => (tab.id === tabId ? { ...tab, title } : tab)),
+  };
+}
+
+/** Reordena uma aba (↑/↓). No-op nas bordas. */
+export function moveTab(
+  layout: EditorLayout,
+  tabId: string,
+  direction: MoveDirection,
+): EditorLayout {
+  if (!layout.tabs) return layout;
+  const idx = layout.tabs.findIndex((t) => t.id === tabId);
+  if (idx < 0) return layout;
+  const target = direction === 'up' ? idx - 1 : idx + 1;
+  if (target < 0 || target >= layout.tabs.length) return layout;
+  const tabs = [...layout.tabs];
+  [tabs[idx], tabs[target]] = [tabs[target], tabs[idx]];
+  return { ...layout, tabs };
+}
+
+/**
+ * Remove uma aba — SEM remover as linhas dela.
+ *
+ * As linhas viram órfãs e o normalizador do contrato as recupera na primeira
+ * aba. É proposital: apagar uma aba é um gesto de ORGANIZAÇÃO, e não pode
+ * apagar de tabela o trabalho que estava dentro dela. Para excluir o conteúdo
+ * existe o botão de remover linha. Removida a última aba, o layout volta a ser
+ * legado (uma aba implícita com tudo).
+ */
+export function removeTab(layout: EditorLayout, tabId: string): EditorLayout {
+  if (!layout.tabs) return layout;
+  const tabs = layout.tabs.filter((t) => t.id !== tabId);
+  if (tabs.length === 0) {
+    // Sem nenhuma aba, o layout VOLTA ao formato legado: a chave `tabs` é
+    // removida em vez de virar `[]`, senão o dado salvo carregaria um array
+    // vazio que não significa nada e o dirty-state acusaria diferença.
+    const rest: EditorLayout = { filters: layout.filters, rows: layout.rows };
+    return rest;
+  }
+  // as rowIds da aba removida não são redistribuídas aqui: vira órfã e o
+  // `resolveDashboardTabs` a devolve na primeira aba, num único lugar de regra.
+  return { ...layout, tabs };
+}
+
+/** Move uma row para outra aba (remove das demais — row pertence a UMA aba). */
+export function setRowTab(
+  layout: EditorLayout,
+  rowId: string,
+  tabId: string,
+): EditorLayout {
+  if (!layout.tabs) return layout;
+  return {
+    ...layout,
+    tabs: layout.tabs.map((tab) => {
+      const without = tab.rowIds.filter((id) => id !== rowId);
+      return tab.id === tabId
+        ? { ...tab, rowIds: [...without, rowId] }
+        : { ...tab, rowIds: without };
+    }),
+  };
 }
 
 /** Edita o título de uma row (vazio → remove o título). */
@@ -414,6 +573,7 @@ export function updateFilter(
 export function sanitizeLayoutForSave(layout: EditorLayout): {
   filters: unknown[];
   rows: unknown[];
+  tabs?: unknown[];
 } {
   const filters = layout.filters.map((f) => ({
     id: f.id,
@@ -437,7 +597,22 @@ export function sanitizeLayoutForSave(layout: EditorLayout): {
     }),
   }));
 
-  return { filters, rows };
+  // ABAS: só vão no payload quando existem. Um layout legado continua sendo
+  // salvo como `{ filters, rows }` exatamente como antes — o contrato tem
+  // `additionalProperties: false`, então mandar `tabs: []` num dashboard que
+  // nunca teve abas seria acrescentar ruído ao dado salvo de todo mundo.
+  //
+  // `rowIds` é FILTRADO contra as rows que realmente existem: remover uma linha
+  // pelo editor não pode deixar um id pendurado na aba (o normalizador do
+  // contrato ignora id órfão na leitura, mas o dado salvo mentiria).
+  const knownRowIds = new Set(layout.rows.map((row) => row.id));
+  const tabs = (layout.tabs ?? []).map((tab) => ({
+    id: tab.id,
+    title: tab.title,
+    rowIds: tab.rowIds.filter((rowId) => knownRowIds.has(rowId)),
+  }));
+
+  return { filters, rows, ...(tabs.length > 0 ? { tabs } : {}) };
 }
 
 function sanitizeBinding(binding: EditorDataBinding): Record<string, unknown> {

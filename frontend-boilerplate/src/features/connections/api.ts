@@ -65,10 +65,9 @@ export const connectionsApi = {
 
   // GET /connections/:id/schema — introspecção de tabelas/colunas.
   getSchema: async (id: string, refresh?: boolean): Promise<ConnectionSchema> => {
-    const { data } = await apiClient.get<ConnectionSchema>(
-      `/connections/${id}/schema`,
-      { params: refresh ? { refresh: true } : undefined },
-    );
+    const { data } = await apiClient.get<ConnectionSchema>(`/connections/${id}/schema`, {
+      params: refresh ? { refresh: true } : undefined,
+    });
     return data;
   },
 

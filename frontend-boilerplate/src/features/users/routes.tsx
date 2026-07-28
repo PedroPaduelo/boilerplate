@@ -8,9 +8,7 @@ import { PageLoader } from '@/shared/components/page-loader';
  * por feature (glob). Serve de EXEMPLO canônico para as trilhas FE: lazy load +
  * Suspense + proteção por role.
  */
-const UsersPage = lazy(() =>
-  import('./index').then((m) => ({ default: m.UsersPage })),
-);
+const UsersPage = lazy(() => import('./index').then((m) => ({ default: m.UsersPage })));
 
 export const featureRoutes: FeatureRoutes = {
   protected: [

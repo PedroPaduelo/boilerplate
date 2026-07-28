@@ -18,6 +18,10 @@ export * from './types';
 // Validador runtime neutro (ajv) + helpers.
 export * from './validation/validator';
 
+// Resolução de ABAS (pura) — fonte única da verdade de "que linha está em que
+// aba", usada por BE, FE e MCP. Ver doc 40.
+export * from './layout/tabs';
+
 // Helpers de Socket.IO (nomes de evento + sala + tipos de payload).
 export * from './socket/events';
 

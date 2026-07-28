@@ -243,8 +243,21 @@ export function BarList({
   const items = sortItems(data, sortOrder);
   const max = Math.max(...items.map((item) => item.value), 0);
 
+  /*
+   * Respiro ENTRE linhas do ranking: `gap={1.5}` (6px).
+   *
+   * Era `gap={3}` (12px) para uma linha que mede 37px — 32% da altura da lista
+   * virava vão. Num "Top 10" isso somava 108px, e o card ia a 628px de altura
+   * para 370px de conteúdo real: o bloco mais alto do dashboard inteiro, e o
+   * "gráfico excessivamente alto" que a queixa apontou.
+   *
+   * 6px mantém as linhas separadas sem transformar a lista num acordeão: cada
+   * linha já é um par rótulo/valor + a própria barra, que é o que separa uma da
+   * outra visualmente. Ranking é para ser lido de cima a baixo — quanto mais
+   * junto, mais fácil comparar duas posições vizinhas.
+   */
   return (
-    <VStack as="ol" gap={3} width="100%" data-slot="bar-list">
+    <VStack as="ol" gap={1.5} width="100%" data-slot="bar-list">
       {items.map((item, index) => (
         <VStack
           as="li"

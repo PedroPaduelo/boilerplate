@@ -36,8 +36,52 @@ declare const DashboardLayoutSchema: {
                 readonly $ref: "#/$defs/row";
             };
         };
+        readonly tabs: {
+            readonly type: "array";
+            readonly items: {
+                readonly $ref: "#/$defs/tab";
+            };
+        };
     };
     readonly $defs: {
+        /**
+         * Aba do dashboard. Ela NÃO carrega `rows` dentro de si — carrega os IDS
+         * das rows que exibe (`rowIds`).
+         *
+         * PORQUÊ (decisão de arquitetura, doc 40): se as rows morassem dentro da
+         * aba, `rows` deixaria de ser o único lugar onde vivem os blocos, e TODO
+         * consumidor que hoje percorre `layout.rows` ficaria cego para os blocos
+         * das abas — resolução de dados (`resolveBlocks`), validação de
+         * `props.chartId`, injeção do título do chart, snapshot do publish, export
+         * de PDF, MCP e agente. São 7 travessias, e cada uma esquecida vira falha
+         * SILENCIOSA (bloco vazio, sem erro). Mantendo `rows` como lista canônica
+         * e completa, nenhum desses caminhos precisa mudar.
+         *
+         * A leitura passa SEMPRE por `resolveDashboardTabs` (layout/tabs.ts), que
+         * normaliza rowIds desconhecidos, duplicados e linhas órfãs.
+         */
+        readonly tab: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly required: readonly ["id", "title", "rowIds"];
+            readonly properties: {
+                readonly id: {
+                    readonly type: "string";
+                    readonly minLength: 1;
+                };
+                readonly title: {
+                    readonly type: "string";
+                    readonly minLength: 1;
+                };
+                readonly rowIds: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                        readonly minLength: 1;
+                    };
+                };
+            };
+        };
         readonly filter: {
             readonly type: "object";
             readonly additionalProperties: false;
@@ -212,6 +256,12 @@ declare const DashboardConfigSchema: {
             readonly type: "array";
             readonly items: {
                 readonly $ref: "dashboard-layout.json#/$defs/row";
+            };
+        };
+        readonly tabs: {
+            readonly type: "array";
+            readonly items: {
+                readonly $ref: "dashboard-layout.json#/$defs/tab";
             };
         };
     };
@@ -930,9 +980,27 @@ interface Row {
     title?: string;
     blocks: Block[];
 }
+/**
+ * ABA do dashboard — agrupa `rows` em páginas navegáveis.
+ *
+ * A aba referencia as linhas por ID (`rowIds`) em vez de contê-las: `rows`
+ * segue sendo a lista CANÔNICA e completa de linhas do layout. Ver a nota
+ * longa em `$defs.tab` do `DashboardLayoutSchema` (e doc 40) para o porquê.
+ */
+interface Tab {
+    id: string;
+    title: string;
+    /** ids de `rows` que compõem a aba, na ordem de exibição. */
+    rowIds: string[];
+}
 interface DashboardLayout {
     filters: Filter[];
     rows: Row[];
+    /**
+     * OPCIONAL — ausente nos dashboards já salvos. Um layout sem `tabs` é lido
+     * como UMA aba implícita contendo todas as `rows` (ver `resolveDashboardTabs`).
+     */
+    tabs?: Tab[];
 }
 type ArtifactStatus = 'draft' | 'published';
 type Visibility = 'PRIVATE' | 'DEPARTMENT' | 'ORG';
@@ -1128,8 +1196,8 @@ declare const validateApiError: ValidateFunction<{
 declare const validateDashboardSummary: ValidateFunction<{
     departmentId?: string | null | undefined;
     id: string;
-    status: "draft" | "published";
     title: string;
+    status: "draft" | "published";
     ownerId: string;
     visibility: "PRIVATE" | "DEPARTMENT" | "ORG";
     updatedAt: string;
@@ -1160,6 +1228,86 @@ declare class ContractValidationError extends Error {
  * ContractValidationError. Útil para guardas em rotas/worker/MCP.
  */
 declare function assertValid<T>(validate: ValidateFunction<T>, data: unknown, label?: string): T;
+
+/**
+ * Resolução de ABAS de um dashboard — função PURA, compartilhada BE/FE/MCP.
+ *
+ * É a ÚNICA fonte da verdade sobre "quais linhas aparecem em qual aba". Se cada
+ * lado normalizasse por conta própria, o editor, a tela de visualização e o
+ * backend discordariam sobre onde está uma linha — e o sintoma seria bloco
+ * sumindo da tela, que é justamente o que não pode acontecer aqui.
+ *
+ * MODELO (doc 40): `tabs` é uma PROJEÇÃO sobre `rows` — a aba guarda os IDS das
+ * linhas (`rowIds`), não as linhas. `rows` continua sendo a lista canônica e
+ * completa, então todo consumidor que percorre `layout.rows` (resolução de
+ * dados, validação de chartId, snapshot do publish, export de PDF, MCP, agente)
+ * segue enxergando 100% dos blocos sem precisar conhecer abas.
+ *
+ * INVARIANTE QUE ESTE MÓDULO GARANTE:
+ *   união das linhas de todas as abas resolvidas === `layout.rows`
+ * ou seja: NENHUM bloco fica invisível, aconteça o que acontecer com o JSON.
+ * Sem isso, um layout escrito pelo agente (que hoje não conhece abas) esconderia
+ * conteúdo silenciosamente — sem erro, sem aviso, só um dashboard incompleto.
+ */
+
+/**
+ * Id da aba sintética usada quando o layout não declara `tabs`. Começa com `__`
+ * para não colidir com id gerado pelo editor/agente (que usam prefixo `tab_`).
+ */
+declare const IMPLICIT_TAB_ID = "__default__";
+/** Rótulo da aba implícita (layout legado, sem abas declaradas). */
+declare const IMPLICIT_TAB_TITLE = "Vis\u00E3o geral";
+/** Uma aba já resolvida: com as `rows` reais, prontas para render. */
+interface ResolvedTab {
+    id: string;
+    title: string;
+    /** Linhas da aba, já materializadas e na ordem de exibição. */
+    rows: Row[];
+    /**
+     * `true` quando a aba não existe no JSON e foi sintetizada porque o layout é
+     * legado (sem `tabs`). A UI usa isso para NÃO desenhar a navegação lateral
+     * quando só existe a aba implícita — um dashboard sem abas não deve ganhar
+     * uma barra de abas de uma aba só.
+     */
+    isImplicit: boolean;
+}
+/** `true` quando o layout declara abas de verdade (não a implícita). */
+declare function hasExplicitTabs(layout: Pick<DashboardLayout, 'tabs'> | null | undefined): boolean;
+/**
+ * Resolve as abas de um layout em linhas materializadas.
+ *
+ * Regras de normalização (todas defensivas — o layout pode ter sido escrito
+ * pelo agente, por uma versão anterior do editor ou à mão):
+ *
+ *  1. sem `tabs` (ou `tabs: []`)  → UMA aba implícita com TODAS as `rows`,
+ *     na ordem original. É a retrocompatibilidade dos dashboards já salvos.
+ *  2. `rowId` que não existe em `rows` → ignorado (não inventa linha fantasma).
+ *  3. mesmo `rowId` em duas abas → a PRIMEIRA ocorrência vence (linha nunca
+ *     é renderizada duas vezes — id de bloco duplicado quebraria o mapa de
+ *     dados do batch, que é indexado por blockId).
+ *  4. linha ÓRFÃ (existe em `rows`, não citada por nenhuma aba) → anexada ao
+ *     FIM da PRIMEIRA aba. É esta regra que sustenta o invariante de que
+ *     nenhum bloco some. Acontece de verdade quando o agente insere uma linha
+ *     via `add_chart_to_dashboard` sem saber que o dashboard tem abas.
+ */
+declare function resolveDashboardTabs(layout: DashboardLayout | null | undefined): ResolvedTab[];
+/**
+ * Escolhe a aba ATIVA a partir de um id pedido (ex.: `?tab=` da URL).
+ * Cai na primeira aba quando o id é inválido/ausente — assim um link antigo ou
+ * uma aba removida abrem o dashboard em vez de uma tela vazia.
+ */
+declare function pickActiveTab(tabs: ResolvedTab[], requestedId: string | null | undefined): ResolvedTab | undefined;
+/**
+ * Devolve um `DashboardLayout` contendo SOMENTE as linhas da aba indicada —
+ * o objeto que vai para o `DashboardRenderer`.
+ *
+ * Existe para que a tela de visualização REUSE o renderer como ele é (ele é
+ * orientado a `rows`), sem duplicar render nem precisar de mudança no
+ * render-engine: trocar de aba é só trocar o `layout.rows` que ele recebe.
+ * `tabs` sai do objeto devolvido de propósito — o renderer não deve nem saber
+ * que abas existem.
+ */
+declare function layoutForTab(layout: DashboardLayout | null | undefined, tab: ResolvedTab | undefined): DashboardLayout;
 
 /**
  * Contrato dos eventos do TURNO DO AGENTE (server -> client), sala
@@ -2267,6 +2415,170 @@ declare const dashboardLayoutFixture: {
         })[];
     })[];
 };
+/**
+ * Mesmo layout, agora com ABAS (doc 40). Existe para exercitar de uma vez os
+ * três casos que o normalizador precisa aguentar:
+ *
+ *  - `tab_visao`   → duas linhas, ordem EXPLÍCITA e diferente da ordem de `rows`
+ *    (prova que quem manda na ordem é `rowIds`, não a posição em `rows`);
+ *  - `tab_detalhe` → cita um `rowId` INEXISTENTE (`row_fantasma`), que deve ser
+ *    ignorado sem quebrar;
+ *  - `row_detalhe` → linha ÓRFÃ (não citada por nenhuma aba), que deve ser
+ *    recuperada na primeira aba — é o caso real de quando o agente insere uma
+ *    linha via `add_chart_to_dashboard` sem saber que existem abas.
+ *
+ * Reusa as MESMAS `rows` do fixture legado de propósito: os dois fixtures têm
+ * exatamente o mesmo conjunto de blocos, então dá para afirmar em teste que
+ * ligar abas não muda o total de blocos renderizados.
+ */
+declare const dashboardLayoutWithTabsFixture: {
+    filters: ({
+        id: string;
+        type: "date_range";
+        label: string;
+        default: {
+            from: string;
+            to: string;
+        };
+    } | {
+        id: string;
+        type: "select";
+        label: string;
+        default: string;
+    })[];
+    rows: ({
+        id: string;
+        title: string;
+        blocks: ({
+            id: string;
+            type: string;
+            span: number;
+            props: {
+                text: string;
+                level: number;
+                align: string;
+                showDelta?: undefined;
+                orientation?: undefined;
+                stacked?: undefined;
+            };
+            dataBinding?: undefined;
+        } | {
+            id: string;
+            type: string;
+            span: number;
+            props: {
+                showDelta: boolean;
+                text?: undefined;
+                level?: undefined;
+                align?: undefined;
+                orientation?: undefined;
+                stacked?: undefined;
+            };
+            dataBinding: {
+                connectionId: string;
+                query: string;
+                params: {
+                    filterId: string;
+                    as: string;
+                }[];
+                transform: string;
+                ttlSeconds: number;
+            };
+        } | {
+            id: string;
+            type: string;
+            span: number;
+            props: {
+                orientation: string;
+                stacked: boolean;
+                text?: undefined;
+                level?: undefined;
+                align?: undefined;
+                showDelta?: undefined;
+            };
+            dataBinding: {
+                connectionId: string;
+                query: string;
+                params: {
+                    filterId: string;
+                    as: string;
+                }[];
+                ttlSeconds: number;
+                transform?: undefined;
+            };
+        })[];
+    } | {
+        id: string;
+        title: string;
+        blocks: ({
+            id: string;
+            type: string;
+            span: number;
+            props: {
+                smooth: boolean;
+                area: boolean;
+                showLegend?: undefined;
+            };
+            dataBinding: {
+                connectionId: string;
+                query: string;
+                ttlSeconds: number;
+                params?: undefined;
+            };
+        } | {
+            id: string;
+            type: string;
+            span: number;
+            props: {
+                showLegend: boolean;
+                smooth?: undefined;
+                area?: undefined;
+            };
+            dataBinding: {
+                connectionId: string;
+                query: string;
+                params: {
+                    filterId: string;
+                    as: string;
+                }[];
+                ttlSeconds: number;
+            };
+        })[];
+    } | {
+        id: string;
+        title: string;
+        blocks: ({
+            id: string;
+            type: string;
+            span: number;
+            props: {
+                markdown: string;
+                pageSize?: undefined;
+                dense?: undefined;
+            };
+            dataBinding?: undefined;
+        } | {
+            id: string;
+            type: string;
+            span: number;
+            props: {
+                pageSize: number;
+                dense: boolean;
+                markdown?: undefined;
+            };
+            dataBinding: {
+                connectionId: string;
+                query: string;
+                ttlSeconds: number;
+            };
+        })[];
+    })[];
+    tabs: {
+        id: string;
+        title: string;
+        rowIds: string[];
+    }[];
+};
 
 declare const dashboardDataPayloadFixture: {
     dashboardId: string;
@@ -2331,4 +2643,4 @@ declare const dashboardDataPayloadFixture: {
     };
 };
 
-export { type ApiError, ApiErrorSchema, type ArtifactChangedEvent, type ArtifactStatus, type Block, type BlockData, type BlockDataEvent, BlockDataEventSchema, type BlockDataRequest, BlockDataRequestSchema, type BlockDataResult, BlockDataResultSchema, type BlockErrorEvent, BlockErrorEventSchema, type BlockKind, type BlockManifest, BlockManifestSchema, type BlockQueuedEvent, BlockQueuedEventSchema, type BlockRunningEvent, BlockRunningEventSchema, type BlockState, type CategoricalData, CategoricalDataSchema, type ChatArtifactAction, type ChatArtifactEvent, type ChatChartEvent, type ChatChartPayload, type ChatDeltaEvent, type ChatDoneEvent, type ChatErrorEvent, type ChatPhaseEvent, type ChatStepPreview, type ChatStepStatus, type ChatTitleEvent, type ChatToolStepEvent, type ChatTurnCompleteEvent, type ChatTurnPhase, type ChatUsageEvent, ContractValidationError, type CreateDashboardRequest, CreateDashboardRequestSchema, type DashboardConfig, DashboardConfigSchema, type DashboardDataPayload, DashboardDataPayloadSchema, type DashboardDetail, DashboardDetailSchema, type DashboardLayout, DashboardLayoutSchema, type DashboardSummary, DashboardSummarySchema, type DataBinding, type DataBindingParam, type DataShape, type Filter, type FilterType, type Row, SOCKET_EVENTS, type ScalarData, ScalarDataSchema, type SeriesData, SeriesDataSchema, type ServerToClientEvents, type SocketEventName, type TableData, TableDataSchema, type UpdateDashboardRequest, UpdateDashboardRequestSchema, type Visibility, ajv, assertValid, barChartManifest, baseManifests, dashboardConfigFixture, dashboardDataPayloadFixture, dashboardLayoutFixture, dashboardRoom, donutManifest, formatErrors, kpiManifest, lineChartManifest, richTextManifest, tableManifest, titleManifest, validateApiError, validateBlockDataByShape, validateBlockDataEvent, validateBlockDataRequest, validateBlockDataResult, validateBlockErrorEvent, validateBlockManifest, validateBlockQueuedEvent, validateBlockRunningEvent, validateCategoricalData, validateCreateDashboardRequest, validateDashboardConfig, validateDashboardDataPayload, validateDashboardDetail, validateDashboardLayout, validateDashboardSummary, validateScalarData, validateSeriesData, validateTableData, validateUpdateDashboardRequest };
+export { type ApiError, ApiErrorSchema, type ArtifactChangedEvent, type ArtifactStatus, type Block, type BlockData, type BlockDataEvent, BlockDataEventSchema, type BlockDataRequest, BlockDataRequestSchema, type BlockDataResult, BlockDataResultSchema, type BlockErrorEvent, BlockErrorEventSchema, type BlockKind, type BlockManifest, BlockManifestSchema, type BlockQueuedEvent, BlockQueuedEventSchema, type BlockRunningEvent, BlockRunningEventSchema, type BlockState, type CategoricalData, CategoricalDataSchema, type ChatArtifactAction, type ChatArtifactEvent, type ChatChartEvent, type ChatChartPayload, type ChatDeltaEvent, type ChatDoneEvent, type ChatErrorEvent, type ChatPhaseEvent, type ChatStepPreview, type ChatStepStatus, type ChatTitleEvent, type ChatToolStepEvent, type ChatTurnCompleteEvent, type ChatTurnPhase, type ChatUsageEvent, ContractValidationError, type CreateDashboardRequest, CreateDashboardRequestSchema, type DashboardConfig, DashboardConfigSchema, type DashboardDataPayload, DashboardDataPayloadSchema, type DashboardDetail, DashboardDetailSchema, type DashboardLayout, DashboardLayoutSchema, type DashboardSummary, DashboardSummarySchema, type DataBinding, type DataBindingParam, type DataShape, type Filter, type FilterType, IMPLICIT_TAB_ID, IMPLICIT_TAB_TITLE, type ResolvedTab, type Row, SOCKET_EVENTS, type ScalarData, ScalarDataSchema, type SeriesData, SeriesDataSchema, type ServerToClientEvents, type SocketEventName, type Tab, type TableData, TableDataSchema, type UpdateDashboardRequest, UpdateDashboardRequestSchema, type Visibility, ajv, assertValid, barChartManifest, baseManifests, dashboardConfigFixture, dashboardDataPayloadFixture, dashboardLayoutFixture, dashboardLayoutWithTabsFixture, dashboardRoom, donutManifest, formatErrors, hasExplicitTabs, kpiManifest, layoutForTab, lineChartManifest, pickActiveTab, resolveDashboardTabs, richTextManifest, tableManifest, titleManifest, validateApiError, validateBlockDataByShape, validateBlockDataEvent, validateBlockDataRequest, validateBlockDataResult, validateBlockErrorEvent, validateBlockManifest, validateBlockQueuedEvent, validateBlockRunningEvent, validateCategoricalData, validateCreateDashboardRequest, validateDashboardConfig, validateDashboardDataPayload, validateDashboardDetail, validateDashboardLayout, validateDashboardSummary, validateScalarData, validateSeriesData, validateTableData, validateUpdateDashboardRequest };

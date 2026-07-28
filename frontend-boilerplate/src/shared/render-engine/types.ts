@@ -36,21 +36,26 @@ export interface BlockComponentProps<P = Record<string, unknown>, D = BlockData>
   /** Mensagem de erro (quando state === 'error'). */
   error?: string;
   /**
-   * Sub-blocos JÁ renderizados (grid de filhos), injetados pelo BlockRenderer
-   * em blocos-CONTAINER (ex.: `section`, `bento`). O componente container só
-   * desenha seu "shell" (header + moldura) e coloca `children` no corpo.
-   * `undefined` em blocos folha.
+   * Sub-blocos JÁ renderizados (grade de filhos), injetados pelo BlockRenderer
+   * em blocos-CONTAINER (`grid`, `section`, …). O componente container só
+   * desenha seu "shell" (cabeçalho, superfície, disclosure) e coloca `children`
+   * no corpo. `undefined` em blocos folha.
    *
-   * Use `children` quando o container só quer o GRID PADRÃO (12 colunas) — é
-   * o caminho simples e retrocompatível (ex.: `section`, `dashboard_panel`).
+   * Use `children` quando o container quiser a GRADE PADRÃO — que é o caminho
+   * normal e o recomendado (`grid`, `section`, `collapsible_block`, `sheet`):
+   * ela já vem montada com as opções declaradas nas props do próprio container
+   * (`readGridOptions`) e com as garantias de composição do motor (itens da
+   * mesma linha do mesmo tamanho, altura de linha definida, colapso previsível).
    */
   children?: ReactNode;
   /**
    * Sub-blocos CRUS (não renderizados) — id/type/span/rowSpan/dataBinding.
-   * Injetado junto com `children` em containers. Use quando o container quer
-   * CONTROLAR a disposição dos filhos (bento mosaico, painéis arrastáveis,
-   * cards que expandem) em vez do grid padrão. Cada filho é renderizado com
-   * `renderChild(block)`. `undefined` em blocos folha.
+   * Injetado junto com `children` em containers. É a válvula de escape para um
+   * container que precise CONTROLAR a disposição dos filhos em vez de usar a
+   * grade padrão; nenhum bloco do catálogo precisa dela hoje, e quem for usá-la
+   * abre mão das garantias de composição do motor (tamanho igual na linha,
+   * altura de linha, colapso). Cada filho é renderizado com `renderChild(block)`.
+   * `undefined` em blocos folha.
    */
   childBlocks?: Block[];
   /**

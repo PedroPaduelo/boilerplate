@@ -40,15 +40,10 @@
  *    tela.
  */
 import type { SeriesData } from '@dashboards/contracts';
-import {
-  ChartDataTable,
-  LineChart,
-  buildChartScope,
-  chartAccentColor,
-  chartPlainText,
-} from '@/shared/ui';
+import { ChartDataTable, LineChart, buildChartScope, chartPlainText } from '@/shared/ui';
 import type { ChartSeries } from '@/shared/ui';
 import { formatCompactNumberBR, type ValueFormat } from '@/shared/lib/format';
+import { fixedSeriesColor, type PaletteMode } from '../../lib/series-color';
 import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
@@ -58,10 +53,12 @@ import { fixture } from './fixture';
 type LineProps = {
   smooth?: boolean;
   area?: boolean;
-  palette?: 'single' | 'multi' | 'none';
+  palette?: PaletteMode;
   /**
-   * Cor base da(s) série(s). Aceita o enum do catálogo e os valores antigos
-   * (classe utilitária, cor CSS); resolvida para token do DS.
+   * Cor das séries. Aceita o enum do catálogo e os valores antigos (classe
+   * utilitária, cor CSS); resolvida para token do DS.
+   *
+   * Declarada, VENCE o modo de paleta (regra em `shared/ui/chart-accent.ts`).
    */
   accent?: string;
   /** Formato do valor no tooltip (enum fechado do catálogo). */
@@ -123,9 +120,16 @@ export const Component: BlockComponent<LineProps, SeriesData> = ({
     props.valueFormatter ??
     ((value: number) => formatCatalogValue(value, props.valueFormat));
 
-  // `single` é o único modo que fixa cor; nos demais a paleta do DS cicla —
-  // e a 1ª série recebe o verde a 80% da §1.
-  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  /**
+   * COR — `accent` declarado vence o modo de paleta; `single` sem `accent`
+   * pinta todas as linhas com a 1ª cor do ciclo; `multi` (o default) deixa a
+   * paleta ciclar, e aí a 1ª série recebe o verde a 80% da §1.
+   *
+   * Era `props.palette === 'single' ? chartAccentColor(props.accent) : undefined`:
+   * com o default `multi`, percorrer os seis valores de `accent` não mudava um
+   * pixel — a prop existia no manifesto e não existia na tela.
+   */
+  const accent = fixedSeriesColor(props);
   const colored = accent ? series.map((item) => ({ ...item, color: accent })) : series;
 
   return (

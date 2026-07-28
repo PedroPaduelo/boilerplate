@@ -92,3 +92,96 @@ describe('bloco spark_chart', () => {
     ]);
   });
 });
+
+describe('bloco spark_chart — forma do traço', () => {
+  /** Traçado da área/linha desenhada. */
+  const curve = (container: HTMLElement) =>
+    container.querySelector('path.recharts-curve')?.getAttribute('d') ?? '';
+
+  /**
+   * `curveType` só age DENTRO do SVG. Enquanto o `ResponsiveContainer` não
+   * media nada em teste, a prop aparecia como inerte na auditoria — não porque
+   * estivesse quebrada, mas porque o desenho não existia.
+   */
+  it('desenha curva suave, segmentos retos ou degraus conforme curveType', () => {
+    const paths = (['monotone', 'linear', 'step'] as const).map((curveType) => {
+      const { container, unmount } = renderWithProviders(
+        <Block props={{ curveType }} data={DATA} state="success" />,
+      );
+      const d = curve(container);
+      unmount();
+      return d;
+    });
+
+    // `C` é o comando de Bézier cúbica: existe só na curva suave.
+    expect(paths[0]).toContain('C');
+    expect(paths[1]).not.toContain('C');
+    expect(paths[2]).not.toContain('C');
+    // Reto e degrau também não desenham o mesmo caminho entre si.
+    expect(new Set(paths).size).toBe(3);
+  });
+
+  it('cada `type` desenha a figura do seu nome', () => {
+    const { container: area, unmount: closeArea } = renderWithProviders(
+      <Block props={{ type: 'area' }} data={DATA} state="success" />,
+    );
+    expect(area.querySelector('path.recharts-area-area')).not.toBeNull();
+    closeArea();
+
+    const { container: line, unmount: closeLine } = renderWithProviders(
+      <Block props={{ type: 'line' }} data={DATA} state="success" />,
+    );
+    expect(line.querySelector('path.recharts-line-curve')).not.toBeNull();
+    expect(line.querySelector('path.recharts-area-area')).toBeNull();
+    closeLine();
+
+    const { container: bar } = renderWithProviders(
+      <Block props={{ type: 'bar' }} data={DATA} state="success" />,
+    );
+    expect(bar.querySelector('.recharts-bar')).not.toBeNull();
+    expect(bar.querySelector('path.recharts-curve')).toBeNull();
+  });
+});
+
+describe('bloco spark_chart — cor', () => {
+  /**
+   * Cor do TRAÇO do mini-gráfico. Na variante `area` o primeiro
+   * `.recharts-curve` é o preenchimento (que tem `stroke="none"`); quem carrega
+   * a cor da linha é a curva de topo.
+   */
+  const stroke = (container: HTMLElement) =>
+    container.querySelector('path.recharts-area-curve')?.getAttribute('stroke');
+
+  /**
+   * REGRESSÃO: `accent` era anulado por `palette: "multi"` — um modo de paleta
+   * que, num desenho de série única, não tinha o que fazer além de desligar a
+   * cor pedida. `palette` saiu do contrato; `accent` manda sozinho.
+   */
+  it('pinta a série com o tom escuro da cor pedida', () => {
+    const { container } = renderWithProviders(
+      <Block props={{ accent: 'chart-3' }} data={DATA} state="success" />,
+    );
+    // §2.3: o mini-gráfico usa o tom `dark` da família, não a `main`.
+    expect(stroke(container)).toBe('#006C9C');
+  });
+
+  it('sem accent reconhecível, cai na cor padrão do mini-gráfico', () => {
+    const { container } = renderWithProviders(
+      <Block props={{ accent: '#40E0D0' }} data={DATA} state="success" />,
+    );
+    expect(container.innerHTML).not.toContain('#40E0D0');
+    // Verde escuro do produto — o padrão da §2.3.
+    expect(stroke(container)).toBe('#007867');
+  });
+
+  it('ignora `palette` legada sem desligar a cor pedida', () => {
+    const { container } = renderWithProviders(
+      <Block
+        props={{ palette: 'multi', accent: 'chart-3' } as Record<string, unknown>}
+        data={DATA}
+        state="success"
+      />,
+    );
+    expect(stroke(container)).toBe('#006C9C');
+  });
+});

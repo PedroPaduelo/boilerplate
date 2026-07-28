@@ -53,24 +53,20 @@
  * os mesmos números como tabela (`ChartDataTable`), visível só para leitor de
  * tela.
  *
- * Modos de paleta (`palette`): `single` fixa a cor de `accent` em todas as
- * séries; `multi` e `none` deixam a paleta categórica do DS ciclar — é ela que
- * garante vizinhos distinguíveis.
+ * Modos de paleta (`palette`): `multi` (default) deixa a paleta categórica do
+ * DS ciclar, uma cor por série — é ela que garante vizinhos distinguíveis;
+ * `single` pinta TODAS as séries com uma cor só. Em qualquer um dos dois, um
+ * `accent` declarado vence (`lib/series-color.ts`).
  */
 import type { SeriesData } from '@dashboards/contracts';
-import {
-  AreaChart,
-  ChartDataTable,
-  buildChartScope,
-  chartAccentColor,
-  chartPlainText,
-} from '@/shared/ui';
+import { AreaChart, ChartDataTable, buildChartScope, chartPlainText } from '@/shared/ui';
 import type { ChartSeries } from '@/shared/ui';
 import {
   formatCompactNumberBR,
   formatPercentPointsBR,
   type ValueFormat,
 } from '@/shared/lib/format';
+import { fixedSeriesColor, type PaletteMode } from '../../lib/series-color';
 import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
@@ -82,10 +78,13 @@ type AreaProps = {
   fill?: 'gradient' | 'solid' | 'none';
   showLegend?: boolean;
   showGridLines?: boolean;
-  palette?: 'single' | 'multi' | 'none';
+  palette?: PaletteMode;
   /**
-   * Cor base da(s) série(s). Aceita o enum do catálogo e os valores antigos
-   * (classe utilitária, cor CSS); `chartAccentColor()` resolve para token do DS.
+   * Cor das séries. Aceita o enum do catálogo e os valores antigos (classe
+   * utilitária, cor CSS); `chartAccentColor()` resolve para token do DS.
+   *
+   * Declarada, VENCE o modo de paleta (pedir uma cor é pedir cor única) — a
+   * regra está em `shared/ui/chart-accent.ts`.
    */
   accent?: string;
   /** Formato do valor no tooltip (enum fechado do catálogo). */
@@ -139,8 +138,17 @@ export const Component: BlockComponent<AreaProps, SeriesData> = ({
   // Vocabulário de `{{variáveis}}` derivado dos DADOS — o mesmo em todo bloco.
   const scope = buildChartScope(data ?? []);
 
-  // `single` é o único modo que fixa cor: nos outros a paleta do DS cicla.
-  const accent = props.palette === 'single' ? chartAccentColor(props.accent) : undefined;
+  /**
+   * COR — `accent` declarado vence o modo de paleta; `single` sem `accent` usa
+   * a 1ª cor do ciclo em TODAS as séries; `multi` (o default) deixa a paleta
+   * ciclar, uma cor por série.
+   *
+   * Era `props.palette === 'single' ? chartAccentColor(props.accent) : undefined`:
+   * como o default de `palette` é `multi`, percorrer os seis valores de
+   * `accent` não mudava um pixel. Quem pedia a cor via manifesto via a prop
+   * simplesmente não funcionar.
+   */
+  const accent = fixedSeriesColor(props);
   const colored = accent ? series.map((item) => ({ ...item, color: accent })) : series;
 
   // Em `percent` o eixo JÁ é participação: o valor sai em pontos percentuais e

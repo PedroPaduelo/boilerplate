@@ -18,7 +18,15 @@ import { Heading, Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { useEditorDraft } from '../../use-editor-draft';
 import { useEditorPreview } from '../../use-editor-preview';
-import { addFilter, removeFilter, updateFilter } from '../../lib/layout-editor';
+import {
+  addFilter,
+  addTab,
+  moveTab,
+  removeFilter,
+  removeTab,
+  renameTab,
+  updateFilter,
+} from '../../lib/layout-editor';
 import type { DashboardDetail } from '../../types';
 import { DashboardBreadcrumbs } from '../dashboard-breadcrumbs';
 import { AddChartForm } from './add-chart-form';
@@ -26,6 +34,7 @@ import { EditorPreviewPanel } from './editor-preview-panel';
 import { EditorToolbar } from './editor-toolbar';
 import { FiltersEditor } from './filters-editor';
 import { RowsEditor } from './rows-editor';
+import { TabsEditor } from './tabs-editor';
 
 export interface EditorContentProps {
   detail: DashboardDetail;
@@ -96,6 +105,23 @@ export function EditorContent({ detail }: EditorContentProps) {
             }
             onUpdate={(filterId, patch) =>
               draft.updateLayout((current) => updateFilter(current, filterId, patch))
+            }
+          />
+
+          {/* Abas vêm ANTES das linhas: definir as abas é decidir a estrutura
+              da página, e é essa decisão que dá sentido ao seletor de aba que
+              aparece em cada linha logo abaixo. */}
+          <TabsEditor
+            tabs={draft.layout.tabs ?? []}
+            onAdd={() => draft.updateLayout((current) => addTab(current))}
+            onRename={(tabId, title) =>
+              draft.updateLayout((current) => renameTab(current, tabId, title))
+            }
+            onMove={(tabId, direction) =>
+              draft.updateLayout((current) => moveTab(current, tabId, direction))
+            }
+            onRemove={(tabId) =>
+              draft.updateLayout((current) => removeTab(current, tabId))
             }
           />
 

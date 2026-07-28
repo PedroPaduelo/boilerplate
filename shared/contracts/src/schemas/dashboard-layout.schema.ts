@@ -20,6 +20,8 @@ export const DashboardLayoutSchema = {
   title: 'DashboardLayout',
   type: 'object',
   additionalProperties: false,
+  // `tabs` NÃO entra em `required`: é essa ausência que mantém válido todo
+  // layout já salvo no banco (`{ filters, rows }`). Ver `$defs.tab`.
   required: ['filters', 'rows'],
   properties: {
     filters: {
@@ -30,8 +32,47 @@ export const DashboardLayoutSchema = {
       type: 'array',
       items: { $ref: '#/$defs/row' },
     },
+    // ABAS (opcional). Agrupa as `rows` acima em páginas navegáveis. É uma
+    // PROJEÇÃO sobre `rows` (referencia por id), não um novo container de
+    // blocos — ver a nota de decisão em `$defs.tab`.
+    tabs: {
+      type: 'array',
+      items: { $ref: '#/$defs/tab' },
+    },
   },
   $defs: {
+    /**
+     * Aba do dashboard. Ela NÃO carrega `rows` dentro de si — carrega os IDS
+     * das rows que exibe (`rowIds`).
+     *
+     * PORQUÊ (decisão de arquitetura, doc 40): se as rows morassem dentro da
+     * aba, `rows` deixaria de ser o único lugar onde vivem os blocos, e TODO
+     * consumidor que hoje percorre `layout.rows` ficaria cego para os blocos
+     * das abas — resolução de dados (`resolveBlocks`), validação de
+     * `props.chartId`, injeção do título do chart, snapshot do publish, export
+     * de PDF, MCP e agente. São 7 travessias, e cada uma esquecida vira falha
+     * SILENCIOSA (bloco vazio, sem erro). Mantendo `rows` como lista canônica
+     * e completa, nenhum desses caminhos precisa mudar.
+     *
+     * A leitura passa SEMPRE por `resolveDashboardTabs` (layout/tabs.ts), que
+     * normaliza rowIds desconhecidos, duplicados e linhas órfãs.
+     */
+    tab: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'title', 'rowIds'],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        // rótulo exibido na navegação lateral (obrigatório: aba sem nome é
+        // inacessível — o leitor de tela anunciaria só a posição).
+        title: { type: 'string', minLength: 1 },
+        // ids de `rows` que compõem a aba, NA ORDEM de exibição.
+        rowIds: {
+          type: 'array',
+          items: { type: 'string', minLength: 1 },
+        },
+      },
+    },
     filter: {
       type: 'object',
       additionalProperties: false,
@@ -146,6 +187,12 @@ export const DashboardConfigSchema = {
     rows: {
       type: 'array',
       items: { $ref: 'dashboard-layout.json#/$defs/row' },
+    },
+    // Espelha `DashboardLayout.tabs` (opcional) — o config completo precisa
+    // carregar as abas, senão o MCP/API devolveria um dashboard \"achatado\".
+    tabs: {
+      type: 'array',
+      items: { $ref: 'dashboard-layout.json#/$defs/tab' },
     },
   },
 } as const;

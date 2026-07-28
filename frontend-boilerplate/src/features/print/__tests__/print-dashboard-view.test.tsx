@@ -79,15 +79,11 @@ describe('PrintDashboardView', () => {
 
   it('mostra os filtros aplicados no cabeçalho', async () => {
     const filters = encodeURIComponent(JSON.stringify({ f_periodo: '2026' }));
-    renderAt(
-      `/print/dashboards/${DASH_ID}?token=t&mode=published&filters=${filters}`,
-    );
+    renderAt(`/print/dashboards/${DASH_ID}?token=t&mode=published&filters=${filters}`);
     await waitFor(() => {
       expect(document.querySelector('[data-print-ready="true"]')).not.toBeNull();
     });
-    expect(
-      document.querySelector('[data-slot="print-applied-filters"]'),
-    ).not.toBeNull();
+    expect(document.querySelector('[data-slot="print-applied-filters"]')).not.toBeNull();
     expect(screen.getByText(/f_periodo: 2026/)).toBeInTheDocument();
   });
 });

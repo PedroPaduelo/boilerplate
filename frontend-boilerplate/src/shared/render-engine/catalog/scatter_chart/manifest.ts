@@ -33,21 +33,26 @@ export const manifest = {
         default: true,
         description: 'Exibe as linhas de grade horizontais e verticais.',
       },
-      // Modo de paleta.
+      // Modo de paleta. O valor "none" foi REMOVIDO na 1.1.0: medido na
+      // auditoria de inércia, desenhava igual a "multi". Painéis salvos com
+      // "none" continuam funcionando (caem no modo multicolorido).
       palette: {
         type: 'string',
-        enum: ['single', 'multi', 'none'],
+        enum: ['single', 'multi'],
         default: 'multi',
         description:
-          'Modo de paleta: "multi" (default) e "none" ciclam a paleta categórica do design system, uma cor por categoria; "single" junta todos os pontos numa série só — uma cor, sem distinção de grupo.',
+          'Modo de paleta: "multi" (default) cicla a paleta categórica do design system, uma cor por categoria; "single" junta todos os pontos numa série só — uma cor, sem distinção de grupo (a legenda passa a ter uma entrada).',
       },
-      // COR — aceita por compatibilidade; a dispersão colore por categoria.
+      // COR — enum do catálogo; o componente resolve para token de dado do DS.
+      // SEM `default`: o BlockRenderer mescla `defaultProps` em toda
+      // renderização e `accent` VENCE a paleta, então um default de fábrica
+      // pintaria TODA dispersão de uma cor só, apagando a distinção de grupos
+      // que é a razão de existir deste tipo.
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
-        default: 'chart-1',
         description:
-          'Mantida por compatibilidade de contrato: numa dispersão a cor identifica a CATEGORIA, então ela vem sempre da paleta de dados do design system, na ordem dos grupos. Para uma cor só, use palette="single".',
+          'Cor de TODOS os pontos. Declarar `accent` é pedir cor única e vence o modo de paleta — os grupos deixam de ser distinguíveis pela cor, então use apenas quando a dispersão tiver uma categoria só. OMITA (o padrão) para que cada categoria receba a próxima cor da paleta de dados do design system, que é o que identifica os grupos.',
       },
     },
   },
@@ -63,12 +68,12 @@ export const manifest = {
       { x: 28, y: 55, series: 'Zona B' },
     ],
   },
+  // `accent` NÃO tem default (ver a nota no schema).
   defaultProps: {
     showLegend: true,
     showGridLines: true,
     palette: 'multi',
-    accent: 'chart-1',
   },
   maxRows: 5000,
-  version: '1.0.0',
+  version: '1.1.0',
 } satisfies BlockManifest;

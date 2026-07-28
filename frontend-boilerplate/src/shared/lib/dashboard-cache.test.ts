@@ -48,7 +48,12 @@ describe('dashboard-cache (socket → cache)', () => {
   });
 
   it('mescla múltiplos blocos no mesmo payload (não sobrescreve)', () => {
-    writeBlockResult(qc, ctx, { blockId: 'b1', state: 'success', shape: 'scalar', data: { value: 1 } });
+    writeBlockResult(qc, ctx, {
+      blockId: 'b1',
+      state: 'success',
+      shape: 'scalar',
+      data: { value: 1 },
+    });
     writeBlockResult(qc, ctx, { blockId: 'b2', state: 'running' });
 
     const payload = qc.getQueryData<DashboardDataPayload>(
@@ -62,14 +67,23 @@ describe('dashboard-cache (socket → cache)', () => {
     const ev: BlockDataEvent = {
       dashboardId: 'dash1',
       blockId: 'b9',
-      result: { blockId: 'b9', state: 'success', shape: 'table', data: { columns: [], rows: [] } },
+      result: {
+        blockId: 'b9',
+        state: 'success',
+        shape: 'table',
+        data: { columns: [], rows: [] },
+      },
     };
     applyBlockDataEvent(qc, ctx, ev);
     expect(qc.getQueryData(queryKeys.blockData('b9', filtersHash))).toEqual(ev.result);
   });
 
   it('runningToResult / errorToResult convertem eventos em BlockDataResult', () => {
-    const running: BlockRunningEvent = { dashboardId: 'd', blockId: 'b', state: 'running' };
+    const running: BlockRunningEvent = {
+      dashboardId: 'd',
+      blockId: 'b',
+      state: 'running',
+    };
     expect(runningToResult(running)).toEqual({ blockId: 'b', state: 'running' });
 
     const error: BlockErrorEvent = {

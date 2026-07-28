@@ -24,7 +24,8 @@
  *
  * O que o bloco continua fazendo por conta própria:
  *  - COR: `accent` e `seriesColors` aceitam o vocabulário antigo, mas viram
- *    token de dado do DS (`bar-colors.ts`). Nenhum hex atravessa;
+ *    token de dado do DS (`bar-colors.ts`). Nenhum hex atravessa. `accent`
+ *    declarado VENCE o modo de paleta (a regra de `shared/ui/chart-accent.ts`);
  *  - EMPILHAMENTO: segue exigindo dado multi-série e orientação vertical, e
  *    degrada para barras planas quando falta um dos dois — igual a antes;
  *  - ACESSIBILIDADE: as categorias do eixo vivem dentro do SVG, então o bloco
@@ -39,10 +40,11 @@ import {
   chartPlainText,
 } from '@/shared/ui';
 import { type ValueFormat } from '@/shared/lib/format';
+import { isMultiColorMode, type PaletteMode } from '../../lib/series-color';
 import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
-import { barColorAt, isColorByCategory } from './bar-colors';
+import { barColorAt, hBarColorAt, isColorByCategory } from './bar-colors';
 import { toBarPoints, toBarSeries, type BarPoint } from './bar-series';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
@@ -51,11 +53,16 @@ type BarProps = {
   /** Empilha as séries. Requer dado multi-série e orientação vertical. */
   stacked?: boolean;
   orientation?: 'vertical' | 'horizontal';
-  /** Cor base das barras (palette="single"), resolvida para token do DS. */
+  /**
+   * Cor de TODAS as barras. Declarada, vence o modo de paleta — pedir uma cor
+   * é pedir cor única (regra em `shared/ui/chart-accent.ts`).
+   */
   accent?: string;
-  palette?: 'single' | 'multi' | 'none';
-  /** Cor por série, na ordem; vence o modo de paleta. */
+  palette?: PaletteMode;
+  /** Cor por série, na ordem; vence `accent` e o modo de paleta. */
   seriesColors?: string[];
+  /** Exibe a legenda série → cor abaixo da plotagem. */
+  showLegend?: boolean;
   /** Formato do valor exibido (enum fechado do catálogo). */
   valueFormat?: ValueFormat;
   /** Override programático do formatador (fora do schema). */
@@ -83,17 +90,22 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
   const scope = buildChartScope(data ?? []);
   const caption = chartPlainText(TABLE_CAPTION, scope);
 
-  // ----- HORIZONTAL: uma barra por linha do dado (não empilha) -----
+  // ----- HORIZONTAL: uma barra por par categoria × série (não empilha) -----
   if (props.orientation === 'horizontal') {
-    const points = toBarPoints(data ?? []).map((point, index) => ({
-      ...point,
-      color: barColorAt(index, props),
+    const { points, hasNamedSeries: named } = toBarPoints(data ?? []);
+    // Cor por CATEGORIA só no ranking simples (série única sem nome): com
+    // séries nomeadas quem carrega a cor é a série, não a linha.
+    const byBar = isMultiColorMode(props) && !named;
+    const bars = points.map((point) => ({
+      label: point.label,
+      value: point.value,
+      color: byBar ? undefined : hBarColorAt(point.seriesIndex, props),
     }));
     return (
       <>
         <HBarChart
-          data={points}
-          hasColorByCategory={props.palette === 'multi'}
+          data={bars}
+          hasColorByCategory={byBar}
           valueFormatter={formatValue}
           isLoading={isLoading}
           emptyMessage={emptyMessage}
@@ -102,7 +114,7 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
         <ChartDataTable
           caption={caption}
           columns={['Categoria', 'Valor']}
-          rows={points.map((point) => [point.label, formatValue(point.value)])}
+          rows={bars.map((bar) => [bar.label, formatValue(bar.value)])}
         />
       </>
     );
@@ -110,7 +122,7 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
 
   // ----- VERTICAL: séries agrupadas ou empilhadas -----
   const { series, labels, hasNamedSeries } = toBarSeries(data ?? []);
-  const byCategory = isColorByCategory(series.length, props.palette);
+  const byCategory = isColorByCategory(series.length, props);
   const colored = series.map((item, index) => ({
     ...item,
     color: barColorAt(index, props),
@@ -123,7 +135,11 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
         labels={labels}
         isStacked={props.stacked === true && hasNamedSeries}
         hasColorByCategory={byCategory}
-        showLegend={series.length > 1 || byCategory}
+        // A legenda só existe quando há o que distinguir (mais de uma série,
+        // ou uma cor por categoria); `showLegend: false` a esconde nesses
+        // casos — antes não havia como, e o bloco era o único gráfico com eixo
+        // do catálogo sem controle de legenda.
+        showLegend={props.showLegend !== false && (series.length > 1 || byCategory)}
         valueFormatter={formatValue}
         axisFormatter={formatValue}
         isLoading={isLoading}

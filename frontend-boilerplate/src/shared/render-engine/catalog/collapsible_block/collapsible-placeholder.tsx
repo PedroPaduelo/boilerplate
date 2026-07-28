@@ -1,39 +1,37 @@
 /**
  * Placeholder do corpo colapsável sem filhos (galeria do catálogo) — duas
- * células de exemplo que comunicam "aqui entram sub-blocos".
+ * células DO MESMO TAMANHO, que é o que a grade do bloco promete.
  *
- * A largura de cada célula é declarada em COLUNAS (`GridSpan columns`): o
- * `Grid` do design system traduz para `grid-column`, então o bloco não escreve
- * regra de grid na mão.
+ * A largura vinha em `span` (6/6 de 12) e agora vem da mesma configuração de
+ * coluna do bloco real (`{minWidth, max}`), colapso incluso.
  */
 import { Card } from '@astryxdesign/core/Card';
 import { Center } from '@astryxdesign/core/Center';
-import { Grid, GridSpan } from '@astryxdesign/core/Grid';
+import { Grid } from '@astryxdesign/core/Grid';
 import { Text } from '@astryxdesign/core/Text';
+import { BLOCK_COLUMN_MIN_WIDTH } from '../../lib/block-sizing';
 
-/** Total de colunas do sub-grid de filhos (mesmo contrato do `BlockGrid`). */
-const GRID_COLUMNS = 12;
 /** Altura da célula ilustrativa — só o bastante para ler o rótulo. */
 const CELL_HEIGHT = 80;
 
-const CELLS = [
-  { span: 6, label: 'Gráfico' },
-  { span: 6, label: 'Tabela' },
-] as const;
+const CELLS = ['Gráfico', 'Tabela'] as const;
 
 export function CollapsiblePlaceholder() {
   return (
-    <Grid columns={GRID_COLUMNS} gap={3} data-slot="collapsible-placeholder">
-      {CELLS.map((cell) => (
-        <GridSpan key={cell.label} columns={cell.span}>
-          <Card variant="muted" padding={0}>
-            <Center minHeight={CELL_HEIGHT}>
-              <Text type="supporting" color="secondary">
-                {cell.label}
-              </Text>
-            </Center>
-          </Card>
-        </GridSpan>
+    <Grid
+      columns={{ minWidth: BLOCK_COLUMN_MIN_WIDTH, max: CELLS.length }}
+      gap={4}
+      align="stretch"
+      data-slot="collapsible-placeholder"
+    >
+      {CELLS.map((label) => (
+        <Card key={label} variant="muted" padding={0} height="100%">
+          <Center minHeight={CELL_HEIGHT} height="100%">
+            <Text type="supporting" color="secondary">
+              {label}
+            </Text>
+          </Center>
+        </Card>
       ))}
     </Grid>
   );

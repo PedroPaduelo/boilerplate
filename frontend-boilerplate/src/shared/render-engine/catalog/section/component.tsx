@@ -1,79 +1,92 @@
 /**
- * Bloco `section` — CONTAINER RECURSIVO. O `BlockRenderer` injeta o sub-grid de
- * filhos (já renderizados) via `children`; este componente só desenha o shell e
- * coloca `children` no corpo.
+ * Bloco `section` — REGIÃO nomeada. O `BlockContainer` injeta o grid de filhos
+ * (já montado com as props deste bloco) via `children`; aqui só se desenha o
+ * cabeçalho e a superfície.
  *
- * O shell é uma `Section` do Astryx (região de página — não um Card: cards são
- * para itens discretos) com um `Layout` interno de duas zonas: cabeçalho e
- * corpo. Quem cuida do espaçamento entre elas é o próprio `Layout` — sumiu o
- * ajuste manual de padding (`pt-0`/`p-4`) que existia para compensar o header
- * duplicado do painel legado.
+ * O que mudou nesta repaginação:
  *
- * `variant`:
- *  - `card` (default) — superfície de seção, cabeçalho sem divisor;
- *  - `framed`         — moldura (divisores nas quatro bordas) + divisor sob o
- *                       cabeçalho, para leitura densa.
+ *  - a superfície passou a ser `plain` por PADRÃO. Uma seção de dashboard
+ *    envolve blocos que já são cards; pintá-la de card por default empilhava
+ *    moldura sobre moldura e somava ~48px de padding a cada nível de
+ *    aninhamento. Card virou escolha (`variant`);
+ *  - o título perdeu o default de fábrica. O manifesto trazia
+ *    `title: 'Seção'`, e como o `BlockRenderer` mescla `defaultProps` em TODA
+ *    renderização, toda seção sem título aparecia com um cabeçalho escrito
+ *    "Seção" — indistinguível de uma escolha do autor. Agora `title` é
+ *    obrigatório no SCHEMA (o agente deve nomear a região; quem só quer
+ *    organizar usa o bloco `grid`) e não tem default. O render ainda tolera a
+ *    ausência — um layout salvo sem título vira um container puro em vez de
+ *    ganhar um cabeçalho inventado —, mas essa tolerância é o recuo, não o
+ *    caminho.
  *
  * Sem `children` (galeria do catálogo), mostra o placeholder ilustrativo.
  */
-import { Layout, LayoutContent, LayoutHeader } from '@astryxdesign/core/Layout';
-import { Section } from '@astryxdesign/core/Section';
-import type { SectionProps as DsSectionProps } from '@astryxdesign/core/Section';
+import { Divider } from '@astryxdesign/core/Divider';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
+import { BlockSurface } from '../../block-surface';
+import { resolveSurfaceVariant } from '../../lib/layout-options';
+import type {
+  BlockGridAlign,
+  BlockGridGap,
+  BlockItemSizing,
+  BlockSurfaceVariant,
+} from '../../lib/layout-options';
+import type { BlockRowHeight } from '../../lib/block-sizing';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
 import { SectionPlaceholder } from './section-placeholder';
 
-type SectionVariant = 'card' | 'framed';
 type SectionBlockProps = {
   title?: string;
   subtitle?: string;
-  variant?: SectionVariant;
+  columns?: number;
+  gap?: BlockGridGap;
+  align?: BlockGridAlign;
+  rowHeight?: BlockRowHeight;
+  itemSizing?: BlockItemSizing;
+  variant?: BlockSurfaceVariant;
 };
 
-/** Bordas do container na variante `framed` (moldura fechada). */
-const FRAME_DIVIDERS: DsSectionProps['dividers'] = ['top', 'bottom', 'start', 'end'];
+/** Texto presente e não só espaço em branco. */
+function filled(value: string | undefined): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
 
 const Component: BlockComponent<SectionBlockProps> = ({ props, children }) => {
-  const variant: SectionVariant = props.variant ?? 'card';
-  const isFramed = variant === 'framed';
+  const variant = resolveSurfaceVariant(props.variant);
+  const hasTitle = filled(props.title);
+  const hasSubtitle = filled(props.subtitle);
 
   return (
-    <Section
-      data-slot="section"
-      data-section-variant={variant}
-      variant={isFramed ? 'transparent' : 'section'}
-      dividers={isFramed ? FRAME_DIVIDERS : undefined}
-      padding={0}
-    >
-      <Layout
-        height="auto"
-        header={
-          <LayoutHeader hasDivider={isFramed}>
-            <VStack gap={0.5}>
-              <Heading level={3} maxLines={1}>
-                {props.title ?? 'Seção'}
-              </Heading>
-              {props.subtitle ? (
-                <Text type="supporting" color="secondary">
-                  {props.subtitle}
-                </Text>
-              ) : null}
-            </VStack>
-          </LayoutHeader>
-        }
-        content={
-          <LayoutContent isScrollable={false}>
-            {children ?? <SectionPlaceholder />}
-          </LayoutContent>
-        }
-      />
-    </Section>
+    <BlockSurface variant={variant} slot="section" as="section">
+      {hasTitle || hasSubtitle ? (
+        <VStack gap={0.5} data-slot="section-header">
+          {hasTitle ? (
+            <Heading level={3} maxLines={1}>
+              {props.title}
+            </Heading>
+          ) : null}
+          {hasSubtitle ? (
+            <Text type="supporting" color="secondary">
+              {props.subtitle}
+            </Text>
+          ) : null}
+        </VStack>
+      ) : null}
+
+      {/* O divisor sob o cabeçalho é exclusivo da leitura densa (`framed`): nas
+          outras superfícies o próprio espaço do `BlockSurface` já separa. */}
+      {variant === 'framed' && (hasTitle || hasSubtitle) ? <Divider /> : null}
+
+      {children ?? <SectionPlaceholder />}
+    </BlockSurface>
   );
 };
+
+export { Component };
 
 export const definition = defineBlock<SectionBlockProps>({
   type: manifest.type,

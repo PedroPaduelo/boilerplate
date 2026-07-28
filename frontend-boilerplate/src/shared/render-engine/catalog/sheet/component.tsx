@@ -1,9 +1,14 @@
 /**
- * Bloco `sheet` (layout) — CONTAINER em painel sob demanda.
+ * Bloco `sheet` (layout) — CONTÊINER fora do fluxo.
  *
- * O `BlockRenderer` injeta `childBlocks` (sub-blocos crus) + `renderChild`. O
- * bloco desenha só o GATILHO (um `Button`); ao clicar, abre um `Dialog` do
- * Astryx ancorado na borda escolhida (`side`) com os FILHOS empilhados dentro.
+ * O bloco desenha só o GATILHO (um `Button`); ao clicar, abre um `Dialog` do
+ * Astryx ancorado na borda escolhida (`side`) com os FILHOS dentro.
+ *
+ * Os filhos chegam pelo `children` — o grid já montado pelo `BlockContainer`
+ * com as props deste bloco. Antes o painel empilhava `childBlocks` num `VStack`
+ * próprio, o que fazia o conteúdo do sheet ser o único do catálogo sem as
+ * garantias de grade (colunas iguais, altura de linha, colapso). Uma grade só
+ * para todo o motor.
  *
  * Por que `Dialog` e não um painel deslizante próprio: o conteúdo é uma camada
  * modal sobre a página — foco preso, Escape, backdrop e retorno de foco são
@@ -14,15 +19,15 @@
  * ilustrativo, comunicando o conceito.
  */
 import { useState } from 'react';
-import type { Block } from '@dashboards/contracts';
 import { Button } from '@astryxdesign/core/Button';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import type { DialogPosition } from '@astryxdesign/core/Dialog';
 import { Layout, LayoutContent } from '@astryxdesign/core/Layout';
-import { StackItem } from '@astryxdesign/core/Stack';
 import { VStack } from '@astryxdesign/core/VStack';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
+import type { BlockGridGap, BlockItemSizing } from '../../lib/layout-options';
+import type { BlockRowHeight } from '../../lib/block-sizing';
 import { manifest } from './manifest';
 import { fixture } from './fixture';
 import { SheetPlaceholder } from './sheet-placeholder';
@@ -33,6 +38,10 @@ type SheetBlockProps = {
   title?: string;
   description?: string;
   side?: SheetSide;
+  columns?: number;
+  gap?: BlockGridGap;
+  rowHeight?: BlockRowHeight;
+  itemSizing?: BlockItemSizing;
 };
 
 /** Lado do manifesto → borda em que o painel encosta (`0` = colado na borda). */
@@ -43,18 +52,12 @@ const POSITION_BY_SIDE: Record<SheetSide, DialogPosition> = {
   bottom: { bottom: 0 },
 };
 
-export const Component: BlockComponent<SheetBlockProps> = ({
-  props,
-  childBlocks,
-  renderChild,
-}) => {
+export const Component: BlockComponent<SheetBlockProps> = ({ props, children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const side: SheetSide = props.side ?? 'right';
-  const children = childBlocks ?? [];
-  const hasChildren = Boolean(children.length && renderChild);
 
   return (
-    <VStack hAlign="center" paddingBlock={6} data-slot="sheet" data-sheet-side={side}>
+    <VStack hAlign="center" paddingBlock={4} data-slot="sheet" data-sheet-side={side}>
       <Button
         variant="secondary"
         label={props.triggerLabel ?? 'Abrir painel'}
@@ -75,21 +78,7 @@ export const Component: BlockComponent<SheetBlockProps> = ({
               onOpenChange={setIsOpen}
             />
           }
-          content={
-            <LayoutContent>
-              <VStack gap={4}>
-                {hasChildren ? (
-                  (children as Block[]).map((child) => (
-                    <StackItem key={child.id} data-slot="sheet-child">
-                      {renderChild!(child)}
-                    </StackItem>
-                  ))
-                ) : (
-                  <SheetPlaceholder />
-                )}
-              </VStack>
-            </LayoutContent>
-          }
+          content={<LayoutContent>{children ?? <SheetPlaceholder />}</LayoutContent>}
         />
       </Dialog>
     </VStack>

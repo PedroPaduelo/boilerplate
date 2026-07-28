@@ -20,12 +20,21 @@ export const statusEnum = z.enum(['DRAFT', 'PUBLISHED']);
 export const layoutModeEnum = z.enum(['draft', 'published']);
 
 /**
- * Forma mínima do layout salvo em `draft_layout` (doc 20: `{ filters, rows }`).
- * O conteúdo de cada filtro/row/bloco é validado no service contra o contrato.
+ * Forma mínima do layout salvo em `draft_layout` (doc 20: `{ filters, rows }`
+ * + `tabs` opcional, doc 40). O conteúdo de cada filtro/row/bloco/aba é
+ * validado no service contra o contrato compartilhado (ajv).
+ *
+ * ATENÇÃO ao `tabs` declarado aqui: `z.object()` do Zod v3 faz STRIP de chaves
+ * desconhecidas por padrão. Sem esta linha, um `draftLayout` com `tabs` chegaria
+ * na rota, teria as abas SILENCIOSAMENTE removidas pelo parse e só então seria
+ * validado — o contrato passaria (abas são opcionais) e o usuário veria o save
+ * "dar certo" enquanto perdia as abas. É por isso que o campo é declarado
+ * explicitamente, e não deixado por conta do `.passthrough()`.
  */
 export const layoutInputSchema = z.object({
   filters: z.array(z.any()),
   rows: z.array(z.any()),
+  tabs: z.array(z.any()).optional(),
 });
 
 export type LayoutInput = z.infer<typeof layoutInputSchema>;

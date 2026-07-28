@@ -44,8 +44,14 @@ export function useEditorPreview({
   );
 
   // `sanitizeLayoutForSave` devolve o layout na forma do CONTRATO (`{filters,
-  // rows}`) porém tipado como `unknown[]` — a asserção aqui é a fronteira única
-  // entre o modelo local do editor e o tipo do contrato.
+  // rows}` + `tabs` quando houver) porém tipado como `unknown[]` — a asserção
+  // aqui é a fronteira única entre o modelo local do editor e o tipo do contrato.
+  //
+  // ABAS (doc 40): o preview mostra TODAS as linhas, achatadas, mesmo quando o
+  // dashboard tem abas — o `DashboardRenderer` só lê `filters`/`rows` e ignora
+  // `tabs`. É intencional: aqui o usuário está editando o dashboard inteiro e
+  // precisa enxergar tudo o que mexeu. Quem quer conferir a divisão por aba usa
+  // a tela de visualização (`/dashboards/:id/view`).
   const previewLayout = useMemo<DashboardLayout>(() => {
     const source = mode === 'published' ? publishedLayout : layout;
     if (!source) return EMPTY_LAYOUT;

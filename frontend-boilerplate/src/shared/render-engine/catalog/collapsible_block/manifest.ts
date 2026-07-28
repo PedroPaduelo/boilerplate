@@ -1,13 +1,13 @@
 /**
- * Manifesto do bloco `collapsible_block` — CONTAINER de layout colapsável.
+ * Manifesto do bloco `collapsible_block` — REGIÃO que recolhe.
  *
- * Cabeçalho clicável que expande/recolhe o CORPO, onde ficam os SUB-BLOCOS
- * (gráficos/cards/tabelas). A composição segue o contrato unificado de
- * container — `block.blocks` (a IA monta a árvore de filhos; mesma sintaxe de
- * `section`/dashboard). As props deste bloco são de CONFIGURAÇÃO DO LAYOUT
- * (não de conteúdo): `title` (cabeçalho) e `defaultOpen` (estado inicial).
+ * É a mesma grade do bloco `grid` dentro de um disclosure: um cabeçalho
+ * clicável que expande/recolhe o corpo. Existe para tirar da primeira leitura
+ * um trecho de detalhe sem tirá-lo da página — as garantias de composição
+ * (itens da linha do mesmo tamanho, altura de linha definida, colapso em telas
+ * estreitas) valem igual dentro dele.
  *
- * Exemplo (IA via MCP) — bloco colapsável com 2 gráficos no corpo:
+ * Exemplo (IA via MCP) — detalhamento recolhido com dois gráficos:
  *   { type:'collapsible_block', props:{ title:'Detalhes da apuração', defaultOpen:false },
  *     blocks:[
  *       { type:'bar_chart', span:6, dataBinding:{...} },
@@ -20,7 +20,7 @@ export const manifest = {
   kind: 'layout',
   name: 'Seção Colapsável',
   description:
-    'Container de layout colapsável: um cabeçalho clicável que expande/recolhe o corpo. Renderiza sub-blocos (gráficos/cards/tabelas) num grid de 12 colunas dentro do corpo. Use `block.blocks` para os filhos (cada filho usa `span` 1..12). Props: title, defaultOpen.',
+    'Região que recolhe: um cabeçalho clicável que expande/esconde o corpo, onde os sub-blocos (`block.blocks`) são organizados na mesma grade do bloco `grid` — itens da mesma linha com largura e altura iguais e colapso automático em telas estreitas. NÃO é um card por padrão (use `variant`). Props: title, defaultOpen, columns, gap, align, rowHeight, itemSizing, variant.',
   source: 'astryx:collapsible',
   propsSchema: {
     type: 'object',
@@ -29,7 +29,7 @@ export const manifest = {
     properties: {
       title: {
         type: 'string',
-        description: 'Texto do cabeçalho clicável da seção colapsável.',
+        description: 'Texto do cabeçalho clicável (é o nome acessível do gatilho).',
       },
       defaultOpen: {
         type: 'boolean',
@@ -37,11 +37,53 @@ export const manifest = {
         description:
           'Estado inicial: `true` começa expandido (default), `false` começa recolhido.',
       },
+      columns: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 12,
+        description:
+          'Número de colunas do corpo. OMITA para o padrão recomendado (uma coluna por filho, até 3 para gráficos/tabelas e 4 para cartões de número).',
+      },
+      gap: {
+        type: 'string',
+        enum: ['none', 'sm', 'md', 'lg'],
+        default: 'md',
+        description: 'Espaçamento entre as células do corpo.',
+      },
+      align: {
+        type: 'string',
+        enum: ['stretch', 'start', 'center', 'end'],
+        default: 'stretch',
+        description: 'Alinhamento vertical dos itens na linha.',
+      },
+      rowHeight: {
+        type: 'string',
+        enum: ['auto', 'compact', 'default', 'tall'],
+        description:
+          'Altura da linha. OMITA para derivar do tipo dos filhos; informe para forçar um degrau.',
+      },
+      itemSizing: {
+        type: 'string',
+        enum: ['equal', 'span'],
+        default: 'equal',
+        description:
+          'Largura dos itens: `equal` (faixas iguais) ou `span` (mosaico assimétrico em 12 colunas).',
+      },
+      variant: {
+        type: 'string',
+        enum: ['plain', 'card', 'framed'],
+        default: 'plain',
+        description:
+          'Superfície do bloco. `plain` (default), `card` (cartão com padding) ou `framed` (moldura fechada).',
+      },
     },
   },
   defaultProps: {
-    title: 'Detalhes da apuração',
     defaultOpen: true,
+    gap: 'md',
+    align: 'stretch',
+    itemSizing: 'equal',
+    variant: 'plain',
   },
-  version: '2.0.0',
+  version: '3.0.0',
 } satisfies BlockManifest;

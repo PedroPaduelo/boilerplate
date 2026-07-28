@@ -9,12 +9,7 @@
  * O `delayMs` é detalhe INTERNO desta implementação (controla a velocidade do
  * streaming simulado); a interface pública continua sendo só `sendMessage`.
  */
-import type {
-  ChatEvent,
-  ChatMessage,
-  ChatTransport,
-  SendMessageOptions,
-} from './types';
+import type { ChatEvent, ChatMessage, ChatTransport, SendMessageOptions } from './types';
 import { buildMockChart, pickChartKind, wantsChart } from './mock-data';
 
 export interface MockChatTransportOptions {

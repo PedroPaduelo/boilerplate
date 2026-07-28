@@ -692,3 +692,169 @@ describe('dashboards — visibilidade DEPARTMENT (membership na criação)', () 
     expect(res.statusCode).toBe(400);
   });
 });
+
+// =============================================================================
+// ABAS (doc 40)
+// =============================================================================
+//
+// O que estes testes protegem:
+//  1. RETROCOMPAT — o layout legado `{ filters, rows }` (o que está no banco
+//     hoje) continua sendo aceito depois da mudança de contrato;
+//  2. as abas SOBREVIVEM ao round-trip HTTP (o Zod v3 faz strip de chave
+//     desconhecida por padrão — sem `tabs` no `layoutInputSchema` o save
+//     "daria certo" enquanto apagava as abas, em silêncio);
+//  3. `add_chart_to_dashboard` (caminho do AGENTE) não destrói as abas, já que
+//     ele reconstrói o layout;
+//  4. o publish leva as abas para o `publishedLayout`.
+describe('dashboards — abas (tabs)', () => {
+  /** Layout válido com DUAS rows e DUAS abas apontando para elas. */
+  const layoutWithTabs = () => ({
+    filters: [],
+    rows: [
+      {
+        id: 'row_a',
+        blocks: [{ id: 'blk_a', type: 'title', span: 12, props: { text: 'A' } }],
+      },
+      {
+        id: 'row_b',
+        blocks: [{ id: 'blk_b', type: 'title', span: 12, props: { text: 'B' } }],
+      },
+    ],
+    tabs: [
+      { id: 'tab_1', title: 'Resumo', rowIds: ['row_a'] },
+      { id: 'tab_2', title: 'Detalhe', rowIds: ['row_b'] },
+    ],
+  });
+
+  it('RETROCOMPAT: layout legado SEM `tabs` continua sendo aceito (201)', async () => {
+    // O contrato passou a conhecer `tabs`, mas ele é opcional: o payload que os
+    // dashboards já salvos usam não pode passar a dar 400.
+    const legacy = validLayout();
+    expect('tabs' in legacy).toBe(false);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: legacy }),
+    });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    // e continua salvo sem `tabs` — nada é injetado no dado do usuário.
+    expect(body.draftLayout.tabs).toBeUndefined();
+    expect(body.draftLayout.rows).toHaveLength(1);
+  });
+
+  it('POST /dashboards aceita `tabs` e PERSISTE as abas', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: layoutWithTabs() }),
+    });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.draftLayout.tabs).toHaveLength(2);
+    expect(body.draftLayout.tabs[0]).toMatchObject({
+      id: 'tab_1',
+      title: 'Resumo',
+      rowIds: ['row_a'],
+    });
+  });
+
+  it('PATCH /dashboards/:id preserva `tabs` no round-trip (anti-strip do Zod)', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard(),
+    });
+    const id = created.json().id;
+
+    // envia um layout COM abas para um dashboard que nasceu sem elas.
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/dashboards/${id}`,
+      headers: authHeader(creatorToken),
+      payload: { draftLayout: layoutWithTabs() },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().draftLayout.tabs).toHaveLength(2);
+
+    // e o GET devolve o mesmo (persistiu de verdade, não só no eco do PATCH).
+    const got = await app.inject({
+      method: 'GET',
+      url: `/dashboards/${id}`,
+      headers: authHeader(creatorToken),
+    });
+    expect(got.json().layout.tabs).toHaveLength(2);
+  });
+
+  it('rejeita aba malformada (sem `title`) com 400', async () => {
+    const bad = layoutWithTabs();
+    // @ts-expect-error — remoção proposital para exercitar o validador.
+    delete bad.tabs[0].title;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: bad }),
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/Invalid dashboard layout/);
+  });
+
+  it('add_chart_to_dashboard PRESERVA as abas e filia a row nova à primeira', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: layoutWithTabs() }),
+    });
+    const id = created.json().id;
+
+    // sem `rowId` → o service cria uma row nova ao final.
+    const res = await app.inject({
+      method: 'POST',
+      url: `/dashboards/${id}/blocks`,
+      headers: authHeader(creatorToken),
+      payload: { chartId, span: 6 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const layout = res.json().draftLayout;
+
+    // as abas continuam lá (antes do fix, este caminho as apagava).
+    expect(layout.tabs).toHaveLength(2);
+    expect(layout.rows).toHaveLength(3);
+
+    // e a row nova entrou na PRIMEIRA aba — sem isso ela nasceria órfã.
+    const novaRow = layout.rows[2].id;
+    expect(layout.tabs[0].rowIds).toContain(novaRow);
+    expect(layout.tabs[1].rowIds).not.toContain(novaRow);
+  });
+
+  it('publish leva as abas para o publishedLayout', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: layoutWithTabs() }),
+    });
+    const id = created.json().id;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/dashboards/${id}/publish`,
+      headers: authHeader(creatorToken),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().publishedLayout.tabs).toHaveLength(2);
+  });
+});

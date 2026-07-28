@@ -57,6 +57,7 @@ import {
   toPercentRows,
 } from './chart-data';
 import { ChartFrame } from './chart-frame';
+import { useChartMotion } from './chart-motion';
 import type { ChartFrameState } from './chart-frame';
 import { ChartLegend } from './chart-legend';
 import { chartMarkerProps } from './chart-marker';
@@ -144,6 +145,8 @@ export function AreaChart({
   scope,
 }: AreaChartProps) {
   const palette = useChartPalette();
+  // Entrada animada só quando o usuário não pediu redução de movimento.
+  const isAnimationActive = useChartMotion();
   // `useId` devolve `:r0:`; os dois-pontos atrapalham `url(#id)` em SVG.
   const uid = useId().replace(/:/g, '');
   const isEmpty = isSeriesEmpty(series);
@@ -256,6 +259,7 @@ export function AreaChart({
               // a cópia que fez este ponto sair com o dobro do diâmetro.
               activeDot={chartMarkerProps(palette, palette.hoverAt(index, item.color))}
               {...chartAnimationProps(palette, index)}
+              isAnimationActive={isAnimationActive}
             />
           ))}
         </RechartsAreaChart>

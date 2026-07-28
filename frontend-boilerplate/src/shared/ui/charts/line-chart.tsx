@@ -49,6 +49,7 @@ import {
   toChartRows,
 } from './chart-data';
 import { ChartFrame, type ChartFrameState } from './chart-frame';
+import { useChartMotion } from './chart-motion';
 import { ChartLegend } from './chart-legend';
 import { chartMarkerProps } from './chart-marker';
 import { ChartSeriesTooltip } from './chart-series-tooltip';
@@ -57,8 +58,9 @@ import { hasVariables, type ChartScope } from './chart-template';
 import { chartPlainText } from './chart-text-html';
 import type { ChartSeries, ChartStateProps, ValueFormatter } from './types';
 import {
+  CHART_SERIES_COLORS,
+  chartSeriesToken,
   darkenColor,
-  isChartSeriesColor,
   useChartPalette,
   type ChartPalette,
   type ChartSeriesColor,
@@ -130,6 +132,8 @@ export function LineChart({
   summary,
 }: LineChartProps) {
   const palette = useChartPalette();
+  // Entrada animada só quando o usuário não pediu redução de movimento.
+  const isAnimationActive = useChartMotion();
 
   // Rótulo de série é texto do bloco: passa pelo contrato comum antes de ser
   // desenhado (legenda, tooltip e equivalente textual leem daqui).
@@ -202,6 +206,7 @@ export function LineChart({
                   legendType="none"
                   tooltipType="none"
                   {...chartAnimationProps(palette, index)}
+                  isAnimationActive={isAnimationActive}
                 />
               ))
             : null}
@@ -228,6 +233,7 @@ export function LineChart({
                 seriesHoverAt(palette, index, item.color),
               )}
               {...chartAnimationProps(palette, index)}
+              isAnimationActive={isAnimationActive}
             />
           ))}
         </ComposedChart>
@@ -237,19 +243,44 @@ export function LineChart({
 }
 
 /**
+ * Token da 1ª cor do ciclo (o verde do produto). Onde ela cairia, a §1 usa a
+ * versão a 80% dela — ver `seriesColorAt`.
+ */
+const FIRST_CYCLE_TOKEN = chartSeriesToken(CHART_SERIES_COLORS[0]);
+
+/**
+ * A cor da série `index` cai na PRIMEIRA do ciclo?
+ *
+ * A pergunta é sobre o TOKEN, não sobre o índice. A versão anterior comparava
+ * `index === 0`, o que fazia a §1 valer só para a primeira série: pedir a cor 1
+ * explicitamente (`accent: "chart-1"`, ou o modo de cor única) devolvia o verde
+ * PURO — e o mesmo gráfico exibia dois verdes diferentes conforme a cor tivesse
+ * vindo do ciclo ou de um pedido. A coluna (`bar-chart.tsx`) sempre decidiu por
+ * token; a linha agora decide igual.
+ */
+function isFirstCycleColor(
+  palette: ChartPalette,
+  index: number,
+  override?: ChartSeriesColor,
+): boolean {
+  return palette.tokenAt(index, override) === FIRST_CYCLE_TOKEN;
+}
+
+/**
  * Cor RESOLVIDA da série `index` (para dentro do SVG).
  *
  * A §1 troca a PRIMEIRA cor do ciclo pelo verde escuro a 80%
  * (`rgba(0,120,103,.8)`) e mantém o resto — a 2ª série continua sendo o âmbar
- * do ciclo. Cor explícita na série vence sempre (é o modo `single` do bloco).
+ * do ciclo. Cor explícita na série vence a posição no ciclo (é o `accent` do
+ * bloco), mas não a regra do verde: quem pede a cor 1 recebe o verde da §1.
  */
 function seriesColorAt(
   palette: ChartPalette,
   index: number,
   override?: ChartSeriesColor,
 ): string {
-  if (isChartSeriesColor(override)) return palette.colorAt(index, override);
-  return index === 0 ? palette.primary80 : palette.colorAt(index);
+  if (isFirstCycleColor(palette, index, override)) return palette.primary80;
+  return palette.colorAt(index, override);
 }
 
 /**
@@ -262,8 +293,8 @@ function seriesVarAt(
   index: number,
   override?: ChartSeriesColor,
 ): string {
-  if (isChartSeriesColor(override)) return palette.varAt(index, override);
-  return index === 0 ? palette.primary80 : palette.varAt(index);
+  if (isFirstCycleColor(palette, index, override)) return palette.primary80;
+  return palette.varAt(index, override);
 }
 
 /**
@@ -276,8 +307,10 @@ function seriesHoverAt(
   index: number,
   override?: ChartSeriesColor,
 ): string {
-  if (isChartSeriesColor(override)) return palette.hoverAt(index, override);
-  return index === 0 ? darkenColor(palette.primary80) : palette.hoverAt(index);
+  if (isFirstCycleColor(palette, index, override)) {
+    return darkenColor(palette.primary80);
+  }
+  return palette.hoverAt(index, override);
 }
 
 /**

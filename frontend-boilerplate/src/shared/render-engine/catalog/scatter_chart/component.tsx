@@ -7,7 +7,8 @@
  *    própria, o fundo branco fixo e o cinza cravado do cursor;
  *  - COR: a dispersão pinta por CATEGORIA com a paleta do DS — é isso que
  *    separa um grupo do outro. `palette: "single"` junta tudo numa série só
- *    (uma cor), e `accent` continua aceito por compatibilidade (ver manifest);
+ *    (uma cor), e `accent`, quando declarado, fixa a cor de todos os grupos:
+ *    ele estava no contrato desde sempre, mas o componente nunca lia o valor;
  *  - o equivalente textual é o resumo do próprio gráfico: uma tabela de
  *    milhares de pontos não ajudaria ninguém a ouvir uma correlação.
  *
@@ -37,9 +38,10 @@
  *   e `docs/charts/PEDIDOS-BASE.md` (`[SUB-07]`).
  */
 import type { SeriesData } from '@dashboards/contracts';
-import { ScatterChart, buildChartScope } from '@/shared/ui';
+import { ScatterChart, buildChartScope, chartAccentColor } from '@/shared/ui';
 import type { ScatterPoint } from '@/shared/ui';
 import { formatCompactNumberBR, formatNumberBR } from '@/shared/lib/format';
+import { type PaletteMode } from '../../lib/series-color';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { manifest } from './manifest';
@@ -48,8 +50,11 @@ import { fixture } from './fixture';
 type ScatterProps = {
   showLegend?: boolean;
   showGridLines?: boolean;
-  palette?: 'single' | 'multi' | 'none';
-  /** Aceito por compatibilidade; a cor sai da paleta categórica do DS. */
+  palette?: PaletteMode;
+  /**
+   * Cor de TODOS os pontos. Declarada, vence o modo de paleta — pedir uma cor
+   * é pedir cor única (regra em `shared/ui/chart-accent.ts`).
+   */
   accent?: string;
 };
 
@@ -81,6 +86,12 @@ export const Component: BlockComponent<ScatterProps, SeriesData> = ({
       // Vocabulário de `{{variaveis}}` derivado dos dados DO BLOCO (com os
       // nomes de série), não dos pontos já achatados.
       scope={buildChartScope(data ?? [])}
+      // COR — `accent` estava declarado no manifesto e na interface do bloco e
+      // NUNCA era lido: a prop era anunciada ao agente de IA e não fazia nada.
+      // Agora ela fixa a cor de todos os grupos, como manda a regra geral
+      // ("pedir uma cor é pedir cor única"); sem ela, cada categoria continua
+      // pegando a próxima cor do ciclo, que é a identidade de grupo da §15.
+      color={chartAccentColor(props.accent)}
       showLegend={props.showLegend !== false}
       showGrid={props.showGridLines !== false}
       valueFormatter={formatNumberBR}

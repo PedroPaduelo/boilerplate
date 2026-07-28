@@ -70,6 +70,7 @@ import {
 } from './chart-data';
 import { CHART_GEOMETRY } from './chart-theme';
 import { ChartFrame } from './chart-frame';
+import { useChartMotion } from './chart-motion';
 import { ChartLegend } from './chart-legend';
 import { ChartSeriesTooltip } from './chart-series-tooltip';
 import type { ChartScope } from './chart-template';
@@ -254,6 +255,8 @@ export function BarChart({
   summary,
 }: BarChartProps) {
   const palette = useChartPalette();
+  // Entrada animada só quando o usuário não pediu redução de movimento.
+  const isAnimationActive = useChartMotion();
 
   const isEmpty = isSeriesEmpty(series);
   const rows = toChartRows(series, labels);
@@ -373,6 +376,7 @@ export function BarChart({
                 // Hover ESCURECE (`02-configuracao-base.md` §4).
                 activeBar={hasCells ? renderDarkenedBar : { fill: paint.hover }}
                 {...chartAnimationProps(palette, index)}
+                isAnimationActive={isAnimationActive}
               >
                 {hasCells
                   ? rows.map((row, rowIndex) => (

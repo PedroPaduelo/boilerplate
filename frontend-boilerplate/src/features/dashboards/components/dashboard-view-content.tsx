@@ -8,7 +8,7 @@
  */
 import { useState } from 'react';
 import type { DashboardLayout } from '@dashboards/contracts';
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, Maximize2, RefreshCw } from 'lucide-react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { Icon } from '@astryxdesign/core/Icon';
@@ -87,6 +87,16 @@ export function DashboardViewContent({
         }
         endContent={
           <HStack gap={2} vAlign="center">
+            {/* Porta de entrada do modo de VISUALIZAÇÃO (doc 40): é lá que as
+                abas do dashboard aparecem na barra lateral. Link (`href`), não
+                `onClick` — o LinkProvider do shell converte para client-side e
+                o usuário pode abrir em outra aba do navegador. */}
+            <Button
+              label="Visualização"
+              icon={<Icon icon={Maximize2} />}
+              tooltip="Abre o modo de leitura, com navegação por abas"
+              href={`/dashboards/${detail.id}/view`}
+            />
             <Button
               label="Atualizar"
               icon={<Icon icon={RefreshCw} />}

@@ -55,15 +55,24 @@ describe('toDatabaseSchema', () => {
 
     const publicSchema = db.schemas.find((s) => s.name === 'public')!;
     // Tabelas ordenadas: customers antes de orders.
-    expect(publicSchema.tables.map((t) => t.name)).toEqual([
-      'customers',
-      'orders',
-    ]);
+    expect(publicSchema.tables.map((t) => t.name)).toEqual(['customers', 'orders']);
 
     const orders = publicSchema.tables.find((t) => t.name === 'orders')!;
     expect(orders.columns).toEqual([
-      { name: 'id', type: 'integer', nullable: false, isPrimary: false, isForeign: false },
-      { name: 'total', type: 'numeric', nullable: true, isPrimary: false, isForeign: false },
+      {
+        name: 'id',
+        type: 'integer',
+        nullable: false,
+        isPrimary: false,
+        isForeign: false,
+      },
+      {
+        name: 'total',
+        type: 'numeric',
+        nullable: true,
+        isPrimary: false,
+        isForeign: false,
+      },
     ]);
     expect(orders.primaryKey).toEqual([]);
     expect(orders.foreignKeys).toEqual([]);

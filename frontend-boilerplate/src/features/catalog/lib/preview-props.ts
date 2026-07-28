@@ -1,9 +1,17 @@
 /**
- * Props de exemplo dos blocos NARRATIVOS — fonte ÚNICA.
+ * Props de exemplo dos blocos SEM DADOS — fonte ÚNICA.
  *
- * Blocos sem `dataContract` (`title`, `rich_text`) não têm fixture: o conteúdo
- * deles vem das PROPS. Sem um valor de exemplo, eles aparecem em branco — e um
- * bloco em branco na galeria parece defeito de render, não bloco vazio.
+ * Blocos sem `dataContract` (`title`, `rich_text`, containers de layout) não
+ * têm fixture: o conteúdo deles vem das PROPS. Sem um valor de exemplo, eles
+ * aparecem em branco — e um bloco em branco na galeria parece defeito de
+ * render, não bloco vazio.
+ *
+ * É aqui — e NÃO no `defaultProps` do manifesto — que mora o texto de vitrine.
+ * A diferença importa: o `BlockRenderer` mescla `defaultProps` em TODA
+ * renderização, então um título de exemplo declarado lá chegaria a todo
+ * dashboard de produção indistinguível de uma escolha do autor (foi assim que
+ * toda seção sem nome nasceu escrita "Seção"). Este mapa só é lido pela
+ * GALERIA.
  *
  * POR QUE UM MÓDULO SÓ: este mapa existia DUAS vezes — uma em
  * `catalog-entries.ts` (usada pelo card da grade) e outra em
@@ -29,6 +37,13 @@ export const PREVIEW_PROPS: Record<string, Record<string, unknown>> = {
       '- Inadimplência em queda',
     ].join('\n'),
   },
+  // Containers de layout com título OBRIGATÓRIO: o nome da região é conteúdo,
+  // e conteúdo de exemplo vive aqui.
+  section: {
+    title: 'Arrecadação consolidada',
+    subtitle: 'Indicadores do mês corrente',
+  },
+  collapsible_block: { title: 'Detalhes da apuração' },
 };
 
 /** Props de exemplo de um `catalogType` (ou `undefined` se não for narrativo). */

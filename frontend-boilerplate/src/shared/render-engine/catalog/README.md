@@ -37,6 +37,42 @@ O nome da pasta `<type>` **deve** ser igual a `manifest.type`.
    dizendo por que o DS não resolve. Se dois blocos precisarem do mesmo, aí sim
    promova para `@/shared/ui`.
 
+## O sistema de LAYOUT (blocos `kind: 'layout'`)
+
+São **cinco**, e a lista é fechada de propósito — vocabulário grande faz o
+agente escolher mal (`layout-blocks.test.ts` trava o conjunto):
+
+| bloco               | o que é                                                         |
+| ------------------- | --------------------------------------------------------------- |
+| `grid`              | o contêiner de grade. Uma div em volta: colunas, linhas, gap.   |
+| `section`           | `grid` + cabeçalho semântico (`<section>` + heading navegável). |
+| `collapsible_block` | `grid` + disclosure (recolhe o trecho de detalhe).              |
+| `sheet`             | `grid` fora do fluxo (painel modal sob demanda).                |
+| `divider`           | separador entre linhas/regiões.                                 |
+
+**Três garantias** que o motor dá a quem compõe, e que nenhum container
+reimplementa (elas vivem em `block-grid.tsx` + `lib/block-sizing.ts`):
+
+1. Itens da mesma linha têm a **mesma largura e a mesma altura**. `span` só é
+   lido para `12` (= linha inteira); o mosaico assimétrico é opt-in
+   (`itemSizing: 'span'`).
+2. A linha tem **altura definida** — o degrau da família mais alta que ela
+   contém (KPI é baixo, série é alta, texto não reserva nada), ou o que o autor
+   fixar em `rowHeight`. O valor é um piso: nunca corta.
+3. As colunas **colapsam sozinhas** em telas estreitas (`{minWidth, max}`), sem
+   media query.
+
+**Card não é padrão.** Todo container nasce `variant: 'plain'` — card em volta
+de blocos que já são cards empilha moldura e soma padding a cada nível.
+
+**Nada de conteúdo em `defaultProps`.** O `BlockRenderer` mescla os defaults do
+manifesto em toda renderização, então um `title` de fábrica chega ao produto
+indistinguível de uma escolha do autor. Texto de exemplo para a galeria vai em
+`features/catalog/lib/preview-props.ts`.
+
+Arranjos prontos para copiar (1, 2 e 3 colunas; KPIs + gráficos) estão em
+`lib/layout-recipes.ts`.
+
 ### `manifest.ts` (o que a IA lê via `build:catalog`)
 
 ```ts

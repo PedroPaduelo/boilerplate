@@ -79,7 +79,7 @@ export const manifest = {
         enum: [...ACCENT_COLORS],
         default: 'chart-1',
         description:
-          'Cor do halo de destaque do card. O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
+          'Cor do halo de destaque do card (e da família de cor da superfície). O valor é resolvido para uma cor de dado do design system (chart-1..5 mapeiam para as cores categóricas, na mesma ordem da paleta; `primary` é sinônimo de `chart-1` — as duas são a 1ª cor, e por isso pintam o card igual). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
       },
       // (showDelta) liga/desliga a variação percentual abaixo do valor.
       showDelta: {

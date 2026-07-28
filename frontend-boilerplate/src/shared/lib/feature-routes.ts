@@ -37,10 +37,9 @@ export interface CollectedRoutes {
  * cada feature. Ordena por caminho do módulo para um resultado determinístico.
  */
 export function collectFeatureRoutes(): CollectedRoutes {
-  const modules = import.meta.glob<FeatureRouteModule>(
-    '../../features/*/routes.tsx',
-    { eager: true },
-  );
+  const modules = import.meta.glob<FeatureRouteModule>('../../features/*/routes.tsx', {
+    eager: true,
+  });
 
   const publicRoutes: RouteObject[] = [];
   const protectedRoutes: RouteObject[] = [];

@@ -22,7 +22,9 @@
 import { describe, expect, it } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
+import type { ValueFormat } from '@/shared/lib/format';
 import { definition } from './component';
+import { fixture } from './fixture';
 
 const Block = definition.Component;
 
@@ -104,5 +106,51 @@ describe('bloco signal_card', () => {
       screen.getByRole('img', { name: 'Sessões em 3 pontos: tendência' }),
     ).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
+  });
+});
+
+describe('bloco signal_card — cor e formato', () => {
+  /** Cor do traço da tendência desenhada. */
+  const stroke = (container: HTMLElement) =>
+    container.querySelector('path.recharts-area-curve')?.getAttribute('stroke');
+
+  /**
+   * REGRESSÃO de `accent`. O bloco já aplicava a cor sem condicionar a nada —
+   * o que faltava era um teste que ENXERGASSE o desenho: como o
+   * `ResponsiveContainer` não media nada em jsdom, a auditoria de inércia
+   * media a prop como "6 valores → 1 render".
+   */
+  it('pinta a tendência com o tom escuro da cor pedida', () => {
+    const { container } = renderWithProviders(
+      <Block props={{ accent: 'chart-3' }} data={fixture} state="success" />,
+    );
+    // §2.3: o mini-gráfico usa o tom `dark` da família, não a `main`.
+    expect(stroke(container)).toBe('#006C9C');
+  });
+
+  it('sem cor reconhecível, cai no verde escuro padrão (nenhum hex atravessa)', () => {
+    const { container } = renderWithProviders(
+      <Block props={{ accent: '#40E0D0' }} data={fixture} state="success" />,
+    );
+    expect(container.innerHTML).not.toContain('#40E0D0');
+    expect(stroke(container)).toBe('#007867');
+  });
+
+  it('separa a forma CHEIA da COMPACTA no valor em destaque', () => {
+    const plain = (value: string) => value.replace(/[\u00a0\u202f]/g, ' ');
+    const highlighted = (valueFormat: ValueFormat) => {
+      const { container, unmount } = renderWithProviders(
+        <Block props={{ valueFormat }} data={fixture} state="success" />,
+      );
+      // O valor em destaque é o único texto com algarismos tabulares.
+      const text = plain(container.textContent ?? '');
+      unmount();
+      return text;
+    };
+
+    expect(highlighted('number')).toContain('66.500');
+    expect(highlighted('compactNumber')).toContain('66,5 mil');
+    expect(highlighted('BRL')).toContain('R$ 66.500,00');
+    expect(highlighted('compactBRL')).toContain('R$ 66,50 mil');
   });
 });

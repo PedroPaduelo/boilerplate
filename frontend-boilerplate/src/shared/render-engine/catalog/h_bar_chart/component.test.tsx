@@ -20,7 +20,7 @@
  * RECHARTS (`recharts-rectangle`, `recharts-cartesian-grid-*`), que são
  * estáveis e a única forma de inspecionar o desenho.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
 import { definition } from './component';
@@ -30,6 +30,12 @@ const Block = definition.Component;
 
 /** Troca espaços não-quebráveis/finos do `Intl` por espaço comum. */
 const normalizeSpaces = (value: string) => value.replace(/[\u00a0\u202f]/g, ' ');
+
+/** VERDE80 da referência: `rgba(0,120,103,0.8)`, resolvido do token do DS. */
+const GREEN_80 = 'rgba(0, 120, 103, 0.8)';
+
+/** O mesmo verde escurecido em 20% — o hover da referência ESCURECE. */
+const GREEN_80_HOVER = 'rgba(0, 96, 82, 0.8)';
 
 describe('bloco h_bar_chart — estados', () => {
   it('mostra esqueleto enquanto os dados não chegam', () => {
@@ -140,6 +146,23 @@ describe('bloco h_bar_chart — formato do valor', () => {
 });
 
 describe('bloco h_bar_chart — cor', () => {
+  /** Cores de preenchimento das barras, na ordem do SVG. */
+  const fills = (container: HTMLElement) =>
+    [...container.querySelectorAll('.recharts-rectangle')].map((node) =>
+      node.getAttribute('fill'),
+    );
+
+  /** Renderiza e espera a barra existir (a entrada é animada). */
+  async function plotWith(props: Record<string, unknown>) {
+    const view = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    await waitFor(() =>
+      expect(view.container.querySelector('.recharts-rectangle')).not.toBeNull(),
+    );
+    return view;
+  }
+
   it('não deixa uma cor crua legada chegar ao desenho', () => {
     const { container } = renderWithProviders(
       <Block
@@ -150,65 +173,50 @@ describe('bloco h_bar_chart — cor', () => {
     );
     expect(container.innerHTML).not.toContain('#40E0D0');
   });
+
+  /**
+   * REGRESSÃO da causa raiz: `accent` só valia com `palette: "single"`, então
+   * quem escolhesse `multi` perdia a cor pedida sem aviso. Agora o pedido
+   * explícito vence — é o que qualquer um deduz lendo o contrato.
+   */
+  it('aplica o accent mesmo com palette="multi" (o pedido explícito vence)', async () => {
+    const { container } = await plotWith({ palette: 'multi', accent: 'chart-3' });
+    // Cinco categorias, UMA cor: a que o autor pediu (ciano = chart-3).
+    expect(new Set(fills(container))).toEqual(new Set(['#00B8D9']));
+  });
+
+  it('sem accent, "multi" cicla uma cor por categoria e "single" usa uma só', async () => {
+    const { container: multi, unmount } = await plotWith({ palette: 'multi' });
+    // Cinco categorias, cinco cores da paleta, na ordem do ciclo.
+    expect(fills(multi)).toEqual(['#00A76F', '#FFAB00', '#00B8D9', '#FF5630', '#22C55E']);
+    unmount();
+
+    const { container: single } = await plotWith({ palette: 'single' });
+    // Uma cor só — e é a cor PADRÃO do tipo (o VERDE80 da §8), não a cor 1
+    // crua: sem pedido de `accent`, o bloco não troca o visual da referência.
+    expect(new Set(fills(single))).toEqual(new Set([GREEN_80]));
+  });
 });
 
 /* ========================================================================== *
  * 5. CONFORMIDADE VISUAL — `03-tipos-de-grafico.md` §8 (Barra horizontal)
  * ========================================================================== */
 
-/** VERDE80 da referência: `rgba(0,120,103,0.8)`, resolvido do token do DS. */
-const GREEN_80 = 'rgba(0, 120, 103, 0.8)';
-
-/** O mesmo verde escurecido em 20% — o hover da referência ESCURECE. */
-const GREEN_80_HOVER = 'rgba(0, 96, 82, 0.8)';
-
-/**
- * O `ResponsiveContainer` do recharts só desenha depois de MEDIR o container, e
- * o jsdom não mede nada (o `ResizeObserver` do setup é um stub silencioso).
- * Este dublê responde com um tamanho fixo, que é o que faz o SVG existir e
- * torna a conformidade visual verificável em teste.
+/*
+ * O `ResponsiveContainer` do recharts só desenha depois de MEDIR o container.
+ * Este arquivo trazia um `ResizeObserver` próprio (`vi.stubGlobal`) porque o
+ * polyfill global era um stub silencioso; o polyfill (`src/test/setup.ts`)
+ * agora MEDE, então o dublê local saiu. Enquanto a medida era local, todo
+ * teste que não a copiasse — inclusive a auditoria de inércia — via o gráfico
+ * como caixa vazia e acusava como "inerte" qualquer prop cujo efeito é dentro
+ * do SVG (foi o caso de `palette` e `accent` deste bloco).
  */
-class SizedResizeObserver {
-  private readonly callback: ResizeObserverCallback;
-
-  constructor(callback: ResizeObserverCallback) {
-    this.callback = callback;
-  }
-
-  observe(target: Element) {
-    const contentRect = {
-      width: 600,
-      height: 320,
-      top: 0,
-      left: 0,
-      bottom: 320,
-      right: 600,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    };
-    this.callback(
-      [{ target, contentRect } as unknown as ResizeObserverEntry],
-      this as unknown as ResizeObserver,
-    );
-  }
-  unobserve() {}
-  disconnect() {}
-}
 
 describe('bloco h_bar_chart — conformidade visual (§8)', () => {
-  beforeEach(() => {
-    vi.stubGlobal('ResizeObserver', SizedResizeObserver);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   /** Renderiza o bloco e espera o desenho existir (a entrada é animada). */
-  async function plot(): Promise<HTMLElement> {
+  async function plot(props: Record<string, unknown> = {}): Promise<HTMLElement> {
     const { container } = renderWithProviders(
-      <Block props={{}} data={fixture} state="success" />,
+      <Block props={props} data={fixture} state="success" />,
     );
     await waitFor(() =>
       expect(container.querySelector('.recharts-rectangle')).not.toBeNull(),

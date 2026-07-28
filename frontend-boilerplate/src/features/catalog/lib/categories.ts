@@ -100,23 +100,30 @@ export const CATEGORY_BY_TYPE: Record<string, Category> = {
   leaderboard: 'tabelas',
 
   // 🧱 Layout & Containers (aceitam children)
+  //
+  // O sistema de layout foi reduzido a um contêiner de grade (`grid`) e às três
+  // formas de embrulhá-lo: com nome (`section`), recolhível
+  // (`collapsible_block`) e fora do fluxo (`sheet`) — mais o separador.
+  //
+  // Saíram daqui `dashboard_panel` (era `section` com outro nome), `bento_grid`
+  // (virou `grid` com `itemSizing: 'span'`), `expandable_cards` e
+  // `resizable_panels` (padrões de INTERAÇÃO, não de organização: impunham card
+  // em cada filho e altura fixa, e é o que produzia as composições desiguais).
+  grid: 'layout',
   section: 'layout',
   collapsible_block: 'layout',
-  resizable_panels: 'layout',
-  dashboard_panel: 'layout',
-  bento_grid: 'layout',
   sheet: 'layout',
-  expandable_cards: 'layout',
   divider: 'layout',
 
   // ✨ Efeitos & Decorativos
   //
   // Sete blocos saíram do catálogo por decisão de produto (não seriam usados):
   // `background_beams`, `background_boxes`, `glowing_effect`, `pin_3d`,
-  // `tooltip_card`, `tooltip_fluid` e `card_hover`. Sobraram os dois que ainda
-  // têm papel: um indicador de carregamento e um conteúdo flutuante.
+  // `tooltip_card`, `tooltip_fluid` e `card_hover`. Depois saiu também o
+  // `hover_card` (conteúdo flutuante no hover): não organizava nada e não
+  // sobrevivia à exportação em PDF nem ao toque. Sobrou o indicador de
+  // carregamento.
   mobius_loop: 'efeitos',
-  hover_card: 'efeitos',
 
   // 🔤 Texto & Títulos
   title: 'texto',

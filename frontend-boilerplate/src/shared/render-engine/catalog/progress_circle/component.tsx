@@ -30,7 +30,11 @@
  * [x] 13. Ponta ARREDONDADA do arco (base §6) — some quando o anel fecha.
  * [x] 14. Modo `sparkline`: sem eixo, sem grade e sem padding; esqueleto
  *         REDONDO no carregamento (`01-fundamentos.md` §8).
- * [x] 15. Animação de entrada 360ms (`chartAnimationProps`).
+ * [x] 15. Movimento de 360ms (§3) — agora na TRANSIÇÃO do valor, como nas
+ *         demais marcas de progresso do catálogo, e não mais na entrada do
+ *         motor, que deixava o arco fora do primeiro quadro (ver o cabeçalho de
+ *         `progress-circle.tsx`). O desenho passa a existir já no primeiro
+ *         render, que é o que torna `variant` e `accent` observáveis.
  * [x] 16. Zero hex/rgb/px de estilo neste arquivo: cor, métrica e tipografia
  *         saem de `useChartPalette` dentro do `ProgressCircle`.
  *
@@ -50,8 +54,10 @@
  *    e efeito.
  *
  * COR: `variant` é TOM semântico do anel (destaque, positivo, atenção,
- * negativo, neutro) e `accent`, quando preenchido, significa "use o tom de
- * destaque" — o anel do DS é pintado por tom, não por cor arbitrária.
+ * negativo, neutro) e `accent`, quando preenchido, pede uma COR DE SÉRIE do
+ * tema — e vence o tom, como manda a regra de precedência de `chart-accent.ts`.
+ * Cor crua não passa: `chartAccentColor` traduz o vocabulário antigo para token
+ * do design system ou devolve nada, e aí o tom volta a mandar.
  *
  * O tooltip é o do design system: ele já cuida de foco, teclado e
  * posicionamento, então o bloco não precisa de `tabIndex` nem de anel de foco
@@ -60,7 +66,12 @@
 import type { ScalarData } from '@dashboards/contracts';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
-import { CHART_HEIGHT, ProgressCircle, buildChartScope } from '@/shared/ui';
+import {
+  CHART_HEIGHT,
+  ProgressCircle,
+  buildChartScope,
+  chartAccentColor,
+} from '@/shared/ui';
 import type { ProgressCircleTone } from '@/shared/ui';
 import { formatNumberBR, formatPercentBR, toNumber } from '@/shared/lib/format';
 import { defineBlock } from '../../types';
@@ -109,8 +120,18 @@ export const Component: BlockComponent<ProgressCircleProps, ScalarData> = ({
       ? percentLabel
       : `${percentLabel} (${formatNumberBR(value)} de ${formatNumberBR(max)})`;
 
-  const hasAccent = typeof props.accent === 'string' && props.accent.trim() !== '';
-  const tone = hasAccent ? 'accent' : (TONE[props.variant ?? 'default'] ?? 'accent');
+  /**
+   * COR do arco — a regra de precedência de `chart-accent.ts`.
+   *
+   * `accent` reconhecível vence e pinta o arco com a COR DE SÉRIE pedida; sem
+   * ele, manda o TOM semântico do `variant`. Era aqui o defeito: qualquer
+   * `accent` preenchido virava o tom `accent` (uma cor só), então os seis
+   * valores do enum desenhavam o MESMO anel — e, de quebra, o `variant` ficava
+   * mudo para sempre depois que alguém escolhesse uma cor. Medido na auditoria
+   * de inércia (`catalog/__audit__`), as duas props apareciam como INERTES.
+   */
+  const accentColor = chartAccentColor(props.accent);
+  const tone = TONE[props.variant ?? 'default'] ?? 'accent';
   const label = data?.label ?? manifest.name;
   // Vocabulário de `{{variáveis}}` derivado dos DADOS — o mesmo em todo bloco.
   const scope = buildChartScope(data ?? {});
@@ -122,6 +143,7 @@ export const Component: BlockComponent<ProgressCircleProps, ScalarData> = ({
         max={max}
         size={CHART_HEIGHT.circular}
         tone={tone}
+        color={accentColor}
         label={label}
         centerValue={percentLabel}
         centerCaption={data?.label ?? TOTAL_LABEL}

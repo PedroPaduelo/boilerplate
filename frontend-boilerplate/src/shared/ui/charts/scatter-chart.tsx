@@ -51,6 +51,7 @@ import {
 } from './chart-axes';
 import { formatChartValue } from './chart-data';
 import { ChartFrame } from './chart-frame';
+import { useChartMotion } from './chart-motion';
 import type { ChartFrameState } from './chart-frame';
 import { ChartLegend } from './chart-legend';
 import { chartMarkerArea, chartMarkerStrokeWidth } from './chart-marker';
@@ -60,7 +61,7 @@ import type { ChartScope } from './chart-template';
 import { chartPlainText } from './chart-text-html';
 import { ChartTooltip } from './chart-tooltip';
 import type { ChartStateProps, ValueFormatter } from './types';
-import { useChartPalette } from './use-chart-palette';
+import { useChartPalette, type ChartSeriesColor } from './use-chart-palette';
 
 /** Um ponto do gráfico de dispersão. */
 export interface ScatterPoint {
@@ -93,6 +94,17 @@ export interface ScatterChartProps extends ChartStateProps {
    * pedido de token registrado no relatório do lote.
    */
   sizeRange?: [number, number];
+  /**
+   * Cor de TODAS as categorias — o pedido EXPLÍCITO de cor (o `accent` do
+   * bloco). Sem ela, cada categoria pega a próxima cor do ciclo, que é o
+   * comportamento da §15: numa dispersão a cor identifica o grupo.
+   *
+   * Existe porque o bloco `scatter_chart` declarava `accent` no manifesto (e na
+   * interface) sem NUNCA ler o valor: a prop era anunciada ao agente de IA e
+   * não tinha efeito nenhum. Com ela, pedir uma cor passa a valer — e o modo
+   * "uma cor por categoria" continua sendo o padrão de quem não pede nada.
+   */
+  color?: ChartSeriesColor;
   /** Linhas de grade. */
   showGrid?: boolean;
   /** Legenda categoria → cor abaixo da plotagem. */
@@ -167,6 +179,7 @@ export function ScatterChart({
   xLabel = 'X',
   yLabel = 'Y',
   sizeRange = [60, 500],
+  color,
   showGrid = true,
   showLegend = true,
   valueFormatter = formatChartValue,
@@ -182,6 +195,8 @@ export function ScatterChart({
   summary,
 }: ScatterChartProps) {
   const palette = useChartPalette();
+  // Entrada animada só quando o usuário não pediu redução de movimento.
+  const isAnimationActive = useChartMotion();
   const groups = groupByCategory(data);
   const hasSize = data.some((point) => typeof point.size === 'number');
 
@@ -230,7 +245,8 @@ export function ScatterChart({
           <ChartLegend
             items={groups.map(([name], index) => ({
               label: name,
-              color: palette.varAt(index),
+              // `color` fixa a cor pedida; sem ele, a paleta cicla por grupo.
+              color: palette.varAt(index, color),
             }))}
           />
         ) : null
@@ -277,7 +293,7 @@ export function ScatterChart({
                     {
                       label: xName,
                       value: valueFormatter(point.x),
-                      color: palette.varAt(index < 0 ? 0 : index),
+                      color: palette.varAt(index < 0 ? 0 : index, color),
                     },
                     { label: yName, value: valueFormatter(point.y) },
                   ]}
@@ -290,14 +306,15 @@ export function ScatterChart({
               key={name}
               name={name}
               data={points}
-              fill={palette.colorAt(index)}
+              fill={palette.colorAt(index, color)}
               stroke={palette.chrome('markerStroke')}
               // Halo proporcional ao raio: com os 3px crus do token, um ponto
               // de 6px ficaria com metade do miolo comida — anel, não ponto.
               strokeWidth={chartMarkerStrokeWidth(palette)}
               // O hover da referência ESCURECE a série (a maioria das libs clareia).
-              activeShape={{ fill: palette.hoverAt(index) }}
+              activeShape={{ fill: palette.hoverAt(index, color) }}
               {...chartAnimationProps(palette, index)}
+              isAnimationActive={isAnimationActive}
             />
           ))}
         </RechartsScatterChart>

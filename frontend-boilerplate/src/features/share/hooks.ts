@@ -28,10 +28,7 @@ export function usePublicArtifact(token: string | undefined) {
  * DASHBOARD. O componente `PublicDashboardView` passa o `enabled` derivado
  * do `data.targetType === 'DASHBOARD'`.
  */
-export function usePublicData(
-  token: string | undefined,
-  enabled: boolean,
-) {
+export function usePublicData(token: string | undefined, enabled: boolean) {
   return useQuery<PublicDashboardDataPayload, ShareLinkError>({
     queryKey: [...queryKeys.share(token ?? ''), 'data'] as const,
     queryFn: () => shareApi.openData(token as string),

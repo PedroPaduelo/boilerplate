@@ -11,6 +11,7 @@ import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { HStack, Section, VStack } from '@astryxdesign/core/Layout';
+import { Selector } from '@astryxdesign/core/Selector';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import type { DashFilter } from '../../lib/dashboard-filters';
@@ -22,6 +23,7 @@ import {
   removeRow,
   setBlockDataBinding,
   setBlockSpan,
+  setRowTab,
   setRowTitle,
   updateBlockProps,
   type EditorLayout,
@@ -35,6 +37,14 @@ export interface RowsEditorProps {
 }
 
 export function RowsEditor({ layout, onLayoutChange }: RowsEditorProps) {
+  // Só há a que escolher quando o dashboard usa abas; sem elas, o seletor não
+  // aparece — nada de campo desabilitado sem explicação na tela.
+  const tabs = layout.tabs ?? [];
+  const tabOptions = tabs.map((tab) => ({ value: tab.id, label: tab.title }));
+  /** Aba dona da linha. Linha órfã cai na primeira, como faz o normalizador. */
+  const tabOfRow = (rowId: string): string =>
+    tabs.find((tab) => tab.rowIds.includes(rowId))?.id ?? tabs[0]?.id ?? '';
+
   const addRowButton = (
     <Button
       label="Adicionar linha"
@@ -81,6 +91,19 @@ export function RowsEditor({ layout, onLayoutChange }: RowsEditorProps) {
                     onLayoutChange((current) => setRowTitle(current, row.id, value))
                   }
                 />
+                {tabs.length > 0 ? (
+                  <Selector
+                    label={`Aba da linha ${rowIndex + 1}`}
+                    size="sm"
+                    width={170}
+                    value={tabOfRow(row.id)}
+                    options={tabOptions}
+                    labelTooltip="Em qual aba esta linha aparece na visualização."
+                    onChange={(value) =>
+                      onLayoutChange((current) => setRowTab(current, row.id, value))
+                    }
+                  />
+                ) : null}
                 <IconButton
                   label={`Remover linha ${rowIndex + 1}`}
                   tooltip="Remover linha"

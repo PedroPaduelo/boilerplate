@@ -37,6 +37,7 @@ import {
 import { CHART_SPARK_MARGIN, chartAnimationProps } from './chart-axes';
 import { formatChartValue } from './chart-data';
 import { ChartFrame } from './chart-frame';
+import { useChartMotion } from './chart-motion';
 import type { ChartFrameState } from './chart-frame';
 import { chartSparkMarkerProps } from './chart-marker';
 import type { ChartScope } from './chart-template';
@@ -201,8 +202,12 @@ export function SparkChart({
   const curveType = curve ?? (isSmooth ? 'monotone' : 'linear');
   const plotHeight = height ?? SPARK_SIZE[type].height;
 
-  /** 360ms de entrada, como todo desenho do catálogo (`02-configuracao-base` §3). */
-  const animation = chartAnimationProps(palette);
+  /**
+   * 360ms de entrada, como todo desenho do catálogo (`02-configuracao-base`
+   * §3) — e desligada para quem pediu redução de movimento.
+   */
+  const isAnimationActive = useChartMotion();
+  const animation = { ...chartAnimationProps(palette), isAnimationActive };
 
   /**
    * Marcador do ponto sob o cursor: os MESMOS 6px de diâmetro do gráfico com

@@ -2,10 +2,15 @@
  * DashboardRenderer — motor de render base (doc 03 / doc 32 §4).
  *
  * Recebe um `DashboardLayout` ({ filters, rows }) + (opcional) o payload de
- * DADOS batch e renderiza a tela: barra de filtros + linhas de blocos no grid
- * de 12 colunas. Cada bloco é resolvido pelo registry via `BlockRenderer`;
- * tipos desconhecidos caem no aviso do próprio bloco, então um layout com um
- * tipo novo nunca derruba a tela inteira.
+ * DADOS batch e renderiza a tela: barra de filtros + linhas de blocos. Cada
+ * bloco é resolvido pelo registry via `BlockRenderer`; tipos desconhecidos caem
+ * no aviso do próprio bloco, então um layout com um tipo novo nunca derruba a
+ * tela inteira.
+ *
+ * A `row` do contrato é literalmente A LINHA de que trata a regra de
+ * composição: seus blocos são distribuídos em faixas IGUAIS e a linha recebe um
+ * degrau de altura derivado dos tipos que ela contém (ver `block-grid`). É por
+ * isso que o renderer não escolhe largura por bloco — quem escolhe é a linha.
  */
 import type {
   DashboardLayout,
@@ -18,6 +23,7 @@ import { Heading } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 import { BlockGrid } from './block-grid';
+import type { BlockItemSizing } from './lib/layout-options';
 import { BlockRenderer } from './block-renderer';
 
 export interface DashboardRendererProps {
@@ -29,6 +35,15 @@ export interface DashboardRendererProps {
    * `true` (dashboard real). A GALERIA do catálogo passa `false`.
    */
   framed?: boolean;
+  /**
+   * Como a largura dos blocos de cada linha é decidida. Default `equal`:
+   * faixas iguais, sem um bloco maior que o vizinho.
+   *
+   * `span` restaura a leitura literal do `span` (grid de 12 colunas) para
+   * telas que precisem reproduzir um layout assimétrico salvo — é uma saída
+   * consciente, não o caminho normal.
+   */
+  itemSizing?: BlockItemSizing;
   className?: string;
 }
 
@@ -36,6 +51,7 @@ export function DashboardRenderer({
   layout,
   data,
   framed = true,
+  itemSizing = 'equal',
   className,
 }: DashboardRendererProps) {
   return (
@@ -59,6 +75,7 @@ export function DashboardRenderer({
           {row.title ? <Heading level={2}>{row.title}</Heading> : null}
           <BlockGrid
             blocks={row.blocks}
+            itemSizing={itemSizing}
             renderBlock={(block) => (
               <BlockRenderer
                 block={block}

@@ -46,9 +46,8 @@ export const manifest = {
       accent: {
         type: 'string',
         enum: [...ACCENT_COLORS],
-        default: 'chart-1',
         description:
-          'Cor do ARCO do medidor (e da leitura central). O valor é resolvido para uma cor de dado do design system (chart-1..5 e primary mapeiam para as cores categóricas, na mesma ordem da paleta). No valor PADRÃO (`chart-1`) o arco usa o acento do produto — a 1ª cor da paleta, a mesma com que todo bloco do catálogo abre; qualquer outro valor pinta o arco com a cor escolhida (inclusive o par roxo da referência, pedindo `purple`). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
+          'Cor do ARCO do medidor (e do gradiente dele). O valor é resolvido para uma cor de dado do design system (chart-1..5 mapeiam para as cores categóricas, na mesma ordem da paleta; `primary` é sinônimo de `chart-1` — as duas são a 1ª cor, e por isso desenham igual). VAZIO = o acento do produto, a 1ª cor da paleta, a mesma com que todo bloco do catálogo abre (ou seja: `chart-1` e vazio desenham igual, de propósito). Valores fora do enum são aceitos por compatibilidade e caem na paleta quando não descrevem uma cor do sistema.',
       },
       // LAYOUT — os três medidores da referência de design.
       variant: {
@@ -69,6 +68,12 @@ export const manifest = {
     },
     example: { value: 72, label: 'Cobertura', unit: '%' },
   },
-  defaultProps: { max: 100, min: 0, accent: 'chart-1' },
-  version: '1.0.0',
+  // `accent` fica FORA dos defaults: o `BlockRenderer` mescla `defaultProps` em
+  // toda renderização, então o default de fábrica chegava ao componente
+  // indistinguível de uma escolha do autor — e o bloco precisava compará-lo com
+  // o próprio manifesto para saber se alguém tinha escolhido cor. Sem default,
+  // ausência significa "sem escolha" e o medidor usa a cor padrão dele, que é a
+  // mesma para onde `chart-1` aponta: o desenho não muda.
+  defaultProps: { max: 100, min: 0 },
+  version: '1.1.0',
 } satisfies BlockManifest;

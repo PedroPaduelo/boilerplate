@@ -86,9 +86,28 @@ export interface Row {
   blocks: Block[];
 }
 
+/**
+ * ABA do dashboard — agrupa `rows` em páginas navegáveis.
+ *
+ * A aba referencia as linhas por ID (`rowIds`) em vez de contê-las: `rows`
+ * segue sendo a lista CANÔNICA e completa de linhas do layout. Ver a nota
+ * longa em `$defs.tab` do `DashboardLayoutSchema` (e doc 40) para o porquê.
+ */
+export interface Tab {
+  id: string;
+  title: string;
+  /** ids de `rows` que compõem a aba, na ordem de exibição. */
+  rowIds: string[];
+}
+
 export interface DashboardLayout {
   filters: Filter[];
   rows: Row[];
+  /**
+   * OPCIONAL — ausente nos dashboards já salvos. Um layout sem `tabs` é lido
+   * como UMA aba implícita contendo todas as `rows` (ver `resolveDashboardTabs`).
+   */
+  tabs?: Tab[];
 }
 
 export type ArtifactStatus = 'draft' | 'published';

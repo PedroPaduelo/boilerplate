@@ -1,11 +1,6 @@
 import type { BlockDataResult } from '@dashboards/contracts';
 import { apiClient } from '@/shared/lib/api-client';
-import type {
-  Chart,
-  ChartsResponse,
-  CreateChartInput,
-  UpdateChartInput,
-} from './types';
+import type { Chart, ChartsResponse, CreateChartInput, UpdateChartInput } from './types';
 
 /**
  * Cliente HTTP da feature `charts`. Usa a instância única `apiClient`
@@ -14,9 +9,7 @@ import type {
 export const chartsApi = {
   // GET /charts — lista visível ao usuário (paginada, RBAC no backend).
   // `params` já vem normalizado por `toServerFilters` — repassado direto ao axios.
-  list: async (
-    params: Record<string, unknown> = {},
-  ): Promise<ChartsResponse> => {
+  list: async (params: Record<string, unknown> = {}): Promise<ChartsResponse> => {
     const { data } = await apiClient.get<ChartsResponse>('/charts', { params });
     return data;
   },

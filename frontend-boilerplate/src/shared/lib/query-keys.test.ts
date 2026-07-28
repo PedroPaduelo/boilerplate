@@ -17,9 +17,18 @@ describe('query-keys', () => {
   });
 
   it('chaves seguem a forma do doc 32', () => {
-    expect(queryKeys.dashboards.detail('d1', 'published')).toEqual(['dashboard', 'd1', 'published']);
+    expect(queryKeys.dashboards.detail('d1', 'published')).toEqual([
+      'dashboard',
+      'd1',
+      'published',
+    ]);
     expect(queryKeys.blockData('b1', 'h')).toEqual(['block-data', 'b1', 'h']);
-    expect(queryKeys.dashboardData('d1', 'draft', 'h')).toEqual(['dashboard-data', 'd1', 'draft', 'h']);
+    expect(queryKeys.dashboardData('d1', 'draft', 'h')).toEqual([
+      'dashboard-data',
+      'd1',
+      'draft',
+      'h',
+    ]);
     expect(queryKeys.catalog()).toEqual(['catalog']);
     expect(queryKeys.connections.all).toEqual(['connections']);
   });

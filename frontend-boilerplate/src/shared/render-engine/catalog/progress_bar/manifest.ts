@@ -42,7 +42,7 @@ export const manifest = {
         type: 'string',
         enum: [...ACCENT_COLORS],
         description:
-          'Cor de destaque. Quando preenchida, SOBRESCREVE o `variant` e a barra é pintada com a cor de série correspondente do tema de gráfico. Valores antigos continuam aceitos.',
+          'Cor de destaque. Quando preenchida, SOBRESCREVE o `variant` e a barra é pintada com a cor de série correspondente do tema de gráfico (chart-1..5 mapeiam para as cores categóricas, na mesma ordem da paleta; `primary` é sinônimo de `chart-1` — as duas são a 1ª cor, e por isso desenham igual). VAZIA = usa o `variant`, que é o jeito de pintar por SIGNIFICADO (atenção, erro, sucesso). Valores antigos continuam aceitos.',
       },
       showValue: {
         type: 'boolean',
