@@ -17,6 +17,7 @@ import { startRun } from './transport/socket-transport';
 import type { ChatMessage, ChatRole } from './transport';
 import { useRunAttachment } from './use-run-attachment';
 import {
+  buildTrails,
   conversationReducer,
   initialConversationState,
   type ConversationState,
@@ -55,9 +56,13 @@ export function useConversationStream(
 
   const reload = useCallback(async () => {
     const conversation = await agentApi.getConversation(conversationId);
+    const records = conversation.messages ?? [];
     dispatch({
       type: 'loaded',
-      messages: (conversation.messages ?? []).map(toUiMessage),
+      messages: records.map(toUiMessage),
+      // A trilha vem do banco junto com o texto: é o que faz a auditoria
+      // sobreviver ao recarregar em vez de existir só durante o streaming.
+      trails: buildTrails(records),
     });
   }, [conversationId]);
 

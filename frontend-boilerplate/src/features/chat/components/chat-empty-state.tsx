@@ -3,6 +3,10 @@
  *
  * Clicar já ENVIA a pergunta (um clique em vez de "preencher e depois enviar"):
  * o objetivo é tirar o usuário do branco da página no menor número de passos.
+ *
+ * A descrição promete o ciclo inteiro — evidência na tela e gráfico pronto para
+ * virar dashboard —, e cada cartão nomeia uma capacidade diferente do agente,
+ * para que a promessa venha com exemplos do que pedir.
  */
 import { Bot } from 'lucide-react';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
@@ -19,6 +23,10 @@ export interface ChatEmptyStateProps {
   isDisabled?: boolean;
 }
 
+/** `ClickableCard` não tem tooltip: o motivo do bloqueio vira texto visível. */
+const DISABLED_REASON =
+  'As sugestões ficam inativas enquanto o agente estiver indisponível.';
+
 export function ChatEmptyState({ onPick, isDisabled = false }: ChatEmptyStateProps) {
   return (
     <VStack gap={6} hAlign="center" maxWidth={640} width="100%">
@@ -26,7 +34,7 @@ export function ChatEmptyState({ onPick, isDisabled = false }: ChatEmptyStatePro
         icon={<Icon icon={Bot} size="lg" />}
         headingLevel={2}
         title="O que você quer investigar hoje?"
-        description="Pergunte em português. O agente consulta suas conexões, escreve o SQL e devolve a resposta — com o gráfico pronto para salvar."
+        description="Pergunte em português. O agente lê o schema das suas conexões, escreve o SQL, mostra a evidência de cada passo e devolve a resposta — com o gráfico pronto para salvar num dashboard."
       />
 
       <Grid columns={{ minWidth: 260, max: 2 }} gap={2} width="100%">
@@ -42,7 +50,9 @@ export function ChatEmptyState({ onPick, isDisabled = false }: ChatEmptyStatePro
               <Icon icon={icon} size="sm" color="accent" />
               <VStack gap={0.5}>
                 <Text type="label">{title}</Text>
-                <Text type="supporting" maxLines={2}>
+                {/* O texto do cartão É a pergunta enviada: três linhas para que
+                    ela caiba sem cortar o que o usuário está prestes a pedir. */}
+                <Text type="supporting" maxLines={3}>
                   {prompt}
                 </Text>
               </VStack>
@@ -50,6 +60,12 @@ export function ChatEmptyState({ onPick, isDisabled = false }: ChatEmptyStatePro
           </ClickableCard>
         ))}
       </Grid>
+
+      {isDisabled ? (
+        <Text type="supporting" role="status">
+          {DISABLED_REASON}
+        </Text>
+      ) : null}
     </VStack>
   );
 }

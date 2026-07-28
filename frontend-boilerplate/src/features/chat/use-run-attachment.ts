@@ -29,7 +29,14 @@ export function useRunAttachment(
         if (run) {
           fromSeq = run.seq;
           if (run.status === 'running') {
-            dispatch({ type: 'resumed', messageId: run.messageId, text: run.text });
+            dispatch({
+              type: 'resumed',
+              messageId: run.messageId,
+              text: run.text,
+              // Os passos já executados vêm junto: quem recarrega no meio do
+              // turno reencontra a trilha inteira, e não só o texto acumulado.
+              steps: run.toolSteps ?? [],
+            });
           }
         }
       } catch {

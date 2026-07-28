@@ -1,6 +1,6 @@
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { buildCreateTable } from '../lib/ddl';
-import { tokenizeSql } from '../lib/sql-tokenizer';
+import { tokenizeSql } from '@/shared/lib/sql-tokenize';
 import type { DbEngine, TableDef } from './db-schema-explorer-types';
 
 /**

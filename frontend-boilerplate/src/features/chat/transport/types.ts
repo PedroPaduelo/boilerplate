@@ -18,7 +18,15 @@
  * - Sem persistência de histórico do nosso lado (o agente externo é stateless
  *   para nós): o histórico vive em memória na sessão do chat.
  */
-import type { BlockDataResult, DataBinding } from '@dashboards/contracts';
+import type {
+  BlockDataResult,
+  ChatArtifactEvent,
+  ChatChartPayload as ChatChartPayloadWire,
+  ChatPhaseEvent,
+  ChatToolStepEvent,
+  ChatUsageEvent,
+  DataBinding,
+} from '@dashboards/contracts';
 
 /** Papel de uma mensagem no chat. */
 export type ChatRole = 'user' | 'assistant';
@@ -36,16 +44,15 @@ export type ChatRole = 'user' | 'assistant';
  * - `chartId` é preenchido quando o agente JÁ criou o Chart via MCP (na API real).
  *   No mock fica ausente — o fluxo de "adicionar" cria o Chart na hora.
  */
-export interface ChatChartPayload {
-  /** Id do Chart criado via MCP pelo agente externo (quando real). Mock: ausente. */
-  chartId?: string;
-  /** Título sugerido pelo agente (vira o título do Chart ao adicionar ao dashboard). */
-  title: string;
-  /** catalogType do bloco (kpi | bar_chart | line_chart | donut | table | ...). */
-  catalogType: string;
-  /** Props visuais do bloco (mescladas com os defaults do manifesto). */
-  props?: Record<string, unknown>;
-  /** Resultado de dados JÁ no shape do contrato — alimenta o BlockRenderer inline. */
+export interface ChatChartPayload extends Omit<
+  ChatChartPayloadWire,
+  'result' | 'dataBinding'
+> {
+  /**
+   * Resultado de dados JÁ no shape do contrato — alimenta o BlockRenderer inline.
+   * O contrato do socket declara `unknown` (é JSON cru na rede); aqui estreitamos
+   * para o que o render-engine consome, e o estreitamento acontece no transporte.
+   */
   result: BlockDataResult;
   /**
    * Vínculo de dados (conexão/query/transform/ttl) que materializa o Chart ao
@@ -67,6 +74,28 @@ export interface ChatMessage {
 }
 
 /**
+ * Cargas dos eventos de auditoria, REAPROVEITADAS do contrato.
+ *
+ * Só tiramos os campos de roteamento (`conversationId`/`runId`): quem escuta já
+ * filtrou a conversa, e repassá-los para dentro da tela convidaria a UI a
+ * decidir sobre roteamento. Redeclarar os campos aqui seria pior: cada campo
+ * novo do contrato precisaria ser copiado à mão e um esquecimento vira campo
+ * silenciosamente descartado — que é exatamente como a auditoria se perdeu.
+ */
+export type ChatToolStepPayload = Omit<ChatToolStepEvent, 'conversationId' | 'runId'>;
+export type ChatPhasePayload = Omit<ChatPhaseEvent, 'conversationId' | 'runId'>;
+export type ChatArtifactPayload = Omit<ChatArtifactEvent, 'conversationId' | 'runId'>;
+/**
+ * `messageId` fica opcional (o contrato o exige) porque o transporte SSE antigo
+ * manda o consumo sem ele — só há um turno em voo, então a tela sabe a quem
+ * pertence. Sem essa folga, um backend antigo derrubaria o tipo.
+ */
+export type ChatUsagePayload = Omit<
+  ChatUsageEvent,
+  'conversationId' | 'runId' | 'messageId'
+> & { messageId?: string };
+
+/**
  * Eventos de STREAMING emitidos pelo transporte enquanto o agente responde.
  *
  * Este é o protocolo (= o que a API real deverá expor, p.ex. via SSE/WebSocket):
@@ -75,6 +104,11 @@ export interface ChatMessage {
  * - `chart`          → anexa um gráfico inline à mensagem.
  * - `message_end`    → fecha a mensagem.
  * - `error`          → falha no meio do stream.
+ * - `tool_step`      → um passo da trilha de auditoria (`call` e depois `result`).
+ * - `phase`          → em que ponto do turno o agente está.
+ * - `artifact`       → gráfico/dashboard que o agente criou ou alterou.
+ * - `usage`          → consumo do turno (tokens, tempo, passos).
+ * - `title`          → conversa renomeada pelo servidor.
  */
 export type ChatEvent =
   | { type: 'message_start'; messageId: string }
@@ -82,21 +116,12 @@ export type ChatEvent =
   | { type: 'chart'; messageId: string; chart: ChatChartPayload }
   | { type: 'message_end'; messageId: string }
   | { type: 'error'; message: string }
-  | {
-      type: 'tool_step';
-      messageId?: string;
-      toolName: string;
-      toolCallId: string;
-      phase: 'call' | 'result';
-      args?: Record<string, unknown>;
-      output?: unknown;
-    }
-  | {
-      type: 'usage';
-      inputTokens?: number;
-      outputTokens?: number;
-      cachedInputTokens?: number;
-    };
+  /** `messageId` só existe quando o passo chega junto de uma mensagem já aberta. */
+  | ({ type: 'tool_step'; messageId?: string } & ChatToolStepPayload)
+  | ({ type: 'phase' } & ChatPhasePayload)
+  | ({ type: 'artifact' } & ChatArtifactPayload)
+  | ({ type: 'usage' } & ChatUsagePayload)
+  | { type: 'title'; title: string };
 
 export interface SendMessageOptions {
   /** Permite abortar o stream (botão "parar" / desmontagem). */

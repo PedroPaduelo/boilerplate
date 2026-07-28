@@ -199,7 +199,17 @@ export async function loadConversationHistory(
       continue;
     }
 
-    const steps = Array.isArray(m.toolData) ? (m.toolData as unknown as PersistedToolStep[]) : [];
+    // `toolData` tem DUAS formas em produção, e as duas precisam funcionar:
+    //   - array cru de passos — como a rota SSE legada (`routes/chat.ts`) grava;
+    //   - `{ steps, artifacts, usage }` — a trilha de auditoria, que é o que a
+    //     tela lê para reconstruir o que o agente fez.
+    // Aceitar só a primeira faria o histórico voltar SEM as tool-calls: o agente
+    // perderia o que descobriu no turno anterior (a conexão em uso, o schema já
+    // lido, o gráfico recém-criado) e refaria a descoberta a cada pergunta.
+    const brutos = Array.isArray(m.toolData)
+      ? m.toolData
+      : (m.toolData as { steps?: unknown } | null)?.steps;
+    const steps = Array.isArray(brutos) ? (brutos as unknown as PersistedToolStep[]) : [];
     // Só reinjetamos passos completos: uma tool-call órfã quebra a requisição.
     const completos = steps.filter((s) => s && s.toolCallId && s.toolName);
 

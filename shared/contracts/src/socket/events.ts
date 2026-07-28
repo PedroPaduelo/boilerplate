@@ -9,6 +9,17 @@ import type {
   BlockDataEvent,
   BlockErrorEvent,
 } from '../types';
+import type {
+  ChatPhaseEvent,
+  ChatToolStepEvent,
+  ChatChartEvent,
+  ChatArtifactEvent,
+  ChatUsageEvent,
+  ChatTitleEvent,
+} from './chat';
+
+// Eventos de auditoria do turno do agente — contrato completo em `./chat`.
+export * from './chat';
 
 export { SOCKET_EVENTS };
 export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
@@ -57,6 +68,15 @@ export interface ServerToClientEvents {
   'chat:tool-step': (payload: ChatToolStepEvent) => void;
   'chat:done': (payload: ChatDoneEvent) => void;
   'chat:error': (payload: ChatErrorEvent) => void;
+  /**
+   * Trilha de auditoria e contexto do turno — ver `./chat` para o porquê de
+   * cada um. Todos chegam na mesma sala dos deltas.
+   */
+  'chat:phase': (payload: ChatPhaseEvent) => void;
+  'chat:chart': (payload: ChatChartEvent) => void;
+  'chat:artifact': (payload: ChatArtifactEvent) => void;
+  'chat:usage': (payload: ChatUsageEvent) => void;
+  'chat:title': (payload: ChatTitleEvent) => void;
 }
 
 export interface ChatDeltaEvent {
@@ -66,16 +86,6 @@ export interface ChatDeltaEvent {
   delta: string;
   /** Número do pedaço (1, 2, 3…) dentro deste turno. */
   seq: number;
-}
-
-export interface ChatToolStepEvent {
-  conversationId: string;
-  runId: string;
-  toolCallId: string;
-  toolName: string;
-  phase: 'call' | 'result';
-  args?: unknown;
-  output?: unknown;
 }
 
 export interface ChatDoneEvent {

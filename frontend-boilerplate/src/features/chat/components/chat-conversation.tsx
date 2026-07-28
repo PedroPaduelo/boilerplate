@@ -4,6 +4,12 @@
  * Todo o comportamento de scroll (auto-scroll ao chegar texto, botão "novas
  * mensagens" quando o usuário sobe a lista e a doca fosca do composer) vem do
  * `ChatLayout` — antes eram três efeitos manuais aqui dentro.
+ *
+ * A ordem dentro de cada resposta é deliberada: **primeiro a trilha, depois o
+ * texto**. Num produto de auditoria a pergunta que importa não é só "qual é o
+ * número?", é "de onde ele saiu?" — quem lê a resposta passa antes pelo que o
+ * agente fez para chegar nela. Durante o turno essa mesma trilha é o indicador
+ * de progresso: ela se escreve sozinha enquanto o agente trabalha.
  */
 import { useState } from 'react';
 import {
@@ -12,15 +18,13 @@ import {
   ChatLayout,
   ChatMessageList,
   ChatSendButton,
-  ChatSystemMessage,
-  ChatToolCalls,
 } from '@astryxdesign/core/Chat';
-import { Spinner } from '@astryxdesign/core/Spinner';
 import { useConversationStream } from '../use-conversation-stream';
-import { toChatToolCalls } from '../lib/chat-tools';
+import { selectPendingTrail, selectTrail } from '../lib/conversation-state';
 import { ChatEmptyState } from './chat-empty-state';
 import { ChatMessageItem } from './chat-message-item';
 import { ChatTurnError } from './chat-turn-error';
+import { AuditTrail } from './audit-trail';
 
 export interface ChatConversationProps {
   conversationId: string;
@@ -35,22 +39,24 @@ export function ChatConversation({
   conversationId,
   isAgentReady,
 }: ChatConversationProps) {
-  const { messages, toolSteps, isStreaming, error, lastPrompt, send, stop } =
-    useConversationStream(conversationId);
+  const state = useConversationStream(conversationId);
+  const { messages, phaseLabel, isStreaming, error, lastPrompt, send, stop } = state;
   const [draft, setDraft] = useState('');
 
   const isOffline = isAgentReady === false;
-  const toolCalls = toChatToolCalls(toolSteps);
 
-  // A última mensagem do agente é renderizada DEPOIS das tool calls: primeiro o
-  // que ele está fazendo, depois o que ele está respondendo.
+  /**
+   * Passos que já aconteceram mas ainda não têm resposta a que se prender: as
+   * ferramentas rodam ANTES do primeiro delta, que é o que abre a bolha do
+   * agente. Sem isto o usuário fica olhando para o nada nos primeiros segundos
+   * — justo quando o agente está fazendo o trabalho mais pesado.
+   */
+  const pendingTrail = selectPendingTrail(state);
   const lastMessage = messages[messages.length - 1];
   const isLastStreaming = isStreaming && lastMessage?.role === 'assistant';
-  const history = isLastStreaming ? messages.slice(0, -1) : messages;
-  const isThinking = isStreaming && !isLastStreaming;
+  const lastAssistantId = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
 
-  const hasContent =
-    messages.length > 0 || toolCalls.length > 0 || isStreaming || !!error;
+  const hasContent = messages.length > 0 || isStreaming || !!error;
 
   return (
     <ChatLayout
@@ -74,21 +80,43 @@ export function ChatConversation({
     >
       {hasContent ? (
         <ChatMessageList isStreaming={isStreaming}>
-          {history.map((message) => (
-            <ChatMessageItem key={message.id} message={message} />
-          ))}
+          {messages.map((message) => {
+            const isThisStreaming = isLastStreaming && message.id === lastMessage.id;
+            const trail = selectTrail(state, message.id);
 
-          {toolCalls.length > 0 ? (
-            <ChatToolCalls calls={toolCalls} label="Ferramentas usadas nesta resposta" />
+            if (message.role === 'user') {
+              return <ChatMessageItem key={message.id} message={message} />;
+            }
+
+            return (
+              <div key={message.id}>
+                <AuditTrail
+                  trail={trail}
+                  phaseLabel={isThisStreaming ? phaseLabel : null}
+                  isStreaming={isThisStreaming}
+                />
+                <ChatMessageItem
+                  message={message}
+                  isStreaming={isThisStreaming}
+                  trail={trail}
+                  // Refazer só na ÚLTIMA resposta: reenviar uma pergunta do meio
+                  // reescreveria o fim da conversa que veio depois dela.
+                  onRetry={
+                    message.id === lastAssistantId && lastPrompt && !isStreaming
+                      ? () => send(lastPrompt)
+                      : undefined
+                  }
+                  onFollowUp={send}
+                  isFollowUpDisabled={isStreaming || isOffline}
+                />
+              </div>
+            );
+          })}
+
+          {/* Turno em voo antes de a resposta abrir: a trilha é o progresso. */}
+          {isStreaming && !isLastStreaming ? (
+            <AuditTrail trail={pendingTrail} phaseLabel={phaseLabel} isStreaming />
           ) : null}
-
-          {isThinking ? (
-            <ChatSystemMessage icon={<Spinner size="sm" />}>
-              O agente está trabalhando…
-            </ChatSystemMessage>
-          ) : null}
-
-          {isLastStreaming ? <ChatMessageItem message={lastMessage} isStreaming /> : null}
 
           {error ? (
             <ChatTurnError

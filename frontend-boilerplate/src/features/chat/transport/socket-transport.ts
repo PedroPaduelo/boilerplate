@@ -14,9 +14,17 @@
  *     do último pedaço recebido — sem buraco e sem repetição, graças ao número
  *     de sequência que acompanha cada delta.
  */
+import type {
+  ChatArtifactEvent,
+  ChatChartEvent,
+  ChatPhaseEvent,
+  ChatTitleEvent,
+  ChatToolStepEvent,
+  ChatUsageEvent,
+} from '@dashboards/contracts';
 import { apiClient } from '@/shared/lib/api-client';
 import { getSocket } from '@/shared/socket/socket-client';
-import type { ChatEvent } from './types';
+import type { ChatChartPayload, ChatEvent, ChatToolStepPayload } from './types';
 
 export interface RunState {
   runId: string;
@@ -25,13 +33,11 @@ export interface RunState {
   status: 'running' | 'done' | 'error';
   text: string;
   seq: number;
-  toolSteps: Array<{
-    toolCallId: string;
-    toolName: string;
-    phase: 'call' | 'result';
-    args?: unknown;
-    output?: unknown;
-  }>;
+  /**
+   * Passos já executados neste turno, em ordem (`call` e `result` separados).
+   * É o que permite reconstruir a trilha de quem recarregou a página no meio.
+   */
+  toolSteps: ChatToolStepPayload[];
   error?: string;
 }
 
@@ -40,15 +46,6 @@ interface DeltaPayload {
   messageId: string;
   delta: string;
   seq: number;
-}
-
-interface ToolStepPayload {
-  conversationId: string;
-  toolCallId: string;
-  toolName: string;
-  phase: 'call' | 'result';
-  args?: unknown;
-  output?: unknown;
 }
 
 interface DonePayload {
@@ -83,6 +80,22 @@ export async function startRun(
   return data;
 }
 
+/**
+ * Tira do payload os campos de roteamento do socket.
+ *
+ * Quem escuta já filtrou a conversa; deixar `conversationId`/`runId` entrarem na
+ * tela convidaria a UI a tomar decisão de roteamento. O resto atravessa INTEIRO
+ * — é justamente o que se perdia quando cada campo era copiado à mão.
+ */
+function stripRouting<T extends { conversationId: string; runId: string }>(
+  payload: T,
+): Omit<T, 'conversationId' | 'runId'> {
+  const rest: Partial<T> = { ...payload };
+  delete rest.conversationId;
+  delete rest.runId;
+  return rest as Omit<T, 'conversationId' | 'runId'>;
+}
+
 export interface AttachOptions {
   /** Só entrega deltas ACIMA deste número — é o que evita repetir na retomada. */
   fromSeq?: number;
@@ -110,16 +123,45 @@ export function attachToConversation(
     onEvent({ type: 'text_delta', messageId: p.messageId, delta: p.delta });
   };
 
-  const onToolStep = (p: ToolStepPayload) => {
+  /**
+   * Repassa o passo INTEIRO. Antes só `toolName`/`phase` sobreviviam à travessia
+   * e a evidência (SQL, conexão, linhas, duração) era descartada aqui mesmo —
+   * o backend mandava, o transporte jogava fora e a tela não tinha o que mostrar.
+   */
+  const onToolStep = (p: ChatToolStepEvent) => {
     if (p.conversationId !== conversationId) return;
+    onEvent({ type: 'tool_step', ...stripRouting(p) });
+  };
+
+  const onPhase = (p: ChatPhaseEvent) => {
+    if (p.conversationId !== conversationId) return;
+    onEvent({ type: 'phase', ...stripRouting(p) });
+  };
+
+  const onChart = (p: ChatChartEvent) => {
+    if (p.conversationId !== conversationId) return;
+    // O contrato do socket tipa `result` como `unknown` (é JSON cru na rede).
+    // Quem valida de fato é o BlockRenderer, que já trata bloco inválido.
     onEvent({
-      type: 'tool_step',
-      toolName: p.toolName,
-      toolCallId: p.toolCallId,
-      phase: p.phase,
-      args: p.args as Record<string, unknown> | undefined,
-      output: p.output,
+      type: 'chart',
+      messageId: p.messageId,
+      chart: p.chart as ChatChartPayload,
     });
+  };
+
+  const onArtifact = (p: ChatArtifactEvent) => {
+    if (p.conversationId !== conversationId) return;
+    onEvent({ type: 'artifact', ...stripRouting(p) });
+  };
+
+  const onUsage = (p: ChatUsageEvent) => {
+    if (p.conversationId !== conversationId) return;
+    onEvent({ type: 'usage', ...stripRouting(p) });
+  };
+
+  const onTitle = (p: ChatTitleEvent) => {
+    if (p.conversationId !== conversationId) return;
+    onEvent({ type: 'title', title: p.title });
   };
 
   const onDone = (p: DonePayload) => {
@@ -135,12 +177,22 @@ export function attachToConversation(
   socket.emit('chat:join', conversationId);
   socket.on('chat:delta', onDelta);
   socket.on('chat:tool-step', onToolStep);
+  socket.on('chat:phase', onPhase);
+  socket.on('chat:chart', onChart);
+  socket.on('chat:artifact', onArtifact);
+  socket.on('chat:usage', onUsage);
+  socket.on('chat:title', onTitle);
   socket.on('chat:done', onDone);
   socket.on('chat:error', onError);
 
   return () => {
     socket.off('chat:delta', onDelta);
     socket.off('chat:tool-step', onToolStep);
+    socket.off('chat:phase', onPhase);
+    socket.off('chat:chart', onChart);
+    socket.off('chat:artifact', onArtifact);
+    socket.off('chat:usage', onUsage);
+    socket.off('chat:title', onTitle);
     socket.off('chat:done', onDone);
     socket.off('chat:error', onError);
     socket.emit('chat:leave', conversationId);
