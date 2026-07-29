@@ -137,6 +137,31 @@
 }
 
 /* --------------------------------------------------------------------------
+   TABELAS CONTIDAS (inspetor do workbench)
+
+   A `Table` do DS "sangra" o padding do container: o scroll wrapper aplica
+   margens negativas de `--container-padding-*` — as vars que `LayoutContent`/
+   `Card` publicam — para a rolagem horizontal ir de borda a borda. Dentro de
+   um card isso fica elegante; no painel central do workbench deixava o grid
+   COLADO nas divisórias dos painéis vizinhos, enquanto editor, badges e abas
+   respeitavam os 20px da região.
+
+   Não existe prop para desligar (o bleed é automático no wrapper), mas as
+   vars são o contrato: redeclará-las como 0 numa subárvore diz "aqui não há
+   padding a sangrar" e o próprio cálculo do DS devolve margem zero. Aplicada
+   no container das abas do inspetor, vale para todas as tabelas dele —
+   Dados, Colunas, Relações e Índices — de uma vez.
+   -------------------------------------------------------------------------- */
+@layer components {
+  .app-contained-tables {
+    --container-padding-inline-start: 0px;
+    --container-padding-inline-end: 0px;
+    --container-padding-block-start: 0px;
+    --container-padding-block-end: 0px;
+  }
+}
+
+/* --------------------------------------------------------------------------
    PASSO DA TRILHA ENTRANDO (chat)
 
    O único movimento da tela, e ele carrega informação: enquanto o agente

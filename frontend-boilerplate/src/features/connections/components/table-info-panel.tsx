@@ -150,8 +150,11 @@ export function TableInfoPanel({
       </TabList>
 
       {/* `paddingBlock` afasta o conteúdo da faixa de abas e da borda inferior
-          da região — antes tabela e DDL encostavam direto na divisória. */}
-      <VStack gap={2} paddingBlock={1}>
+          da região — antes tabela e DDL encostavam direto na divisória.
+          `app-contained-tables` desliga o full-bleed da `Table` do DS (que
+          anula o padding do painel via `--container-padding-*`): sem ela, os
+          grids de todas as abas colavam nas divisórias laterais. */}
+      <VStack gap={2} paddingBlock={1} className="app-contained-tables">
         {tab === 'data' ? (
           <TablePreviewPanel
             sql={sql}
