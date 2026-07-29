@@ -95,10 +95,10 @@ describe('TablePreviewPanel — split view de consulta', () => {
     renderWithProviders(<TablePreviewPanel {...baseProps} result={makeResult(50)} />);
 
     const rows = within(screen.getByRole('table')).getAllByRole('row');
-    // 25 linhas da página + 1 de cabeçalho.
-    expect(rows).toHaveLength(26);
+    // 10 linhas da página + 1 de cabeçalho.
+    expect(rows).toHaveLength(11);
     expect(screen.getByText('Pessoa 1')).toBeInTheDocument();
-    expect(screen.queryByText('Pessoa 26')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pessoa 11')).not.toBeInTheDocument();
   });
 
   it('ordena ao clicar no cabeçalho da coluna', async () => {

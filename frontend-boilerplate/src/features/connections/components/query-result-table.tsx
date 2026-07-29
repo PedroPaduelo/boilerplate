@@ -27,7 +27,7 @@ import type { QueryResult } from '../types';
  */
 
 /** Linhas por página do resultado. */
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 /** Largura de coluna: cabe um uuid inteiro sem truncar. */
 const COLUMN_WIDTH = 200;
 
