@@ -97,8 +97,31 @@ describe('TablePreviewPanel — split view de consulta', () => {
     const rows = within(screen.getByRole('table')).getAllByRole('row');
     // 10 linhas da página + 1 de cabeçalho.
     expect(rows).toHaveLength(11);
+    // Variante `count`: a posição no resultado fica legível de relance.
+    // (Sem provider de i18n no teste o DS usa o inglês embarcado, daí o "of".)
+    expect(screen.getByText(/1–10 (de|of) 50/)).toBeInTheDocument();
     expect(screen.getByText('Pessoa 1')).toBeInTheDocument();
     expect(screen.queryByText('Pessoa 11')).not.toBeInTheDocument();
+  });
+
+  it('seletor de linhas por página muda o tamanho e volta à página 1', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TablePreviewPanel {...baseProps} result={makeResult(50)} />);
+
+    // Vai para a página 2 antes, para provar que trocar o tamanho RESETA.
+    await user.click(screen.getByRole('button', { name: /next|próxima/i }));
+    expect(screen.getByText(/11–20 (de|of) 50/)).toBeInTheDocument();
+
+    // Abre o seletor ("Items per page" sem i18n no teste) e escolhe 25.
+    await user.click(
+      screen.getByRole('combobox', { name: /items per page|itens por página/i }),
+    );
+    await user.click(await screen.findByRole('option', { name: '25' }));
+
+    const rows = within(screen.getByRole('table')).getAllByRole('row');
+    expect(rows).toHaveLength(26);
+    expect(screen.getByText(/1–25 (de|of) 50/)).toBeInTheDocument();
+    expect(screen.getByText('Pessoa 1')).toBeInTheDocument();
   });
 
   it('ordena ao clicar no cabeçalho da coluna', async () => {

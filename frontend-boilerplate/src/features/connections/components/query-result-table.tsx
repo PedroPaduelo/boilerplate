@@ -16,6 +16,13 @@ import type { QueryResult } from '../types';
  * PAGINAÇÃO — ambas via plugins do próprio DS (`useTableSortable` +
  * `useTablePagination`), o mesmo par que a `ConnectionsTable` usa.
  *
+ * A paginação usa a variante `count` ("1–10 de 100") com seletor de linhas
+ * por página, o padrão dos clientes SQL: a contagem responde "quantas linhas
+ * vieram e onde estou" de relance — coisa que os botões numerados da variante
+ * `pages` não dizem — e o seletor deixa o usuário trocar densidade por
+ * varredura (10 para ler, 100 para varrer) sem reexecutar a query. Some
+ * sozinha quando o resultado cabe numa página.
+ *
  * Saiu do modo `children` para o modo declarativo (`columns`): os plugins de
  * ordenação/paginação trabalham sobre `data`, e no modo children não haveria
  * o que ordenar. As colunas são construídas em runtime a partir do próprio
@@ -26,8 +33,10 @@ import type { QueryResult } from '../types';
  * tabela rola na horizontal, que é o comportamento de qualquer cliente SQL.
  */
 
-/** Linhas por página do resultado. */
-const PAGE_SIZE = 10;
+/** Linhas por página ao abrir o resultado — o seletor permite subir. */
+const DEFAULT_PAGE_SIZE = 10;
+/** Opções do seletor de linhas por página (100 = teto do preview). */
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 /** Largura de coluna: cabe um uuid inteiro sem truncar. */
 const COLUMN_WIDTH = 200;
 
@@ -51,6 +60,7 @@ function toSortableValue(value: unknown): unknown {
 
 export function QueryResultTable({ result }: { result: QueryResult }) {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   // Chave de identidade da linha. O resultado pode ter uma coluna chamada
   // "__row", então a chave é ajustada até não colidir com nenhuma coluna real.
@@ -111,15 +121,23 @@ export function QueryResultTable({ result }: { result: QueryResult }) {
     page,
     onPageChange: setPage,
     totalItems: sortedData.length,
-    pageSize: PAGE_SIZE,
+    pageSize,
+    // Trocar o tamanho reinicia na primeira página: manter a página atual
+    // poderia deixar o usuário além da última página do novo tamanho.
+    onPageSizeChange: (size) => {
+      setPageSize(size);
+      setPage(1);
+    },
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
+    variant: 'count',
     size: 'sm',
     align: 'end',
     label: 'Paginação do resultado',
   });
 
   const pageData = useMemo(
-    () => sortedData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [sortedData, page],
+    () => sortedData.slice((page - 1) * pageSize, page * pageSize),
+    [sortedData, page, pageSize],
   );
 
   if (result.rows.length === 0) {
