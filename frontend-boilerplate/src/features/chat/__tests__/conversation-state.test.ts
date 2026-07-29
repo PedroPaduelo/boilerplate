@@ -446,6 +446,148 @@ describe('trilha reconstruída do histórico', () => {
     });
   });
 
+  /**
+   * O bug que chegou de produção: o agente terminava de responder e a resposta
+   * SUMIA da tela, sobrando só a pergunta do usuário.
+   *
+   * O fim do turno dispara uma recarga do histórico. Quando ela voltava sem a
+   * resposta — a gravação falhou, atrasou, ou a leitura pegou o estado de antes
+   * —, a tela obedecia e apagava o que o usuário estava lendo. Recarregar é
+   * leitura: não pode desfazer o que já foi entregue.
+   */
+  describe('recarregar não apaga o que está na tela', () => {
+    const respondido = () =>
+      reduce(
+        initialConversationState,
+        ask('usr_1', 'quantas notas em julho?'),
+        {
+          type: 'event',
+          event: { type: 'text_delta', messageId: 'asg_1', delta: 'Foram 128.' },
+        },
+        { type: 'event', event: { type: 'message_end', messageId: 'asg_1' } },
+      );
+
+    const doServidor = (id: string, role: 'user' | 'assistant', content: string) => ({
+      id,
+      role,
+      content,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    it('a resposta fica quando o servidor devolve o histórico sem ela', () => {
+      const state = reduce(respondido(), {
+        type: 'loaded',
+        messages: [doServidor('msg_1', 'user', 'quantas notas em julho?')],
+      });
+
+      expect(state.messages.map((message) => message.content)).toEqual([
+        'quantas notas em julho?',
+        'Foram 128.',
+      ]);
+    });
+
+    it('o servidor manda no que ele conhece: os ids reais entram sem duplicar', () => {
+      const state = reduce(respondido(), {
+        type: 'loaded',
+        messages: [
+          doServidor('msg_1', 'user', 'quantas notas em julho?'),
+          doServidor('msg_2', 'assistant', 'Foram 128.'),
+        ],
+      });
+
+      expect(state.messages.map((message) => message.id)).toEqual(['msg_1', 'msg_2']);
+    });
+
+    it('a pergunta recém-enviada não some enquanto o servidor não a registra', () => {
+      const enviando = reduce(respondido(), ask('usr_2', 'e no mês passado?'));
+
+      const state = reduce(enviando, {
+        type: 'loaded',
+        messages: [
+          doServidor('msg_1', 'user', 'quantas notas em julho?'),
+          doServidor('msg_2', 'assistant', 'Foram 128.'),
+        ],
+      });
+
+      expect(state.messages[state.messages.length - 1]).toMatchObject({
+        role: 'user',
+        content: 'e no mês passado?',
+      });
+    });
+
+    /**
+     * Uma recarga no meio da resposta não pode desligar o turno: o cursor
+     * pararia de piscar e o composer voltaria a aceitar envio enquanto o agente
+     * ainda está escrevendo.
+     */
+    it('o turno em voo sobrevive a uma recarga', () => {
+      const emVoo = reduce(initialConversationState, ask('usr_1', 'e agora?'), {
+        type: 'event',
+        event: { type: 'text_delta', messageId: 'asg_1', delta: 'Estou vendo' },
+      });
+
+      const state = reduce(emVoo, {
+        type: 'loaded',
+        messages: [doServidor('msg_1', 'user', 'e agora?')],
+      });
+
+      expect(state.isStreaming).toBe(true);
+      expect(state.activeMessageId).toBe('asg_1');
+      expect(state.messages.map((message) => message.content)).toEqual([
+        'e agora?',
+        'Estou vendo',
+      ]);
+    });
+
+    it('o gráfico da resposta sobrevive a uma recarga que não o traz', () => {
+      const chart = {
+        chartId: 'cht_1',
+        title: 'Notas por mês',
+        catalogType: 'bar_chart',
+        result: { rows: [] },
+      } as unknown as Extract<ChatEvent, { type: 'chart' }>['chart'];
+
+      const comGrafico = reduce(
+        initialConversationState,
+        ask('usr_1', 'gráfico por mês'),
+        { type: 'event', event: { type: 'chart', messageId: 'asg_1', chart } },
+        {
+          type: 'event',
+          event: { type: 'text_delta', messageId: 'asg_1', delta: 'Segue.' },
+        },
+        { type: 'event', event: { type: 'message_end', messageId: 'asg_1' } },
+      );
+
+      const state = reduce(comGrafico, {
+        type: 'loaded',
+        messages: [
+          doServidor('msg_1', 'user', 'gráfico por mês'),
+          // Gráfico grande demais não é persistido junto da mensagem.
+          doServidor('msg_2', 'assistant', 'Segue.'),
+        ],
+      });
+
+      expect(state.messages[1]?.charts?.map((c) => c.chartId)).toEqual(['cht_1']);
+    });
+
+    it('a trilha acompanha a mensagem que o servidor confirmou', () => {
+      const state = reduce(respondido(), {
+        type: 'loaded',
+        messages: [
+          doServidor('msg_1', 'user', 'quantas notas em julho?'),
+          doServidor('msg_2', 'assistant', 'Foram 128.'),
+        ],
+        trails: buildTrails([
+          { id: 'msg_2', toolData: [{ toolCallId: 't1', toolName: 'run_query' }] },
+        ]),
+      });
+
+      expect(selectTrail(state, 'msg_2').steps).toHaveLength(1);
+      // Trilha órfã (id que não existe mais) não fica acumulando no estado.
+      expect(Object.keys(state.trails)).toEqual(['msg_2']);
+    });
+  });
+
   it('o histórico recarregado repõe as trilhas sem apagar o resto do estado', () => {
     const state = reduce(initialConversationState, {
       type: 'loaded',

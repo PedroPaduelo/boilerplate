@@ -84,6 +84,11 @@ export function useConversationStream(
   /**
    * Sem escutar este aviso, quem saía e voltava via a conversa sem a resposta e
    * concluía que o agente tinha travado.
+   *
+   * A recarga REPÕE (ids reais, trilha gravada) sem tirar nada: se o servidor
+   * responder sem a resposta que já está na tela, ela fica — ver
+   * `reconcileHistory`. Era exatamente aqui que a resposta sumia no fim do
+   * turno, deixando a pergunta do usuário sozinha.
    */
   useEffect(() => {
     const socket = getSocket();
@@ -92,7 +97,9 @@ export function useConversationStream(
       if (payload?.conversationId !== conversationId) return;
       // Enquanto streamamos, a tela já tem o texto ao vivo: recarregar piscaria.
       if (isStreamingRef.current) return;
-      void reload();
+      // Falhar em reler o histórico não muda nada na tela — o que está posto
+      // continua posto. Engolir aqui evita uma rejeição solta no console.
+      void reload().catch(() => {});
     };
     socket.on(CHAT_TURN_COMPLETE_EVENT, onTurnComplete);
     return () => {

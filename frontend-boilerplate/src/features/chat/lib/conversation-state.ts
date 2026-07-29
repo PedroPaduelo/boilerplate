@@ -204,6 +204,89 @@ function foldToolSteps(events: readonly ChatToolStepPayload[]): AuditStep[] {
   }, []);
 }
 
+// ---------------------------------------------------------------------------
+// Reconciliação com o histórico do servidor
+// ---------------------------------------------------------------------------
+
+/**
+ * Funde o histórico do servidor com o que JÁ ESTÁ NA TELA — sem nunca regredir.
+ *
+ * ## O que quebrava
+ *
+ * O fim do turno dispara uma recarga do histórico (`chat:turn-complete`), e ela
+ * SUBSTITUÍA a lista da tela pelo que o servidor devolvesse. Quando o servidor
+ * devolvia menos — a gravação da resposta falhou, atrasou, ou a leitura pegou o
+ * estado de antes —, a resposta que o usuário estava lendo sumia no instante em
+ * que o agente terminava de falar, deixando só a pergunta dele na tela. Do lado
+ * de quem usa, o produto simplesmente comia a resposta.
+ *
+ * ## A regra
+ *
+ * As duas listas são a MESMA conversa, em ordem, e só crescem no fim. Então o
+ * servidor manda no trecho que ele conhece (ele tem os ids reais e a trilha
+ * gravada) e o que a tela tem ALÉM disso é mantido: é resposta já entregue ao
+ * usuário, não lixo local.
+ *
+ * Recarregar é uma operação de LEITURA. Leitura não apaga o que está na tela.
+ */
+export function reconcileHistory(
+  local: readonly ChatMessage[],
+  server: readonly ChatMessage[],
+): ChatMessage[] {
+  // O trecho que o servidor conhece, enriquecido com o que só a tela tem.
+  const confirmadas = server.map((remota, index) =>
+    preserveLocalExtras(remota, local[index]),
+  );
+
+  // O rabo que o servidor ainda não tem. Some sozinho na próxima recarga, assim
+  // que a gravação alcançar — e até lá continua visível, que é o ponto.
+  const pendentes = local.slice(server.length).filter((mensagem) => {
+    // Salvaguarda contra desalinhamento: se o servidor já termina com esta
+    // mesma fala, repeti-la aqui duplicaria a resposta na tela.
+    const ultima = confirmadas[confirmadas.length - 1];
+    return !ultima || !isSameMessage(ultima, mensagem);
+  });
+
+  return [...confirmadas, ...pendentes];
+}
+
+/** Mesma fala? Compara o que o usuário vê, não o id (que muda ao persistir). */
+function isSameMessage(a: ChatMessage, b: ChatMessage): boolean {
+  return a.role === b.role && a.content.trim() === b.content.trim();
+}
+
+/**
+ * O registro do servidor manda — menos no que ele não trouxe e a tela tem.
+ *
+ * Hoje isso vale para os GRÁFICOS: eles viajam junto da mensagem gravada, mas
+ * um gráfico grande demais não é persistido (teto de tamanho) e a recarga o
+ * traria de volta sem nada. O gráfico já está na tela e é a evidência da
+ * resposta — a recarga não é motivo para ele sumir.
+ */
+function preserveLocalExtras(
+  remota: ChatMessage,
+  local: ChatMessage | undefined,
+): ChatMessage {
+  if (!local || !isSameMessage(remota, local)) return remota;
+  const charts = remota.charts ?? [];
+  if (charts.length > 0 || !local.charts?.length) return remota;
+  return { ...remota, charts: local.charts };
+}
+
+/** Trilhas das mensagens que continuam na tela — as órfãs não se acumulam. */
+function mergeTrailsByMessage(
+  local: Record<string, ChatMessageTrail>,
+  server: Record<string, ChatMessageTrail>,
+  messages: readonly ChatMessage[],
+): Record<string, ChatMessageTrail> {
+  const vivas = new Set(messages.map((message) => message.id));
+  const merged: Record<string, ChatMessageTrail> = {};
+  for (const [id, trail] of Object.entries({ ...local, ...server })) {
+    if (vivas.has(id)) merged[id] = trail;
+  }
+  return merged;
+}
+
 /**
  * Trilhas de todas as mensagens do histórico, indexadas por `messageId`.
  *
@@ -373,12 +456,36 @@ export function conversationReducer(
   action: ConversationAction,
 ): ConversationState {
   switch (action.type) {
-    case 'loaded':
+    case 'loaded': {
+      /*
+       * Recarregar é LEITURA: repõe os ids reais e a trilha gravada, sem apagar
+       * o que a tela já mostra (ver `reconcileHistory`).
+       *
+       * O turno EM VOO também sobrevive: uma recarga que chegue no meio da
+       * resposta não pode desligar o cursor e travar o composer de quem está
+       * lendo o agente escrever. Fora de um turno, tudo volta ao repouso.
+       */
+      const messages = reconcileHistory(state.messages, action.messages);
+      const trails = mergeTrailsByMessage(state.trails, action.trails ?? {}, messages);
+      const emVoo = state.isStreaming;
+
       return {
         ...initialConversationState,
-        messages: action.messages,
-        trails: action.trails ?? {},
+        messages,
+        trails,
+        ...(emVoo
+          ? {
+              isStreaming: true,
+              activeMessageId: state.activeMessageId,
+              pendingTrail: state.pendingTrail,
+              phase: state.phase,
+              phaseLabel: state.phaseLabel,
+              lastPrompt: state.lastPrompt,
+              title: state.title,
+            }
+          : {}),
       };
+    }
     case 'sent':
       return {
         ...state,

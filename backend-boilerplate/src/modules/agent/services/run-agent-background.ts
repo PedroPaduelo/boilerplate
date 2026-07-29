@@ -211,6 +211,53 @@ export function separarRespostaDoBastidor(
   return { resposta, bastidor };
 }
 
+// ---------------------------------------------------------------------------
+// Persistência da resposta
+// ---------------------------------------------------------------------------
+
+export interface GravarResposta {
+  role: 'assistant';
+  content: string;
+  toolData?: unknown;
+  tokensIn?: number;
+  tokensOut?: number;
+}
+
+export interface PersistirRespostaDeps {
+  gravar: (mensagem: GravarResposta) => Promise<unknown>;
+  /** Avisa que a trilha foi recusada e a resposta seguiu sem ela. */
+  aoPerderTrilha?: (err: unknown) => void;
+}
+
+/**
+ * Grava a resposta do turno. A RESPOSTA é inegociável; a trilha é o extra.
+ *
+ * `toolData` é o campo grande e imprevisível da linha: leva o resultado das
+ * ferramentas e os gráficos, tudo vindo do banco do cliente. Basta uma coisa
+ * que o JSONB do Postgres recusa — um `\u0000` no meio de um texto consultado,
+ * um payload absurdo — para a gravação inteira falhar. E aí não se perdia só a
+ * auditoria: a RESPOSTA não chegava ao banco, e a tela, ao recarregar o
+ * histórico no fim do turno, mostrava a pergunta do usuário sozinha, como se o
+ * agente nunca tivesse respondido.
+ *
+ * Então, se a trilha for recusada, grava-se de novo sem ela. Perder a evidência
+ * é ruim; perder a análise que o usuário pediu — e que ele acabou de ler na
+ * tela — é inaceitável.
+ */
+export async function persistirResposta(
+  mensagem: GravarResposta,
+  { gravar, aoPerderTrilha }: PersistirRespostaDeps,
+): Promise<void> {
+  try {
+    await gravar(mensagem);
+  } catch (err) {
+    if (mensagem.toolData === undefined) throw err;
+    aoPerderTrilha?.(err);
+    const { toolData: _descartada, ...semTrilha } = mensagem;
+    await gravar(semTrilha);
+  }
+}
+
 /** Serializa com teto; `undefined` quando não vale a pena mandar pelo fio. */
 function outputParaSocket(output: unknown): unknown {
   if (output === undefined) return undefined;
@@ -912,13 +959,25 @@ async function executarTurno({
       usage: consumo,
     };
 
-    await addMessage(conversationId, {
-      role: 'assistant',
-      content: limpo || (erro ? `Erro: ${erro}` : '(sem resposta)'),
-      toolData: trilha,
-      tokensIn: usage?.inputTokens,
-      tokensOut: usage?.outputTokens,
-    });
+    // A resposta vai para o banco mesmo que a trilha seja recusada — é o que
+    // impede a tela de recarregar e encontrar a pergunta do usuário sozinha.
+    await persistirResposta(
+      {
+        role: 'assistant',
+        content: limpo || (erro ? `Erro: ${erro}` : '(sem resposta)'),
+        toolData: trilha,
+        tokensIn: usage?.inputTokens,
+        tokensOut: usage?.outputTokens,
+      },
+      {
+        gravar: (mensagem) => addMessage(conversationId, mensagem),
+        aoPerderTrilha: (err) =>
+          logger.error(
+            { err, conversationId },
+            'agent: trilha recusada pelo banco — resposta regravada sem ela',
+          ),
+      },
+    );
 
     if (historyLen <= 1) {
       const conv = await prisma.conversation.findUnique({ where: { id: conversationId } });
