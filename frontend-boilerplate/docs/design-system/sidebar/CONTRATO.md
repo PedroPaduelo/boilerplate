@@ -279,6 +279,70 @@ forma mini).
 
 ---
 
+## 6.1 Desvios de MOLDURA — decididos, medidos e fechados
+
+A **barra** é réplica fiel (§7 mede cada valor). O que NÃO é idêntico à origem é
+a **moldura** em volta dela, que pertence ao `AppShell` do design system. Três
+desvios, os três conscientes — estão aqui para ninguém reabrir sem dado novo.
+
+### a) A barra começa abaixo do cabeçalho (49px), não em `top: 0`
+
+Na origem a sidebar é `position: fixed; top: 0` com `z-index: 1201` e é o
+**cabeçalho** que se desloca (`left: 300px`). Aqui ela é a região `start` do
+`AppShell`, que renderiza cabeçalho em cima e a linha `nav + conteúdo` embaixo.
+
+- **O que muda na tela:** a borda direita da barra nasce 49px mais abaixo e o
+  botão de recolher desce junto. Medido: as duas superfícies (cabeçalho e barra)
+  usam `background.default` e o cabeçalho **não tem borda inferior**, então não
+  há emenda visível — o que se perde são 49px de borda vertical.
+- **O que custaria inverter:** tirar a barra do fluxo (`position: fixed`),
+  manter um espaçador de 300/88px para o conteúdo não deslizar por baixo,
+  empurrar o cabeçalho com `padding-left` animado, e vencer as classes do StyleX
+  do `TopNav` a partir de fora de `@layer` (o projeto proíbe: `index.css`).
+  Fragilidade recorrente a cada atualização do DS.
+- **Decisão:** não inverter. O ganho é 49px de borda; o custo é lutar com o
+  frame do DS para sempre.
+
+### b) O botão de recolher fica tangente POR DENTRO da borda
+
+Origem: centrado na borda (`transform: translate(-50%,-50%)` sobre `left:300px`).
+Aqui o `LayoutPanel` aplica `overflow: clip` e cortaria a metade de fora. Fica
+tangente por dentro — mesma leitura, sem recorte (detalhes em §3.1).
+
+### c) A gaveta do mobile tem 320px, não 288px
+
+Quem monta a gaveta é o `TopNav` do DS (`<MobileNav header={heading}>`), sem
+expor `width` — o default do componente é 320px. Para chegar aos 288px da origem
+seria preciso assumir a gaveta inteira (estado de abertura, cabeçalho, contexto
+de render) ou um `!important` fora de layer. **32px não pagam nenhum dos dois.**
+O CONTEÚDO da gaveta é o mesmo da coluna (mesmas três zonas, mesmos itens).
+
+### d) `AppShell variant="wash"` (e não o default `elevated`)
+
+Medido no escuro com o default: área de conteúdo `#1C252E` (paper) **igual** à
+cor do cartão — cartão sumindo no fundo, e um canto arredondado de 16px que a
+origem não tem. `wash` põe navegação e conteúdo em `background.default`, e a
+única linha entre as regiões passa a ser a borda da barra. É o desvio que
+APROXIMA da origem, não o que afasta.
+
+## 6.2 Largura da barra de abas do dashboard: 300px (decidido)
+
+A tela `/dashboards/:id/view` é **autônoma** — registrada no slot raiz das rotas,
+fora do `DashboardLayout`: não tem menu do app nem topbar (`features/dashboards/
+routes.tsx`). Logo, a barra de abas **é a navegação daquela tela**, exatamente o
+caso que a especificação descreve com 300px. Não há duas navs disputando espaço.
+
+O custo medido é uma linha de 4 KPIs em viewport de 1280px: precisa de 976px
+úteis e sobram 932px, então ela quebra em 3+1. Com os 248px anteriores sobravam
+984px — passava por **8px**, ou seja, já era fio de navalha (qualquer mudança de
+respiro quebraria também). Contra isso: a forma mini (88px) devolve 212px e a
+escolha agora **persiste** por dashboard (`dashboards:viewer:tabs-collapsed`).
+
+**Decisão:** manter 300px, via token. Se um dia a medida precisar mudar, muda-se
+`--ds-layout-nav-vertical-width` — nunca um valor solto no componente.
+
+---
+
 ## 7. Critérios de aceite (verificáveis)
 
 Medidos no browser (computed style) e nos testes:

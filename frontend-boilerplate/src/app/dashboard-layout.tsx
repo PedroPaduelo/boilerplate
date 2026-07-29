@@ -21,6 +21,29 @@ import { AppSidebar } from './app-sidebar';
  *   - `0` nas rotas full-bleed (o detalhe da conexão é um workbench e os
  *     próprios painéis internos controlam o respiro e o scroll);
  *   - `4` no resto (listagens e formulários pedem margem de leitura).
+ *
+ * ---------------------------------------------------------------------------
+ * `variant="wash"` — por que NÃO o `elevated` (que é o default do DS)
+ * ---------------------------------------------------------------------------
+ * O `elevated` pinta a área de conteúdo com `background.paper` e arredonda o
+ * canto superior esquerdo dela. Medido no escuro, antes da troca:
+ *
+ *   navegação ......... #141A21   (background.default)
+ *   área de conteúdo .. #1C252E   (background.paper)  ← "cartão" gigante
+ *   cartão ............ #1C252E   (background.paper)  ← some no fundo
+ *
+ * Ou seja: cartão paper sobre fundo paper — o mesmo defeito que a folha global
+ * já contorna à mão na tela de chat (`index.css`, "SUPERFÍCIE DO CHAT"), só que
+ * valendo para o app inteiro. E não é o que o sistema de origem faz: lá a
+ * página é `background.default` e o cartão é `paper`, que é justamente o que dá
+ * a ELEVAÇÃO do cartão.
+ *
+ * `wash` põe navegação e conteúdo na MESMA superfície (`background.default`) e
+ * não desenha divisor nenhum — a única linha entre as duas regiões passa a ser
+ * a borda direita da própria barra (`--ds-color-border-nav-sidebar`), que é
+ * exatamente a composição documentada em
+ * `docs/design-system/sidebar/CONTRATO.md` §4. No claro nada muda (as duas
+ * superfícies já eram #FFFFFF); no escuro os cartões voltam a existir.
  */
 export function DashboardLayout() {
   // Montado no shell (uma vez) para valer em QUALQUER tela: dá para pedir um
@@ -36,6 +59,7 @@ export function DashboardLayout() {
   return (
     <>
       <AppShell
+        variant="wash"
         height="fill"
         contentPadding={isFullBleed ? 0 : 4}
         sideNav={
