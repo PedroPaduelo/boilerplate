@@ -303,6 +303,114 @@ describe('bloco graph_chart — rede densa', () => {
   });
 });
 
+/**
+ * A NUVEM 3D (`dimension: "3d"`) — a projeção com profundidade que se gira com
+ * o mouse. O que o teste alcança sem olho: a cena existe e é determinística, a
+ * profundidade vira tamanho (perto maior que longe), o palco escuro entra por
+ * token, e ARRASTAR muda a projeção — a prop anunciada ao agente faz algo.
+ */
+describe('bloco graph_chart — nuvem 3D', () => {
+  const props = { dimension: '3d', background: 'dark' } as const;
+
+  it('desenha a rede inteira em profundidade, sem NaN', () => {
+    const { container } = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    expect(container.querySelector('[data-projection="3d"]')).toBeInTheDocument();
+    expect(nodes(container).length).toBeGreaterThan(150);
+    expect(container.innerHTML).not.toContain('NaN');
+  });
+
+  it('perto aparece maior que longe (a profundidade vira tamanho)', () => {
+    const { container } = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    // O MESMO nó da vitrine em profundidades diferentes: os satélites de um hub
+    // têm o mesmo raio de dado, então qualquer diferença de raio na tela é a
+    // perspectiva agindo.
+    const radii = [
+      ...container.querySelectorAll('[data-group="Comércio varejista"] circle'),
+    ]
+      .map((c) => Number(c.getAttribute('r')))
+      .filter((r) => Number.isFinite(r));
+    expect(Math.max(...radii)).toBeGreaterThan(Math.min(...radii) * 1.15);
+  });
+
+  it('o palco escuro entra como token resolvido do tema, nunca `var()` cru', () => {
+    const { container } = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    const stage = container.querySelector('[data-slot="graph-stage"]');
+    expect(stage).toBeInTheDocument();
+    expect(stage?.getAttribute('fill')).not.toContain('var(');
+  });
+
+  it('sem `background: "dark"` não há palco: a plotagem fica na superfície do card', () => {
+    const { container } = renderWithProviders(
+      <Block props={{ dimension: '3d' }} data={fixture} state="success" />,
+    );
+    expect(container.querySelector('[data-slot="graph-stage"]')).not.toBeInTheDocument();
+  });
+
+  it('ARRASTAR gira a nuvem — a projeção muda de verdade', () => {
+    const { container } = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    const svg = container.querySelector('[data-projection="3d"] svg') as SVGSVGElement;
+    const before = container
+      .querySelector('[data-node-id="CIV-hub"] circle:last-of-type')
+      ?.getAttribute('cx');
+
+    fireEvent.pointerDown(svg, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 180, clientY: 120 });
+    fireEvent.pointerUp(svg, { pointerId: 1 });
+
+    const after = container
+      .querySelector('[data-node-id="CIV-hub"] circle:last-of-type')
+      ?.getAttribute('cx');
+    expect(after).not.toBe(before);
+  });
+
+  it('a projeção inicial é determinística: dois renders, o mesmo desenho', () => {
+    const { container: first, unmount } = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    const snapshot = (root: HTMLElement) =>
+      [...root.querySelectorAll('[data-slot="graph-node"] circle')]
+        .slice(0, 12)
+        .map((c) => `${c.getAttribute('cx')},${c.getAttribute('cy')}`)
+        .join('|');
+    const a = snapshot(first);
+    unmount();
+
+    const { container: second } = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    expect(snapshot(second)).toBe(a);
+  });
+
+  it('convida ao gesto ("arraste para girar")', () => {
+    const { container } = renderWithProviders(
+      <Block props={props} data={fixture} state="success" />,
+    );
+    expect(container.querySelector('[data-slot="graph-hint"]')?.textContent).toBe(
+      'arraste para girar',
+    );
+  });
+
+  it('funil continua PLANO: com layout "layered", `dimension: "3d"` é ignorada', () => {
+    const { container } = renderWithProviders(
+      <Block
+        props={{ dimension: '3d', layout: 'layered' }}
+        data={funnelFixture}
+        state="success"
+      />,
+    );
+    expect(container.querySelector('[data-projection="3d"]')).not.toBeInTheDocument();
+    expect(nodes(container)).toHaveLength(8);
+  });
+});
+
 describe('bloco graph_chart — realce de vizinhança', () => {
   it('o cursor sobre um nó apaga quem não é vizinho dele', () => {
     const { container } = renderWithProviders(

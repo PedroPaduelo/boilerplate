@@ -202,8 +202,12 @@ export function forceLayout(
   return normalize(model, positions, layers);
 }
 
-/** Raio da coroa de um hub com `leaves` folhas (fração do menor lado). */
-function ringRadius(leaves: number): number {
+/**
+ * Raio da coroa de um hub com `leaves` folhas (fração do menor lado).
+ * Exportado porque o layout 3D usa a MESMA régua — coroa de tamanho diferente
+ * entre o plano e o volume leria como outro componente.
+ */
+export function ringRadius(leaves: number): number {
   if (leaves === 0) return LEAF_RING.bare;
   return Math.min(LEAF_RING.base + leaves * LEAF_RING.perLeaf, LEAF_RING.max);
 }
@@ -213,7 +217,7 @@ function ringRadius(leaves: number): number {
  * ========================================================================== */
 
 /** Vizinhos de cada nó (ligação em qualquer sentido, sem repetição). */
-function adjacencyOf({ nodes, edges }: GraphModel): Map<string, string[]> {
+export function adjacencyOf({ nodes, edges }: GraphModel): Map<string, string[]> {
   const map = new Map<string, string[]>(nodes.map((node) => [node.id, []]));
   for (const edge of edges) {
     map.get(edge.source)?.push(edge.target);
@@ -222,7 +226,7 @@ function adjacencyOf({ nodes, edges }: GraphModel): Map<string, string[]> {
   return map;
 }
 
-interface Split {
+export interface Split {
   /** Ids que entram na simulação. */
   core: string[];
   /** hub → folhas penduradas nele. */
@@ -237,7 +241,7 @@ interface Split {
  * Pela mesma razão, um hub que só tem folhas continua no esqueleto — é ele o
  * centro do dente-de-leão.
  */
-function splitLeaves(
+export function splitLeaves(
   model: GraphModel,
   degrees: Map<string, number>,
   adjacency: Map<string, string[]>,
@@ -652,6 +656,7 @@ function normalize(
         id: node.id,
         x: 0.5,
         y: 0.5,
+        z: 0,
         layer: layers.get(node.id) ?? 0,
       });
     }
@@ -664,6 +669,7 @@ function normalize(
       id: node.id,
       x: (point.x - minX) / span,
       y: (point.y - minY) / span,
+      z: 0,
       layer: layers.get(node.id) ?? 0,
     });
   }

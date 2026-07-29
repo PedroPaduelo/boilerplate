@@ -49,6 +49,7 @@ import { formatCatalogValue } from '../../lib/value-format';
 import { defineBlock } from '../../types';
 import type { BlockComponent } from '../../types';
 import { GraphCanvas } from './graph-canvas';
+import { GraphCanvas3D } from './graph-canvas-3d';
 import { readGraph, type GraphModel } from './graph-data';
 import { computeLayers, type GraphLayoutKind } from './graph-layout';
 import { buildGraphView } from './graph-view';
@@ -57,6 +58,10 @@ import { fixture } from './fixture';
 
 type GraphChartProps = {
   layout?: GraphLayoutKind | string;
+  /** `3d` = nuvem com profundidade, arrastável (só no layout `force`). */
+  dimension?: '2d' | '3d' | string;
+  /** `dark` = palco escuro de mapa estelar. */
+  background?: 'auto' | 'dark' | string;
   showLabels?: boolean;
   showArrows?: boolean;
   linkStyle?: 'straight' | 'curved' | string;
@@ -150,15 +155,28 @@ export const Component: BlockComponent<GraphChartProps, TableData> = ({
       isBare
       footer={legend.length > 0 ? <ChartLegends items={legend} /> : null}
     >
-      <GraphCanvas
-        model={model}
-        view={view}
-        layout={layout}
-        height={CHART_HEIGHT.default}
-        showLabels={props.showLabels !== false}
-        showArrows={props.showArrows !== false}
-        curved={props.linkStyle === 'curved'}
-      />
+      {props.dimension === '3d' && layout === 'force' ? (
+        // A nuvem navegável: profundidade só existe onde a posição é livre —
+        // funil e anéis são leituras planas por definição.
+        <GraphCanvas3D
+          model={model}
+          view={view}
+          height={CHART_HEIGHT.default}
+          showLabels={props.showLabels !== false}
+          darkStage={props.background === 'dark'}
+        />
+      ) : (
+        <GraphCanvas
+          model={model}
+          view={view}
+          layout={layout}
+          height={CHART_HEIGHT.default}
+          showLabels={props.showLabels !== false}
+          showArrows={props.showArrows !== false}
+          curved={props.linkStyle === 'curved'}
+          darkStage={props.background === 'dark'}
+        />
+      )}
     </ChartFrame>
   );
 };

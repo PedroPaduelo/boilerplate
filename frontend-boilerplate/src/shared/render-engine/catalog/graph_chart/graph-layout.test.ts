@@ -246,6 +246,72 @@ describe('layoutGraph — posicionamento', () => {
     expect(single.points.get('a')).toMatchObject({ x: 0.5, y: 0.5 });
     expect(single.extent).toEqual({ x: 1, y: 1 });
   });
+
+  it('todo layout PLANO devolve z = 0 — a profundidade é exclusiva do volume', () => {
+    for (const kind of ['force', 'layered', 'radial'] as const) {
+      const { points, space } = layoutGraph(model, kind);
+      expect(space).toBe('plane');
+      for (const point of points.values()) expect(point.z).toBe(0);
+    }
+  });
+});
+
+/**
+ * O VOLUME (`dimension: "3d"`) — a nuvem que o canvas gira. As afirmações são
+ * geométricas: centrada na origem, raio 1, profundidade usada de verdade, e as
+ * cascas de satélites são ESFERAS (não discos vistos de lado).
+ */
+describe('layoutGraph — volume (3D)', () => {
+  const model = readGraph(fixture);
+  const layout = layoutGraph(model, 'force', 1, true);
+
+  it('anuncia o espaço como volume, com raio 1', () => {
+    expect(layout.space).toBe('volume');
+    expect(layout.radius).toBe(1);
+  });
+
+  it('a nuvem é centrada na origem e cabe no raio', () => {
+    let far = 0;
+    for (const point of layout.points.values()) {
+      far = Math.max(far, Math.hypot(point.x, point.y, point.z));
+    }
+    expect(far).toBeGreaterThan(0.9);
+    expect(far).toBeLessThanOrEqual(1.000001);
+  });
+
+  it('usa a profundidade de verdade (z não é decorativo)', () => {
+    const zs = [...layout.points.values()].map((point) => point.z);
+    expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(0.5);
+  });
+
+  it('os satélites de um hub formam uma CASCA esférica em volta dele', () => {
+    const degrees = degreesOf(model);
+    const hub = layout.points.get('VAR-hub');
+    const leaves = model.edges
+      .filter((edge) => edge.source === 'VAR-hub' && degrees.get(edge.target) === 1)
+      .map((edge) => layout.points.get(edge.target));
+
+    expect(leaves.length).toBeGreaterThan(10);
+    const radii = leaves.map((leaf) =>
+      Math.hypot(leaf!.x - hub!.x, leaf!.y - hub!.y, leaf!.z - hub!.z),
+    );
+    const mean = radii.reduce((sum, r) => sum + r, 0) / radii.length;
+    for (const radius of radii) {
+      expect(radius).toBeGreaterThan(mean * 0.7);
+      expect(radius).toBeLessThan(mean * 1.3);
+    }
+    // Esfera, não disco: os satélites variam nos TRÊS eixos.
+    const zSpread =
+      Math.max(...leaves.map((l) => l!.z)) - Math.min(...leaves.map((l) => l!.z));
+    expect(zSpread).toBeGreaterThan(mean);
+  });
+
+  it('é determinístico como tudo aqui', () => {
+    const again = layoutGraph(readGraph(fixture), 'force', 1, true);
+    for (const [id, point] of layout.points) {
+      expect(again.points.get(id)).toEqual(point);
+    }
+  });
 });
 
 /**

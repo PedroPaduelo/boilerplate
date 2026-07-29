@@ -39,6 +39,7 @@ import {
 } from './graph-geometry';
 import type { GraphModel } from './graph-data';
 import { layoutGraph, type GraphLayoutKind } from './graph-layout';
+import { stageColors } from './graph-stage';
 import type { GraphView } from './graph-view';
 
 /** Largura usada até a primeira medição (SSR, impressão, primeiro quadro). */
@@ -74,7 +75,7 @@ const LABEL_MAX_CHARS = 18;
  * nó merece nome?", e sim "cabe nome nesta tela?". Abaixo do limite, todo mundo
  * tem nome; acima, o nome aparece no nó sob o cursor (e no tooltip, sempre).
  */
-const LABEL_DENSITY_LIMIT = 24;
+export const LABEL_DENSITY_LIMIT = 24;
 
 /**
  * Opacidade do preenchimento de um SATÉLITE (nó de uma ligação só).
@@ -107,6 +108,8 @@ export interface GraphCanvasProps {
   showArrows: boolean;
   /** `linkStyle: 'curved'`. */
   curved: boolean;
+  /** Palco escuro (`background: "dark"`). */
+  darkStage: boolean;
 }
 
 export function GraphCanvas({
@@ -117,6 +120,7 @@ export function GraphCanvas({
   showLabels,
   showArrows,
   curved,
+  darkStage,
 }: GraphCanvasProps) {
   const palette = useChartPalette();
   const prefersReducedMotion = useReducedMotion();
@@ -172,6 +176,7 @@ export function GraphCanvas({
 
   if (view.nodes.length === 0) return null;
 
+  const stage = stageColors(palette, darkStage);
   const neighbours = active ? view.neighbours.get(active) : undefined;
   const litColor = active
     ? (view.nodes.find((node) => node.id === active)?.color ?? palette.chrome('accent'))
@@ -197,6 +202,15 @@ export function GraphCanvas({
         // por `preserveAspectRatio`, o texto encolheria junto com o desenho.
         preserveAspectRatio="xMidYMid meet"
       >
+        {stage.fill ? (
+          <rect
+            data-slot="graph-stage"
+            width={width}
+            height={height}
+            rx={palette.geometry.containerRadius}
+            fill={stage.fill}
+          />
+        ) : null}
         <g data-slot="graph-edges">
           {view.edges.map((edge) => {
             const from = screen.get(edge.source);
@@ -209,7 +223,7 @@ export function GraphCanvas({
             });
             const lit =
               active != null && (edge.source === active || edge.target === active);
-            const stroke = lit && litColor ? litColor : palette.chrome('axis');
+            const stroke = lit && litColor ? litColor : stage.edge;
             return (
               <g
                 key={edge.id}
@@ -271,7 +285,7 @@ export function GraphCanvas({
                   // ao raio, e não fixo: 1,5px de traço num ponto de raio 2
                   // deixava METADE da marca branca — a rede densa aparecia
                   // lavada, como se os pontos estivessem apagando.
-                  stroke={palette.chrome('surface')}
+                  stroke={stage.halo}
                   strokeWidth={Math.min(
                     palette.geometry.markerStrokeWidth / 2,
                     node.radius * 0.35,
@@ -285,9 +299,11 @@ export function GraphCanvas({
                     dominantBaseline="hanging"
                     fontSize={fontSize}
                     fontWeight={palette.typography.axis.weight}
-                    fill={palette.chrome(
-                      active != null && node.id === active ? 'emphasis' : 'label',
-                    )}
+                    fill={
+                      active != null && node.id === active
+                        ? stage.labelActive
+                        : stage.label
+                    }
                   >
                     {label}
                   </text>

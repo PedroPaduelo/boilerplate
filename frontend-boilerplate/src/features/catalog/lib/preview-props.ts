@@ -44,6 +44,12 @@ export const PREVIEW_PROPS: Record<string, Record<string, unknown>> = {
     subtitle: 'Indicadores do mês corrente',
   },
   collapsible_block: { title: 'Detalhes da apuração' },
+  /**
+   * Grafo: a GALERIA mostra a versão de impacto — nuvem 3D navegável no palco
+   * escuro. São props do manifesto (não texto inventado); só a vitrine escolhe
+   * o melhor traje. O default do bloco em produção segue "2d"/"auto".
+   */
+  graph_chart: { dimension: '3d', background: 'dark' },
 };
 
 /** Props de exemplo de um `catalogType` (ou `undefined` se não for narrativo). */

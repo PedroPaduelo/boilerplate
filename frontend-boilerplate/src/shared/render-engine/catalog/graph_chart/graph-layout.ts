@@ -21,15 +21,18 @@
  */
 import type { GraphModel } from './graph-data';
 import { forceLayout } from './graph-force';
+import { forceLayout3D } from './graph-force-3d';
 
 /** Layouts publicados no `propsSchema` do bloco. */
 export type GraphLayoutKind = 'force' | 'layered' | 'radial';
 
-/** Posição de um nó no quadrado unitário. */
+/** Posição de um nó — no quadrado unitário (plano) ou centrada na origem (volume). */
 export interface GraphPoint {
   id: string;
   x: number;
   y: number;
+  /** Profundidade. Zero em todo layout plano. */
+  z: number;
   /** Camada do nó (declarada ou deduzida) — usada também na leitura textual. */
   layer: number;
 }
@@ -62,6 +65,14 @@ export interface GraphLayout {
    * uma rede achatada centralizada num quadrado desperdiçaria metade do card.
    */
   extent: { x: number; y: number };
+  /**
+   * Como interpretar as coordenadas: `plane` = quadrado unitário (o canvas 2D
+   * mapeia direto); `volume` = nuvem centrada na origem, raio ≤ `radius`, para
+   * o canvas 3D projetar com a câmera.
+   */
+  space: 'plane' | 'volume';
+  /** Raio da nuvem — só em `volume`. */
+  radius?: number;
 }
 
 /** Proporção padrão: o desenho ocupa o quadrado inteiro. */
@@ -95,12 +106,19 @@ export function layoutGraph(
   model: GraphModel,
   kind: GraphLayoutKind,
   aspect: number = DEFAULT_ASPECT,
+  depth = false,
 ): GraphLayout {
   const layers = computeLayers(model);
   const layerCount = model.nodes.length === 0 ? 0 : Math.max(...layers.values()) + 1;
 
   if (model.nodes.length === 0) {
-    return { points: new Map(), layerCount: 0, fit: 'uniform', extent: FULL_EXTENT };
+    return {
+      points: new Map(),
+      layerCount: 0,
+      fit: 'uniform',
+      extent: FULL_EXTENT,
+      space: 'plane',
+    };
   }
 
   if (kind === 'layered') {
@@ -109,6 +127,7 @@ export function layoutGraph(
       layerCount,
       fit: 'stretch',
       extent: FULL_EXTENT,
+      space: 'plane',
     };
   }
   if (kind === 'radial') {
@@ -117,6 +136,21 @@ export function layoutGraph(
       layerCount,
       fit: 'uniform',
       extent: FULL_EXTENT,
+      space: 'plane',
+    };
+  }
+
+  // PROFUNDIDADE só existe na simulação de forças: funil e anéis são leituras
+  // planas por definição — girá-los destruiria a coluna/anel que os define.
+  if (depth) {
+    const { points, radius } = forceLayout3D(model, layers);
+    return {
+      points,
+      layerCount,
+      fit: 'uniform',
+      extent: FULL_EXTENT,
+      space: 'volume',
+      radius,
     };
   }
 
@@ -125,7 +159,7 @@ export function layoutGraph(
     ASPECT_RANGE.max,
   );
   const { points, extent } = forceLayout(model, layers, safeAspect);
-  return { points, layerCount, fit: 'uniform', extent };
+  return { points, layerCount, fit: 'uniform', extent, space: 'plane' };
 }
 
 /**
@@ -178,7 +212,7 @@ function layeredPoints(
   columns.forEach((ids, layer) => {
     const x = last === 0 ? 0.5 : layer / last;
     ids.forEach((id, i) => {
-      points.set(id, { id, x, y: (i + 0.5) / ids.length, layer });
+      points.set(id, { id, x, y: (i + 0.5) / ids.length, z: 0, layer });
     });
   });
   return points;
@@ -214,6 +248,7 @@ function radialPoints(
         id,
         x: 0.5 + radius * Math.cos(angle),
         y: 0.5 + radius * Math.sin(angle),
+        z: 0,
         layer,
       });
     });

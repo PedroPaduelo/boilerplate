@@ -44,6 +44,20 @@ export const manifest = {
         description:
           'Como os nós são posicionados. "force" (default) = simulação de forças, o desenho orgânico de mapa de conhecimento: é o layout dos AGLOMERADOS — satélites em coroa ao redor do hub, grupos separados em regiões da tela — e o que se usa para EXPLORAR volume (quem se conecta com quem, quem é periférico, onde estão as pontes entre grupos). "layered" = uma COLUNA por camada, da esquerda para a direita — é o layout do FUNIL: use quando o dado tem `camada`, ou quando as arestas descrevem um fluxo com começo e fim (a camada é deduzida do caminho mais longo até o nó). "radial" = anéis concêntricos, uma camada por anel, do centro para fora: mesma leitura hierárquica do "layered" quando há muitos nós por camada. O desenho é DETERMINÍSTICO nos três: os mesmos dados produzem sempre o mesmo desenho (o painel não muda de forma a cada recarga, e a exportação em PDF sai igual à tela).',
       },
+      dimension: {
+        type: 'string',
+        enum: ['2d', '3d'],
+        default: '2d',
+        description:
+          'Projeção do desenho. "2d" (default) = o mapa plano. "3d" = NUVEM COM PROFUNDIDADE: os aglomerados viram esferas de satélites, quem está perto aparece maior e mais nítido, e ARRASTAR O MOUSE GIRA a nuvem (a rotação inicial é determinística, então painel salvo e PDF mostram sempre o mesmo enquadramento). Só vale com layout "force" — funil e anéis são leituras planas por definição, e com eles a prop é ignorada. Combina especialmente com `background: "dark"`.',
+      },
+      background: {
+        type: 'string',
+        enum: ['auto', 'dark'],
+        default: 'auto',
+        description:
+          'Fundo da área de plotagem. "auto" (default) = a superfície do card, como os demais gráficos. "dark" = PALCO ESCURO de mapa estelar: a plotagem ganha o cinza mais profundo do design system, os nós ganham halo luminoso e o cromo clareia para ler sobre ele — o visual clássico de rede de conhecimento. Vale nas duas projeções.',
+      },
       showLabels: {
         type: 'boolean',
         default: true,
@@ -145,6 +159,8 @@ export const manifest = {
   // `accent` NÃO tem default (ver a nota no schema).
   defaultProps: {
     layout: 'force',
+    dimension: '2d',
+    background: 'auto',
     showLabels: true,
     showArrows: true,
     linkStyle: 'straight',
@@ -162,5 +178,5 @@ export const manifest = {
    * SVG tem mais marcas do que a tela tem pixels, e o que se vê é uma mancha.
    */
   maxRows: 1500,
-  version: '1.1.0',
+  version: '1.2.0',
 } satisfies BlockManifest;
