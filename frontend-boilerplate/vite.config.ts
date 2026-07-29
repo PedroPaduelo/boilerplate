@@ -70,6 +70,24 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
       css: false,
+      server: {
+        deps: {
+          /*
+           * O design system precisa passar pelo pipeline do Vite nos testes,
+           * em vez de ser externalizado para o resolvedor do Node.
+           *
+           * Motivo concreto: componentes do DS fazem `lazy(() =>
+           * import('../Tooltip/Tooltip'))` — caminho relativo SEM extensão.
+           * O Vite (dev e build) resolve isso; o ESM do Node, não. Sem esta
+           * linha, qualquer teste que renderize um componente com carregamento
+           * preguiçoso (ex.: `Timestamp` com dica de hora exata) quebra com
+           * "Cannot find module .../Tooltip/Tooltip" — um erro do AMBIENTE DE
+           * TESTE que parece um erro do produto, e que empurraria a solução
+           * errada (desligar a dica na tela para o teste passar).
+           */
+          inline: [/@astryxdesign\/core/],
+        },
+      },
     },
   };
 });

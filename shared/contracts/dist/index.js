@@ -6911,9 +6911,29 @@ var DashboardLayoutSchema = {
     tabs: {
       type: "array",
       items: { $ref: "#/$defs/tab" }
-    }
+    },
+    // APARÊNCIA do dashboard (opcional) — ver `$defs.theme`.
+    theme: { $ref: "#/$defs/theme" }
   },
   $defs: {
+    /**
+     * Preferência de aparência do DASHBOARD. Toda propriedade é opcional, e a
+     * do usuário vence: isto é o ponto de partida de quem nunca escolheu tema,
+     * não uma imposição sobre quem já escolheu.
+     */
+    theme: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        colorMode: { type: "string", enum: ["light", "dark", "system"] },
+        // Nome de cor de série do tema de gráfico. Deliberadamente NÃO é um
+        // enum fechado: o vocabulário de cores vive no tema do front e cresce
+        // com ele — congelá-lo aqui faria o contrato rejeitar uma cor que o
+        // app desenha. Valor irreconhecível degrada para a paleta padrão.
+        accent: { type: "string", minLength: 1, maxLength: 40 },
+        palette: { type: "string", enum: ["single", "multi"] }
+      }
+    },
     /**
      * Aba do dashboard. Ela NÃO carrega `rows` dentro de si — carrega os IDS
      * das rows que exibe (`rowIds`).
@@ -6943,8 +6963,69 @@ var DashboardLayoutSchema = {
         rowIds: {
           type: "array",
           items: { type: "string", minLength: 1 }
-        }
+        },
+        /*
+         * ENRIQUECIMENTO VISUAL (opcional) — o que permite que um dashboard
+         * gerado pelo agente chegue à tela com hierarquia, e não como uma
+         * lista plana de rótulos.
+         *
+         * Os três são OPCIONAIS de propósito: dashboard existente (e agente
+         * que ainda não conhece estes campos) continua válido e renderiza
+         * exatamente como antes.
+         */
+        // Ícone SEMÂNTICO. Mesmo vocabulário do bloco (`$defs.semanticIcon`):
+        // "isto é sobre arrecadação" é a mesma frase numa aba e num card, e
+        // duas listas divergiriam no primeiro ícone acrescentado.
+        icon: { $ref: "#/$defs/semanticIcon" },
+        // Uma linha sobre o que a aba responde.
+        description: { type: "string", maxLength: 200 },
+        // Agrupa abas em seções na navegação lateral.
+        group: { type: "string", minLength: 1, maxLength: 60 },
+        // Posição na navegação (menor primeiro). A ordem do GRUPO deriva daqui
+        // — o menor `order` entre suas abas —, então não existe um segundo
+        // registro de ordenação capaz de discordar deste.
+        order: { type: "integer", minimum: 0, maximum: 9999 },
+        // 1 = aba de primeiro nível; 2 = sub-aba (indentada, peso menor).
+        level: { type: "integer", enum: [1, 2] },
+        // Separador ANTES da aba — quebra um bloco de itens dentro do mesmo
+        // grupo sem exigir um título de seção que ninguém pediu.
+        divider: { type: "boolean" }
       }
+    },
+    /**
+     * Vocabulário de ÍCONES — fechado de propósito, para o agente escolher
+     * dentro do que a tela sabe desenhar em vez de inventar um nome que
+     * viraria um buraco no alinhamento da lista. Compartilhado por aba e
+     * bloco (ver a nota em `SEMANTIC_ICONS`).
+     */
+    semanticIcon: {
+      type: "string",
+      enum: [
+        "overview",
+        "chart",
+        "trend",
+        "table",
+        "money",
+        "tax",
+        "users",
+        "building",
+        "calendar",
+        "alert",
+        "map",
+        "document",
+        "search",
+        "target",
+        "clock",
+        "tag",
+        "percent",
+        "activity",
+        "layers",
+        "check",
+        "database",
+        "pie",
+        "list",
+        "settings"
+      ]
     },
     filter: {
       type: "object",
@@ -7012,6 +7093,25 @@ var DashboardLayoutSchema = {
         title: { type: "string" },
         // subtítulo do header do card (linha de apoio abaixo do título). Opcional.
         subtitle: { type: "string" },
+        /*
+         * ENRIQUECIMENTO DO CARD (opcional). Os quatro abaixo são o que separa
+         * um card legível de um retângulo com um desenho dentro. Todos
+         * opcionais: bloco existente continua válido e renderiza como antes.
+         */
+        // "O que este gráfico responde", abaixo do subtítulo. O render-engine
+        // já LIA este campo; faltava declará-lo — com additionalProperties:
+        // false, um layout que o usasse era rejeitado na validação.
+        description: { type: "string", maxLength: 280 },
+        // UNIDADE da métrica ("R$", "%", "processos"). Fica ao lado do título,
+        // fora dele: embutida no título ("Arrecadação (R$)") ela se mistura ao
+        // assunto e desaparece junto quando o título é truncado.
+        unit: { type: "string", minLength: 1, maxLength: 24 },
+        // Ícone semântico do card. Ausente, a tela deriva do `type` do bloco.
+        icon: { $ref: "#/$defs/semanticIcon" },
+        // Peso do card na leitura: `featured` é o destaque de KPI, `muted`
+        // recua para apoio. Destacar por TAMANHO não serviria — tamanho é
+        // decisão da linha, e mexer nele desalinharia os vizinhos.
+        emphasis: { type: "string", enum: ["default", "featured", "muted"] },
         // props visuais do bloco (validadas pelo manifest.propsSchema do catálogo).
         props: { type: "object" },
         // ausente em blocos narrativos (title / rich_text) e em containers (section).
@@ -7032,11 +7132,24 @@ var DashboardLayoutSchema = {
       properties: {
         id: { type: "string", minLength: 1 },
         title: { type: "string" },
+        // Uma linha sobre o que a SEÇÃO mostra. Dá contexto ao grupo de
+        // gráficos sem obrigar cada card a repetir a mesma explicação.
+        description: { type: "string", maxLength: 280 },
         // ALTURA DA LINHA. A linha é a unidade de decisão de altura (ver
         // `block-sizing` no render-engine): ela escolhe UM tamanho e todos os
         // seus blocos ficam com ele — é o que impede "um gráfico maior que o
         // vizinho". Ausente = derive dos tipos que a linha contém.
         height: { $ref: "#/$defs/blockHeight" },
+        // Número de COLUNAS da faixa. Ausente, o motor encaixa quantas
+        // couberem pelo piso de largura do tipo (colapso responsivo de graça).
+        // Declarar é para a intenção editorial que a heurística não adivinha:
+        // "estes quatro KPIs são uma faixa de quatro".
+        columns: { type: "integer", minimum: 1, maximum: 6 },
+        // Como as larguras são decididas: `equal` (padrão — faixas iguais,
+        // ninguém maior que o vizinho por acidente) ou `span` (leitura literal
+        // do `span` na grade de 12 colunas, quando o desequilíbrio é a
+        // intenção). Ver `RowItemSizing`.
+        itemSizing: { type: "string", enum: ["equal", "span"] },
         blocks: {
           type: "array",
           items: { $ref: "#/$defs/block" }
@@ -7097,7 +7210,11 @@ var DashboardConfigSchema = {
     tabs: {
       type: "array",
       items: { $ref: "dashboard-layout.json#/$defs/tab" }
-    }
+    },
+    // Espelha `DashboardLayout.theme` pelo mesmo motivo das abas: o config é a
+    // representação COMPLETA, e um dashboard que perde a preferência de tema no
+    // caminho da API abre com a aparência errada.
+    theme: { $ref: "dashboard-layout.json#/$defs/theme" }
   }
 };
 
@@ -7449,6 +7566,35 @@ var BlockDataRequestSchema = {
   }
 };
 
+// src/types/index.ts
+var SEMANTIC_ICONS = [
+  "overview",
+  "chart",
+  "trend",
+  "table",
+  "money",
+  "tax",
+  "users",
+  "building",
+  "calendar",
+  "alert",
+  "map",
+  "document",
+  "search",
+  "target",
+  "clock",
+  "tag",
+  "percent",
+  "activity",
+  "layers",
+  "check",
+  "database",
+  "pie",
+  "list",
+  "settings"
+];
+var TAB_ICONS = SEMANTIC_ICONS;
+
 // src/validation/validator.ts
 var import_ajv = __toESM(require_ajv(), 1);
 var import_ajv_formats = __toESM(require_dist(), 1);
@@ -7514,6 +7660,29 @@ function assertValid(validate, data, label = "payload") {
 // src/layout/tabs.ts
 var IMPLICIT_TAB_ID = "__default__";
 var IMPLICIT_TAB_TITLE = "Vis\xE3o geral";
+function isTabIcon(value) {
+  return typeof value === "string" && TAB_ICONS.includes(value);
+}
+function nonEmpty(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function readOrder(value) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : void 0;
+}
+function sortByOrder(tabs) {
+  const decorated = tabs.map((tab, index) => ({
+    tab,
+    index,
+    order: readOrder(tab?.order)
+  }));
+  return decorated.slice().sort((a, b) => {
+    const byOrder = (a.order ?? a.index) - (b.order ?? b.index);
+    if (byOrder !== 0) return byOrder;
+    const declared = Number(b.order != null) - Number(a.order != null);
+    if (declared !== 0) return declared;
+    return a.index - b.index;
+  }).map(({ tab, index }) => ({ tab, index }));
+}
 function hasExplicitTabs(layout) {
   return Array.isArray(layout?.tabs) && layout.tabs.length > 0;
 }
@@ -7532,7 +7701,7 @@ function resolveDashboardTabs(layout) {
     }
   }
   const claimed = /* @__PURE__ */ new Set();
-  const resolved = tabs.map((tab, index) => {
+  const resolved = sortByOrder(tabs).map(({ tab, index }) => {
     const ids = Array.isArray(tab?.rowIds) ? tab.rowIds : [];
     const tabRows = [];
     for (const rowId of ids) {
@@ -7546,7 +7715,21 @@ function resolveDashboardTabs(layout) {
       id: typeof tab?.id === "string" && tab.id.length > 0 ? tab.id : `tab_${index}`,
       title: typeof tab?.title === "string" && tab.title.trim().length > 0 ? tab.title : `Aba ${index + 1}`,
       rows: tabRows,
-      isImplicit: false
+      isImplicit: false,
+      // Campos de apresentação: normalizados aqui (e não na tela) para que
+      // backend, viewer, editor e export leiam exatamente o mesmo valor.
+      // Ícone fora do vocabulário é DESCARTADO em vez de propagado: melhor a
+      // aba sair com marcador neutro do que a tela quebrar tentando desenhar
+      // um nome que não existe.
+      ...isTabIcon(tab?.icon) ? { icon: tab.icon } : {},
+      ...nonEmpty(tab?.description) ? { description: tab.description.trim() } : {},
+      ...nonEmpty(tab?.group) ? { group: tab.group.trim() } : {},
+      ...readOrder(tab?.order) != null ? { order: readOrder(tab?.order) } : {},
+      // Só `2` liga a sub-aba; qualquer outro valor (0, 7, "dois") cai no
+      // nível 1, que é o padrão — hierarquia inventada é pior que hierarquia
+      // ausente, porque desalinha a lista inteira sem o autor entender por quê.
+      ...tab?.level === 2 ? { level: 2 } : {},
+      ...tab?.divider === true ? { divider: true } : {}
     };
   });
   const orphans = rows.filter(
@@ -7570,6 +7753,95 @@ function layoutForTab(layout, tab) {
   return {
     filters: Array.isArray(layout?.filters) ? layout.filters : [],
     rows: tab ? tab.rows : []
+  };
+}
+
+// src/layout/presentation.ts
+function isSemanticIcon(value) {
+  return typeof value === "string" && SEMANTIC_ICONS.includes(value);
+}
+var ICON_BY_BLOCK_TYPE = {
+  // Séries e comparações — a leitura é "como isto se move / se compara".
+  area_chart: "trend",
+  line_chart: "trend",
+  spark_chart: "trend",
+  bar_chart: "chart",
+  h_bar_chart: "chart",
+  scatter_chart: "chart",
+  graph_chart: "activity",
+  // Composição de um todo.
+  donut: "pie",
+  progress_circle: "percent",
+  progress_bar: "percent",
+  radial_gauge: "target",
+  funnel_stage: "layers",
+  // Rankings e listas.
+  bar_list: "list",
+  leaderboard: "list",
+  // Tabulares.
+  data_table: "table",
+  invoice_table: "table",
+  table: "table",
+  // Indicadores (cards de número).
+  kpi: "target",
+  metric_glow: "target",
+  stat_tile: "target",
+  signal_card: "alert",
+  // Narrativos e estruturais.
+  rich_text: "document",
+  title: "document",
+  callout: "alert",
+  alert: "alert",
+  section: "layers",
+  grid: "layers",
+  collapsible_block: "layers",
+  sheet: "document",
+  divider: "layers"
+};
+function iconForBlockType(type) {
+  if (typeof type !== "string") return void 0;
+  return ICON_BY_BLOCK_TYPE[type];
+}
+function trimmed(value, maxLength) {
+  if (typeof value !== "string") return void 0;
+  const text = value.trim();
+  if (text.length === 0) return void 0;
+  return text.slice(0, maxLength);
+}
+function isEmphasis(value) {
+  return value === "default" || value === "featured" || value === "muted";
+}
+function resolveBlockPresentation(block) {
+  const raw = block ?? {};
+  const props = raw.props ?? {};
+  const declaredIcon = isSemanticIcon(raw.icon) ? raw.icon : isSemanticIcon(props.icon) ? props.icon : void 0;
+  const emphasis = isEmphasis(raw.emphasis) ? raw.emphasis : isEmphasis(props.emphasis) ? props.emphasis : "default";
+  const icon = declaredIcon ?? iconForBlockType(typeof raw.type === "string" ? raw.type : void 0);
+  const unit = trimmed(raw.unit ?? props.unit, 24);
+  return {
+    ...icon ? { icon } : {},
+    ...unit ? { unit } : {},
+    emphasis
+  };
+}
+function resolveRowLayout(row) {
+  const raw = row ?? {};
+  const columns = typeof raw.columns === "number" && Number.isFinite(raw.columns) ? Math.max(1, Math.min(6, Math.round(raw.columns))) : void 0;
+  return {
+    ...columns != null ? { columns } : {},
+    // `equal` é o padrão porque é a regra que impede o desequilíbrio
+    // ACIDENTAL; `span` precisa ser pedido, e pedir é declarar intenção.
+    itemSizing: raw.itemSizing === "span" ? "span" : "equal"
+  };
+}
+function resolveDashboardTheme(layout) {
+  const theme = layout?.theme ?? {};
+  const colorMode = theme.colorMode === "light" || theme.colorMode === "dark" || theme.colorMode === "system" ? theme.colorMode : void 0;
+  const palette = theme.palette === "single" || theme.palette === "multi" ? theme.palette : void 0;
+  return {
+    ...colorMode ? { colorMode } : {},
+    ...trimmed(theme.accent, 40) ? { accent: trimmed(theme.accent, 40) } : {},
+    ...palette ? { palette } : {}
   };
 }
 
@@ -7902,6 +8174,135 @@ var dashboardLayoutWithTabsFixture = {
     { id: "tab_detalhe", title: "Detalhamento", rowIds: ["row_fantasma"] }
   ]
 };
+var dashboardRichLayoutFixture = {
+  theme: { colorMode: "dark", accent: "teal", palette: "multi" },
+  filters: dashboardConfigFixture.filters,
+  rows: [
+    {
+      id: "row_indicadores",
+      title: "Indicadores do per\xEDodo",
+      description: "Consolidado de arrecada\xE7\xE3o e recupera\xE7\xE3o da d\xEDvida ativa.",
+      columns: 3,
+      blocks: [
+        {
+          id: "blk_kpi_arrecadado",
+          type: "kpi",
+          span: 4,
+          title: "Arrecadado no per\xEDodo",
+          unit: "R$",
+          emphasis: "featured",
+          props: { showDelta: true },
+          dataBinding: {
+            connectionId: "conn_fazenda",
+            query: "SELECT SUM(valor) AS value FROM divida_ativa"
+          }
+        },
+        {
+          id: "blk_kpi_recuperacao",
+          type: "kpi",
+          span: 4,
+          title: "Taxa de recupera\xE7\xE3o",
+          unit: "%",
+          dataBinding: {
+            connectionId: "conn_fazenda",
+            query: "SELECT recuperado / total * 100 AS value FROM divida_resumo"
+          }
+        },
+        {
+          id: "blk_kpi_protestos",
+          type: "kpi",
+          span: 4,
+          title: "Protestos abertos",
+          unit: "processos",
+          emphasis: "muted",
+          dataBinding: {
+            connectionId: "conn_fazenda",
+            query: "SELECT COUNT(*) AS value FROM protestos WHERE status = 1"
+          }
+        }
+      ]
+    },
+    {
+      id: "row_analise",
+      title: "An\xE1lise mensal",
+      itemSizing: "span",
+      blocks: [
+        {
+          id: "blk_bar_mes_rico",
+          type: "bar_chart",
+          span: 8,
+          title: "Arrecada\xE7\xE3o por m\xEAs",
+          subtitle: "Compet\xEAncia de janeiro a dezembro",
+          description: "Valores efetivamente baixados, sem parcelamentos em aberto.",
+          unit: "R$",
+          icon: "money",
+          dataBinding: {
+            connectionId: "conn_fazenda",
+            query: "SELECT mes AS x, SUM(valor) AS y FROM divida_ativa GROUP BY mes"
+          }
+        },
+        {
+          id: "blk_donut_situacao",
+          type: "donut",
+          span: 4,
+          title: "Situa\xE7\xE3o",
+          unit: "%",
+          dataBinding: {
+            connectionId: "conn_fazenda",
+            query: "SELECT situacao AS label, COUNT(*) AS value FROM divida_ativa GROUP BY situacao"
+          }
+        }
+      ]
+    },
+    {
+      id: "row_bairro",
+      title: "Distribui\xE7\xE3o por bairro",
+      blocks: [
+        {
+          id: "blk_bar_bairro",
+          type: "h_bar_chart",
+          span: 12,
+          title: "D\xEDvida por bairro",
+          unit: "R$",
+          dataBinding: {
+            connectionId: "conn_fazenda",
+            query: "SELECT bairro AS label, SUM(valor) AS value FROM divida_ativa GROUP BY bairro"
+          }
+        }
+      ]
+    }
+  ],
+  tabs: [
+    {
+      id: "tab_cobranca",
+      title: "Cobran\xE7a",
+      rowIds: ["row_analise"],
+      icon: "tax",
+      description: "Arrecada\xE7\xE3o mensal e composi\xE7\xE3o por situa\xE7\xE3o.",
+      group: "Arrecada\xE7\xE3o",
+      order: 20
+    },
+    {
+      id: "tab_recuperacao",
+      title: "Recupera\xE7\xE3o",
+      rowIds: ["row_indicadores"],
+      icon: "money",
+      description: "Indicadores consolidados do per\xEDodo.",
+      group: "Arrecada\xE7\xE3o",
+      order: 10
+    },
+    {
+      id: "tab_bairro",
+      title: "Por bairro",
+      rowIds: ["row_bairro"],
+      icon: "map",
+      group: "Territ\xF3rio",
+      level: 2,
+      divider: true,
+      order: 30
+    }
+  ]
+};
 
 // src/fixtures/data-payload.ts
 var dashboardDataPayloadFixture = {
@@ -7972,9 +8373,11 @@ export {
   DashboardSummarySchema,
   IMPLICIT_TAB_ID,
   IMPLICIT_TAB_TITLE,
+  SEMANTIC_ICONS,
   SOCKET_EVENTS,
   ScalarDataSchema,
   SeriesDataSchema,
+  TAB_ICONS,
   TableDataSchema,
   UpdateDashboardRequestSchema,
   ajv,
@@ -7985,15 +8388,21 @@ export {
   dashboardDataPayloadFixture,
   dashboardLayoutFixture,
   dashboardLayoutWithTabsFixture,
+  dashboardRichLayoutFixture,
   dashboardRoom,
   donutManifest,
   formatErrors,
   hasExplicitTabs,
+  iconForBlockType,
+  isSemanticIcon,
   kpiManifest,
   layoutForTab,
   lineChartManifest,
   pickActiveTab,
+  resolveBlockPresentation,
   resolveDashboardTabs,
+  resolveDashboardTheme,
+  resolveRowLayout,
   richTextManifest,
   tableManifest,
   titleManifest,

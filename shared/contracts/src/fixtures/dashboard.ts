@@ -153,3 +153,156 @@ export const dashboardLayoutWithTabsFixture = {
     { id: 'tab_detalhe', title: 'Detalhamento', rowIds: ['row_fantasma'] },
   ],
 } satisfies DashboardLayout;
+
+/**
+ * Layout RICO — o mesmo dashboard escrito com TODAS as capacidades de
+ * apresentação do contrato (doc 41). É a referência executável do que o agente
+ * gerador pode escrever, e o corpo de prova de que nada disso é decorativo:
+ * cada campo aqui muda alguma coisa na tela.
+ *
+ * O que ele exercita, e por quê:
+ *
+ *  - `theme`             → o dashboard escolhe a própria aparência e o acento;
+ *  - `tabs[].group`      → duas seções nomeadas na navegação (não uma lista);
+ *  - `tabs[].order`      → "Recuperação" aparece antes de "Cobrança" apesar de
+ *                          estar depois no array — quem manda é a ordem, não a
+ *                          posição;
+ *  - `tabs[].level`      → "Por bairro" é sub-aba de "Cobrança";
+ *  - `tabs[].divider`    → separa o consolidado dos detalhamentos;
+ *  - `rows[].columns`    → a faixa de indicadores é declaradamente de 3;
+ *  - `rows[].itemSizing` → a linha de análise usa `span` de propósito (um
+ *                          gráfico grande + um estreito ao lado);
+ *  - `blocks[].emphasis` → um KPI em destaque e um de apoio na MESMA faixa;
+ *  - `blocks[].unit`     → "R$" e "%" aparecem sem invadir o título;
+ *  - `blocks[].icon`     → ícone contrariando o padrão do tipo (um `bar_chart`
+ *                          que fala de dinheiro).
+ */
+export const dashboardRichLayoutFixture = {
+  theme: { colorMode: 'dark', accent: 'teal', palette: 'multi' },
+  filters: dashboardConfigFixture.filters,
+  rows: [
+    {
+      id: 'row_indicadores',
+      title: 'Indicadores do período',
+      description: 'Consolidado de arrecadação e recuperação da dívida ativa.',
+      columns: 3,
+      blocks: [
+        {
+          id: 'blk_kpi_arrecadado',
+          type: 'kpi',
+          span: 4,
+          title: 'Arrecadado no período',
+          unit: 'R$',
+          emphasis: 'featured',
+          props: { showDelta: true },
+          dataBinding: {
+            connectionId: 'conn_fazenda',
+            query: 'SELECT SUM(valor) AS value FROM divida_ativa',
+          },
+        },
+        {
+          id: 'blk_kpi_recuperacao',
+          type: 'kpi',
+          span: 4,
+          title: 'Taxa de recuperação',
+          unit: '%',
+          dataBinding: {
+            connectionId: 'conn_fazenda',
+            query: 'SELECT recuperado / total * 100 AS value FROM divida_resumo',
+          },
+        },
+        {
+          id: 'blk_kpi_protestos',
+          type: 'kpi',
+          span: 4,
+          title: 'Protestos abertos',
+          unit: 'processos',
+          emphasis: 'muted',
+          dataBinding: {
+            connectionId: 'conn_fazenda',
+            query: 'SELECT COUNT(*) AS value FROM protestos WHERE status = 1',
+          },
+        },
+      ],
+    },
+    {
+      id: 'row_analise',
+      title: 'Análise mensal',
+      itemSizing: 'span',
+      blocks: [
+        {
+          id: 'blk_bar_mes_rico',
+          type: 'bar_chart',
+          span: 8,
+          title: 'Arrecadação por mês',
+          subtitle: 'Competência de janeiro a dezembro',
+          description: 'Valores efetivamente baixados, sem parcelamentos em aberto.',
+          unit: 'R$',
+          icon: 'money',
+          dataBinding: {
+            connectionId: 'conn_fazenda',
+            query: 'SELECT mes AS x, SUM(valor) AS y FROM divida_ativa GROUP BY mes',
+          },
+        },
+        {
+          id: 'blk_donut_situacao',
+          type: 'donut',
+          span: 4,
+          title: 'Situação',
+          unit: '%',
+          dataBinding: {
+            connectionId: 'conn_fazenda',
+            query: 'SELECT situacao AS label, COUNT(*) AS value FROM divida_ativa GROUP BY situacao',
+          },
+        },
+      ],
+    },
+    {
+      id: 'row_bairro',
+      title: 'Distribuição por bairro',
+      blocks: [
+        {
+          id: 'blk_bar_bairro',
+          type: 'h_bar_chart',
+          span: 12,
+          title: 'Dívida por bairro',
+          unit: 'R$',
+          dataBinding: {
+            connectionId: 'conn_fazenda',
+            query: 'SELECT bairro AS label, SUM(valor) AS value FROM divida_ativa GROUP BY bairro',
+          },
+        },
+      ],
+    },
+  ],
+  tabs: [
+    {
+      id: 'tab_cobranca',
+      title: 'Cobrança',
+      rowIds: ['row_analise'],
+      icon: 'tax',
+      description: 'Arrecadação mensal e composição por situação.',
+      group: 'Arrecadação',
+      order: 20,
+    },
+    {
+      id: 'tab_recuperacao',
+      title: 'Recuperação',
+      rowIds: ['row_indicadores'],
+      icon: 'money',
+      description: 'Indicadores consolidados do período.',
+      group: 'Arrecadação',
+      order: 10,
+    },
+    {
+      id: 'tab_bairro',
+      title: 'Por bairro',
+      rowIds: ['row_bairro'],
+      icon: 'map',
+      group: 'Território',
+      level: 2,
+      divider: true,
+      order: 30,
+    },
+  ],
+} satisfies DashboardLayout;

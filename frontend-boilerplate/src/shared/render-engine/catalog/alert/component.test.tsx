@@ -56,7 +56,9 @@ describe('bloco alert', () => {
       <Component props={{ title: 'Fecha comigo', dismissible: true }} state="success" />,
     );
 
-    await user.click(screen.getByRole('button', { name: /dismiss/i }));
+    // "Dispensar": rótulo pt-BR do `Banner` (catálogo do DS). Antes era
+    // /dismiss/i, que só passava porque o render de teste não tinha o i18n.
+    await user.click(screen.getByRole('button', { name: /dispensar/i }));
 
     expect(screen.queryByText('Fecha comigo')).not.toBeInTheDocument();
   });

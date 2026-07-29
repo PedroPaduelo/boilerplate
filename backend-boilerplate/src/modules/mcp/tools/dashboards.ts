@@ -87,8 +87,9 @@ const layoutJsonSchema = {
       type: 'array',
       items: {},
       description:
-        'Linhas com blocos. Cada linha: { id, title?, height?, blocks }. Cada bloco: ' +
-        '{ id, type, span?, height?, title?, subtitle?, props? }. `type` = catalogType ' +
+        'Linhas com blocos. Cada linha: { id, title?, description?, height?, columns?, ' +
+        'itemSizing?, blocks }. Cada bloco: { id, type, span?, height?, title?, ' +
+        'subtitle?, description?, unit?, icon?, emphasis?, props? }. `type` = catalogType ' +
         '(de list_catalog); `span` é 1..12 (largura na grade de 12 colunas). ' +
         '`height` é a ALTURA e vale para a LINHA (o normal — assim os blocos vizinhos ' +
         'terminam do mesmo tamanho); no bloco é exceção. Aceita um degrau nomeado ' +
@@ -96,7 +97,69 @@ const layoutJsonSchema = {
         'quando não houver motivo: sem ele o motor deriva a altura do tipo dos blocos, ' +
         'que é a escolha calibrada. Para blocos de gráfico use props.chartId apontando ' +
         'para um chart EXISTENTE e visível. Dica: prefira add_chart_to_dashboard para ' +
-        'inserir um chart sem montar o JSON na mão.',
+        'inserir um chart sem montar o JSON na mão. ' +
+        'COMPOSIÇÃO DA LINHA: `columns` (1..6) fixa quantas faixas a linha tem — use ' +
+        'quando a intenção é editorial ("estes 4 KPIs são uma faixa de 4"); sem ele o ' +
+        'motor encaixa quantas couberem (responsivo). `itemSizing` é "equal" (padrão: ' +
+        'todos os blocos com a MESMA largura, ninguém maior que o vizinho) ou "span" ' +
+        '(aí o `span` de cada bloco manda — use só quando o desequilíbrio for a ' +
+        'intenção, ex.: um gráfico de span 8 com um cartão de span 4 ao lado). ' +
+        '`description` da linha é uma frase sobre o que a SEÇÃO mostra. ' +
+        'ENRIQUEÇA O CARD (é o que separa um painel legível de uma pilha de gráficos): ' +
+        '`description` (o que este gráfico responde, 1 linha); ' +
+        '`unit` (UNIDADE da métrica: "R$", "%", "processos", "dias" — aparece ao lado ' +
+        'do título; NÃO escreva a unidade dentro do título. NÃO use em kpi/stat_tile/' +
+        'metric_glow/signal_card: esses já formatam a unidade dentro do próprio valor); ' +
+        '`icon` (ícone semântico, mesmo vocabulário das abas; OMITA quando o ícone ' +
+        'padrão do tipo já serve — só declare para contrariar, ex.: um bar_chart que ' +
+        'fala de dinheiro leva icon: "money"); ' +
+        '`emphasis` ("featured" para O número que a página existe para mostrar — ganha ' +
+        'borda de acento e elevação; "muted" para apoio/contexto; padrão "default"). ' +
+        'Use "featured" com PARCIMÔNIA: mais de um destaque por tela é nenhum destaque.',
+    },
+    tabs: {
+      type: 'array',
+      items: {},
+      description:
+        'OPCIONAL — divide o dashboard em ABAS navegáveis. Use quando houver mais de um ' +
+        'ASSUNTO (ex.: "Arrecadação" e "Fiscalização"); NÃO use para quebrar um assunto só ' +
+        'em pedaços. Cada aba: { id, title, rowIds, icon?, description?, group? }. ' +
+        '`rowIds` são ids de `rows` — a aba REFERENCIA linhas, não as contém (rows continua ' +
+        'sendo a lista completa; linha não citada por ninguém cai na primeira aba, então ' +
+        'nada some). ' +
+        'ENRIQUEÇA A LEITURA — estes três campos são o que separa um dashboard legível de ' +
+        'uma pilha de gráficos: ' +
+        '`icon` (ÍCONE SEMÂNTICO, escolha por significado: overview, chart, trend, table, ' +
+        'money, tax, users, building, calendar, alert, map, document, search, target, clock, ' +
+        'tag, percent, activity, layers, check, database, pie, list, settings); ' +
+        '`description` (UMA linha dizendo o que a aba responde, ex.: "IPTU arrecadado por ' +
+        'mês e bairro" — aparece no topo do conteúdo); ' +
+        '`group` (rótulo da SEÇÃO na navegação lateral: abas com o mesmo `group` são ' +
+        'agrupadas sob esse título. Use quando houver 4+ abas, para virarem 2-3 blocos em ' +
+        'vez de uma lista longa). ' +
+        '`order` (INTEIRO que decide a posição na navegação, menor primeiro; a ordem do ' +
+        'GRUPO também sai daqui — o menor `order` entre suas abas. Sem `order`, vale a ' +
+        'ordem do array); ' +
+        '`level` (1 = aba normal, 2 = SUB-ABA, aninhada sob a aba de nível 1 anterior — ' +
+        'use para detalhamentos de um assunto já coberto por uma aba); ' +
+        '`divider` (true desenha um separador ANTES da aba, para quebrar um bloco de ' +
+        'itens dentro do mesmo grupo sem criar um grupo novo). ' +
+        'Ex.: { id: "tab_iptu", title: "IPTU", rowIds: ["row_1","row_2"], icon: "money", ' +
+        'description: "Arrecadação de IPTU por mês", group: "Arrecadação", order: 10 }.',
+    },
+    theme: {
+      type: 'object',
+      description:
+        'OPCIONAL — aparência do dashboard inteiro. { colorMode?, accent?, palette? }. ' +
+        '`colorMode` ("light" | "dark" | "system") é o tema com que o dashboard ABRE ' +
+        'para quem nunca escolheu um — a escolha do usuário sempre vence, então isto é ' +
+        'ponto de partida, não imposição (ex.: painel de sala de controle → "dark"). ' +
+        '`accent` é a cor padrão das séries dos blocos que não declararem a sua (nome de ' +
+        'cor do tema: "teal", "amber", "cyan", "purple"…) — é como dar identidade ' +
+        'cromática ao painel inteiro com UM campo, em vez de repetir accent em 15 ' +
+        'blocos. `palette` ("multi" = uma cor por categoria, "single" = uma cor por ' +
+        'série) define o padrão dos blocos categóricos. ' +
+        'Ex.: { colorMode: "dark", accent: "teal", palette: "multi" }.',
     },
   },
 };
@@ -114,6 +177,9 @@ const createDashboardTool: ToolDefinition = {
     '`visibility` é UPPERCASE (PRIVATE|DEPARTMENT|ORG, default PRIVATE); DEPARTMENT exige ' +
     '`departmentId`. DICA: crie com layout vazio ({ filters: [], rows: [] }) e use ' +
     'add_chart_to_dashboard depois — é mais simples que montar o JSON na mão. ' +
+    'ORGANIZE O RESULTADO: quando o dashboard cobrir mais de um assunto, declare `tabs` ' +
+    '(com `icon`, `description` e `group` — ver a descrição do campo). É o que faz a tela ' +
+    'sair com navegação, ícones e hierarquia em vez de uma parede de gráficos empilhados. ' +
     'RETORNA: o dashboard criado (inclui `id`, status=DRAFT) — publique depois com ' +
     'publish_dashboard. ERROS (code=bad_request com `detail`): `invalid_layout` (layout fora ' +
     'do contrato — a mensagem traz os caminhos JSON), `unknown_chart_ref` (props.chartId ' +

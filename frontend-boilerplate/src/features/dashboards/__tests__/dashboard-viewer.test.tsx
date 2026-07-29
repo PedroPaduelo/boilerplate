@@ -16,7 +16,7 @@
  * Consultas por papel acessível: os nomes de classe são gerados pelo StyleX.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Routes, Route } from 'react-router-dom';
 import {
   dashboardLayoutFixture,
@@ -180,13 +180,31 @@ describe('DashboardViewer — estados da tela', () => {
     );
   });
 
-  it('não desenha trilha de navegação — a tela é autônoma', () => {
-    // Guarda de regressão: a trilha é orientação DENTRO de um app, e aqui não há
-    // app em volta. Se alguém a devolver, este caso avisa.
+  it('desenha a trilha de navegação com saída para a listagem', () => {
+    /*
+     * REVERSÃO CONSCIENTE de uma decisão anterior, registrada aqui porque o
+     * teste antigo afirmava exatamente o contrário ("não desenha trilha").
+     *
+     * O argumento de antes: a tela é AUTÔNOMA (guia própria, para projetar numa
+     * reunião), e trilha é orientação DENTRO de um app. Valia para a tela
+     * daquele momento, que era praticamente um slide.
+     *
+     * O que mudou: a tela ganhou ações de trabalho (compartilhar, período,
+     * exportar) — não se está só olhando, se está operando. E o próprio estado
+     * de erro já tinha provado que faltava saída: ele precisou de um botão
+     * "ver todos os dashboards" justamente porque não havia caminho de volta.
+     * Se o erro precisa de saída, a tela precisa de saída sempre — e a trilha,
+     * além de sair, diz ONDE se está, o que um botão solto não faz.
+     */
     query.isError = false;
     renderViewer();
 
-    expect(screen.queryByRole('navigation', { name: 'Você está em' })).toBeNull();
+    const trilha = screen.getByRole('navigation', { name: 'Você está em' });
+    expect(trilha).toBeInTheDocument();
+    expect(within(trilha).getByRole('link', { name: 'Dashboards' })).toHaveAttribute(
+      'href',
+      '/dashboards',
+    );
   });
 });
 
@@ -214,13 +232,29 @@ describe('DashboardViewer — `/view` é somente leitura', () => {
     expect(container.querySelector('a[href*="/edit"]')).toBeNull();
   });
 
-  it('mantém as ações de LEITURA: atualizar e exportar', () => {
+  it('mantém as ações de LEITURA visíveis: atualizar e compartilhar', () => {
     // Contrapeso: a remoção da edição não pode levar junto o que o leitor
-    // legitimamente faz nesta tela.
+    // legitimamente faz nesta tela. Estas duas são as que se fazem DURANTE a
+    // leitura, então ficam inline.
     renderViewer();
 
     expect(screen.getByRole('button', { name: 'Atualizar' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Exportar PDF' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Compartilhar' })).toBeInTheDocument();
+  });
+
+  it('exportar PDF continua alcançável — no menu de mais ações', async () => {
+    /*
+     * Exportar saiu da fileira principal por ser caro, lento e pontual: cinco
+     * botões lado a lado não é um cabeçalho rico, é um cabeçalho sem opinião.
+     * Mas "sair de vista" não pode virar "sumir" — este caso guarda o caminho.
+     */
+    renderViewer();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mais ações do dashboard' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('menuitem', { name: /Exportar PDF/ })).toBeInTheDocument(),
+    );
   });
 });
 

@@ -22,6 +22,11 @@ export * from './validation/validator';
 // aba", usada por BE, FE e MCP. Ver doc 40.
 export * from './layout/tabs';
 
+// Leitura defensiva dos campos de APRESENTAÇÃO (ícone, unidade, ênfase,
+// colunas, tema). Mesma razão das abas: um normalizador por consumidor faria a
+// tela, o PDF e o link público discordarem do que o layout diz. Ver doc 41.
+export * from './layout/presentation';
+
 // Helpers de Socket.IO (nomes de evento + sala + tipos de payload).
 export * from './socket/events';
 

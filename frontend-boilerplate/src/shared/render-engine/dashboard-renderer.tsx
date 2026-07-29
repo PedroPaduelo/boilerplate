@@ -18,8 +18,9 @@ import type {
   Filter,
   Row,
 } from '@dashboards/contracts';
+import { resolveDashboardTheme, resolveRowLayout } from '@dashboards/contracts';
 import { HStack } from '@astryxdesign/core/HStack';
-import { Heading } from '@astryxdesign/core/Text';
+import { Heading, Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 import { BlockGrid } from './block-grid';
@@ -55,6 +56,15 @@ export function DashboardRenderer({
   itemSizing = 'equal',
   className,
 }: DashboardRendererProps) {
+  /*
+   * Aparência declarada pelo DASHBOARD (`layout.theme`). Aqui só interessam
+   * `accent` e `palette`, que viram o padrão dos blocos que não escolheram cor
+   * — é o que dá identidade cromática a um painel inteiro com um campo, em vez
+   * de repetir `accent` em quinze blocos. O `colorMode` é decisão da TELA (só
+   * ela sabe se o usuário já escolheu um tema), não do motor de render.
+   */
+  const theme = resolveDashboardTheme(layout);
+
   return (
     <VStack gap={6} data-slot="dashboard" className={className}>
       {layout.filters.length > 0 ? (
@@ -71,28 +81,45 @@ export function DashboardRenderer({
         </HStack>
       ) : null}
 
-      {layout.rows.map((row: Row) => (
-        <VStack key={row.id} gap={3} as="section" data-slot="dashboard-row">
-          {row.title ? <Heading level={2}>{row.title}</Heading> : null}
-          <BlockGrid
-            blocks={row.blocks}
-            // Altura DECLARADA na linha (editor / agente). Ausente, o grid
-            // deriva dos tipos — o comportamento que sempre houve.
-            rowHeight={(row as { height?: BlockHeight }).height}
-            itemSizing={itemSizing}
-            renderBlock={(block) => (
-              <BlockRenderer
-                block={block}
-                data={data}
-                result={data?.blocks?.[block.id]}
-                framed={framed}
-              />
-            )}
-            slot="dashboard-grid"
-            cellSlot="dashboard-cell"
-          />
-        </VStack>
-      ))}
+      {layout.rows.map((row: Row) => {
+        // Composição DECLARADA na linha, normalizada pelo contrato. A linha é
+        // a unidade de decisão de layout (ver `block-grid`), então é ela — e
+        // não o bloco — que diz quantas faixas existem e se a largura é igual
+        // para todos ou dirigida pelo `span`.
+        const rowLayout = resolveRowLayout(row);
+        return (
+          <VStack key={row.id} gap={3} as="section" data-slot="dashboard-row">
+            {row.title ? <Heading level={2}>{row.title}</Heading> : null}
+            {row.description ? (
+              <Text type="supporting" color="secondary" maxLines={2}>
+                {row.description}
+              </Text>
+            ) : null}
+            <BlockGrid
+              blocks={row.blocks}
+              // Altura DECLARADA na linha (editor / agente). Ausente, o grid
+              // deriva dos tipos — o comportamento que sempre houve.
+              rowHeight={(row as { height?: BlockHeight }).height}
+              columns={rowLayout.columns}
+              // O `itemSizing` da LINHA vence o da tela: a tela declara o
+              // padrão do contexto (dashboard, galeria), a linha declara a
+              // exceção editorial. Sem linha declarando, nada muda.
+              itemSizing={rowLayout.itemSizing === 'span' ? 'span' : itemSizing}
+              renderBlock={(block) => (
+                <BlockRenderer
+                  block={block}
+                  data={data}
+                  result={data?.blocks?.[block.id]}
+                  framed={framed}
+                  themeDefaults={theme}
+                />
+              )}
+              slot="dashboard-grid"
+              cellSlot="dashboard-cell"
+            />
+          </VStack>
+        );
+      })}
     </VStack>
   );
 }

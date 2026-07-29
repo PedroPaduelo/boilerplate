@@ -132,6 +132,34 @@ export function isCompactCardBlock(type: string): boolean {
 }
 
 /**
+ * SILHUETA do esqueleto de carregamento deste tipo.
+ *
+ * Mora aqui, junto da política de tamanho, porque responde à mesma pergunta —
+ * "que forma este tipo tem?" — e porque assim a silhueta acompanha a família de
+ * tamanho: se um tipo mudar de família, o esqueleto muda junto, em vez de as
+ * duas tabelas divergirem em silêncio.
+ *
+ * O mapeamento é por FORMA DE LEITURA, não um desenho por tipo: quatro
+ * silhuetas diferentes para quatro jeitos de desenhar uma série ensinariam ao
+ * olho uma diferença que não existe.
+ */
+export function skeletonShapeFor(type: string): 'bars' | 'line' | 'circular' | 'rows' {
+  const size = SIZE_BY_TYPE[type];
+  if (size === 'table') return 'rows';
+  if (size === 'categorical') {
+    // Composição de um todo desenha um anel; ranking desenha faixas.
+    return type === 'donut' || type === 'progress_circle' || type === 'radial_gauge'
+      ? 'circular'
+      : 'rows';
+  }
+  // Séries mostram tendência (linha); comparações mostram grandeza (barras).
+  if (type === 'line_chart' || type === 'area_chart' || type === 'spark_chart') {
+    return 'line';
+  }
+  return 'bars';
+}
+
+/**
  * Largura mínima de um cartão compacto numa grade. Abaixo disto o rótulo
  * ("Eventos de webhook") quebra em três linhas e o número perde o destaque —
  * é o piso que decide quantas colunas cabem.

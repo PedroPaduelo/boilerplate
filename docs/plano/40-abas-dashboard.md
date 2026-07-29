@@ -140,6 +140,11 @@ compartilhado funcionam.
 
 ## 10. Impedimentos e alternativas
 
+> **Atualização (doc 41):** o impedimento de §10.1 foi RESOLVIDO — `tabs` entrou
+> no `layoutJsonSchema` das tools de MCP, com descrição dos campos de
+> apresentação, e o agente passou a escrever abas. O texto abaixo fica como
+> registro da decisão original.
+
 ### 10.1 O agente ainda não cria abas (impedimento de ownership)
 
 `src/modules/mcp/tools/dashboards.ts` declara o layout aceito pelas tools com

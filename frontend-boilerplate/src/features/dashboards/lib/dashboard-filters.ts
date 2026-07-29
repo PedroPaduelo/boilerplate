@@ -71,6 +71,29 @@ export function initialFilterValues(filters: DashFilter[] | undefined): FilterVa
  * IDs dos blocos que ESCUTAM um filtro (têm `dataBinding.params` com aquele
  * `filterId`). São exatamente os blocos que recomputam quando o filtro muda.
  */
+/**
+ * O filtro de PERÍODO do dashboard — o primeiro `date_range` declarado.
+ *
+ * Existe para PROMOVER esse filtro ao cabeçalho, ao lado de "última
+ * atualização". Não é preferência estética: período é o filtro que quase todo
+ * dashboard tem, o mais mexido de todos, e o único que muda o significado de
+ * **todos** os números da tela ao mesmo tempo. Deixá-lo no meio da fileira de
+ * filtros o iguala a um "situação = todas" — e obriga quem só quer trocar o mês
+ * a varrer a barra inteira para achá-lo.
+ *
+ * Junto de "atualizado há 2 min", ele também responde a pergunta que a dupla
+ * forma: "que recorte estou vendo, e de quando é o dado?".
+ *
+ * `undefined` quando o dashboard não tem filtro de data — e aí o cabeçalho
+ * simplesmente não desenha o controle, em vez de inventar um período que não
+ * filtra nada.
+ */
+export function pickPeriodFilter(
+  filters: DashFilter[] | undefined,
+): DashFilter | undefined {
+  return (filters ?? []).find((filter) => filter.type === 'date_range');
+}
+
 export function blocksAffectedByFilter(
   layout: LayoutLike | undefined,
   filterId: string,

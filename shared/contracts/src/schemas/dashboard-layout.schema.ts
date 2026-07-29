@@ -39,8 +39,28 @@ export const DashboardLayoutSchema = {
       type: 'array',
       items: { $ref: '#/$defs/tab' },
     },
+    // APARÊNCIA do dashboard (opcional) — ver `$defs.theme`.
+    theme: { $ref: '#/$defs/theme' },
   },
   $defs: {
+    /**
+     * Preferência de aparência do DASHBOARD. Toda propriedade é opcional, e a
+     * do usuário vence: isto é o ponto de partida de quem nunca escolheu tema,
+     * não uma imposição sobre quem já escolheu.
+     */
+    theme: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        colorMode: { type: 'string', enum: ['light', 'dark', 'system'] },
+        // Nome de cor de série do tema de gráfico. Deliberadamente NÃO é um
+        // enum fechado: o vocabulário de cores vive no tema do front e cresce
+        // com ele — congelá-lo aqui faria o contrato rejeitar uma cor que o
+        // app desenha. Valor irreconhecível degrada para a paleta padrão.
+        accent: { type: 'string', minLength: 1, maxLength: 40 },
+        palette: { type: 'string', enum: ['single', 'multi'] },
+      },
+    },
     /**
      * Aba do dashboard. Ela NÃO carrega `rows` dentro de si — carrega os IDS
      * das rows que exibe (`rowIds`).
@@ -71,7 +91,68 @@ export const DashboardLayoutSchema = {
           type: 'array',
           items: { type: 'string', minLength: 1 },
         },
+        /*
+         * ENRIQUECIMENTO VISUAL (opcional) — o que permite que um dashboard
+         * gerado pelo agente chegue à tela com hierarquia, e não como uma
+         * lista plana de rótulos.
+         *
+         * Os três são OPCIONAIS de propósito: dashboard existente (e agente
+         * que ainda não conhece estes campos) continua válido e renderiza
+         * exatamente como antes.
+         */
+        // Ícone SEMÂNTICO. Mesmo vocabulário do bloco (`$defs.semanticIcon`):
+        // "isto é sobre arrecadação" é a mesma frase numa aba e num card, e
+        // duas listas divergiriam no primeiro ícone acrescentado.
+        icon: { $ref: '#/$defs/semanticIcon' },
+        // Uma linha sobre o que a aba responde.
+        description: { type: 'string', maxLength: 200 },
+        // Agrupa abas em seções na navegação lateral.
+        group: { type: 'string', minLength: 1, maxLength: 60 },
+        // Posição na navegação (menor primeiro). A ordem do GRUPO deriva daqui
+        // — o menor `order` entre suas abas —, então não existe um segundo
+        // registro de ordenação capaz de discordar deste.
+        order: { type: 'integer', minimum: 0, maximum: 9999 },
+        // 1 = aba de primeiro nível; 2 = sub-aba (indentada, peso menor).
+        level: { type: 'integer', enum: [1, 2] },
+        // Separador ANTES da aba — quebra um bloco de itens dentro do mesmo
+        // grupo sem exigir um título de seção que ninguém pediu.
+        divider: { type: 'boolean' },
       },
+    },
+    /**
+     * Vocabulário de ÍCONES — fechado de propósito, para o agente escolher
+     * dentro do que a tela sabe desenhar em vez de inventar um nome que
+     * viraria um buraco no alinhamento da lista. Compartilhado por aba e
+     * bloco (ver a nota em `SEMANTIC_ICONS`).
+     */
+    semanticIcon: {
+      type: 'string',
+      enum: [
+        'overview',
+        'chart',
+        'trend',
+        'table',
+        'money',
+        'tax',
+        'users',
+        'building',
+        'calendar',
+        'alert',
+        'map',
+        'document',
+        'search',
+        'target',
+        'clock',
+        'tag',
+        'percent',
+        'activity',
+        'layers',
+        'check',
+        'database',
+        'pie',
+        'list',
+        'settings',
+      ],
     },
     filter: {
       type: 'object',
@@ -139,6 +220,25 @@ export const DashboardLayoutSchema = {
         title: { type: 'string' },
         // subtítulo do header do card (linha de apoio abaixo do título). Opcional.
         subtitle: { type: 'string' },
+        /*
+         * ENRIQUECIMENTO DO CARD (opcional). Os quatro abaixo são o que separa
+         * um card legível de um retângulo com um desenho dentro. Todos
+         * opcionais: bloco existente continua válido e renderiza como antes.
+         */
+        // "O que este gráfico responde", abaixo do subtítulo. O render-engine
+        // já LIA este campo; faltava declará-lo — com additionalProperties:
+        // false, um layout que o usasse era rejeitado na validação.
+        description: { type: 'string', maxLength: 280 },
+        // UNIDADE da métrica ("R$", "%", "processos"). Fica ao lado do título,
+        // fora dele: embutida no título ("Arrecadação (R$)") ela se mistura ao
+        // assunto e desaparece junto quando o título é truncado.
+        unit: { type: 'string', minLength: 1, maxLength: 24 },
+        // Ícone semântico do card. Ausente, a tela deriva do `type` do bloco.
+        icon: { $ref: '#/$defs/semanticIcon' },
+        // Peso do card na leitura: `featured` é o destaque de KPI, `muted`
+        // recua para apoio. Destacar por TAMANHO não serviria — tamanho é
+        // decisão da linha, e mexer nele desalinharia os vizinhos.
+        emphasis: { type: 'string', enum: ['default', 'featured', 'muted'] },
         // props visuais do bloco (validadas pelo manifest.propsSchema do catálogo).
         props: { type: 'object' },
         // ausente em blocos narrativos (title / rich_text) e em containers (section).
@@ -159,11 +259,24 @@ export const DashboardLayoutSchema = {
       properties: {
         id: { type: 'string', minLength: 1 },
         title: { type: 'string' },
+        // Uma linha sobre o que a SEÇÃO mostra. Dá contexto ao grupo de
+        // gráficos sem obrigar cada card a repetir a mesma explicação.
+        description: { type: 'string', maxLength: 280 },
         // ALTURA DA LINHA. A linha é a unidade de decisão de altura (ver
         // `block-sizing` no render-engine): ela escolhe UM tamanho e todos os
         // seus blocos ficam com ele — é o que impede "um gráfico maior que o
         // vizinho". Ausente = derive dos tipos que a linha contém.
         height: { $ref: '#/$defs/blockHeight' },
+        // Número de COLUNAS da faixa. Ausente, o motor encaixa quantas
+        // couberem pelo piso de largura do tipo (colapso responsivo de graça).
+        // Declarar é para a intenção editorial que a heurística não adivinha:
+        // "estes quatro KPIs são uma faixa de quatro".
+        columns: { type: 'integer', minimum: 1, maximum: 6 },
+        // Como as larguras são decididas: `equal` (padrão — faixas iguais,
+        // ninguém maior que o vizinho por acidente) ou `span` (leitura literal
+        // do `span` na grade de 12 colunas, quando o desequilíbrio é a
+        // intenção). Ver `RowItemSizing`.
+        itemSizing: { type: 'string', enum: ['equal', 'span'] },
         blocks: {
           type: 'array',
           items: { $ref: '#/$defs/block' },
@@ -231,5 +344,9 @@ export const DashboardConfigSchema = {
       type: 'array',
       items: { $ref: 'dashboard-layout.json#/$defs/tab' },
     },
+    // Espelha `DashboardLayout.theme` pelo mesmo motivo das abas: o config é a
+    // representação COMPLETA, e um dashboard que perde a preferência de tema no
+    // caminho da API abre com a aparência errada.
+    theme: { $ref: 'dashboard-layout.json#/$defs/theme' },
   },
 } as const;

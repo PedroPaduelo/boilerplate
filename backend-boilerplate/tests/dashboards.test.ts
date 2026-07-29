@@ -858,3 +858,115 @@ describe('dashboards — abas (tabs)', () => {
     expect(res.json().publishedLayout.tabs).toHaveLength(2);
   });
 });
+
+// =============================================================================
+// APRESENTAÇÃO DO LAYOUT (doc 41) — enriquecimento visual escrito pelo agente
+// =============================================================================
+//
+// Mesma classe de risco das abas, e por isso os mesmos três testes: o Zod faz
+// STRIP de chave desconhecida (o save "daria certo" perdendo o campo), o
+// `add_chart_to_dashboard` RECONSTRÓI o layout (apagaria o que não copiasse), e
+// o contrato tem `additionalProperties: false` (um campo não declarado vira
+// 400). Como quem escreve estes campos é o AGENTE, a perda não seria notada por
+// quem salvou — seria notada por quem pediu o dashboard, dias depois.
+describe('dashboards — apresentação (ícone, unidade, ênfase, tema)', () => {
+  const richLayout = () => ({
+    theme: { colorMode: 'dark', accent: 'teal', palette: 'multi' },
+    filters: [],
+    rows: [
+      {
+        id: 'row_a',
+        title: 'Indicadores',
+        description: 'Consolidado do período.',
+        columns: 3,
+        itemSizing: 'span',
+        blocks: [
+          {
+            id: 'blk_a',
+            type: 'kpi',
+            span: 4,
+            title: 'Arrecadado',
+            unit: 'R$',
+            icon: 'money',
+            emphasis: 'featured',
+            description: 'Somente valores baixados.',
+          },
+        ],
+      },
+    ],
+    tabs: [
+      {
+        id: 'tab_1',
+        title: 'Arrecadação',
+        rowIds: ['row_a'],
+        icon: 'money',
+        group: 'Receita',
+        order: 10,
+        level: 2,
+        divider: true,
+      },
+    ],
+  });
+
+  it('POST /dashboards aceita e PERSISTE a apresentação inteira', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: richLayout() }),
+    });
+
+    expect(res.statusCode).toBe(201);
+    const layout = res.json().draftLayout;
+
+    // tema (o campo que o Zod removeria em silêncio sem estar declarado)
+    expect(layout.theme).toMatchObject({ colorMode: 'dark', accent: 'teal' });
+    // composição da linha
+    expect(layout.rows[0]).toMatchObject({ columns: 3, itemSizing: 'span' });
+    // apresentação do bloco
+    expect(layout.rows[0].blocks[0]).toMatchObject({
+      unit: 'R$',
+      icon: 'money',
+      emphasis: 'featured',
+    });
+    // ordem/hierarquia da aba
+    expect(layout.tabs[0]).toMatchObject({ order: 10, level: 2, divider: true });
+  });
+
+  it('add_chart_to_dashboard PRESERVA o tema do dashboard', async () => {
+    // O caminho do AGENTE reconstrói o layout: o que ele não copiar, apaga —
+    // e apaga a cada gráfico inserido.
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: richLayout() }),
+    });
+    const id = created.json().id;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/dashboards/${id}/blocks`,
+      headers: authHeader(creatorToken),
+      payload: { chartId, span: 6 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().draftLayout.theme).toMatchObject({ colorMode: 'dark' });
+  });
+
+  it('valor FORA do vocabulário é rejeitado com 400 (não vira dado salvo)', async () => {
+    const bad = richLayout();
+    (bad.rows[0].blocks[0] as { emphasis: string }).emphasis = 'gigante';
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard({ draftLayout: bad }),
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/Invalid dashboard layout/);
+  });
+});

@@ -34,13 +34,13 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@/http/routes/_e
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
 import { mapWithConcurrency } from '@/lib/concurrency';
-import { runQuery } from '@/lib/pg-runner';
+import { runQuery } from '@/lib/query-runner';
 import type { ActorContext } from '@/lib/rbac';
 import { redisService } from '@/lib/redis';
 import { canModifyArtifact, canViewArtifact } from '@/lib/visibility';
 import { resolveBlocks } from '@/modules/data/block-resolver';
 import { resolveParamsValues } from '@/modules/data/cache';
-import { toPgRunnerConnection } from '@/modules/data/connection-loader';
+import { toRunnerConnection } from '@/modules/data/connection-loader';
 import { executeBlockData } from '@/modules/data/executor';
 import { getCatalogDataShape } from '@/lib/catalog';
 import type { AddChartInput, CreateDashboardInput, UpdateDashboardInput } from './schema';
@@ -75,6 +75,8 @@ interface LayoutShape {
   rows: RowShape[];
   /** ausente nos layouts legados — ver `resolveDashboardTabs` no contrato. */
   tabs?: TabShape[];
+  /** preferência de aparência do dashboard (doc 41), opcional. */
+  theme?: unknown;
 }
 
 /** Chave Redis do cache de LAYOUT publicado de um dashboard (doc 20). */
@@ -440,6 +442,10 @@ export async function addChartToDashboard(
     filters: layout.filters,
     rows,
     ...(tabs ? { tabs } : {}),
+    // TEMA (doc 41): copiado pelo mesmo motivo das abas — este método
+    // reconstrói o layout, e o que não for copiado aqui é apagado a cada
+    // gráfico que o agente insere.
+    ...(layout.theme ? { theme: layout.theme } : {}),
   };
   // re-valida o layout resultante contra o contrato (defensivo).
   assertValidLayout(nextLayout);
@@ -525,7 +531,7 @@ export async function materializePublishedDataPayload(
         : null;
     }
     const conn = block.connectionRecord as
-      | Parameters<typeof toPgRunnerConnection>[0]
+      | Parameters<typeof toRunnerConnection>[0]
       | undefined;
     if (!conn) {
       return [
@@ -541,7 +547,7 @@ export async function materializePublishedDataPayload(
     const result = await executeBlockData(
       {
         blockId: block.blockId,
-        connection: toPgRunnerConnection(conn),
+        connection: toRunnerConnection(conn),
         sql: block.binding.query,
         paramsValues,
         transform: block.binding.transform,

@@ -26,6 +26,7 @@ export { ChartDataTable } from './chart-data-table';
 export type { ChartDataTableProps } from './chart-data-table';
 export { DeltaBadge } from './delta-badge';
 export type { DeltaBadgeProps } from './delta-badge';
+export { FALLBACK_ICON, blockIcon, semanticIcon, tabIcon } from './semantic-icons';
 export { KpiCard } from './kpi-card';
 export type { KpiCardProps } from './kpi-card';
 export { StatTile } from './stat-tile';

@@ -87,7 +87,7 @@ export { ChartTooltip } from './chart-tooltip';
 export type { ChartTooltipProps, ChartTooltipRow } from './chart-tooltip';
 export { ChartSeriesTooltip } from './chart-series-tooltip';
 export { ChartSkeleton } from './chart-skeleton';
-export type { ChartSkeletonProps } from './chart-skeleton';
+export type { ChartSkeletonProps, ChartSkeletonShape } from './chart-skeleton';
 export { ChartSwatch } from './chart-swatch';
 export type { ChartSwatchProps } from './chart-swatch';
 export { ChartBarTrack } from './chart-bar-track';

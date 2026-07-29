@@ -35,6 +35,10 @@ export const layoutInputSchema = z.object({
   filters: z.array(z.any()),
   rows: z.array(z.any()),
   tabs: z.array(z.any()).optional(),
+  // `theme` (doc 41) pelo MESMO motivo do `tabs` acima: sem a linha, a
+  // preferência de aparência do dashboard seria removida pelo parse antes de
+  // qualquer validação, e o save "daria certo" perdendo o campo.
+  theme: z.any().optional(),
 });
 
 export type LayoutInput = z.infer<typeof layoutInputSchema>;

@@ -27,7 +27,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test tests/contracts.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {},
   "devDependencies": {

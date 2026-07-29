@@ -37,6 +37,16 @@ export interface UseDashboardDataResult {
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
+  /**
+   * Quando os dados desta combinação (modo + filtros) chegaram, em epoch ms.
+   * `0` enquanto nada chegou ainda.
+   *
+   * Sai do próprio TanStack Query (`dataUpdatedAt`) em vez de um `Date.now()`
+   * guardado à mão: só ele sabe a diferença entre "o payload é novo" e "o
+   * payload veio do cache", e é essa diferença que a tela precisa mostrar em
+   * "atualizado há 2 min". Um relógio nosso mentiria a cada troca de aba.
+   */
+  updatedAt: number;
   refetch: () => void;
 }
 
@@ -72,6 +82,7 @@ export function useDashboardData({
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,
+    updatedAt: query.dataUpdatedAt,
     refetch: () => void query.refetch(),
   };
 }

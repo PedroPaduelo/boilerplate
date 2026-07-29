@@ -61,6 +61,15 @@ export interface EditorBlock {
   title?: string;
   /** Subtítulo do card (linha de apoio no cabeçalho). */
   subtitle?: string;
+  /**
+   * Apresentação do card (doc 41). O editor humano ainda não os edita — mas
+   * PRECISA carregá-los, pelo mesmo motivo de `blocks` e `tabs`: sem eles,
+   * abrir e salvar apagaria o que o agente escreveu, em silêncio.
+   */
+  description?: string;
+  unit?: string;
+  icon?: string;
+  emphasis?: string;
   /** Linhas ocupadas em containers de mosaico. */
   rowSpan?: number;
   props?: Record<string, unknown>;
@@ -78,6 +87,12 @@ export interface EditorBlock {
 export interface EditorRow {
   id: string;
   title?: string;
+  /** Uma linha sobre o que a seção mostra (doc 41). */
+  description?: string;
+  /** Faixas declaradas da linha (1..6). */
+  columns?: number;
+  /** `equal` (padrão) ou `span` — ver `RowItemSizing` no contrato. */
+  itemSizing?: string;
   /**
    * Altura da LINHA (degrau nomeado ou px). A linha é a unidade de decisão de
    * altura: ela escolhe um tamanho e todos os seus blocos ficam com ele — é o
@@ -88,11 +103,33 @@ export interface EditorRow {
   blocks: EditorBlock[];
 }
 
-/** Aba do dashboard (doc 40) — referencia rows por id, não as contém. */
+/**
+ * Aba do dashboard (doc 40) — referencia rows por id, não as contém.
+ *
+ * Os campos de APRESENTAÇÃO (ícone, descrição, grupo, ordem, nível, divisor)
+ * estão aqui pelo motivo que este arquivo repete: `normalizeLayout` e
+ * `sanitizeLayoutForSave` reconstroem o layout campo a campo. Uma chave que o
+ * editor não conhece é DESCARTADA no save — então, sem estas linhas, bastava
+ * abrir no editor e clicar em Salvar para o dashboard perder os ícones, os
+ * grupos e a ordem que o agente montou. Sem erro, sem aviso.
+ */
 export interface EditorTab {
   id: string;
   title: string;
   rowIds: string[];
+  icon?: string;
+  description?: string;
+  group?: string;
+  order?: number;
+  level?: 1 | 2;
+  divider?: boolean;
+}
+
+/** Preferência de aparência do dashboard (doc 41). */
+export interface EditorTheme {
+  colorMode?: string;
+  accent?: string;
+  palette?: string;
 }
 
 export interface EditorLayout {
@@ -106,6 +143,8 @@ export interface EditorLayout {
    * SUMIREM — perda de dados silenciosa, sem erro nenhum na tela.
    */
   tabs?: EditorTab[];
+  /** Aparência declarada pelo dashboard (doc 41). Mesma regra das abas. */
+  theme?: EditorTheme;
 }
 
 export type MoveDirection = 'up' | 'down';
@@ -132,6 +171,10 @@ interface RawBlock {
   rowSpan?: unknown;
   title?: unknown;
   subtitle?: unknown;
+  description?: unknown;
+  unit?: unknown;
+  icon?: unknown;
+  emphasis?: unknown;
   props?: unknown;
   /** Forma legada: `chartId` no topo do bloco (o contrato espera em `props.chartId`). */
   chartId?: unknown;
@@ -141,6 +184,9 @@ interface RawBlock {
 interface RawRow {
   id?: unknown;
   title?: unknown;
+  description?: unknown;
+  columns?: unknown;
+  itemSizing?: unknown;
   height?: unknown;
   blocks?: unknown;
 }
@@ -201,6 +247,12 @@ function normalizeBlock(raw: RawBlock): EditorBlock {
       : {}),
     ...(title ? { title } : {}),
     ...(subtitle ? { subtitle } : {}),
+    // Apresentação (doc 41): carregada como veio. O editor não a valida — quem
+    // valida é o contrato, no save; o papel daqui é só NÃO PERDER.
+    ...(normalizeText(raw.description) ? { description: raw.description as string } : {}),
+    ...(normalizeText(raw.unit) ? { unit: raw.unit as string } : {}),
+    ...(normalizeText(raw.icon) ? { icon: raw.icon as string } : {}),
+    ...(normalizeText(raw.emphasis) ? { emphasis: raw.emphasis as string } : {}),
     ...(Object.keys(props).length > 0 ? { props } : {}),
     ...(raw.dataBinding ? { dataBinding: normalizeBinding(raw.dataBinding) } : {}),
     ...(children.length > 0 ? { blocks: children } : {}),
@@ -228,6 +280,9 @@ export function normalizeLayout(raw: unknown): EditorLayout {
     ? (l.rows as RawRow[]).map((r) => ({
         id: typeof r.id === 'string' ? r.id : genId('row'),
         ...(typeof r.title === 'string' ? { title: r.title } : {}),
+        ...(normalizeText(r.description) ? { description: r.description as string } : {}),
+        ...(typeof r.columns === 'number' ? { columns: r.columns } : {}),
+        ...(normalizeText(r.itemSizing) ? { itemSizing: r.itemSizing as string } : {}),
         ...(hasDeclaredHeight(r.height) ? { height: r.height as BlockHeight } : {}),
         blocks: Array.isArray(r.blocks)
           ? (r.blocks as RawBlock[]).map(normalizeBlock)
@@ -247,10 +302,39 @@ export function normalizeLayout(raw: unknown): EditorLayout {
         rowIds: Array.isArray(t.rowIds)
           ? (t.rowIds as unknown[]).filter((r): r is string => typeof r === 'string')
           : [],
+        // Apresentação da aba (docs 40/41) — carregada tal como veio.
+        ...(normalizeText(t.icon) ? { icon: t.icon as string } : {}),
+        ...(normalizeText(t.description) ? { description: t.description as string } : {}),
+        ...(normalizeText(t.group) ? { group: t.group as string } : {}),
+        ...(typeof t.order === 'number' ? { order: t.order } : {}),
+        ...(t.level === 2 ? { level: 2 as const } : {}),
+        ...(t.divider === true ? { divider: true } : {}),
       }))
     : [];
 
-  return { filters, rows, ...(tabs.length > 0 ? { tabs } : {}) };
+  // TEMA (doc 41): mesma regra das abas — só entra quando existe de verdade,
+  // senão todo dashboard antigo passaria a acusar "alterado" ao ser aberto,
+  // porque o dirty-state compara a forma canônica (`{} → theme: {}`).
+  const rawTheme = (l as { theme?: unknown }).theme;
+  const theme: EditorTheme | undefined =
+    rawTheme && typeof rawTheme === 'object'
+      ? (() => {
+          const t = rawTheme as Record<string, unknown>;
+          const next: EditorTheme = {
+            ...(typeof t.colorMode === 'string' ? { colorMode: t.colorMode } : {}),
+            ...(typeof t.accent === 'string' ? { accent: t.accent } : {}),
+            ...(typeof t.palette === 'string' ? { palette: t.palette } : {}),
+          };
+          return Object.keys(next).length > 0 ? next : undefined;
+        })()
+      : undefined;
+
+  return {
+    filters,
+    rows,
+    ...(tabs.length > 0 ? { tabs } : {}),
+    ...(theme ? { theme } : {}),
+  };
 }
 
 /* ------------------------------------------------------- helpers ---------- */
@@ -760,6 +844,7 @@ export function sanitizeLayoutForSave(layout: EditorLayout): {
   filters: unknown[];
   rows: unknown[];
   tabs?: unknown[];
+  theme?: unknown;
 } {
   const filters = layout.filters.map((f) => ({
     id: f.id,
@@ -771,7 +856,10 @@ export function sanitizeLayoutForSave(layout: EditorLayout): {
   const rows = layout.rows.map((row) => ({
     id: row.id,
     ...(row.title !== undefined && row.title !== '' ? { title: row.title } : {}),
+    ...(row.description ? { description: row.description } : {}),
     ...(hasDeclaredHeight(row.height) ? { height: row.height } : {}),
+    ...(typeof row.columns === 'number' ? { columns: row.columns } : {}),
+    ...(row.itemSizing ? { itemSizing: row.itemSizing } : {}),
     blocks: row.blocks.map(sanitizeBlock),
   }));
 
@@ -788,9 +876,25 @@ export function sanitizeLayoutForSave(layout: EditorLayout): {
     id: tab.id,
     title: tab.title,
     rowIds: tab.rowIds.filter((rowId) => knownRowIds.has(rowId)),
+    // ESCREVER TUDO O QUE FOI LIDO — a mesma regra do `sanitizeBlock`. Cada
+    // campo ausente aqui é um campo que o editor apaga ao salvar.
+    ...(tab.icon ? { icon: tab.icon } : {}),
+    ...(tab.description ? { description: tab.description } : {}),
+    ...(tab.group ? { group: tab.group } : {}),
+    ...(typeof tab.order === 'number' ? { order: tab.order } : {}),
+    ...(tab.level === 2 ? { level: 2 } : {}),
+    ...(tab.divider ? { divider: true } : {}),
   }));
 
-  return { filters, rows, ...(tabs.length > 0 ? { tabs } : {}) };
+  const theme =
+    layout.theme && Object.keys(layout.theme).length > 0 ? layout.theme : undefined;
+
+  return {
+    filters,
+    rows,
+    ...(tabs.length > 0 ? { tabs } : {}),
+    ...(theme ? { theme } : {}),
+  };
 }
 
 /**
@@ -814,6 +918,10 @@ function sanitizeBlock(block: EditorBlock): Record<string, unknown> {
   if (typeof block.rowSpan === 'number' && block.rowSpan > 1) out.rowSpan = block.rowSpan;
   if (block.title) out.title = block.title;
   if (block.subtitle) out.subtitle = block.subtitle;
+  if (block.description) out.description = block.description;
+  if (block.unit) out.unit = block.unit;
+  if (block.icon) out.icon = block.icon;
+  if (block.emphasis) out.emphasis = block.emphasis;
   if (block.props && Object.keys(block.props).length > 0) out.props = block.props;
   if (block.dataBinding) out.dataBinding = sanitizeBinding(block.dataBinding);
   if (block.blocks && block.blocks.length > 0)

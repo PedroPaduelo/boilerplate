@@ -257,6 +257,119 @@ describe('abas — preservação no ciclo abrir → salvar', () => {
   });
 });
 
+// =============================================================================
+// APRESENTAÇÃO (doc 41) — ícone, unidade, ênfase, colunas, ordem, tema
+// =============================================================================
+//
+// Mesma armadilha das abas, um nível mais fundo: o editor RECONSTRÓI o layout
+// campo a campo, então cada campo de apresentação que ele não conhecesse seria
+// apagado por um simples abrir → salvar. E o dono desses campos é o AGENTE —
+// quem perderia o trabalho não é quem clicou em Salvar, é quem pediu o
+// dashboard. Perda silenciosa, sem erro na tela, notada só dias depois.
+
+const rich = (): EditorLayout =>
+  normalizeLayout({
+    theme: { colorMode: 'dark', accent: 'teal', palette: 'multi' },
+    filters: [],
+    rows: [
+      {
+        id: 'row_kpis',
+        title: 'Indicadores',
+        description: 'Consolidado do período.',
+        columns: 3,
+        itemSizing: 'span',
+        blocks: [
+          {
+            id: 'blk_kpi',
+            type: 'kpi',
+            span: 4,
+            title: 'Arrecadado',
+            unit: 'R$',
+            icon: 'money',
+            emphasis: 'featured',
+            description: 'Somente valores baixados.',
+          },
+        ],
+      },
+    ],
+    tabs: [
+      {
+        id: 'tab_1',
+        title: 'Arrecadação',
+        rowIds: ['row_kpis'],
+        icon: 'money',
+        description: 'Como entrou o dinheiro no período.',
+        group: 'Receita',
+        order: 10,
+        level: 2,
+        divider: true,
+      },
+    ],
+  });
+
+describe('apresentação — preservação no ciclo abrir → salvar', () => {
+  it('REGRESSÃO: abrir e salvar NÃO apaga a apresentação do BLOCO', () => {
+    const bloco = (sanitizeLayoutForSave(rich()).rows[0] as { blocks: unknown[] })
+      .blocks[0];
+
+    expect(bloco).toMatchObject({
+      title: 'Arrecadado',
+      unit: 'R$',
+      icon: 'money',
+      emphasis: 'featured',
+      description: 'Somente valores baixados.',
+    });
+  });
+
+  it('REGRESSÃO: abrir e salvar NÃO apaga a composição da LINHA', () => {
+    const linha = sanitizeLayoutForSave(rich()).rows[0];
+
+    expect(linha).toMatchObject({
+      description: 'Consolidado do período.',
+      columns: 3,
+      itemSizing: 'span',
+    });
+  });
+
+  it('REGRESSÃO: abrir e salvar NÃO apaga ícone/grupo/ordem/nível da ABA', () => {
+    // Estes campos já existiam antes deste trabalho e JÁ eram perdidos: o
+    // `EditorTab` só carregava id/title/rowIds. Era um bug vivo.
+    expect(sanitizeLayoutForSave(rich()).tabs?.[0]).toMatchObject({
+      icon: 'money',
+      description: 'Como entrou o dinheiro no período.',
+      group: 'Receita',
+      order: 10,
+      level: 2,
+      divider: true,
+    });
+  });
+
+  it('REGRESSÃO: abrir e salvar NÃO apaga o TEMA do dashboard', () => {
+    expect(sanitizeLayoutForSave(rich()).theme).toEqual({
+      colorMode: 'dark',
+      accent: 'teal',
+      palette: 'multi',
+    });
+  });
+
+  it('o layout rico é VÁLIDO contra o contrato', () => {
+    expect(validateLayoutForSave(rich()).valid).toBe(true);
+  });
+
+  it('o ciclo é IDEMPOTENTE (salvar duas vezes dá o mesmo JSON)', () => {
+    const uma = sanitizeLayoutForSave(rich());
+    const outra = sanitizeLayoutForSave(normalizeLayout(uma));
+    expect(outra).toEqual(uma);
+  });
+
+  it('RETROCOMPAT: layout legado continua saindo SEM `theme`', () => {
+    // Um default vazando para cá faria todo dashboard antigo acusar "alterado"
+    // só por ter sido aberto — o dirty-state compara a forma canônica.
+    const legacy = normalizeLayout(dashboardLayoutFixture);
+    expect('theme' in sanitizeLayoutForSave(legacy)).toBe(false);
+  });
+});
+
 describe('abas — operações (criar/renomear/ordenar/remover)', () => {
   it('a PRIMEIRA aba criada herda todas as linhas existentes', () => {
     // Sem isso, ligar abas num dashboard pronto jogaria todo o conteúdo para o

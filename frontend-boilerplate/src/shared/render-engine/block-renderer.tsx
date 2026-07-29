@@ -22,11 +22,14 @@
  */
 import type { ReactNode } from 'react';
 import type { Block, BlockDataResult, DashboardDataPayload } from '@dashboards/contracts';
+import { resolveBlockPresentation } from '@dashboards/contracts';
+import { Icon } from '@astryxdesign/core/Icon';
+import { blockIcon } from '@/shared/ui';
 import { BlockPlaceholder, BlockUnknown } from './block-body';
 import { BlockBoundary } from './block-boundary';
 import { BlockContainer } from './block-container';
 import { BlockFrame, type BlockFrameTakeaway } from './block-frame';
-import { chartBodyHeight } from './lib/block-sizing';
+import { chartBodyHeight, skeletonShapeFor } from './lib/block-sizing';
 import {
   durationOf,
   explicitBlockText,
@@ -51,7 +54,45 @@ export interface BlockRendererProps {
    * passa `true`; a GALERIA do catálogo passa `false` (já tem o próprio card).
    */
   framed?: boolean;
+  /**
+   * Padrões de cor vindos do TEMA do dashboard (`layout.theme`). Valem só para
+   * os blocos que não escolheram a sua — ver `applyThemeDefaults`.
+   */
+  themeDefaults?: { accent?: string; palette?: 'single' | 'multi' };
   className?: string;
+}
+
+/**
+ * Aplica `accent`/`palette` do tema do dashboard SEM sobrescrever o que o
+ * bloco declarou, e só quando o tipo de bloco realmente aceita a prop.
+ *
+ * As duas condições importam:
+ *
+ *  - "sem sobrescrever" porque o tema é o PADRÃO do dashboard, e a escolha mais
+ *    específica (a do bloco) tem de vencer — é a mesma ordem de especificidade
+ *    que já vale para altura (bloco > linha > derivação);
+ *  - "só quando o tipo aceita" porque o `propsSchema` de cada bloco é validado:
+ *    injetar `accent` num bloco que não o declara acrescentaria uma prop
+ *    desconhecida — ruído no melhor caso, aviso de validação no pior.
+ */
+function applyThemeDefaults(
+  props: Record<string, unknown>,
+  propsSchema: unknown,
+  defaults: { accent?: string; palette?: 'single' | 'multi' } | undefined,
+): Record<string, unknown> {
+  if (!defaults || (!defaults.accent && !defaults.palette)) return props;
+  const accepted = (propsSchema as { properties?: Record<string, unknown> } | undefined)
+    ?.properties;
+  if (!accepted) return props;
+
+  const next = { ...props };
+  if (defaults.accent && accepted.accent && next.accent == null) {
+    next.accent = defaults.accent;
+  }
+  if (defaults.palette && accepted.palette && next.palette == null) {
+    next.palette = defaults.palette;
+  }
+  return next;
 }
 
 /**
@@ -79,21 +120,49 @@ const TITLE_AS_LABEL = new Set<string>([
   'signal_card',
 ]);
 
+/**
+ * Realce de um card SELF_CONTAINED (KPI, ladrilho, medidor).
+ *
+ * Estes blocos não passam pelo `BlockFrame` — eles desenham o próprio `Card` —,
+ * então `emphasis` não tinha por onde chegar neles. Isso era um buraco grande e
+ * silencioso: "destaque de KPI" é justamente o caso mais comum do campo, e um
+ * layout que pedia `emphasis: "featured"` num KPI não mudava um pixel.
+ *
+ * A variante alcança o CARD dentro do bloco sem que o motor precise conhecê-lo
+ * pelo nome — mesma técnica (e mesma justificativa) do `CELL_FILL_CLASS` do
+ * `block-grid`. Os valores saem de token, então acompanham claro e escuro.
+ */
+const SELF_CONTAINED_EMPHASIS: Record<string, string | undefined> = {
+  featured: '[&>*]:border-[color:var(--color-accent)] [&>*]:shadow-[var(--shadow-med)]',
+  // `muted` recua pelo fundo, que é o mesmo recurso que o `Card variant="muted"`
+  // usa na moldura — hierarquia por peso, não por cor de categoria.
+  muted: '[&>*]:bg-[var(--color-background-muted)]',
+  default: undefined,
+};
+
 export function BlockRenderer({
   block,
   result,
   data,
   framed = false,
+  themeDefaults,
   className,
 }: BlockRendererProps) {
   const def = getBlock(block.type);
   if (!def) return <BlockUnknown type={block.type} className={className} />;
 
   const Component = def.Component;
-  const props = {
-    ...((def.manifest.defaultProps as Record<string, unknown>) ?? {}),
-    ...((block.props as Record<string, unknown>) ?? {}),
-  };
+  // Ordem de especificidade: padrão do TIPO → padrão do DASHBOARD → escolha do
+  // BLOCO. O tema entra no meio de propósito: manda em quem não opinou, obedece
+  // a quem opinou.
+  const props = applyThemeDefaults(
+    {
+      ...((def.manifest.defaultProps as Record<string, unknown>) ?? {}),
+      ...((block.props as Record<string, unknown>) ?? {}),
+    },
+    def.manifest.propsSchema,
+    themeDefaults,
+  );
 
   if (TITLE_AS_LABEL.has(block.type) && (props.label == null || props.label === '')) {
     const title = explicitBlockTitle(block);
@@ -151,12 +220,29 @@ export function BlockRenderer({
   const shouldFrame =
     framed && def.manifest.kind === 'chart' && !SELF_CONTAINED.has(block.type);
 
+  /*
+   * APRESENTAÇÃO declarada no layout (ícone, unidade, ênfase). A LEITURA é do
+   * contrato (`resolveBlockPresentation`) — normalização defensiva de um JSON
+   * escrito por agente —, e aqui só se traduz o nome semântico para o ícone
+   * real. O ícone tem fallback POR TIPO: um `bar_chart` sem `icon` declarado já
+   * nasce com a âncora visual certa, sem o agente precisar dizer nada.
+   */
+  const presentation = resolveBlockPresentation(block);
+  const HeaderIcon = blockIcon(presentation.icon, block.type);
+
+  // Cards próprios não têm moldura para carregar a ênfase — o realce vai no
+  // invólucro do bloco. Nos emoldurados, quem cuida disso é o `BlockFrame`.
+  const emphasisClass = shouldFrame
+    ? undefined
+    : SELF_CONTAINED_EMPHASIS[presentation.emphasis];
+
   return (
     <div
       data-slot="block"
       data-block-type={block.type}
       data-block-state={state}
-      className={className}
+      data-block-emphasis={presentation.emphasis}
+      className={[className, emphasisClass].filter(Boolean).join(' ') || undefined}
     >
       <BlockBoundary type={block.type} resetKey={ownResult ?? props}>
         {shouldFrame ? (
@@ -166,6 +252,9 @@ export function BlockRenderer({
             description={explicitBlockText(block, 'description')}
             emptyMessage={explicitBlockText(block, 'emptyMessage')}
             chartType={def.manifest.name}
+            icon={HeaderIcon ? <Icon icon={HeaderIcon} color="secondary" /> : undefined}
+            unit={presentation.unit}
+            emphasis={presentation.emphasis}
             data={dataVal}
             query={block.dataBinding?.query}
             durationMs={durationOf(ownResult)}
@@ -179,6 +268,9 @@ export function BlockRenderer({
                 : undefined
             }
             bodyMinHeight={chartBodyHeight(block.type)}
+            // Esqueleto com a SILHUETA do tipo: carregando, a tela já diz o que
+            // está chegando em vez de virar uma parede de retângulos iguais.
+            skeletonShape={skeletonShapeFor(block.type)}
             takeaways={frameTakeaways(block, def.deriveTakeaway, dataVal, state, props)}
             showQuery={showSqlOf(block)}
           >

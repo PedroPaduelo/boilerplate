@@ -42,8 +42,35 @@ declare const DashboardLayoutSchema: {
                 readonly $ref: "#/$defs/tab";
             };
         };
+        readonly theme: {
+            readonly $ref: "#/$defs/theme";
+        };
     };
     readonly $defs: {
+        /**
+         * Preferência de aparência do DASHBOARD. Toda propriedade é opcional, e a
+         * do usuário vence: isto é o ponto de partida de quem nunca escolheu tema,
+         * não uma imposição sobre quem já escolheu.
+         */
+        readonly theme: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly colorMode: {
+                    readonly type: "string";
+                    readonly enum: readonly ["light", "dark", "system"];
+                };
+                readonly accent: {
+                    readonly type: "string";
+                    readonly minLength: 1;
+                    readonly maxLength: 40;
+                };
+                readonly palette: {
+                    readonly type: "string";
+                    readonly enum: readonly ["single", "multi"];
+                };
+            };
+        };
         /**
          * Aba do dashboard. Ela NÃO carrega `rows` dentro de si — carrega os IDS
          * das rows que exibe (`rowIds`).
@@ -80,7 +107,41 @@ declare const DashboardLayoutSchema: {
                         readonly minLength: 1;
                     };
                 };
+                readonly icon: {
+                    readonly $ref: "#/$defs/semanticIcon";
+                };
+                readonly description: {
+                    readonly type: "string";
+                    readonly maxLength: 200;
+                };
+                readonly group: {
+                    readonly type: "string";
+                    readonly minLength: 1;
+                    readonly maxLength: 60;
+                };
+                readonly order: {
+                    readonly type: "integer";
+                    readonly minimum: 0;
+                    readonly maximum: 9999;
+                };
+                readonly level: {
+                    readonly type: "integer";
+                    readonly enum: readonly [1, 2];
+                };
+                readonly divider: {
+                    readonly type: "boolean";
+                };
             };
+        };
+        /**
+         * Vocabulário de ÍCONES — fechado de propósito, para o agente escolher
+         * dentro do que a tela sabe desenhar em vez de inventar um nome que
+         * viraria um buraco no alinhamento da lista. Compartilhado por aba e
+         * bloco (ver a nota em `SEMANTIC_ICONS`).
+         */
+        readonly semanticIcon: {
+            readonly type: "string";
+            readonly enum: readonly ["overview", "chart", "trend", "table", "money", "tax", "users", "building", "calendar", "alert", "map", "document", "search", "target", "clock", "tag", "percent", "activity", "layers", "check", "database", "pie", "list", "settings"];
         };
         readonly filter: {
             readonly type: "object";
@@ -173,6 +234,22 @@ declare const DashboardLayoutSchema: {
                 readonly subtitle: {
                     readonly type: "string";
                 };
+                readonly description: {
+                    readonly type: "string";
+                    readonly maxLength: 280;
+                };
+                readonly unit: {
+                    readonly type: "string";
+                    readonly minLength: 1;
+                    readonly maxLength: 24;
+                };
+                readonly icon: {
+                    readonly $ref: "#/$defs/semanticIcon";
+                };
+                readonly emphasis: {
+                    readonly type: "string";
+                    readonly enum: readonly ["default", "featured", "muted"];
+                };
                 readonly props: {
                     readonly type: "object";
                 };
@@ -199,8 +276,21 @@ declare const DashboardLayoutSchema: {
                 readonly title: {
                     readonly type: "string";
                 };
+                readonly description: {
+                    readonly type: "string";
+                    readonly maxLength: 280;
+                };
                 readonly height: {
                     readonly $ref: "#/$defs/blockHeight";
+                };
+                readonly columns: {
+                    readonly type: "integer";
+                    readonly minimum: 1;
+                    readonly maximum: 6;
+                };
+                readonly itemSizing: {
+                    readonly type: "string";
+                    readonly enum: readonly ["equal", "span"];
                 };
                 readonly blocks: {
                     readonly type: "array";
@@ -297,6 +387,9 @@ declare const DashboardConfigSchema: {
             readonly items: {
                 readonly $ref: "dashboard-layout.json#/$defs/tab";
             };
+        };
+        readonly theme: {
+            readonly $ref: "dashboard-layout.json#/$defs/theme";
         };
     };
 };
@@ -1000,18 +1093,111 @@ interface Block {
      * grid (ex.: bento_grid). Opcional; default 1. Lido pelo render-engine.
      */
     rowSpan?: number;
+    /**
+     * altura declarada do bloco (degrau nomeado ou pixels). Sobrepõe a da LINHA
+     * — exceção pontual, não o caminho normal (ver `Row.height`).
+     */
+    height?: BlockHeight;
     /** título do card (header do frame). Se ausente, o render usa o `manifest.name`. */
     title?: string;
     /** subtítulo do header. */
     subtitle?: string;
+    /**
+     * Texto de apoio do cabeçalho — o "o que este gráfico responde", uma linha
+     * abaixo do subtítulo. Aceita Markdown e `{{variaveis}}`, como todo texto do
+     * card.
+     *
+     * O render-engine JÁ lia este campo; o contrato é que não o declarava, e com
+     * `additionalProperties: false` isso significava que um layout com
+     * `description` no bloco era REJEITADO na validação. Declarar aqui é fechar
+     * essa lacuna, não abrir capacidade nova.
+     */
+    description?: string;
+    /**
+     * UNIDADE da métrica ("R$", "%", "processos", "dias"). Aparece junto do
+     * título, discreta.
+     *
+     * Existe porque a unidade costuma ficar escondida no eixo (ou em lugar
+     * nenhum): "12.480" pode ser reais, autos ou dias, e quem lê o card num
+     * telão não vai inspecionar o eixo Y para descobrir. Fica FORA do título de
+     * propósito — "Arrecadação (R$)" mistura o assunto com a escala, e some
+     * quando o título é truncado.
+     *
+     * NÃO se aplica aos cartões de NÚMERO (kpi, stat_tile, metric_glow,
+     * signal_card): eles já formatam a unidade dentro do próprio valor
+     * ("R$ 2,61 bi"), e repeti-la ao lado do rótulo seria dizer duas vezes.
+     */
+    unit?: string;
+    /**
+     * Ícone semântico do card (ver `SEMANTIC_ICONS`). Ausente, a tela deriva um
+     * do TIPO do bloco (ver `iconForBlockType`) — nenhum card fica sem âncora
+     * visual, e o agente só escreve o campo quando quer contrariar o padrão.
+     */
+    icon?: SemanticIcon;
+    /**
+     * Peso visual do card na leitura da linha:
+     *
+     *   `featured` — o número que a página existe para mostrar (borda de acento
+     *                e elevação): é o "destaque de KPI";
+     *   `muted`    — apoio/contexto, recua para trás do conteúdo principal;
+     *   `default`  — o resto.
+     *
+     * Hierarquia é o que separa um painel de uma parede de cards iguais. Sem um
+     * campo para dizê-la, o único jeito de destacar um KPI seria torná-lo maior
+     * — e tamanho já é decisão da LINHA (ver `block-sizing`), então destacar por
+     * tamanho quebraria o alinhamento dos vizinhos.
+     */
+    emphasis?: BlockEmphasis;
     props?: Record<string, unknown>;
     dataBinding?: DataBinding;
     /** filhos (composição recursiva) — presente em blocos-container (section/bento). */
     blocks?: Block[];
 }
+/** Ver `Block.emphasis`. */
+type BlockEmphasis = 'default' | 'featured' | 'muted';
+/**
+ * Altura declarada de uma linha (ou, excepcionalmente, de um bloco): um degrau
+ * nomeado — que acompanha a calibragem do motor — ou pixels (120..1600), a
+ * válvula de escape para quem mediu na tela e decidiu outra coisa.
+ */
+type BlockHeight = 'auto' | 'compact' | 'default' | 'tall' | number;
+/**
+ * Como as larguras dos blocos de uma linha são decididas.
+ *
+ *  `equal` (padrão) — faixas IGUAIS: ninguém termina maior que o vizinho por
+ *                     acidente de ter escrito `span: 7` e `span: 5`;
+ *  `span`           — a leitura literal do `span` na grade de 12 colunas, para
+ *                     quando o desequilíbrio é a intenção (um gráfico grande e
+ *                     um cartão estreito ao lado).
+ *
+ * Quebrar a regra do `equal` continua possível — só deixa de ser possível SEM
+ * QUERER, que era o problema.
+ */
+type RowItemSizing = 'equal' | 'span';
 interface Row {
     id: string;
     title?: string;
+    /**
+     * Uma linha sobre o que a seção mostra, abaixo do título. É o equivalente da
+     * `description` da aba, um nível abaixo: dá contexto ao GRUPO de gráficos
+     * sem obrigar cada card a repetir a mesma explicação.
+     */
+    description?: string;
+    /**
+     * Altura da LINHA. A linha é a unidade de decisão de altura: escolhe um
+     * tamanho e todos os seus blocos ficam com ele. Ausente = derivada dos tipos.
+     */
+    height?: BlockHeight;
+    /**
+     * Número de COLUNAS da linha (1..6). Ausente, o motor encaixa quantas
+     * couberem pelo piso de largura do tipo — o comportamento responsivo padrão.
+     *
+     * Declarar serve para a intenção editorial que a heurística não adivinha:
+     * "estes quatro KPIs são uma faixa de quatro", mesmo que coubessem cinco.
+     */
+    columns?: number;
+    /** Ver `RowItemSizing`. Ausente = `equal`. */
+    itemSizing?: RowItemSizing;
     blocks: Block[];
 }
 /**
@@ -1021,11 +1207,105 @@ interface Row {
  * segue sendo a lista CANÔNICA e completa de linhas do layout. Ver a nota
  * longa em `$defs.tab` do `DashboardLayoutSchema` (e doc 40) para o porquê.
  */
+/**
+ * Vocabulário de ÍCONES do dashboard. Nomes SEMÂNTICOS (o que o item trata),
+ * não nomes de biblioteca: quem escolhe é o agente, e ele decide por
+ * significado ("isso é sobre dinheiro"), não por catálogo de SVG. A tela
+ * traduz para o ícone real — trocar a biblioteca de ícones não mexe em nenhum
+ * dashboard salvo.
+ *
+ * UM vocabulário só serve ABA e BLOCO. Dois enums (um para aba, outro para
+ * card) divergiriam no primeiro ícone acrescentado, e o agente teria de
+ * aprender duas listas para dizer a mesma coisa — "isto é sobre arrecadação"
+ * é a mesma frase, esteja ela numa aba ou no cabeçalho de um gráfico.
+ */
+declare const SEMANTIC_ICONS: readonly ["overview", "chart", "trend", "table", "money", "tax", "users", "building", "calendar", "alert", "map", "document", "search", "target", "clock", "tag", "percent", "activity", "layers", "check", "database", "pie", "list", "settings"];
+type SemanticIcon = (typeof SEMANTIC_ICONS)[number];
+/**
+ * Nome histórico do vocabulário, de quando ele só servia às abas. Mantido como
+ * ALIAS (mesmo array, mesmo tipo) porque `TAB_ICONS` já é lido pelo
+ * normalizador e pelo backend: renomear sem alias trocaria um ganho de clareza
+ * por um import quebrado em três pacotes.
+ */
+declare const TAB_ICONS: readonly ["overview", "chart", "trend", "table", "money", "tax", "users", "building", "calendar", "alert", "map", "document", "search", "target", "clock", "tag", "percent", "activity", "layers", "check", "database", "pie", "list", "settings"];
+type TabIcon = SemanticIcon;
 interface Tab {
     id: string;
     title: string;
     /** ids de `rows` que compõem a aba, na ordem de exibição. */
     rowIds: string[];
+    /**
+     * Ícone semântico da aba (ver `TAB_ICONS`). OPCIONAL — sem ele a navegação
+     * ainda funciona, com um marcador neutro.
+     */
+    icon?: TabIcon;
+    /**
+     * Uma linha explicando o que a aba responde ("Arrecadação de IPTU por mês").
+     * Aparece abaixo do título no conteúdo e como dica na navegação. É o que
+     * transforma uma lista de rótulos soltos em algo que se entende sem clicar.
+     */
+    description?: string;
+    /**
+     * Rótulo do GRUPO ao qual a aba pertence ("Arrecadação", "Fiscalização").
+     * Abas com o mesmo grupo viram uma seção na navegação, na ordem em que
+     * aparecem. Sem grupo, a aba fica na seção geral — é o que dá hierarquia a
+     * um dashboard com muitas abas em vez de uma lista plana e longa.
+     */
+    group?: string;
+    /**
+     * Posição na navegação (menor primeiro). Sem ele, vale a ordem do array —
+     * que é o que o agente controla quando escreve o layout inteiro de uma vez.
+     *
+     * Existe para o caso em que ele NÃO escreve de uma vez: acrescentar uma aba
+     * a um dashboard já montado hoje só permite empilhar no fim. Com `order`, a
+     * aba nova diz onde entra sem reescrever as outras. A ordem do GRUPO também
+     * sai daqui (o menor `order` entre suas abas), então não há um segundo
+     * registro de ordenação para discordar deste.
+     */
+    order?: number;
+    /**
+     * Nível na hierarquia: `1` (padrão) é aba de primeiro nível, `2` é uma
+     * SUB-ABA — indentada e com peso tipográfico menor.
+     *
+     * Um só campo resolve "nível" e "peso" porque são a mesma informação lida de
+     * dois jeitos: o que está subordinado é desenhado com menos ênfase. Campos
+     * separados permitiriam a combinação sem sentido (subordinado em negrito).
+     */
+    level?: 1 | 2;
+    /**
+     * Desenha um separador ANTES desta aba. Serve para quebrar um bloco de itens
+     * dentro do MESMO grupo (ex.: separar "Consolidado" dos detalhamentos) sem
+     * inventar um grupo com título — que exigiria um rótulo que ninguém pediu.
+     */
+    divider?: boolean;
+}
+/**
+ * Preferência de APARÊNCIA do dashboard — a decisão de tema que pertence ao
+ * CONTEÚDO, não ao usuário.
+ *
+ * Os dois convivem por precedência, e a ordem importa: a escolha explícita de
+ * quem está lendo vence sempre. Isto aqui é o PONTO DE PARTIDA de quem abre o
+ * dashboard sem nunca ter escolhido nada — um painel de sala de controle nasce
+ * escuro, um relatório para impressão nasce claro. Um dashboard que forçasse o
+ * tema por cima da preferência salva seria um app discutindo com o usuário.
+ */
+interface DashboardTheme {
+    /** Aparência inicial. Só vale para quem ainda não escolheu uma. */
+    colorMode?: 'light' | 'dark' | 'system';
+    /**
+     * Cor de acento PADRÃO dos blocos que não declararem a sua (nome de cor de
+     * série do tema de gráfico, ex.: `teal`, `amber`). É o que dá identidade
+     * cromática a um dashboard inteiro com um campo, em vez de repetir `accent`
+     * em quinze blocos.
+     */
+    accent?: string;
+    /**
+     * Como os blocos categóricos pintam por padrão: `multi` = uma cor por
+     * categoria, `single` = uma cor por série. Reusa o vocabulário que os blocos
+     * já expõem em `props.palette` — um terceiro nome para a mesma ideia só
+     * criaria tradução.
+     */
+    palette?: 'single' | 'multi';
 }
 interface DashboardLayout {
     filters: Filter[];
@@ -1035,6 +1315,8 @@ interface DashboardLayout {
      * como UMA aba implícita contendo todas as `rows` (ver `resolveDashboardTabs`).
      */
     tabs?: Tab[];
+    /** OPCIONAL — preferência de aparência do dashboard (ver `DashboardTheme`). */
+    theme?: DashboardTheme;
 }
 type ArtifactStatus = 'draft' | 'published';
 type Visibility = 'PRIVATE' | 'DEPARTMENT' | 'ORG';
@@ -1113,7 +1395,7 @@ declare const validateBlockManifest: ValidateFunction<{
     } | undefined;
     dataContract?: {
         example?: unknown;
-        shape: "scalar" | "series" | "categorical" | "table";
+        shape: "table" | "scalar" | "series" | "categorical";
         spec: {
             [x: string]: unknown;
         };
@@ -1156,7 +1438,7 @@ declare const validateTableData: ValidateFunction<{
     }[];
 }>;
 declare const validateBlockDataResult: ValidateFunction<{
-    shape?: "scalar" | "series" | "categorical" | "table" | undefined;
+    shape?: "table" | "scalar" | "series" | "categorical" | undefined;
     error?: {
         code?: string | undefined;
         message: string;
@@ -1180,7 +1462,7 @@ declare const validateDashboardDataPayload: ValidateFunction<{
     generatedAt?: string | undefined;
     blocks: {
         [x: string]: {
-            shape?: "scalar" | "series" | "categorical" | "table" | undefined;
+            shape?: "table" | "scalar" | "series" | "categorical" | undefined;
             error?: {
                 code?: string | undefined;
                 message: string;
@@ -1297,6 +1579,18 @@ interface ResolvedTab {
     title: string;
     /** Linhas da aba, já materializadas e na ordem de exibição. */
     rows: Row[];
+    /** Ícone semântico declarado no layout (ver `TAB_ICONS`), se houver. */
+    icon?: TabIcon;
+    /** Uma linha sobre o que a aba responde, se declarada. */
+    description?: string;
+    /** Grupo/seção da aba na navegação, se declarado. */
+    group?: string;
+    /** Posição declarada (menor primeiro). Ausente = ordem de declaração. */
+    order?: number;
+    /** `1` (padrão) aba de primeiro nível; `2` sub-aba (indentada, peso menor). */
+    level?: 1 | 2;
+    /** Desenha um separador ANTES desta aba na navegação. */
+    divider?: boolean;
     /**
      * `true` quando a aba não existe no JSON e foi sintetizada porque o layout é
      * legado (sem `tabs`). A UI usa isso para NÃO desenhar a navegação lateral
@@ -1342,6 +1636,76 @@ declare function pickActiveTab(tabs: ResolvedTab[], requestedId: string | null |
  * que abas existem.
  */
 declare function layoutForTab(layout: DashboardLayout | null | undefined, tab: ResolvedTab | undefined): DashboardLayout;
+
+/**
+ * APRESENTAÇÃO de blocos, linhas e tema — funções PURAS, compartilhadas BE/FE/MCP.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE ISTO EXISTE (e por que não mora na tela)
+ * ---------------------------------------------------------------------------
+ * Os campos que enriquecem um dashboard (`icon`, `unit`, `emphasis`,
+ * `columns`, `itemSizing`, `theme`) são escritos pelo AGENTE, num JSON que
+ * ninguém revisa antes de renderizar. Isso significa que a leitura deles é
+ * sempre defensiva: valor fora do vocabulário, número absurdo, string vazia,
+ * `null` no lugar de objeto.
+ *
+ * Se cada consumidor normalizasse por conta própria, o viewer, o export de PDF
+ * e o link público discordariam sobre o que o layout diz — e o sintoma seria o
+ * pior tipo: silencioso (um card em destaque numa tela e comum na outra). É a
+ * mesma decisão que já vale para as ABAS em `tabs.ts`.
+ *
+ * REGRA DE LEITURA (a mesma do motor): valor irreconhecível é IGNORADO, nunca
+ * corrigido nem propagado. Um `emphasis: "gigante"` degrada para o card comum
+ * em vez de derrubar o bloco; um `columns: 40` some em vez de gerar quarenta
+ * faixas de 12px.
+ */
+
+/** O valor é um dos ícones do vocabulário? */
+declare function isSemanticIcon(value: unknown): value is SemanticIcon;
+/**
+ * Ícone semântico de um bloco: o declarado, senão o do tipo, senão nenhum.
+ *
+ * `undefined` (e não um ícone genérico) quando o tipo é desconhecido: a tela
+ * decide o marcador neutro, porque só ela sabe se o item está numa lista que
+ * precisa de alinhamento.
+ */
+declare function iconForBlockType(type: string | undefined): SemanticIcon | undefined;
+/** Apresentação já normalizada de um bloco — pronta para o cabeçalho do card. */
+interface BlockPresentation {
+    /** Ícone declarado ou derivado do tipo. */
+    icon?: SemanticIcon;
+    /** Unidade da métrica, aparada. */
+    unit?: string;
+    /** Peso do card na leitura da linha. */
+    emphasis: BlockEmphasis;
+}
+/**
+ * Lê os campos de apresentação de um bloco. Aceita tanto o campo no PRÓPRIO
+ * bloco quanto em `props` — a mesma prioridade que `explicitBlockText` já usa
+ * no render-engine, porque o playground do catálogo grava em `props` enquanto
+ * o backend grava no bloco.
+ */
+declare function resolveBlockPresentation(block: Block | null | undefined): BlockPresentation;
+/** Composição já normalizada de uma linha — pronta para o grid. */
+interface RowLayout {
+    /** Faixas declaradas (1..6) ou `undefined` = deixe o motor encaixar. */
+    columns?: number;
+    /** `equal` (padrão) ou `span`. */
+    itemSizing: RowItemSizing;
+}
+declare function resolveRowLayout(row: Row | null | undefined): RowLayout;
+/** Preferência de aparência já normalizada. */
+interface ResolvedDashboardTheme {
+    colorMode?: 'light' | 'dark' | 'system';
+    accent?: string;
+    palette?: 'single' | 'multi';
+}
+/**
+ * Lê `layout.theme`. Devolve SEMPRE um objeto (possivelmente vazio) para o
+ * chamador não precisar checar nulo antes de cada campo — o que, na prática, é
+ * o tipo de checagem que se esquece em um dos três consumidores.
+ */
+declare function resolveDashboardTheme(layout: DashboardLayout | null | undefined): ResolvedDashboardTheme;
 
 /**
  * Contrato dos eventos do TURNO DO AGENTE (server -> client), sala
@@ -2613,6 +2977,177 @@ declare const dashboardLayoutWithTabsFixture: {
         rowIds: string[];
     }[];
 };
+/**
+ * Layout RICO — o mesmo dashboard escrito com TODAS as capacidades de
+ * apresentação do contrato (doc 41). É a referência executável do que o agente
+ * gerador pode escrever, e o corpo de prova de que nada disso é decorativo:
+ * cada campo aqui muda alguma coisa na tela.
+ *
+ * O que ele exercita, e por quê:
+ *
+ *  - `theme`             → o dashboard escolhe a própria aparência e o acento;
+ *  - `tabs[].group`      → duas seções nomeadas na navegação (não uma lista);
+ *  - `tabs[].order`      → "Recuperação" aparece antes de "Cobrança" apesar de
+ *                          estar depois no array — quem manda é a ordem, não a
+ *                          posição;
+ *  - `tabs[].level`      → "Por bairro" é sub-aba de "Cobrança";
+ *  - `tabs[].divider`    → separa o consolidado dos detalhamentos;
+ *  - `rows[].columns`    → a faixa de indicadores é declaradamente de 3;
+ *  - `rows[].itemSizing` → a linha de análise usa `span` de propósito (um
+ *                          gráfico grande + um estreito ao lado);
+ *  - `blocks[].emphasis` → um KPI em destaque e um de apoio na MESMA faixa;
+ *  - `blocks[].unit`     → "R$" e "%" aparecem sem invadir o título;
+ *  - `blocks[].icon`     → ícone contrariando o padrão do tipo (um `bar_chart`
+ *                          que fala de dinheiro).
+ */
+declare const dashboardRichLayoutFixture: {
+    theme: {
+        colorMode: "dark";
+        accent: string;
+        palette: "multi";
+    };
+    filters: ({
+        id: string;
+        type: "date_range";
+        label: string;
+        default: {
+            from: string;
+            to: string;
+        };
+    } | {
+        id: string;
+        type: "select";
+        label: string;
+        default: string;
+    })[];
+    rows: ({
+        id: string;
+        title: string;
+        description: string;
+        columns: number;
+        blocks: ({
+            id: string;
+            type: string;
+            span: number;
+            title: string;
+            unit: string;
+            emphasis: "featured";
+            props: {
+                showDelta: boolean;
+            };
+            dataBinding: {
+                connectionId: string;
+                query: string;
+            };
+        } | {
+            id: string;
+            type: string;
+            span: number;
+            title: string;
+            unit: string;
+            dataBinding: {
+                connectionId: string;
+                query: string;
+            };
+            emphasis?: undefined;
+            props?: undefined;
+        } | {
+            id: string;
+            type: string;
+            span: number;
+            title: string;
+            unit: string;
+            emphasis: "muted";
+            dataBinding: {
+                connectionId: string;
+                query: string;
+            };
+            props?: undefined;
+        })[];
+        itemSizing?: undefined;
+    } | {
+        id: string;
+        title: string;
+        itemSizing: "span";
+        blocks: ({
+            id: string;
+            type: string;
+            span: number;
+            title: string;
+            subtitle: string;
+            description: string;
+            unit: string;
+            icon: "money";
+            dataBinding: {
+                connectionId: string;
+                query: string;
+            };
+        } | {
+            id: string;
+            type: string;
+            span: number;
+            title: string;
+            unit: string;
+            dataBinding: {
+                connectionId: string;
+                query: string;
+            };
+            subtitle?: undefined;
+            description?: undefined;
+            icon?: undefined;
+        })[];
+        description?: undefined;
+        columns?: undefined;
+    } | {
+        id: string;
+        title: string;
+        blocks: {
+            id: string;
+            type: string;
+            span: number;
+            title: string;
+            unit: string;
+            dataBinding: {
+                connectionId: string;
+                query: string;
+            };
+        }[];
+        description?: undefined;
+        columns?: undefined;
+        itemSizing?: undefined;
+    })[];
+    tabs: ({
+        id: string;
+        title: string;
+        rowIds: string[];
+        icon: "tax";
+        description: string;
+        group: string;
+        order: number;
+        level?: undefined;
+        divider?: undefined;
+    } | {
+        id: string;
+        title: string;
+        rowIds: string[];
+        icon: "money";
+        description: string;
+        group: string;
+        order: number;
+        level?: undefined;
+        divider?: undefined;
+    } | {
+        id: string;
+        title: string;
+        rowIds: string[];
+        icon: "map";
+        group: string;
+        level: 2;
+        divider: true;
+        order: number;
+        description?: undefined;
+    })[];
+};
 
 declare const dashboardDataPayloadFixture: {
     dashboardId: string;
@@ -2677,4 +3212,4 @@ declare const dashboardDataPayloadFixture: {
     };
 };
 
-export { type ApiError, ApiErrorSchema, type ArtifactChangedEvent, type ArtifactStatus, type Block, type BlockData, type BlockDataEvent, BlockDataEventSchema, type BlockDataRequest, BlockDataRequestSchema, type BlockDataResult, BlockDataResultSchema, type BlockErrorEvent, BlockErrorEventSchema, type BlockKind, type BlockManifest, BlockManifestSchema, type BlockQueuedEvent, BlockQueuedEventSchema, type BlockRunningEvent, BlockRunningEventSchema, type BlockState, type CategoricalData, CategoricalDataSchema, type ChatArtifactAction, type ChatArtifactEvent, type ChatChartEvent, type ChatChartPayload, type ChatDeltaEvent, type ChatDoneEvent, type ChatErrorEvent, type ChatPhaseEvent, type ChatStepPreview, type ChatStepStatus, type ChatTitleEvent, type ChatToolStepEvent, type ChatTurnCompleteEvent, type ChatTurnPhase, type ChatUsageEvent, ContractValidationError, type CreateDashboardRequest, CreateDashboardRequestSchema, type DashboardConfig, DashboardConfigSchema, type DashboardDataPayload, DashboardDataPayloadSchema, type DashboardDetail, DashboardDetailSchema, type DashboardLayout, DashboardLayoutSchema, type DashboardSummary, DashboardSummarySchema, type DataBinding, type DataBindingParam, type DataShape, type Filter, type FilterType, IMPLICIT_TAB_ID, IMPLICIT_TAB_TITLE, type ResolvedTab, type Row, SOCKET_EVENTS, type ScalarData, ScalarDataSchema, type SeriesData, SeriesDataSchema, type ServerToClientEvents, type SocketEventName, type Tab, type TableData, TableDataSchema, type UpdateDashboardRequest, UpdateDashboardRequestSchema, type Visibility, ajv, assertValid, barChartManifest, baseManifests, dashboardConfigFixture, dashboardDataPayloadFixture, dashboardLayoutFixture, dashboardLayoutWithTabsFixture, dashboardRoom, donutManifest, formatErrors, hasExplicitTabs, kpiManifest, layoutForTab, lineChartManifest, pickActiveTab, resolveDashboardTabs, richTextManifest, tableManifest, titleManifest, validateApiError, validateBlockDataByShape, validateBlockDataEvent, validateBlockDataRequest, validateBlockDataResult, validateBlockErrorEvent, validateBlockManifest, validateBlockQueuedEvent, validateBlockRunningEvent, validateCategoricalData, validateCreateDashboardRequest, validateDashboardConfig, validateDashboardDataPayload, validateDashboardDetail, validateDashboardLayout, validateDashboardSummary, validateScalarData, validateSeriesData, validateTableData, validateUpdateDashboardRequest };
+export { type ApiError, ApiErrorSchema, type ArtifactChangedEvent, type ArtifactStatus, type Block, type BlockData, type BlockDataEvent, BlockDataEventSchema, type BlockDataRequest, BlockDataRequestSchema, type BlockDataResult, BlockDataResultSchema, type BlockEmphasis, type BlockErrorEvent, BlockErrorEventSchema, type BlockHeight, type BlockKind, type BlockManifest, BlockManifestSchema, type BlockPresentation, type BlockQueuedEvent, BlockQueuedEventSchema, type BlockRunningEvent, BlockRunningEventSchema, type BlockState, type CategoricalData, CategoricalDataSchema, type ChatArtifactAction, type ChatArtifactEvent, type ChatChartEvent, type ChatChartPayload, type ChatDeltaEvent, type ChatDoneEvent, type ChatErrorEvent, type ChatPhaseEvent, type ChatStepPreview, type ChatStepStatus, type ChatTitleEvent, type ChatToolStepEvent, type ChatTurnCompleteEvent, type ChatTurnPhase, type ChatUsageEvent, ContractValidationError, type CreateDashboardRequest, CreateDashboardRequestSchema, type DashboardConfig, DashboardConfigSchema, type DashboardDataPayload, DashboardDataPayloadSchema, type DashboardDetail, DashboardDetailSchema, type DashboardLayout, DashboardLayoutSchema, type DashboardSummary, DashboardSummarySchema, type DashboardTheme, type DataBinding, type DataBindingParam, type DataShape, type Filter, type FilterType, IMPLICIT_TAB_ID, IMPLICIT_TAB_TITLE, type ResolvedDashboardTheme, type ResolvedTab, type Row, type RowItemSizing, type RowLayout, SEMANTIC_ICONS, SOCKET_EVENTS, type ScalarData, ScalarDataSchema, type SemanticIcon, type SeriesData, SeriesDataSchema, type ServerToClientEvents, type SocketEventName, TAB_ICONS, type Tab, type TabIcon, type TableData, TableDataSchema, type UpdateDashboardRequest, UpdateDashboardRequestSchema, type Visibility, ajv, assertValid, barChartManifest, baseManifests, dashboardConfigFixture, dashboardDataPayloadFixture, dashboardLayoutFixture, dashboardLayoutWithTabsFixture, dashboardRichLayoutFixture, dashboardRoom, donutManifest, formatErrors, hasExplicitTabs, iconForBlockType, isSemanticIcon, kpiManifest, layoutForTab, lineChartManifest, pickActiveTab, resolveBlockPresentation, resolveDashboardTabs, resolveDashboardTheme, resolveRowLayout, richTextManifest, tableManifest, titleManifest, validateApiError, validateBlockDataByShape, validateBlockDataEvent, validateBlockDataRequest, validateBlockDataResult, validateBlockErrorEvent, validateBlockManifest, validateBlockQueuedEvent, validateBlockRunningEvent, validateCategoricalData, validateCreateDashboardRequest, validateDashboardConfig, validateDashboardDataPayload, validateDashboardDetail, validateDashboardLayout, validateDashboardSummary, validateScalarData, validateSeriesData, validateTableData, validateUpdateDashboardRequest };
