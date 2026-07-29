@@ -263,7 +263,13 @@ describe('layoutGraph — aglomerados (força)', () => {
     expect(groupsOf(model).length).toBeGreaterThanOrEqual(8);
   });
 
-  it('as folhas de um hub ficam numa COROA — mesma distância do centro', () => {
+  /**
+   * A coroa varia DE PROPÓSITO: com todas as folhas no mesmo raio exato, cada
+   * aglomerado sai como uma engrenagem, e dezessete engrenagens iguais leem
+   * como clip-art. O que o teste trava é a FAIXA — varia o bastante para
+   * parecer orgânico, pouco o bastante para continuar sendo uma coroa.
+   */
+  it('as folhas de um hub ficam numa coroa, com variação contida', () => {
     const degrees = degreesOf(model);
     const hub = points.get('CIV-hub');
     const leaves = model.edges
@@ -272,9 +278,13 @@ describe('layoutGraph — aglomerados (força)', () => {
 
     expect(leaves.length).toBeGreaterThan(10);
     const radii = leaves.map((leaf) => distance(hub!, leaf!));
-    const spread = Math.max(...radii) - Math.min(...radii);
-    // Coroa: a variação do raio é desprezível perto do próprio raio.
-    expect(spread).toBeLessThan(radii[0] * 0.02);
+    const mean = radii.reduce((sum, r) => sum + r, 0) / radii.length;
+    for (const radius of radii) {
+      expect(radius).toBeGreaterThan(mean * 0.7);
+      expect(radius).toBeLessThan(mean * 1.3);
+    }
+    // E não é um círculo perfeito: há variação de verdade.
+    expect(Math.max(...radii) - Math.min(...radii)).toBeGreaterThan(mean * 0.1);
   });
 
   it('cada satélite fica MUITO mais perto do seu hub do que de outro hub', () => {

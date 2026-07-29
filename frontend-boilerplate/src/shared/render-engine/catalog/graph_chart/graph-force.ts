@@ -32,8 +32,26 @@
 import { degreesOf, type GraphModel } from './graph-data';
 import type { GraphPoint } from './graph-layout';
 
-/** Ângulo áureo — espalha os pontos iniciais sem repetir direção. */
-const GOLDEN_ANGLE = 2.399963229728653;
+/**
+ * SEQUÊNCIA R2 — a distribuição inicial dos nós do esqueleto.
+ *
+ * A primeira versão usava a espiral de ângulo áureo, que cobre bem um DISCO.
+ * Medido em pixel: o desenho saía como um círculo de tinta com os quatro cantos
+ * do card vazios, e a simulação não corrigia isso (ela equilibra distâncias
+ * locais, não cobertura). A R2 é a mesma ideia — sequência de baixa
+ * discrepância, determinística, sem número aleatório — só que para o RETÂNGULO:
+ * cada ponto novo cai no maior buraco que sobrou.
+ *
+ * `1,3247…` é o número plástico (a raiz real de x³ = x + 1), que está para duas
+ * dimensões como a razão áurea está para uma.
+ */
+const PLASTIC = 1.324717957244746;
+const R2_ALPHA = [1 / PLASTIC, 1 / (PLASTIC * PLASTIC)] as const;
+
+/** Parte fracionária — o passo da sequência R2. */
+function frac(value: number): number {
+  return value - Math.floor(value);
+}
 
 /**
  * Orçamento de iterações: `budget / esqueleto`, dentro da faixa. Como as folhas
@@ -48,8 +66,22 @@ const INITIAL_TEMPERATURE = 0.14;
 /** Resfriamento por iteração — o passo encolhe até o desenho assentar. */
 const COOLING = 0.96;
 
-/** Atração ao centro: segura os componentes desconexos dentro do quadro. */
-const GRAVITY = 0.02;
+/**
+ * Atração ao centro. Fraca DE PROPÓSITO: ela existe só para um componente
+ * desconexo não vagar até o infinito. Quando era a força principal (0.02), a
+ * nuvem virava um CÍRCULO — e círculo inscrito num card retangular deixa os
+ * quatro cantos vazios, que foi o segundo defeito medido no card da galeria.
+ */
+const GRAVITY = 0.004;
+
+/**
+ * Parede ELÁSTICA do quadro: só age em quem passou da borda, e proporcional ao
+ * quanto passou. É a diferença entre o desenho preencher o retângulo e o
+ * desenho ser um círculo com cantos vazios — e, ao contrário do grampo rígido
+ * (`min/max`), não alinha ninguém: cada nó para onde a repulsão dos vizinhos
+ * deixa, então a borda fica orgânica em vez de virar uma cerca.
+ */
+const WALL = 0.5;
 
 /** Atração ao centróide do próprio grupo — o que forma os aglomerados por cor. */
 const GROUP_PULL = 0.12;
@@ -73,18 +105,41 @@ const LEAF_RING = {
   base: 0.03,
   /** Quanto o raio cresce por folha (a coroa precisa de circunferência). */
   perLeaf: 0.0035,
-  /** Teto: acima disto a coroa competiria com o resto da rede. */
-  max: 0.12,
+  /**
+   * Teto do raio. 0,15 do menor lado é o que 17 aglomerados podem ocupar num
+   * card sem se sobrepor (empacotamento hexagonal de 17 círculos numa área
+   * unitária dá raio ~0,15) — abaixo disso sobra vazio entre eles, que foi o
+   * outro defeito medido: ilhas pequenas demais para o tamanho do card.
+   */
+  max: 0.15,
   /** Raio reservado a um nó SEM coroa (ele também não pode ser invadido). */
   bare: 0.018,
   /** Folga entre duas coroas vizinhas. */
   gap: 0.025,
   /** Abertura do leque quando o hub tem tronco (deixa a saída livre). */
   arc: 0.82,
+  /** Variação do raio de cada folha (±20%) — tira o aspecto de engrenagem. */
+  jitter: 0.4,
+  /** Variação do ângulo, em fração do passo entre folhas vizinhas. */
+  sway: 0.45,
 } as const;
 
 /** Passadas de afastamento entre coroas — poucas bastam e todas convergem. */
 const SEPARATION_PASSES = 60;
+
+/**
+ * ALCANCE da repulsão, em múltiplos da distância de repouso.
+ *
+ * Repulsão de alcance infinito (o 1/d do Fruchterman–Reingold puro) dentro de
+ * um quadro fechado se comporta como carga elétrica: todo mundo se empurra
+ * para a PAREDE e o miolo fica vazio. Medido no card da galeria, o desenho
+ * saía como um "C" — três lados povoados e um buraco no meio.
+ *
+ * Cortando o alcance, cada nó só enxerga a vizinhança imediata e o conjunto se
+ * arruma como líquido: cobertura uniforme, sem efeito de borda. É o mesmo
+ * `distanceMax` que o d3-force expõe, e pelo mesmo motivo.
+ */
+const REPULSION_RANGE = 3;
 
 /** Distância mínima considerada entre dois nós (evita divisão por zero). */
 const EPSILON = 1e-4;
@@ -115,13 +170,30 @@ export function forceLayout(
   const adjacency = adjacencyOf(model);
   const { core, leavesOf } = splitLeaves(model, degrees, adjacency);
 
-  const simulated = simulateCore(model, core, leavesOf, adjacency, aspect);
+  const simulated = simulateCore(model, core, leavesOf, adjacency, degrees);
   const { positions, extent } = fitToUnitBox(simulated);
+
+  /**
+   * FORMATO DO CARD — aplicado ao ESQUELETO, antes de as coroas existirem.
+   *
+   * A simulação roda solta e isotrópica, que é o que produz desenho orgânico.
+   * Espalhar o esqueleto na horizontal DEPOIS dela muda a DISPOSIÇÃO dos
+   * aglomerados (que é o que precisa acompanhar o card) sem tocar na forma de
+   * cada um: as coroas são desenhadas em seguida, e nascem redondas.
+   *
+   * Foi a terceira tentativa. Simular dentro do retângulo com os nós presos às
+   * bordas produzia fileiras de pontos coladas na parede — o defeito que mais
+   * afeia o desenho. Puxar por gravidade mais forte num eixo mal deformava a
+   * nuvem (medido: 1,27:1 num card 4:1).
+   */
+  for (const [id, point] of positions) {
+    positions.set(id, { x: point.x * aspect, y: point.y });
+  }
 
   // A coroa é medida no MENOR lado do desenho. Num card 5:1, o maior lado não
   // diz nada sobre o espaço disponível para um círculo — quem limita é a
   // altura, e uma coroa de "12% do maior lado" sairia maior que o card é alto.
-  const ringScale = Math.min(extent.x, extent.y);
+  const ringScale = Math.min(extent.x * aspect, extent.y);
   const ringOf = (id: string) => ringRadius(leavesOf.get(id)?.length ?? 0) * ringScale;
 
   separateBursts(positions, ringOf);
@@ -202,27 +274,44 @@ function simulateCore(
   core: string[],
   leavesOf: Map<string, string[]>,
   adjacency: Map<string, string[]>,
-  aspect: number,
+  degrees: Map<string, number>,
 ): Map<string, { x: number; y: number }> {
   const count = core.length;
   const index = new Map(core.map((id, i) => [id, i]));
   const xs = new Float64Array(count);
   const ys = new Float64Array(count);
 
-  // A simulação roda dentro do RETÂNGULO em que o desenho vai aparecer (largura
-  // `aspect`, altura 1). É o que faz a rede preencher um card largo em vez de
-  // virar um quadrado com 70% de espaço vazio dos lados — e é diferente de
-  // ESTICAR um desenho quadrado depois de pronto: aqui as distâncias continuam
-  // corretas, porque a repulsão já cresce na medida da área disponível.
-  const width = Math.max(aspect, EPSILON);
+  /**
+   * SEMENTE POR AGLOMERADO, não por nó.
+   *
+   * Espalhar os NÓS pela R2 parecia certo e produzia o contrário do esperado:
+   * os membros de um grupo nasciam longe uns dos outros, a atração de grupo os
+   * colapsava no centróide deles — e a média de pontos espalhados cai perto do
+   * CENTRO. Resultado medido: todos os aglomerados amontoados no miolo, bordas
+   * e cantos vazios.
+   *
+   * Semeando por GRUPO, cada aglomerado já nasce inteiro no lugar onde vai
+   * ficar, e a R2 distribui os aglomerados — que é a unidade que precisa cobrir
+   * o quadro. Quem não tem grupo conta como aglomerado de um.
+   */
+  const groupOf = new Map(model.nodes.map((node) => [node.id, node.group]));
+  // Nó SOLTO tem semente individual: ele não forma aglomerado, e semeá-lo pelo
+  // grupo fazia os seis avulsos da vitrine nascerem todos no mesmo ponto —
+  // exatamente o amontoado que a semente por grupo veio resolver.
+  const keyOf = (id: string, i: number) =>
+    (degrees.get(id) ?? 0) === 0 ? `\u0000${id}` : (groupOf.get(id) ?? `\u0000${i}`);
 
-  // Espiral de ângulo áureo: pontos bem distribuídos e SEM aleatoriedade — é o
-  // que torna o desenho reproduzível entre sessões, máquinas e testes.
+  const seedOf = new Map<string, number>();
+  core.forEach((id, i) => {
+    const key = keyOf(id, i);
+    if (!seedOf.has(key)) seedOf.set(key, seedOf.size);
+  });
   for (let i = 0; i < count; i += 1) {
-    const radius = 0.45 * Math.sqrt((i + 0.5) / count);
-    const angle = i * GOLDEN_ANGLE;
-    xs[i] = width * (0.5 + radius * Math.cos(angle));
-    ys[i] = 0.5 + radius * Math.sin(angle);
+    const seed = (seedOf.get(keyOf(core[i], i)) ?? i) + 1;
+    // Posição do aglomerado (cobre o quadro) + deslocamento local do membro,
+    // pequeno, só para os membros não nascerem exatamente no mesmo ponto.
+    xs[i] = frac(0.5 + R2_ALPHA[0] * seed) + (frac(R2_ALPHA[1] * (i + 1)) - 0.5) * 0.08;
+    ys[i] = frac(0.5 + R2_ALPHA[1] * seed) + (frac(R2_ALPHA[0] * (i + 1)) - 0.5) * 0.08;
   }
 
   // Peso de repulsão: quem carrega coroa precisa de mais espaço.
@@ -246,9 +335,21 @@ function simulateCore(
     }
   }
 
-  const groups = groupBuckets(model, index);
-  // Distância de repouso para a ÁREA disponível (largura × altura = aspect × 1).
-  const k = Math.sqrt(width / count);
+  /**
+   * NÓ SOLTO (grau 0) fica FORA da gravidade e da atração de grupo.
+   *
+   * Ele não pertence a estrutura nenhuma — é o contribuinte sem vínculo, o
+   * registro órfão. Deixá-lo no jogo produziu o defeito mais visível do card:
+   * os seis avulsos compartilhavam o grupo "Sem vínculo", a atração de grupo os
+   * juntou e a gravidade os levou para o centro, onde formaram uma FILEIRA de
+   * pontos no meio do desenho e abriram um buraco em volta. Ausência de vínculo
+   * não é um vínculo: eles ficam espalhados onde a R2 os pôs, sofrendo só
+   * repulsão.
+   */
+  const isLoose = core.map((id) => (degrees.get(id) ?? 0) === 0);
+  const groups = groupBuckets(model, index, isLoose);
+  // Distância de repouso para uma área unitária.
+  const k = Math.sqrt(1 / count);
   const iterations = Math.min(
     ITERATIONS.max,
     Math.max(ITERATIONS.min, Math.round(ITERATIONS.budget / count)),
@@ -262,12 +363,16 @@ function simulateCore(
     dx.fill(0);
     dy.fill(0);
 
-    // Repulsão entre todos os pares (o que abre o desenho).
+    // Repulsão de CURTO ALCANCE entre os pares (o que abre o desenho).
+    const range = k * REPULSION_RANGE;
     for (let i = 0; i < count; i += 1) {
       for (let j = i + 1; j < count; j += 1) {
         const vx = xs[i] - xs[j];
         const vy = ys[i] - ys[j];
         const distance = Math.max(Math.hypot(vx, vy), EPSILON);
+        // Fora do alcance combinado dos dois (o hub com coroa enxerga mais
+        // longe, porque ocupa mais espaço), não há empurrão.
+        if (distance > range * (weights[i] + weights[j])) continue;
         const force = ((k * k) / distance) * weights[i] * weights[j];
         const ux = (vx / distance) * force;
         const uy = (vy / distance) * force;
@@ -308,15 +413,35 @@ function simulateCore(
       }
     }
 
+    /**
+     * NENHUM GRAMPO NAS BORDAS.
+     *
+     * Uma versão anterior prendia cada nó dentro do quadro
+     * (`min(max(x, 0), 1)`), como manda o Fruchterman–Reingold original. O
+     * resultado, medido em pixel no card da galeria, era o pior defeito
+     * possível: os nós que a repulsão empurrava para fora ficavam COLADOS na
+     * parede, formando duas fileiras horizontais de pontos no topo e na base —
+     * a rede virava uma cerca, não um mapa.
+     *
+     * Quem segura a nuvem é a gravidade (uma força), e quem a encaixa no card é
+     * o reenquadramento final, que existe justamente para isso.
+     */
+    const gravity = GRAVITY * count * k;
     for (let i = 0; i < count; i += 1) {
-      dx[i] += (width / 2 - xs[i]) * GRAVITY * count * k;
-      dy[i] += (0.5 - ys[i]) * GRAVITY * count * k;
+      if (!isLoose[i]) {
+        dx[i] += (0.5 - xs[i]) * gravity;
+        dy[i] += (0.5 - ys[i]) * gravity;
+      }
+      // Parede elástica: força só para quem passou da borda.
+      if (xs[i] < 0) dx[i] += -xs[i] * WALL;
+      else if (xs[i] > 1) dx[i] += (1 - xs[i]) * WALL;
+      if (ys[i] < 0) dy[i] += -ys[i] * WALL;
+      else if (ys[i] > 1) dy[i] += (1 - ys[i]) * WALL;
+
       const length = Math.max(Math.hypot(dx[i], dy[i]), EPSILON);
       const stepSize = Math.min(length, temperature);
-      // Preso ao retângulo: é o que faz o desenho OCUPAR a área em vez de
-      // escapar dela (Fruchterman–Reingold original faz o mesmo).
-      xs[i] = Math.min(Math.max(xs[i] + (dx[i] / length) * stepSize, 0), width);
-      ys[i] = Math.min(Math.max(ys[i] + (dy[i] / length) * stepSize, 0), 1);
+      xs[i] += (dx[i] / length) * stepSize;
+      ys[i] += (dy[i] / length) * stepSize;
     }
 
     temperature *= COOLING;
@@ -328,11 +453,15 @@ function simulateCore(
 }
 
 /** Índices do esqueleto agrupados por `grupo` (grupos de 1 nó não contam). */
-function groupBuckets(model: GraphModel, index: Map<string, number>): number[][] {
+function groupBuckets(
+  model: GraphModel,
+  index: Map<string, number>,
+  isLoose: boolean[],
+): number[][] {
   const buckets = new Map<string, number[]>();
   for (const node of model.nodes) {
     const i = index.get(node.id);
-    if (i == null || !node.group) continue;
+    if (i == null || !node.group || isLoose[i]) continue;
     const bucket = buckets.get(node.group);
     if (bucket) bucket.push(i);
     else buckets.set(node.group, [i]);
@@ -448,10 +577,22 @@ function placeLeaves(
     const radius = ringOf(parentId);
 
     leaves.forEach((id, i) => {
-      const angle = start + (span * (i + 0.5)) / leaves.length;
+      /**
+       * VARIAÇÃO — o que separa um dente-de-leão de uma flor de plástico.
+       *
+       * Com todas as folhas no mesmo raio e em ângulos exatamente iguais, cada
+       * aglomerado sai como uma engrenagem perfeita, e dezessete engrenagens
+       * idênticas lado a lado leem como clip-art, não como dado. A variação
+       * vem da sequência R2 (determinística: mesma rede, mesmo desenho), então
+       * nada aqui é sorteado.
+       */
+      const noise = frac((i + 1) * R2_ALPHA[0]);
+      const wobble = frac((i + 1) * R2_ALPHA[1]) - 0.5;
+      const r = radius * (1 - LEAF_RING.jitter / 2 + noise * LEAF_RING.jitter);
+      const angle = start + (span * (i + 0.5 + wobble * LEAF_RING.sway)) / leaves.length;
       positions.set(id, {
-        x: parent.x + radius * Math.cos(angle),
-        y: parent.y + radius * Math.sin(angle),
+        x: parent.x + r * Math.cos(angle),
+        y: parent.y + r * Math.sin(angle),
       });
     });
   }

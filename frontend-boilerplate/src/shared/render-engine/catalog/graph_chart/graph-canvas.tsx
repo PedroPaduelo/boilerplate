@@ -47,8 +47,12 @@ const FALLBACK_WIDTH = 640;
 /** Opacidade do que NÃO faz parte da vizinhança destacada. */
 const DIMMED = 0.15;
 
-/** Opacidade de repouso das arestas — elas são o fundo, os nós são o dado. */
-const EDGE_OPACITY = 0.45;
+/**
+ * Opacidade de repouso das arestas — elas são o fundo, os nós são o dado. A
+ * 0,45 com fio de meio pixel a ligação sumia e o desenho virava uma poeira de
+ * pontos sem estrutura; a teia precisa ser vista para a rede fazer sentido.
+ */
+const EDGE_OPACITY = 0.6;
 
 /** Distância entre a borda do nó e o rótulo. */
 const LABEL_GAP = 5;
@@ -57,16 +61,29 @@ const LABEL_GAP = 5;
 const LABEL_MAX_CHARS = 18;
 
 /**
- * Quantos rótulos no máximo — acima disso, só os MAIORES nós recebem nome.
+ * Acima de quantos nós o rótulo FIXO desaparece e passa a existir só no hover.
  *
- * Rede grande com nome em tudo não é rede grande com contexto: é uma mancha de
- * texto sobre o desenho (200 rótulos de 12px não cabem em 280px de altura, e o
- * que se perde é justamente o desenho). Toda ferramenta do gênero faz esse
- * corte — o Obsidian esconde o nome enquanto o zoom está longe. Aqui o critério
- * é o TAMANHO do nó, que já é a medida de importância: os hubs se apresentam, o
- * satélite se identifica no tooltip.
+ * A tentativa anterior foi rotular "os 16 maiores". Medido em pixel no card da
+ * galeria (359×280), 16 rótulos de 12px são ~1.000 caracteres espalhados sobre
+ * 223 pontos: o texto vira a figura e o desenho vira o fundo. É por isso que
+ * nenhum mapa de rede bonito tem nome em tudo — o Obsidian só mostra o rótulo
+ * quando o zoom se aproxima, e a referência que motivou este bloco não tem
+ * texto nenhum.
+ *
+ * O corte é por CONTAGEM e não por tamanho de nó porque a pergunta não é "qual
+ * nó merece nome?", e sim "cabe nome nesta tela?". Abaixo do limite, todo mundo
+ * tem nome; acima, o nome aparece no nó sob o cursor (e no tooltip, sempre).
  */
-const LABEL_LIMIT = 16;
+const LABEL_DENSITY_LIMIT = 24;
+
+/**
+ * Opacidade do preenchimento de um SATÉLITE (nó de uma ligação só).
+ *
+ * Hierarquia por intensidade, como na referência: os centros aparecem cheios e
+ * a periferia fica pálida. Sem isso, 200 pontos da mesma cor chapada disputam
+ * atenção em pé de igualdade e o olho não encontra os hubs.
+ */
+const LEAF_FILL = 0.55;
 
 /**
  * Degrau de arredondamento da proporção do card.
@@ -113,14 +130,18 @@ export function GraphCanvas({
   const fontSize = palette.typography.axis.size;
   const maxRadius = view.nodes.reduce((max, node) => Math.max(max, node.radius), 0);
 
+  // Rede densa não desenha rótulo fixo: o nome fica no nó sob o cursor.
+  const isDense = view.nodes.length > LABEL_DENSITY_LIMIT;
+  const hasFixedLabels = showLabels && !isDense;
+
   const padding = useMemo(
     () => ({
       top: maxRadius + 4,
       right: maxRadius + 8,
-      bottom: maxRadius + (showLabels ? LABEL_GAP + fontSize + 2 : 4),
+      bottom: maxRadius + (hasFixedLabels ? LABEL_GAP + fontSize + 2 : 4),
       left: maxRadius + 8,
     }),
-    [maxRadius, showLabels, fontSize],
+    [maxRadius, hasFixedLabels, fontSize],
   );
 
   // Proporção da ÁREA DE DESENHO (já sem as margens), arredondada para não
@@ -148,20 +169,6 @@ export function GraphCanvas({
     }
     return map;
   }, [view.nodes, points, fit, extent, width, height, padding]);
-
-  // Quem ganha rótulo: todos, enquanto couber; depois, só os maiores.
-  const labelled = useMemo(() => {
-    if (!showLabels) return new Set<string>();
-    if (view.nodes.length <= LABEL_LIMIT) {
-      return new Set(view.nodes.map((node) => node.id));
-    }
-    return new Set(
-      [...view.nodes]
-        .sort((a, b) => b.radius - a.radius)
-        .slice(0, LABEL_LIMIT)
-        .map((node) => node.id),
-    );
-  }, [view.nodes, showLabels]);
 
   if (view.nodes.length === 0) return null;
 
@@ -195,7 +202,11 @@ export function GraphCanvas({
             const from = screen.get(edge.source);
             const to = screen.get(edge.target);
             if (!from || !to) return null;
-            const shape = edgeShape(from, to, { curved, arrow: showArrows });
+            const shape = edgeShape(from, to, {
+              curved,
+              arrow: showArrows,
+              width: edge.width,
+            });
             const lit =
               active != null && (edge.source === active || edge.target === active);
             const stroke = lit && litColor ? litColor : palette.chrome('axis');
@@ -252,12 +263,21 @@ export function GraphCanvas({
                   cy={point.y}
                   r={node.radius}
                   fill={node.color}
+                  // Satélite pálido, centro cheio — a hierarquia que faz o olho
+                  // achar os hubs numa nuvem de duzentos pontos.
+                  fillOpacity={node.degree <= 1 && node.id !== active ? LEAF_FILL : 1}
                   // Halo da cor da superfície: é o que separa dois nós
-                  // encostados sem inventar uma borda colorida.
+                  // encostados sem inventar uma borda colorida. Proporcional
+                  // ao raio, e não fixo: 1,5px de traço num ponto de raio 2
+                  // deixava METADE da marca branca — a rede densa aparecia
+                  // lavada, como se os pontos estivessem apagando.
                   stroke={palette.chrome('surface')}
-                  strokeWidth={palette.geometry.markerStrokeWidth / 2}
+                  strokeWidth={Math.min(
+                    palette.geometry.markerStrokeWidth / 2,
+                    node.radius * 0.35,
+                  )}
                 />
-                {labelled.has(node.id) ? (
+                {showLabels && (!isDense || node.id === active) ? (
                   <text
                     x={clampLabelX(point.x, estimateTextWidth(label, fontSize), width)}
                     y={point.y + node.radius + LABEL_GAP}

@@ -28,11 +28,30 @@ export interface Viewport {
 /** Respiro entre a borda do nó e a ponta da aresta. */
 const NODE_GAP = 3;
 
-/** Comprimento da ponta de seta, em px. */
-export const ARROW_LENGTH = 7;
+/**
+ * Ponta de seta: comprimento e meia-largura, em px.
+ *
+ * A medida acompanha a ESPESSURA da aresta (`arrowFor`), e não é fixa. Fixa em
+ * 7px, ela virou o pior defeito visual do bloco: numa rede densa o traço afina
+ * para 0,6px e o nó cai para 4px de diâmetro, mas a seta continuava com 7px —
+ * ou seja, 215 triângulos MAIORES que os nós que eles apontavam, espalhados
+ * sobre o desenho. O que se via era um chuvisco de cunhas, não uma rede.
+ */
+const ARROW = { length: 7, half: 3.2, ratio: 2.8 } as const;
 
-/** Meia-largura da ponta de seta, em px. */
-const ARROW_HALF = 3.2;
+/**
+ * Espessura mínima de traço que ainda comporta uma seta legível. Abaixo disso
+ * a direção não se lê nessa escala, e desenhar a ponta só suja o desenho — a
+ * rede densa fica sem seta, como em qualquer mapa de rede do gênero.
+ */
+export const ARROW_MIN_WIDTH = 1.2;
+
+/** Geometria da seta para uma aresta de espessura `width` (`null` = sem seta). */
+function arrowFor(width: number): { length: number; half: number } | null {
+  if (width < ARROW_MIN_WIDTH) return null;
+  const length = Math.min(ARROW.length, width * ARROW.ratio * 2);
+  return { length, half: (length * ARROW.half) / ARROW.length };
+}
 
 /** Desvio do arco, em fração do comprimento da aresta (`linkStyle: curved`). */
 const CURVE = 0.16;
@@ -91,13 +110,15 @@ export interface EdgeShape {
 export function edgeShape(
   from: ScreenNode,
   to: ScreenNode,
-  options: { curved: boolean; arrow: boolean },
+  options: { curved: boolean; arrow: boolean; width?: number },
 ): EdgeShape {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy) || 1;
   const ux = dx / length;
   const uy = dy / length;
+
+  const head = options.arrow ? arrowFor(options.width ?? ARROW.length) : null;
 
   const start = {
     x: from.x + ux * (from.r + NODE_GAP),
@@ -106,10 +127,10 @@ export function edgeShape(
   const tip = { x: to.x - ux * (to.r + NODE_GAP), y: to.y - uy * (to.r + NODE_GAP) };
 
   if (!options.curved) {
-    const end = options.arrow ? back(tip, ux, uy, ARROW_LENGTH) : tip;
+    const end = head ? back(tip, ux, uy, head.length) : tip;
     return {
       path: `M${round(start.x)},${round(start.y)} L${round(end.x)},${round(end.y)}`,
-      arrow: options.arrow ? arrowPoints(tip, ux, uy) : null,
+      arrow: head ? arrowPoints(tip, ux, uy, head) : null,
     };
   }
 
@@ -124,13 +145,13 @@ export function edgeShape(
   const tangent = Math.hypot(tangentX, tangentY) || 1;
   const tx = tangentX / tangent;
   const ty = tangentY / tangent;
-  const end = options.arrow ? back(tip, tx, ty, ARROW_LENGTH) : tip;
+  const end = head ? back(tip, tx, ty, head.length) : tip;
 
   return {
     path:
       `M${round(start.x)},${round(start.y)} ` +
       `Q${round(control.x)},${round(control.y)} ${round(end.x)},${round(end.y)}`,
-    arrow: options.arrow ? arrowPoints(tip, tx, ty) : null,
+    arrow: head ? arrowPoints(tip, tx, ty, head) : null,
   };
 }
 
@@ -145,10 +166,15 @@ function back(
 }
 
 /** Triângulo da seta: ponta encostada no nó, base recuada. */
-function arrowPoints(tip: { x: number; y: number }, ux: number, uy: number): string {
-  const base = back(tip, ux, uy, ARROW_LENGTH);
-  const left = { x: base.x - uy * ARROW_HALF, y: base.y + ux * ARROW_HALF };
-  const right = { x: base.x + uy * ARROW_HALF, y: base.y - ux * ARROW_HALF };
+function arrowPoints(
+  tip: { x: number; y: number },
+  ux: number,
+  uy: number,
+  head: { length: number; half: number },
+): string {
+  const base = back(tip, ux, uy, head.length);
+  const left = { x: base.x - uy * head.half, y: base.y + ux * head.half };
+  const right = { x: base.x + uy * head.half, y: base.y - ux * head.half };
   return [tip, left, right]
     .map((point) => `${round(point.x)},${round(point.y)}`)
     .join(' ');

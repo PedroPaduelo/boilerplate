@@ -54,11 +54,15 @@ const EDGE_WIDTH = { min: 1, max: CHART_GEOMETRY.lineWidth } as const;
  */
 const DENSITY_REFERENCE = 24;
 
-/** Piso absoluto da marca: abaixo disto o nó deixa de ser clicável e visível. */
-const NODE_FLOOR = { min: 3.5, max: 10 } as const;
+/**
+ * Piso absoluto da marca. Calibrado OLHANDO o card renderizado: com 3,5px de
+ * diâmetro e o halo da superfície por cima, o satélite quase desaparecia — a
+ * rede densa saía lavada. 4px é o menor ponto que ainda se lê como ponto.
+ */
+const NODE_FLOOR = { min: 4, max: 12 } as const;
 
 /** Piso absoluto do fio: abaixo disto a aresta some no fundo. */
-const EDGE_FLOOR = { min: 0.4, max: 0.8 } as const;
+const EDGE_FLOOR = { min: 0.5, max: 1 } as const;
 
 /** Fator de encolhimento da marca para uma rede de `count` nós (≤ 1). */
 function densityScale(count: number): number {

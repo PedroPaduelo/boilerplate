@@ -266,17 +266,33 @@ describe('bloco graph_chart — rede densa', () => {
     expect(Math.min(...radiusOf(dense))).toBeGreaterThan(1.5);
   });
 
-  it('rotula só os maiores quando a rede não comporta nome em tudo', () => {
+  /**
+   * A tentativa anterior era rotular "os 16 maiores". Medido em pixel, 16
+   * rótulos de 12px sobre 223 pontos num card de 359×280 fazem o TEXTO virar a
+   * figura. Rede densa não desenha rótulo fixo — o nome aparece no nó sob o
+   * cursor, e o tooltip continua em todos.
+   */
+  it('rede densa não escreve rótulo fixo: o nome vem no hover', () => {
     const { container } = renderWithProviders(
       <Block props={{}} data={fixture} state="success" />,
     );
-    const labels = container.querySelectorAll('[data-slot="graph-node"] text');
-    expect(labels.length).toBeGreaterThan(0);
-    expect(labels.length).toBeLessThanOrEqual(16);
-    // Quem sobra continua identificável no tooltip.
+    expect(container.querySelectorAll('[data-slot="graph-node"] text')).toHaveLength(0);
+    // Todo nó continua identificável no tooltip.
     expect(container.querySelectorAll('[data-slot="graph-node"] title').length).toBe(
       nodes(container).length,
     );
+
+    fireEvent.mouseOver(container.querySelector('[data-node-id="CIV-hub"]') as Element);
+    const labels = [...container.querySelectorAll('[data-slot="graph-node"] text')];
+    expect(labels).toHaveLength(1);
+    expect(labels[0].textContent).toBe('Construtora Vale');
+  });
+
+  it('rede pequena continua com rótulo em todos os nós', () => {
+    const { container } = renderWithProviders(
+      <Block props={{}} data={funnelFixture} state="success" />,
+    );
+    expect(container.querySelectorAll('[data-slot="graph-node"] text')).toHaveLength(8);
   });
 
   it('`showLabels: false` continua desligando tudo', () => {
