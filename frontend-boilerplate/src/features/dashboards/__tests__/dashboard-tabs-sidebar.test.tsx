@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
 import { DashboardTabsSidebar } from '../components/viewer/dashboard-tabs-sidebar';
@@ -33,6 +33,16 @@ function tab(overrides: Partial<ResolvedDashTab> = {}): ResolvedDashTab {
 function rowWith(blocks: number) {
   return { id: `row_${blocks}`, blocks: Array.from({ length: blocks }, () => ({})) };
 }
+
+/**
+ * A barra passou a GUARDAR a escolha de recolher (`localStorage`), então o
+ * estado deixou de morrer com o componente: sem esta limpeza, um caso que
+ * recolhe a barra faz o seguinte nascer recolhido — e recolhida a barra não
+ * desenha o campo de busca, o que quebraria um teste que não tem nada a ver.
+ */
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 describe('groupTabs', () => {
   it('agrupa por `group` preservando a ordem de declaração', () => {
@@ -151,6 +161,10 @@ describe('DashboardTabsSidebar', () => {
     expect(
       within(screen.getByRole('link', { name: /Vazia/ })).getByText('0'),
     ).toBeInTheDocument();
+
+    // …e o número NÃO entra no nome acessível: quem ouve a barra continua
+    // ouvindo "Cheia", não "Cheia 5" (que não diz nada sem ver a coluna).
+    expect(screen.getByRole('link', { name: 'Cheia' })).toBeInTheDocument();
   });
 
   it('oferece recolher a navegação (telão/notebook)', () => {
@@ -162,10 +176,80 @@ describe('DashboardTabsSidebar', () => {
       />,
     );
 
-    // Nome acessível vindo do catálogo pt-BR do DS — o mesmo que o usuário ouve.
+    // O nome é o MESMO que o catálogo pt-BR do design system dava ao controle
+    // equivalente, agora escrito por nós (`toggleLabel`): trocá-lo mudaria o
+    // que o usuário ouve sem ganho nenhum.
     expect(
       screen.getByRole('button', { name: /Recolher barra lateral/i }),
     ).toBeInTheDocument();
+  });
+
+  it('a escolha de recolher SOBREVIVE ao recarregar (fica no localStorage)', () => {
+    // Antes era `useState`: quem trabalhava com a barra recolhida a via voltar
+    // inteira a cada F5 e a cada troca de dashboard. A barra do app já guardava
+    // a dela (`sidebar:collapsed`); esta guarda a sua, em chave própria.
+    const tabs = [tab({ id: 'a', title: 'A' }), tab({ id: 'b', title: 'B' })];
+    const { unmount } = renderWithProviders(
+      <DashboardTabsSidebar tabs={tabs} activeTabId="a" hrefForTab={hrefForTab} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Recolher barra lateral/i }));
+    expect(
+      screen.getByRole('button', { name: /Expandir barra lateral/i }),
+    ).toBeInTheDocument();
+
+    unmount();
+    renderWithProviders(
+      <DashboardTabsSidebar tabs={tabs} activeTabId="a" hrefForTab={hrefForTab} />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: /Expandir barra lateral/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('a DESCRIÇÃO da aba fica disponível no hover, no próprio item', () => {
+    // Deixou de ser um `Tooltip` nosso e passou a ser a dica do item (o `title`
+    // nativo que a nav aplica com o campo `description`). O que não pode mudar
+    // é o fato: dá para saber o que a aba responde ANTES de clicar.
+    renderWithProviders(
+      <DashboardTabsSidebar
+        tabs={[
+          tab({ id: 'a', title: 'Autos', description: 'Protestos em cartório' }),
+          tab({ id: 'b', title: 'IPTU' }),
+        ]}
+        activeTabId="a"
+        hrefForTab={hrefForTab}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: 'Autos' })).toHaveAttribute(
+      'title',
+      'Protestos em cartório',
+    );
+  });
+
+  it('DIVISOR declarado pela aba entra ANTES dela, no mesmo grupo', () => {
+    // Serve para separar um bloco de itens sem inventar um título de seção que
+    // ninguém pediu — por isso o separador é irmão do item, não um grupo novo.
+    renderWithProviders(
+      <DashboardTabsSidebar
+        tabs={[
+          tab({ id: 'a', title: 'Antes' }),
+          tab({ id: 'b', title: 'Depois', divider: true }),
+        ]}
+        activeTabId="a"
+        hrefForTab={hrefForTab}
+      />,
+    );
+
+    const separador = screen.getByRole('separator');
+    const depois = screen.getByRole('link', { name: 'Depois' });
+
+    expect(separador.parentElement).toBe(depois.closest('li')?.parentElement);
+    expect(
+      separador.compareDocumentPosition(depois) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('aba SEM ícone/grupo continua renderizando (dashboard antigo não quebra)', () => {
@@ -195,11 +279,66 @@ describe('DashboardTabsSidebar', () => {
       />,
     );
 
-    // O design system agrupa os filhos numa região rotulada pelo pai — é essa
-    // relação (e não um recuo de padding) que um leitor de tela consegue
-    // anunciar como "dentro de Cobrança".
+    // A nav agrupa os filhos numa região rotulada pelo pai — é essa relação (e
+    // não um recuo de padding) que um leitor de tela consegue anunciar como
+    // "dentro de Cobrança".
     const grupo = screen.getByRole('group', { name: 'Cobrança' });
     expect(within(grupo).getByRole('link', { name: /Por bairro/ })).toBeInTheDocument();
+  });
+
+  it('aba-pai COM blocos continua alcançável: o link dela mora dentro do ramo', () => {
+    /*
+     * A nav própria não deixa um item com filhos navegar: clicar nele abre e
+     * fecha o ramo (CONTRATO §3). Num menu de app isso está certo — "Atividade
+     * Fiscal" é uma pasta. Aqui não: toda aba tem conteúdo, e uma aba-pai virada
+     * botão esconderia as linhas dela da barra inteira. Por isso ela entra
+     * também como o PRIMEIRO item do próprio ramo, e é esse link que carrega o
+     * endereço e o `aria-current`.
+     */
+    renderWithProviders(
+      <DashboardTabsSidebar
+        tabs={[
+          tab({ id: 'pai', title: 'Cobrança', rows: [rowWith(3)] }),
+          tab({ id: 'filha', title: 'Por bairro', level: 2, rows: [rowWith(1)] }),
+        ]}
+        activeTabId="pai"
+        hrefForTab={hrefForTab}
+      />,
+    );
+
+    // O ramo nasce ABERTO porque a aba atual está dentro dele — quem chega por
+    // link direto precisa ver onde está.
+    expect(screen.getByRole('button', { name: 'Cobrança' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+
+    const grupo = screen.getByRole('group', { name: 'Cobrança' });
+    const link = within(grupo).getByRole('link', { name: 'Cobrança' });
+    expect(link).toHaveAttribute('href', '/dashboards/d1/view?tab=pai');
+    expect(link).toHaveAttribute('aria-current', 'page');
+    expect(within(grupo).getByRole('link', { name: 'Por bairro' })).toBeInTheDocument();
+  });
+
+  it('aba-pai SEM blocos não ganha link para uma tela vazia', () => {
+    // Aba que só agrupa não vira caminho para lugar nenhum: o ramo é o item, e
+    // é ele que se anuncia como a página atual quando a aba ativa é essa.
+    renderWithProviders(
+      <DashboardTabsSidebar
+        tabs={[
+          tab({ id: 'pai', title: 'Cobrança' }),
+          tab({ id: 'filha', title: 'Por bairro', level: 2, rows: [rowWith(1)] }),
+        ]}
+        activeTabId="pai"
+        hrefForTab={hrefForTab}
+      />,
+    );
+
+    expect(screen.queryByRole('link', { name: 'Cobrança' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cobrança' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 });
 
@@ -239,6 +378,32 @@ describe('DashboardTabsSidebar — busca', () => {
       expect(screen.getByRole('link', { name: /Protestos/ })).toBeInTheDocument(),
     );
     expect(screen.queryByRole('link', { name: /^Aba 0/ })).not.toBeInTheDocument();
+  });
+
+  it('o topo fixo leva SÓ o campo — a faixa do botão é reservada pela BARRA', () => {
+    /*
+     * Fronteira de responsabilidade, e ela já foi cruzada uma vez: como o botão
+     * de recolher flutua sobre os primeiros 48px da coluna, houve uma versão
+     * desta tela que reservava a faixa aqui, com um espaçador dentro do
+     * `topContent`. O lugar certo é a barra — a faixa é do botão, e o botão é
+     * dela (`nav-section.css`: `:has(> .app-nav-sidebar__toggle)`), que também
+     * dá os 16px em volta do bloco fixo.
+     *
+     * Este caso trava o lado de cá: quem for resolver uma sobreposição futura
+     * empilhando caixas no `topContent` quebra aqui e vai olhar o componente.
+     * A geometria em si é CSS e está medida no Chrome pelo dono do componente;
+     * jsdom não calcula layout e não teria como afirmá-la.
+     */
+    renderWithProviders(
+      <DashboardTabsSidebar tabs={many(9)} activeTabId="t0" hrefForTab={hrefForTab} />,
+    );
+
+    const topo = document.querySelector('.app-nav-sidebar__top');
+    expect(topo).not.toBeNull();
+    expect(
+      within(topo as HTMLElement).getByPlaceholderText('Filtrar abas…'),
+    ).toBeInTheDocument();
+    expect(topo?.children).toHaveLength(1);
   });
 
   it('busca sem resultado EXPLICA — lista vazia sem texto parece bug', async () => {

@@ -1,0 +1,341 @@
+/* ==========================================================================
+   Sidebar do AuditorIA — CSS puro (sem MUI)
+   Réplica fiel de frontend/src/components/nav-section + layouts/dashboard.
+   Todos os valores são finais; px reais (base rem original = 14px).
+   ========================================================================== */
+:root {
+  /* larguras e transição do layout */
+  --nav-vertical-width: 300px;
+  --nav-mini-width: 88px;
+  --nav-mobile-width: 288px;
+  --nav-transition: 120ms linear;
+
+  /* superfícies */
+  --nav-bg: #ffffff;
+  --nav-border-color: rgba(145, 158, 171, 0.12);
+
+  /* item */
+  --nav-item-gap: 4px;
+  --nav-item-radius: 8px;
+  --nav-item-pt: 4px;
+  --nav-item-pr: 8px;
+  --nav-item-pb: 4px;
+  --nav-item-pl: 12px;
+  --nav-item-root-height: 44px;
+  --nav-item-sub-height: 36px;
+  --nav-icon-size: 24px;
+  --nav-icon-margin: 0 12px 0 0;
+  --nav-bullet-size: 12px;
+  --nav-bullet-color: #edeff2;          /* tema escuro: #282F37 */
+
+  /* cores de estado */
+  --nav-item-color: #637381;
+  --nav-item-hover-bg: rgba(145, 158, 171, 0.08);
+  --nav-item-caption-color: #919eab;
+  --nav-item-root-active-color: #00a76f;      /* tema escuro: #5BE49B */
+  --nav-item-root-active-bg: rgba(0, 167, 111, 0.08);
+  --nav-item-root-active-hover-bg: rgba(0, 167, 111, 0.16);
+  --nav-item-root-open-color: #1c252e;
+  --nav-item-root-open-bg: rgba(145, 158, 171, 0.08);
+  --nav-item-sub-active-color: #1c252e;
+  --nav-item-sub-active-bg: rgba(145, 158, 171, 0.08);
+  --nav-subheader-color: #919eab;
+  --nav-subheader-hover-color: #1c252e;
+
+  --nav-font: "Public Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   1. CONTÊINER  (fixed à esquerda; o conteúdo da página compensa a largura)
+   -------------------------------------------------------------------------- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--nav-vertical-width);
+  display: flex;
+  flex-direction: column;
+  background: var(--nav-bg);
+  border-right: 1px solid var(--nav-border-color);
+  transition: width var(--nav-transition);
+  z-index: 1201;
+  font-family: var(--nav-font);
+}
+.sidebar.is-mini { width: var(--nav-mini-width); }
+
+/* o main da aplicação */
+.sidebar-offset {
+  padding-left: var(--nav-vertical-width);
+  transition: padding-left var(--nav-transition);
+}
+.sidebar.is-mini ~ .sidebar-offset,
+.is-mini .sidebar-offset { padding-left: var(--nav-mini-width); }
+
+/* logo */
+.sidebar__logo {
+  flex-shrink: 0;
+  padding: 20px 0 8px 28px;
+}
+.sidebar__logo img, .sidebar__logo .logo { width: 40px; height: 40px; display: block; }
+.sidebar.is-mini .sidebar__logo { padding: 20px 0; display: flex; justify-content: center; }
+
+/* área rolável */
+.sidebar__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(145, 158, 171, 0.4) transparent;
+}
+
+/* lista raiz */
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nav-item-gap);
+  margin: 0;
+  padding: 0 16px;
+  list-style: none;
+}
+.sidebar.is-mini .sidebar__nav { padding: 0 4px 16px; }
+.sidebar__nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nav-item-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* --------------------------------------------------------------------------
+   2. SUBHEADER DE GRUPO (clicável; seta aparece no hover)
+   -------------------------------------------------------------------------- */
+.nav-subheader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  position: relative;
+  cursor: pointer;
+  padding: 16px 8px 8px 12px;
+  font-size: 9.625px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: var(--nav-subheader-color);
+  transition: color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              padding-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  border: 0; background: none; font-family: inherit;
+}
+.nav-subheader .arrow {
+  position: absolute;
+  left: -4px;
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+  transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-subheader:hover {
+  padding-left: 16px;
+  color: var(--nav-subheader-hover-color);
+}
+.nav-subheader:hover .arrow { opacity: 1; }
+.sidebar.is-mini .nav-subheader { display: none; }
+
+/* --------------------------------------------------------------------------
+   3. ITEM (raiz e sub)
+   -------------------------------------------------------------------------- */
+.nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--nav-item-pt) var(--nav-item-pr) var(--nav-item-pb) var(--nav-item-pl);
+  border: 0;
+  border-radius: var(--nav-item-radius);
+  background: transparent;
+  color: var(--nav-item-color);
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nav-item:hover { background-color: var(--nav-item-hover-bg); }
+
+.nav-item__icon {
+  width: var(--nav-icon-size);
+  height: var(--nav-icon-size);
+  margin: var(--nav-icon-margin);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.nav-item__icon > * { width: 100%; height: 100%; }
+
+.nav-item__texts {
+  flex: 1 1 auto;
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.nav-item__title {
+  font-size: 12.25px;
+  font-weight: 500;
+  line-height: 1.5714;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.nav-item__caption {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--nav-item-caption-color);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.nav-item__info {
+  flex-shrink: 0;
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  display: inline-flex;
+}
+.nav-item__arrow {
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  display: inline-flex;
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* raiz */
+.nav-item--root { min-height: var(--nav-item-root-height); }
+.nav-item--root.is-open {
+  color: var(--nav-item-root-open-color);
+  background-color: var(--nav-item-root-open-bg);
+}
+.nav-item--root.is-active {
+  color: var(--nav-item-root-active-color);
+  background-color: var(--nav-item-root-active-bg);
+}
+.nav-item--root.is-active:hover { background-color: var(--nav-item-root-active-hover-bg); }
+.nav-item.is-active .nav-item__title { font-weight: 600; }
+.nav-item.is-disabled { opacity: 0.48; pointer-events: none; }
+
+/* sub */
+.nav-item--sub {
+  min-height: var(--nav-item-sub-height);
+  position: relative;
+}
+.nav-item--sub::before {                 /* o "cotovelo" */
+  content: "";
+  position: absolute;
+  left: 0;
+  width: var(--nav-bullet-size);
+  height: var(--nav-bullet-size);
+  transform: translate(calc(var(--nav-bullet-size) * -1), calc(var(--nav-bullet-size) * -0.4));
+  background-color: var(--nav-bullet-color);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 14 14'%3E%3Cpath d='M1 1v4a8 8 0 0 0 8 8h4' stroke='%23efefef' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 50% 50%/100% auto;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 14 14'%3E%3Cpath d='M1 1v4a8 8 0 0 0 8 8h4' stroke='%23efefef' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 50% 50%/100% auto;
+}
+.nav-item--sub.is-open,
+.nav-item--sub.is-active {
+  color: var(--nav-item-sub-active-color);
+  background-color: var(--nav-item-sub-active-bg);
+}
+
+/* --------------------------------------------------------------------------
+   4. BLOCO DE FILHOS (collapse + linha vertical)
+   -------------------------------------------------------------------------- */
+.nav-children {
+  padding-left: calc(var(--nav-item-pl) + var(--nav-icon-size) / 2); /* 24px */
+  overflow: hidden;
+  transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-children > ul {
+  position: relative;
+  padding-left: var(--nav-bullet-size);   /* 12px */
+}
+.nav-children > ul::before {              /* a linha vertical */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  bottom: calc(var(--nav-item-sub-height) - 2px - var(--nav-bullet-size) / 2);
+  background-color: var(--nav-bullet-color);
+}
+.nav-children > ul > li:first-of-type { margin-top: var(--nav-item-gap); }
+
+/* --------------------------------------------------------------------------
+   5. FORMA MINI
+   -------------------------------------------------------------------------- */
+.sidebar.is-mini .nav-item--root {
+  min-height: 56px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 4px 6px;
+  position: relative;
+}
+.sidebar.is-mini .nav-item--root .nav-item__icon {
+  width: 22px; height: 22px; margin: 0 0 6px;
+}
+.sidebar.is-mini .nav-item--root .nav-item__texts { flex: none; align-items: center; }
+.sidebar.is-mini .nav-item--root .nav-item__title {
+  font-size: 8.75px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+.sidebar.is-mini .nav-item--root.is-active .nav-item__title { font-weight: 700; }
+.sidebar.is-mini .nav-item--root .nav-item__arrow {
+  position: absolute; top: 11px; right: 6px; margin: 0;
+}
+.sidebar.is-mini .nav-item--root .nav-item__caption,
+.sidebar.is-mini .nav-item--root .nav-item__info,
+.sidebar.is-mini .nav-children { display: none; }
+
+/* --------------------------------------------------------------------------
+   6. BOTÃO DE RECOLHER
+   -------------------------------------------------------------------------- */
+.nav-toggle {
+  position: fixed;
+  top: 36px;                               /* metade do header de 72px */
+  left: var(--nav-vertical-width);
+  transform: translate(-50%, -50%);
+  width: 24px; height: 24px;
+  padding: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--nav-border-color);
+  background: var(--nav-bg);
+  color: #637381;
+  cursor: pointer;
+  z-index: 1202;
+  transition: left var(--nav-transition),
+              background-color 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.is-mini .nav-toggle, .sidebar.is-mini ~ .nav-toggle { left: var(--nav-mini-width); }
+.nav-toggle:hover { color: #1c252e; background: #f4f6f8; }
+.nav-toggle svg { width: 16px; height: 16px; }
+
+/* --------------------------------------------------------------------------
+   7. GAVETA MOBILE (< 1200px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1199.95px) {
+  .sidebar { transform: translateX(-100%); transition: transform 225ms cubic-bezier(0, 0, 0.2, 1); width: var(--nav-mobile-width); }
+  .sidebar.is-mobile-open { transform: translateX(0); box-shadow: 40px 40px 80px -8px rgba(145, 158, 171, 0.24); }
+  .sidebar-offset { padding-left: 0; }
+  .nav-toggle { display: none; }
+  .sidebar-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(28, 37, 46, 0.48);
+    z-index: 1200;
+  }
+}

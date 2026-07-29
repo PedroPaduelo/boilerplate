@@ -145,6 +145,7 @@ export const dsColorTokens: Record<string, DsTokenValue> = {
   "--ds-color-border-input-disabled": "rgba(145 158 171 / 0.24)",
   "--ds-color-border-button-outlined-inherit": "rgba(145 158 171 / 0.32)",
   "--ds-color-border-nav-sidebar": duo("rgba(145 158 171 / 0.12)", "rgba(145 158 171 / 0.08)"),
+  "--ds-color-border-nav-bullet": duo("#EDEFF2", "#282F37"),
   "--ds-color-border-toggle-group": "rgba(145 158 171 / 0.08)",
   "--ds-color-border-pagination-outlined": "rgba(145 158 171 / 0.24)",
 };
@@ -776,6 +777,7 @@ export const dsTokenProvenance: Readonly<Record<string, string>> = {
   "--ds-color-border-input-disabled": "frontend/src/theme/core/components/textfield.tsx:65",
   "--ds-color-border-button-outlined-inherit": "frontend/src/theme/core/components/button.tsx:125",
   "--ds-color-border-nav-sidebar": "frontend/src/layouts/dashboard/css-vars.ts:40",
+  "--ds-color-border-nav-bullet": "frontend/src/components/nav-section/styles/css-vars.ts:7",
   "--ds-color-border-toggle-group": "frontend/src/theme/core/components/button-toggle.tsx:82",
   "--ds-color-border-pagination-outlined": "frontend/src/theme/core/components/pagination.tsx:103"
 };

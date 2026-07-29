@@ -87,6 +87,21 @@
    -------------------------------------------------------------------------- */
 @import './../shared/ui/charts/chart-theme.css';
 
+/* --------------------------------------------------------------------------
+   NAVEGAÇÃO LATERAL — o estilo do componente próprio `shared/ui/nav-section`.
+
+   A nav do AuditorIA não é tema em cima do `SideNav` do Astryx: o DOM do DS não
+   tem legenda de 2ª linha, cotovelo de aninhamento nem o bloco de 56px da forma
+   recolhida, e não existe prop, slot ou variante que produza isso
+   (`docs/design-system/sidebar/CONTRATO.md` §1). Sendo componente próprio, o
+   estilo é CSS — como já acontece com os gráficos acima.
+
+   Mesmo tratamento de `chart-theme.css`: o arquivo declara a própria
+   `@layer components`, então entra depois do DS e antes das utilities. Toda
+   medida e toda cor saem de `--ds-*`.
+   -------------------------------------------------------------------------- */
+@import './../shared/ui/nav-section/nav-section.css';
+
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
 

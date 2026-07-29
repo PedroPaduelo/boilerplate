@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sidebar — réplica funcional · AuditorIA</title>
+<style id="sidebar-css">
+/* ==========================================================================
+   Sidebar do AuditorIA — CSS puro (sem MUI)
+   Réplica fiel de frontend/src/components/nav-section + layouts/dashboard.
+   Todos os valores são finais; px reais (base rem original = 14px).
+   ========================================================================== */
+:root {
+  /* larguras e transição do layout */
+  --nav-vertical-width: 300px;
+  --nav-mini-width: 88px;
+  --nav-mobile-width: 288px;
+  --nav-transition: 120ms linear;
+
+  /* superfícies */
+  --nav-bg: #ffffff;
+  --nav-border-color: rgba(145, 158, 171, 0.12);
+
+  /* item */
+  --nav-item-gap: 4px;
+  --nav-item-radius: 8px;
+  --nav-item-pt: 4px;
+  --nav-item-pr: 8px;
+  --nav-item-pb: 4px;
+  --nav-item-pl: 12px;
+  --nav-item-root-height: 44px;
+  --nav-item-sub-height: 36px;
+  --nav-icon-size: 24px;
+  --nav-icon-margin: 0 12px 0 0;
+  --nav-bullet-size: 12px;
+  --nav-bullet-color: #edeff2;          /* tema escuro: #282F37 */
+
+  /* cores de estado */
+  --nav-item-color: #637381;
+  --nav-item-hover-bg: rgba(145, 158, 171, 0.08);
+  --nav-item-caption-color: #919eab;
+  --nav-item-root-active-color: #00a76f;      /* tema escuro: #5BE49B */
+  --nav-item-root-active-bg: rgba(0, 167, 111, 0.08);
+  --nav-item-root-active-hover-bg: rgba(0, 167, 111, 0.16);
+  --nav-item-root-open-color: #1c252e;
+  --nav-item-root-open-bg: rgba(145, 158, 171, 0.08);
+  --nav-item-sub-active-color: #1c252e;
+  --nav-item-sub-active-bg: rgba(145, 158, 171, 0.08);
+  --nav-subheader-color: #919eab;
+  --nav-subheader-hover-color: #1c252e;
+
+  --nav-font: "Public Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   1. CONTÊINER  (fixed à esquerda; o conteúdo da página compensa a largura)
+   -------------------------------------------------------------------------- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--nav-vertical-width);
+  display: flex;
+  flex-direction: column;
+  background: var(--nav-bg);
+  border-right: 1px solid var(--nav-border-color);
+  transition: width var(--nav-transition);
+  z-index: 1201;
+  font-family: var(--nav-font);
+}
+.sidebar.is-mini { width: var(--nav-mini-width); }
+
+/* o main da aplicação */
+.sidebar-offset {
+  padding-left: var(--nav-vertical-width);
+  transition: padding-left var(--nav-transition);
+}
+.sidebar.is-mini ~ .sidebar-offset,
+.is-mini .sidebar-offset { padding-left: var(--nav-mini-width); }
+
+/* logo */
+.sidebar__logo {
+  flex-shrink: 0;
+  padding: 20px 0 8px 28px;
+}
+.sidebar__logo img, .sidebar__logo .logo { width: 40px; height: 40px; display: block; }
+.sidebar.is-mini .sidebar__logo { padding: 20px 0; display: flex; justify-content: center; }
+
+/* área rolável */
+.sidebar__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(145, 158, 171, 0.4) transparent;
+}
+
+/* lista raiz */
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nav-item-gap);
+  margin: 0;
+  padding: 0 16px;
+  list-style: none;
+}
+.sidebar.is-mini .sidebar__nav { padding: 0 4px 16px; }
+.sidebar__nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nav-item-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* --------------------------------------------------------------------------
+   2. SUBHEADER DE GRUPO (clicável; seta aparece no hover)
+   -------------------------------------------------------------------------- */
+.nav-subheader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  position: relative;
+  cursor: pointer;
+  padding: 16px 8px 8px 12px;
+  font-size: 9.625px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: var(--nav-subheader-color);
+  transition: color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              padding-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  border: 0; background: none; font-family: inherit;
+}
+.nav-subheader .arrow {
+  position: absolute;
+  left: -4px;
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+  transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-subheader:hover {
+  padding-left: 16px;
+  color: var(--nav-subheader-hover-color);
+}
+.nav-subheader:hover .arrow { opacity: 1; }
+.sidebar.is-mini .nav-subheader { display: none; }
+
+/* --------------------------------------------------------------------------
+   3. ITEM (raiz e sub)
+   -------------------------------------------------------------------------- */
+.nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--nav-item-pt) var(--nav-item-pr) var(--nav-item-pb) var(--nav-item-pl);
+  border: 0;
+  border-radius: var(--nav-item-radius);
+  background: transparent;
+  color: var(--nav-item-color);
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nav-item:hover { background-color: var(--nav-item-hover-bg); }
+
+.nav-item__icon {
+  width: var(--nav-icon-size);
+  height: var(--nav-icon-size);
+  margin: var(--nav-icon-margin);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.nav-item__icon > * { width: 100%; height: 100%; }
+
+.nav-item__texts {
+  flex: 1 1 auto;
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.nav-item__title {
+  font-size: 12.25px;
+  font-weight: 500;
+  line-height: 1.5714;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.nav-item__caption {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--nav-item-caption-color);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.nav-item__info {
+  flex-shrink: 0;
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  display: inline-flex;
+}
+.nav-item__arrow {
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  display: inline-flex;
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* raiz */
+.nav-item--root { min-height: var(--nav-item-root-height); }
+.nav-item--root.is-open {
+  color: var(--nav-item-root-open-color);
+  background-color: var(--nav-item-root-open-bg);
+}
+.nav-item--root.is-active {
+  color: var(--nav-item-root-active-color);
+  background-color: var(--nav-item-root-active-bg);
+}
+.nav-item--root.is-active:hover { background-color: var(--nav-item-root-active-hover-bg); }
+.nav-item.is-active .nav-item__title { font-weight: 600; }
+.nav-item.is-disabled { opacity: 0.48; pointer-events: none; }
+
+/* sub */
+.nav-item--sub {
+  min-height: var(--nav-item-sub-height);
+  position: relative;
+}
+.nav-item--sub::before {                 /* o "cotovelo" */
+  content: "";
+  position: absolute;
+  left: 0;
+  width: var(--nav-bullet-size);
+  height: var(--nav-bullet-size);
+  transform: translate(calc(var(--nav-bullet-size) * -1), calc(var(--nav-bullet-size) * -0.4));
+  background-color: var(--nav-bullet-color);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 14 14'%3E%3Cpath d='M1 1v4a8 8 0 0 0 8 8h4' stroke='%23efefef' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 50% 50%/100% auto;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 14 14'%3E%3Cpath d='M1 1v4a8 8 0 0 0 8 8h4' stroke='%23efefef' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 50% 50%/100% auto;
+}
+.nav-item--sub.is-open,
+.nav-item--sub.is-active {
+  color: var(--nav-item-sub-active-color);
+  background-color: var(--nav-item-sub-active-bg);
+}
+
+/* --------------------------------------------------------------------------
+   4. BLOCO DE FILHOS (collapse + linha vertical)
+   -------------------------------------------------------------------------- */
+.nav-children {
+  padding-left: calc(var(--nav-item-pl) + var(--nav-icon-size) / 2); /* 24px */
+  overflow: hidden;
+  transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-children > ul {
+  position: relative;
+  padding-left: var(--nav-bullet-size);   /* 12px */
+}
+.nav-children > ul::before {              /* a linha vertical */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  bottom: calc(var(--nav-item-sub-height) - 2px - var(--nav-bullet-size) / 2);
+  background-color: var(--nav-bullet-color);
+}
+.nav-children > ul > li:first-of-type { margin-top: var(--nav-item-gap); }
+
+/* --------------------------------------------------------------------------
+   5. FORMA MINI
+   -------------------------------------------------------------------------- */
+.sidebar.is-mini .nav-item--root {
+  min-height: 56px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 4px 6px;
+  position: relative;
+}
+.sidebar.is-mini .nav-item--root .nav-item__icon {
+  width: 22px; height: 22px; margin: 0 0 6px;
+}
+.sidebar.is-mini .nav-item--root .nav-item__texts { flex: none; align-items: center; }
+.sidebar.is-mini .nav-item--root .nav-item__title {
+  font-size: 8.75px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+.sidebar.is-mini .nav-item--root.is-active .nav-item__title { font-weight: 700; }
+.sidebar.is-mini .nav-item--root .nav-item__arrow {
+  position: absolute; top: 11px; right: 6px; margin: 0;
+}
+.sidebar.is-mini .nav-item--root .nav-item__caption,
+.sidebar.is-mini .nav-item--root .nav-item__info,
+.sidebar.is-mini .nav-children { display: none; }
+
+/* --------------------------------------------------------------------------
+   6. BOTÃO DE RECOLHER
+   -------------------------------------------------------------------------- */
+.nav-toggle {
+  position: fixed;
+  top: 36px;                               /* metade do header de 72px */
+  left: var(--nav-vertical-width);
+  transform: translate(-50%, -50%);
+  width: 24px; height: 24px;
+  padding: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--nav-border-color);
+  background: var(--nav-bg);
+  color: #637381;
+  cursor: pointer;
+  z-index: 1202;
+  transition: left var(--nav-transition),
+              background-color 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.is-mini .nav-toggle, .sidebar.is-mini ~ .nav-toggle { left: var(--nav-mini-width); }
+.nav-toggle:hover { color: #1c252e; background: #f4f6f8; }
+.nav-toggle svg { width: 16px; height: 16px; }
+
+/* --------------------------------------------------------------------------
+   7. GAVETA MOBILE (< 1200px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1199.95px) {
+  .sidebar { transform: translateX(-100%); transition: transform 225ms cubic-bezier(0, 0, 0.2, 1); width: var(--nav-mobile-width); }
+  .sidebar.is-mobile-open { transform: translateX(0); box-shadow: 40px 40px 80px -8px rgba(145, 158, 171, 0.24); }
+  .sidebar-offset { padding-left: 0; }
+  .nav-toggle { display: none; }
+  .sidebar-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(28, 37, 46, 0.48);
+    z-index: 1200;
+  }
+}
+
+</style>
+<style>
+/* página de demonstração */
+body{margin:0;background:#F4F6F8;font-family:"Public Sans Variable",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:#1C252E;font-size:14px}
+.demo-main{min-height:100vh}
+.demo-content{padding:88px 40px 64px;max-width:820px}
+.demo-content h1{font-size:24px;font-weight:700;margin:0 0 4px}
+.demo-content .sub{color:#637381;font-size:12.25px;margin:0 0 24px}
+.demo-card{background:#fff;border-radius:16px;box-shadow:0 0 2px 0 rgba(145,158,171,.2),0 12px 24px -4px rgba(145,158,171,.12);padding:24px;margin-bottom:24px}
+.demo-card h2{font-size:15.75px;font-weight:600;margin:0 0 12px}
+.demo-card p,.demo-card li{font-size:12.25px;color:#637381;line-height:1.6}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:rgba(145,158,171,.12);padding:2px 6px;border-radius:6px}
+.demo-header{position:fixed;top:0;right:0;left:var(--nav-vertical-width);height:72px;display:flex;align-items:center;padding:0 40px;background:rgba(255,255,255,.8);backdrop-filter:blur(6px);z-index:1101;transition:left 120ms linear;font-size:12.25px;color:#637381}
+.is-mini .demo-header{left:var(--nav-mini-width)}
+kbd{border:1px solid rgba(145,158,171,.32);border-radius:6px;padding:1px 6px;font-size:11px;background:#fff}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav class="sidebar" id="sidebar" aria-label="Navegação principal">
+    <div class="sidebar__logo">
+      <svg class="logo" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="#00A76F"/><path d="M12 27V13h4.5c3 0 5 1.6 5 4.2 0 1.8-1 3-2.6 3.6L23 27h-3.3l-3.6-5.6H15V27h-3Zm3-8h1.4c1.4 0 2.2-.7 2.2-1.8 0-1.1-.8-1.8-2.2-1.8H15v3.6ZM25.5 27l4-14h3l-4 14h-3Z" fill="#fff"/></svg>
+    </div>
+    <div class="sidebar__scroll">
+      <ul class="sidebar__nav" id="nav"></ul>
+    </div>
+  </nav>
+  <button class="nav-toggle" id="toggle" aria-label="Recolher menu">
+    <svg id="toggle-icon" viewBox="0 0 24 24" fill="none"><path fill="currentColor" d="M13.83 19a1 1 0 0 1-.78-.37l-4.83-6a1 1 0 0 1 0-1.27l5-6a1 1 0 0 1 1.54 1.28L10.29 12l4.32 5.36a1 1 0 0 1-.78 1.64"/></svg>
+  </button>
+
+  <div class="sidebar-offset demo-main">
+    <header class="demo-header">Réplica funcional — compare com o sistema real lado a lado</header>
+    <main class="demo-content">
+      <h1>Sidebar — réplica funcional</h1>
+      <p class="sub">HTML + CSS puro + 60 linhas de JS · sem MUI · todos os valores da especificação</p>
+
+      <div class="demo-card">
+        <h2>O que testar</h2>
+        <ul>
+          <li><b>Recolher</b>: o botão flutuante na borda (ou <kbd>M</kbd>) alterna 300px ↔ 88px em <code>120ms linear</code> — repare que o conteúdo desliza junto.</li>
+          <li><b>Subheader</b>: passe o mouse em “GERENCIAMENTO” — a seta surge à esquerda e o rótulo empurra 4px; clique colapsa o grupo.</li>
+          <li><b>Item com filhos</b>: clique em “Atividade Fiscal” — expande com animação; os filhos têm a <b>linha vertical</b> e o <b>cotovelo</b> curvo.</li>
+          <li><b>Ativo</b>: “Execução” é a rota ativa — o sub fica <b>escuro</b> (não verde); o pai aberto fica cinza. Clique em “Visão Geral”: item raiz ativo fica <b>verde</b> com fundo verde 8%.</li>
+          <li><b>Mini</b>: recolha e veja os blocos de 56px com ícone 22px + rótulo 8,75px; a seta dos itens com filhos vira um chevron no canto.</li>
+        </ul>
+      </div>
+
+      <div class="demo-card">
+        <h2>Medidas em uso nesta página</h2>
+        <p>Item raiz <code>44px</code> · sub <code>36px</code> · raio <code>8px</code> · gap <code>4px</code> ·
+        ícone <code>24px</code> · título <code>12,25px/500</code> (ativo 600) · subheader <code>9,625px/700 CAPS</code> ·
+        ativo raiz <code>#00A76F</code> sobre <code>rgba(0,167,111,.08)</code> · hover <code>rgba(145,158,171,.08)</code> ·
+        borda <code>rgba(145,158,171,.12)</code> · bullet <code>12px #EDEFF2</code>.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ícones (Iconify → SVG inline, currentColor) */
+const IC = {
+  dash: '<svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" opacity=".4" d="M2 6.5c0-2.121 0-3.182.659-3.841C3.318 2 4.379 2 6.5 2c2.121 0 3.182 0 3.841.659C11 3.318 11 4.379 11 6.5c0 2.121 0 3.182-.659 3.841C9.682 11 8.621 11 6.5 11c-2.121 0-3.182 0-3.841-.659C2 9.682 2 8.621 2 6.5"/><path fill="currentColor" d="M13 17.5c0-2.121 0-3.182.659-3.841C14.318 13 15.379 13 17.5 13c2.121 0 3.182 0 3.841.659C22 14.318 22 15.379 22 17.5c0 2.121 0 3.182-.659 3.841C20.682 22 19.621 22 17.5 22c-2.121 0-3.182 0-3.841-.659C13 20.682 13 19.621 13 17.5"/><path fill="currentColor" opacity=".7" d="M2 17.5c0-2.121 0-3.182.659-3.841C3.318 13 4.379 13 6.5 13c2.121 0 3.182 0 3.841.659C11 14.318 11 15.379 11 17.5c0 2.121 0 3.182-.659 3.841C9.682 22 8.621 22 6.5 22c-2.121 0-3.182 0-3.841-.659C2 20.682 2 19.621 2 17.5"/><path fill="currentColor" opacity=".7" d="M13 6.5c0-2.121 0-3.182.659-3.841C14.318 2 15.379 2 17.5 2c2.121 0 3.182 0 3.841.659C22 3.318 22 4.379 22 6.5c0 2.121 0 3.182-.659 3.841C20.682 11 19.621 11 17.5 11c-2.121 0-3.182 0-3.841-.659C13 9.682 13 8.621 13 6.5"/></svg>',
+  docs: '<svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" opacity=".4" d="M3 10c0-3.771 0-5.657 1.172-6.828C5.343 2 7.229 2 11 2h2c3.771 0 5.657 0 6.828 1.172C21 4.343 21 6.229 21 10v4c0 3.771 0 5.657-1.172 6.828C18.657 22 16.771 22 13 22h-2c-3.771 0-5.657 0-6.828-1.172C3 19.657 3 17.771 3 14z"/><path fill="currentColor" d="M7.25 8A.75.75 0 0 1 8 7.25h8a.75.75 0 0 1 0 1.5H8A.75.75 0 0 1 7.25 8m0 4a.75.75 0 0 1 .75-.75h8a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75m0 4a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" opacity=".4" d="M2 10.5a8.5 8.5 0 1 1 17 0a8.5 8.5 0 0 1-17 0"/><path fill="currentColor" d="M20.47 21.53a.75.75 0 1 0 1.06-1.06l-2.5-2.5a.75.75 0 1 0-1.06 1.06z"/></svg>',
+  inbox: '<svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" d="M3.464 20.536C4.93 22 7.286 22 12 22s7.071 0 8.535-1.465c1.271-1.27 1.44-3.213 1.462-6.785H18.84c-.974 0-1.229.016-1.442.114c-.214.099-.392.282-1.026 1.02l-.605.707c-.502.587-.9 1.052-1.45 1.305s-1.162.253-1.934.252h-.766c-.773 0-1.385.002-1.935-.252c-.55-.253-.948-.718-1.45-1.305l-.605-.706c-.634-.74-.812-.922-1.026-1.02c-.213-.099-.468-.115-1.442-.115H2.003c.023 3.572.19 5.515 1.461 6.785"/><path fill="currentColor" opacity=".5" d="M20.536 3.464C19.07 2 16.714 2 12 2S4.929 2 3.464 3.464C2 4.93 2 7.286 2 12v.25h3.295c.772 0 1.384-.002 1.934.252c.55.253.948.718 1.45 1.305l.605.706c.634.74.812.922 1.026 1.02c.213.099.468.115 1.442.115h.496c.974 0 1.229-.016 1.442-.114c.214-.099.392-.282 1.026-1.02l.605-.707c.502-.587.9-1.052 1.45-1.305c.55-.254 1.162-.253 1.935-.252H22V12c0-4.714 0-7.071-1.465-8.536"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" opacity=".4" d="M12 2c-.53 0-1.04.21-1.77.62l-5.05 2.87C4.45 5.9 4.08 6.11 3.81 6.4a3 3 0 0 0-.66 1.13C3 7.91 3 8.34 3 9.18v5.64c0 .84 0 1.27.15 1.65a3 3 0 0 0 .66 1.13c.27.29.64.5 1.37.91l5.05 2.87c.73.41 1.24.62 1.77.62s1.04-.21 1.77-.62l5.05-2.87c.73-.41 1.1-.62 1.37-.91a3 3 0 0 0 .66-1.13c.15-.38.15-.81.15-1.65V9.18c0-.84 0-1.27-.15-1.65a3 3 0 0 0-.66-1.13c-.27-.29-.64-.5-1.37-.91L13.77 2.62C13.04 2.21 12.53 2 12 2"/><path fill="currentColor" d="M8.25 12a3.75 3.75 0 1 1 7.5 0a3.75 3.75 0 0 1-7.5 0"/></svg>',
+  arrowR: '<svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" d="M10 19a1 1 0 0 1-.64-.23a1 1 0 0 1-.13-1.41L13.71 12L9.39 6.63a1 1 0 0 1 .15-1.41a1 1 0 0 1 1.46.15l4.83 6a1 1 0 0 1 0 1.27l-5 6A1 1 0 0 1 10 19"/></svg>',
+  arrowD: '<svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" d="M12 16a1 1 0 0 1-.64-.23l-6-5a1 1 0 1 1 1.28-1.54L12 13.71l5.36-4.32a1 1 0 0 1 1.41.15a1 1 0 0 1-.14 1.46l-6 4.83A1 1 0 0 1 12 16"/></svg>',
+};
+
+/* estrutura de exemplo (o formato, não o conteúdo real) */
+const NAV = [
+  { subheader: 'Visão geral', items: [
+    { title: 'Visão Geral', icon: IC.dash },
+    { title: 'Dashboards', icon: IC.search, caption: 'Análises por critério', children: [
+      { title: 'Painel A' }, { title: 'Painel B' }, { title: 'Painel C' },
+    ]},
+  ]},
+  { subheader: 'Gerenciamento', items: [
+    { title: 'Atividade Fiscal', icon: IC.docs, children: [
+      { title: 'Parametrização' },
+      { title: 'Execução', active: true },
+      { title: 'Ordem de Serviço' },
+    ]},
+    { title: 'Caixa de Entrada', icon: IC.inbox, info: '+32' },
+    { title: 'Configurações', icon: IC.gear },
+    { title: 'Item desabilitado', icon: IC.gear, disabled: true },
+  ]},
+];
+
+const nav = document.getElementById('nav');
+const arrow = (open) => `<span class="nav-item__arrow">${open ? IC.arrowD : IC.arrowR}</span>`;
+
+function itemHtml(d, depth) {
+  const isRoot = depth === 1;
+  const cls = ['nav-item', isRoot ? 'nav-item--root' : 'nav-item--sub'];
+  const hasKids = !!d.children;
+  const open = hasKids && d.children.some((c) => c.active);
+  if (d.active) cls.push('is-active');
+  if (open && !d.active) cls.push('is-open');
+  if (d.disabled) cls.push('is-disabled');
+  return `
+    <li>
+      <button class="${cls.join(' ')}" data-haschildren="${hasKids}" aria-expanded="${open}">
+        ${d.icon ? `<span class="nav-item__icon">${d.icon}</span>` : ''}
+        <span class="nav-item__texts">
+          <span class="nav-item__title">${d.title}</span>
+          ${d.caption ? `<span class="nav-item__caption" title="${d.caption}">${d.caption}</span>` : ''}
+        </span>
+        ${d.info ? `<span class="nav-item__info">${d.info}</span>` : ''}
+        ${hasKids ? arrow(open) : ''}
+      </button>
+      ${hasKids ? `<div class="nav-children" style="${open ? '' : 'height:0'}">
+        <ul>${d.children.map((c) => itemHtml(c, depth + 1)).join('')}</ul>
+      </div>` : ''}
+    </li>`;
+}
+
+nav.innerHTML = NAV.map((g) => `
+  <li>
+    <button class="nav-subheader" aria-expanded="true">
+      <span class="arrow">${IC.arrowD}</span>${g.subheader}
+    </button>
+    <div class="nav-children"><ul>${g.items.map((i) => itemHtml(i, 1)).join('')}</ul></div>
+  </li>`).join('');
+
+/* comportamento: expandir/colapsar com animação de altura */
+function slide(el, open) {
+  el.style.height = el.scrollHeight + 'px';
+  if (!open) requestAnimationFrame(() => { el.style.height = '0'; });
+  else el.addEventListener('transitionend', function fim(){ el.style.height=''; el.removeEventListener('transitionend', fim); });
+}
+nav.addEventListener('click', (e) => {
+  const sub = e.target.closest('.nav-subheader');
+  if (sub) {
+    const box = sub.nextElementSibling, open = sub.getAttribute('aria-expanded') === 'true';
+    sub.setAttribute('aria-expanded', String(!open));
+    sub.querySelector('.arrow').innerHTML = open ? IC.arrowR : IC.arrowD;
+    slide(box, !open);
+    return;
+  }
+  const btn = e.target.closest('.nav-item');
+  if (!btn) return;
+  if (btn.dataset.haschildren === 'true') {
+    const box = btn.parentElement.querySelector('.nav-children');
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    btn.classList.toggle('is-open', !open && !btn.classList.contains('is-active'));
+    btn.querySelector('.nav-item__arrow').innerHTML = open ? IC.arrowR : IC.arrowD;
+    slide(box, !open);
+  } else {
+    nav.querySelectorAll('.nav-item.is-active').forEach((b) => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+  }
+});
+
+/* recolher / expandir */
+const app = document.getElementById('app');
+const toggle = document.getElementById('toggle');
+const setMini = (mini) => {
+  app.classList.toggle('is-mini', mini);
+  document.getElementById('sidebar').classList.toggle('is-mini', mini);
+  document.getElementById('toggle-icon').innerHTML = mini
+    ? '<path fill="currentColor" d="M10 19a1 1 0 0 1-.64-.23a1 1 0 0 1-.13-1.41L13.71 12L9.39 6.63a1 1 0 0 1 .15-1.41a1 1 0 0 1 1.46.15l4.83 6a1 1 0 0 1 0 1.27l-5 6A1 1 0 0 1 10 19"/>'
+    : '<path fill="currentColor" d="M13.83 19a1 1 0 0 1-.78-.37l-4.83-6a1 1 0 0 1 0-1.27l5-6a1 1 0 0 1 1.54 1.28L10.29 12l4.32 5.36a1 1 0 0 1-.78 1.64"/>';
+};
+toggle.addEventListener('click', () => setMini(!app.classList.contains('is-mini')));
+document.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'm') toggle.click(); });
+</script>
+</body></html>

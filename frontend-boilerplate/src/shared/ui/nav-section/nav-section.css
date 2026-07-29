@@ -1,0 +1,753 @@
+/* ==========================================================================
+   NAVEGAÇÃO LATERAL — todo o estilo do `@/shared/ui/nav-section`
+   ==========================================================================
+
+   Este arquivo é o `docs/design-system/sidebar/referencia/sidebar.css` com os
+   valores trocados por tokens `--ds-*`. A geometria é a mesma, linha por linha;
+   o que muda é a PROCEDÊNCIA de cada número: lá eram literais medidos, aqui são
+   os tokens que o `auditoria.css` publica a partir da auditoria do sistema de
+   origem. Trocar um token muda a nav junto com o resto do app — que é a regra
+   que vale no projeto inteiro (ver `shared/theme/ds/README.md`).
+
+   TRÊS VALORES SÃO DIGITADOS, e só três, porque não existem como token e a
+   §4 do CONTRATO autoriza nomeando a origem de cada um:
+
+     0.16      fundo do item raiz ativo em hover  (vertical/nav-item.tsx:185-199)
+     9.625px   corpo do subheader                 (components/nav-subheader.tsx:15-55)
+     8.75px    rótulo da forma mini               (mini/nav-item.tsx:186-205)
+
+   Mais dois números são GEOMETRIA do painel flutuante da forma mini
+   (`min-width` e o raio do desfoque), que a §4 lista sem token correspondente:
+   estão isolados no bloco do dropdown, com a origem ao lado — mesmo tratamento
+   que `shared/ui/charts/chart-theme.css` dá às medidas da referência dele.
+
+   Vive na camada `components`: depois do Astryx, antes das utilities.
+   ========================================================================== */
+
+@layer components {
+  /* ------------------------------------------------------------------------
+     1. AS VARIÁVEIS DA VARIANTE
+
+     Na origem, cada variante da nav (vertical/mini/horizontal) publica o SEU
+     mapa de custom properties no `<nav>` e os itens leem só essas variáveis
+     (`styles/css-vars.ts`). Mantemos a mesma arquitetura: é o que permite a
+     forma mini reescrever meia dúzia de nomes em vez de duplicar regras.
+
+     Três raízes, e nenhuma delas é opcional:
+
+     - `.app-nav`         — a lista, como na origem;
+     - `.app-nav__dropdown` — o painel flutuante, renderizado em PORTAL no
+       `<body>`: fora da subárvore do `<nav>`, não herdaria nada;
+     - `.app-nav-sidebar` — o CONTÊINER, porque o botão de recolher é irmão da
+       área rolável, não descendente do `<nav>`. Custom property só desce, e o
+       botão media `var(--app-nav-arrow-size)` sem nunca alcançá-lo: `var()` sem
+       fallback e sem valor é inválido em tempo de valor computado, então
+       `width` caía em `auto` e o botão saía com 10×10 e o ícone com 0×0 —
+       medido em Chrome. É o modo de falhar que o `ds:check` existe para pegar
+       no tema, e que aqui só a árvore real revela.
+     ---------------------------------------------------------------------- */
+  .app-nav-sidebar,
+  .app-nav,
+  .app-nav__dropdown {
+    /* medidas do item */
+    --app-nav-item-gap: var(--ds-layout-nav-item-vertical-gap);
+    --app-nav-item-radius: var(--ds-layout-nav-item-vertical-radius);
+    --app-nav-item-padding: var(--ds-layout-nav-item-vertical-padding);
+    /* o recuo esquerdo isolado — entra no cálculo do recuo dos filhos */
+    --app-nav-item-pl: var(--ds-spacing-1_5);
+    --app-nav-item-root-height: var(--ds-layout-nav-item-vertical-root-height);
+    --app-nav-item-sub-height: var(--ds-layout-nav-item-vertical-sub-height);
+    --app-nav-icon-size: var(--ds-layout-nav-item-vertical-icon-size);
+    --app-nav-icon-margin: var(--ds-layout-nav-item-vertical-icon-margin);
+    --app-nav-bullet-size: var(--ds-layout-nav-item-vertical-bullet-size);
+    /* 16px: o tamanho das setas e do "i". Não há token de ícone genérico no
+       DS, e `spacing(2)` é o mesmo 16px que a origem escreve à mão. */
+    --app-nav-arrow-size: var(--ds-spacing-2);
+    /* 6px: respiro entre o texto e o que vem à direita (badge e seta). */
+    --app-nav-gutter: var(--ds-spacing-0_75);
+
+    /* cores de estado */
+    --app-nav-item-color: var(--ds-color-text-secondary);
+    --app-nav-item-hover-bg: var(--ds-color-action-hover);
+    --app-nav-caption-color: var(--ds-color-text-disabled);
+    --app-nav-bullet-color: var(--ds-color-border-nav-bullet);
+    /* No escuro a marca clareia (o verde `main` não tem contraste sobre
+       #141A21); é a mesma regra do slot `--color-text-accent` do tema. */
+    --app-nav-root-active-color: light-dark(
+      var(--ds-color-primary-main),
+      var(--ds-color-primary-light)
+    );
+    --app-nav-root-active-bg: rgba(
+      var(--ds-channel-primary-main) / var(--ds-opacity-selected)
+    );
+    /*
+      EXCEÇÃO 1/3 — `0.16` literal.
+      `varAlpha(primary.mainChannel, 0.16)` em `vertical/nav-item.tsx:185-199`.
+      Não é `--ds-opacity-activated` (0.12) nem `--ds-color-action-selected`
+      (canal cinza): é o dobro do fundo ativo, no canal da MARCA. Sem token.
+    */
+    --app-nav-root-active-hover-bg: rgba(var(--ds-channel-primary-main) / 0.16);
+    /* Aberto e sub-item ativo compartilham o mesmo par: texto principal sobre
+       o overlay de hover. Só a rota ativa RAIZ é verde (§3 do contrato). */
+    --app-nav-open-color: var(--ds-color-text-primary);
+    --app-nav-open-bg: var(--ds-color-action-hover);
+    --app-nav-subheader-color: var(--ds-color-text-disabled);
+    --app-nav-subheader-hover-color: var(--ds-color-text-primary);
+  }
+
+  /* Forma mini: só os nomes que mudam. */
+  .app-nav--mini {
+    --app-nav-item-gap: var(--ds-layout-nav-item-mini-gap);
+    --app-nav-item-radius: var(--ds-layout-nav-item-mini-radius);
+    --app-nav-item-root-height: var(--ds-layout-nav-item-mini-root-height);
+    --app-nav-item-padding: var(--ds-layout-nav-item-mini-root-padding);
+    --app-nav-icon-size: var(--ds-layout-nav-item-mini-icon-size);
+    --app-nav-icon-margin: var(--ds-layout-nav-item-mini-icon-root-margin);
+  }
+
+  /* ------------------------------------------------------------------------
+     2. CONTÊINER — superfície, largura e rolagem
+     ---------------------------------------------------------------------- */
+  .app-nav-sidebar {
+    /* Geometria do botão de recolher, num lugar só: ela é lida DUAS vezes —
+       para desenhar o botão e para reservar a faixa que ele ocupa. Derivada e
+       não digitada, para as duas nunca saírem de sincronia. */
+    --app-nav-toggle-size: calc(var(--app-nav-arrow-size) + var(--ds-spacing-0_5) * 2);
+    --app-nav-toggle-center: calc(var(--ds-layout-header-height-desktop) / 2);
+
+    position: relative; /* âncora do botão de recolher */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: var(--ds-layout-nav-vertical-width);
+    flex: 0 0 var(--ds-layout-nav-vertical-width);
+    background-color: var(--ds-color-background-default);
+    border-right: var(--ds-border-width-thin) solid var(--ds-color-border-nav-sidebar);
+    /* 120ms linear — a MESMA transição do conteúdo da página, para os dois
+       deslizarem juntos. `flex-basis` acompanha `width` porque aqui a barra é
+       item flex do `AppShell`, e é a base que decide a largura real. */
+    transition:
+      width var(--ds-layout-transition-duration) var(--ds-layout-transition-easing),
+      flex-basis var(--ds-layout-transition-duration) var(--ds-layout-transition-easing);
+  }
+
+  .app-nav-sidebar--mini {
+    width: var(--ds-layout-nav-mini-width);
+    flex-basis: var(--ds-layout-nav-mini-width);
+  }
+
+  /* Gaveta do mobile: quem desenha superfície, largura e sombra é o AppShell. */
+  .app-nav-sidebar--plain {
+    width: 100%;
+    flex: 1 1 auto;
+    background-color: transparent;
+    border-right: 0;
+  }
+
+  /*
+    A FAIXA DO BOTÃO DE RECOLHER É RESERVADA PELA BARRA.
+
+    O botão flutua centrado em 36px (metade do cabeçalho) e tem 24px, ou seja,
+    ocupa de 24px a 48px na borda direita. Na ORIGEM essa faixa é do bloco do
+    logo — `padding: 20px 0 8px 28px` em volta de uma marca de 40px, ~68px de
+    altura antes da lista (`referencia/sidebar.css:77-82`) —, e por isso lá ele
+    não cobre nada. Aqui não há bloco de logo: quem carrega a identidade do
+    produto é o `TopNavHeading` do shell, e repeti-la seria branding duplicado.
+    Sem o bloco, a faixa do botão caía em cima do canto direito do PRIMEIRO
+    item (bem sobre o badge, quando existe) e do "×" de limpar do campo de
+    busca — limpar a busca virava recolher a barra.
+
+    A faixa é do botão, então quem a reserva é a barra, não quem a consome. O
+    valor é o FUNDO da faixa (centro + meia altura) mais um passo de respiro,
+    derivado das mesmas variáveis que POSICIONAM o botão: mexer no cabeçalho ou
+    no tamanho do botão move os dois juntos.
+
+    `padding` no contêiner e não `margin` na lista porque o botão é
+    `position: absolute`: o bloco de contenção dele é a caixa de PADDING desta
+    `<div>`, então o `top: 36px` não anda junto — o conteúdo desce, o botão
+    fica. E `:has()` amarra a reserva à presença REAL do botão: sem ele (gaveta,
+    ou barra sem `onCollapsedChange`) não sobra buraco nenhum.
+  */
+  .app-nav-sidebar:has(> .app-nav-sidebar__toggle) {
+    padding-block-start: calc(
+      var(--app-nav-toggle-center) + var(--app-nav-toggle-size) / 2 + var(--ds-spacing-1)
+    );
+  }
+
+  /* ---- zonas fixas: conteúdo do topo e rodapé ---------------------------
+     O enquadramento das duas mora AQUI, e não no consumidor. Se a barra não
+     der a margem, cada tela que usar `topContent`/`footer` inventa a sua —
+     e a geometria da navegação passa a viver espalhada por quem a consome.
+
+     16px horizontais são os MESMOS da margem lateral da lista
+     (`.app-nav > .app-nav__ul`): o rodapé nasce alinhado com a borda esquerda
+     dos itens, não 4px à esquerda deles.
+     -------------------------------------------------------------------- */
+  .app-nav-sidebar__top,
+  .app-nav-sidebar__footer {
+    flex-shrink: 0;
+    padding: var(--ds-spacing-2);
+  }
+
+  /*
+    A LINHA existe só no rodapé, e a assimetria é deliberada.
+
+    Rodapé: é uma faixa fixa embaixo de uma lista que rola. Quando o conteúdo
+    chega ao fim, o último item encosta no menu da conta — que é justamente uma
+    linha com ícone e rótulo, ou seja, idêntico a um item de navegação. A linha
+    diz "aqui acaba a lista". É também o que o `SideNav` que substituímos faz
+    (`SideNav.tsx:127-129`, `borderBlockStart` no `stickyBottom`).
+
+    Topo: NÃO leva linha. Duas evidências independentes — o `stickyTop` do
+    `SideNav` não tem borda (`SideNav.tsx:74-86`) e o bloco fixo do topo da
+    referência, o logo, também não (`referencia/sidebar.css:77-80`). E o motivo
+    do rodapé não se aplica: o que fica ali é um campo de busca, que já é uma
+    caixa com contorno próprio e nunca se confunde com um item de menu.
+
+    Divergimos do DS num ponto: ele APAGA a borda do rodapé quando recolhido
+    (`stickyBottomCollapsed`). Mantemos, porque o motivo dela não muda com a
+    largura — na faixa de 88px o rodapé é um avatar centrado no fim de uma
+    coluna de blocos centrados, ou seja, o risco de ler como "mais um item" é
+    maior ali, não menor.
+  */
+  .app-nav-sidebar__footer {
+    border-top: var(--ds-border-width-thin) solid var(--ds-color-divider);
+  }
+
+  /* Recolhida, as duas zonas centram o conteúdo (mesma regra que o bloco do
+     logo tem na referência) e o respiro cai para 8px: 16px de cada lado numa
+     faixa de 88px deixariam 56px úteis. */
+  .app-nav-sidebar--mini .app-nav-sidebar__top,
+  .app-nav-sidebar--mini .app-nav-sidebar__footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--ds-spacing-1);
+  }
+
+  /* Na gaveta o respiro lateral é da gaveta (o `AppShell` já o aplica); repetir
+     aqui daria margem dupla. O bloco vertical e a linha continuam, porque são
+     do rodapé, não da caixa. `margin-block-start: auto` empurra o rodapé para o
+     fim mesmo com a lista curta — é o que o DS faz no `drawerFooter`. */
+  .app-nav-sidebar--plain .app-nav-sidebar__top,
+  .app-nav-sidebar--plain .app-nav-sidebar__footer {
+    padding-inline: 0;
+  }
+
+  .app-nav-sidebar--plain .app-nav-sidebar__footer {
+    margin-block-start: auto;
+  }
+
+  .app-nav-sidebar__scroll {
+    flex: 1 1 auto;
+    /* Item flex se recusa a ficar menor que o conteúdo por padrão: sem isto a
+       lista empurra o rodapé para fora em vez de rolar. */
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--ds-channel-grey-500) / var(--ds-opacity-scrollbar))
+      transparent;
+  }
+
+  /* ------------------------------------------------------------------------
+     3. LISTAS
+     ---------------------------------------------------------------------- */
+  .app-nav__ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-nav-item-gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Só a lista RAIZ tem margem lateral; as internas herdam o recuo do bloco. */
+  .app-nav > .app-nav__ul {
+    padding: 0 var(--ds-spacing-2);
+  }
+
+  .app-nav--mini > .app-nav__ul {
+    padding: 0 var(--ds-spacing-0_5) var(--ds-spacing-2);
+  }
+
+  .app-nav__divider {
+    border-top: var(--ds-border-width-thin) solid var(--ds-color-divider);
+  }
+
+  /* ------------------------------------------------------------------------
+     4. SUBHEADER DE GRUPO
+
+     O detalhe de assinatura: no hover o rótulo empurra 12px → 16px enquanto a
+     seta surge à ESQUERDA (fora do fluxo, para não empurrar o texto de novo).
+     ---------------------------------------------------------------------- */
+  .app-nav__subheader {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    /* Largura do TEXTO, não da coluna: o alvo de clique é o rótulo. */
+    align-self: flex-start;
+    gap: var(--ds-spacing-1);
+    padding: var(--ds-spacing-2) var(--ds-spacing-1) var(--ds-spacing-1)
+      var(--ds-spacing-1_5);
+    border: 0;
+    background: none;
+    color: var(--app-nav-subheader-color);
+    font-family: inherit;
+    /*
+      EXCEÇÃO 2/3 — `9.625px` literal.
+      A origem usa `typography.overline` com o `font-size` SOBRESCRITO para
+      0.6875rem (`components/nav-subheader.tsx:15-55`). Não existe token: o
+      `overline` do tema é 10,5px, e usá-lo mudaria o rótulo em 0,875px.
+    */
+    font-size: 9.625px;
+    font-weight: var(--font-weight-bold);
+    line-height: var(--text-body-leading);
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      color var(--duration-medium) var(--ds-easing-in-out),
+      padding-left var(--duration-medium) var(--ds-easing-in-out);
+  }
+
+  .app-nav__subheader-arrow {
+    position: absolute;
+    left: calc(var(--ds-spacing-0_5) * -1);
+    display: inline-flex;
+    width: var(--app-nav-arrow-size);
+    height: var(--app-nav-arrow-size);
+    opacity: 0;
+    transition: opacity var(--duration-medium) var(--ds-easing-in-out);
+  }
+
+  .app-nav__subheader:hover,
+  .app-nav__subheader:focus-visible {
+    padding-left: var(--ds-spacing-2);
+    color: var(--app-nav-subheader-hover-color);
+  }
+
+  /* O foco de teclado revela a seta pelo mesmo motivo do ponteiro: sem ela o
+     controle não se anuncia como clicável. */
+  .app-nav__subheader:hover .app-nav__subheader-arrow,
+  .app-nav__subheader:focus-visible .app-nav__subheader-arrow {
+    opacity: 1;
+  }
+
+  /* ------------------------------------------------------------------------
+     5. ITEM (raiz e sub)
+     ---------------------------------------------------------------------- */
+  .app-nav__item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--app-nav-item-padding);
+    border: 0;
+    border-radius: var(--app-nav-item-radius);
+    background-color: transparent;
+    color: var(--app-nav-item-color);
+    font-family: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    appearance: none;
+  }
+
+  .app-nav__item:hover {
+    background-color: var(--app-nav-item-hover-bg);
+  }
+
+  /* Anel de foco: a origem não tem `:focus-visible` em lugar nenhum (falha de
+     WCAG 2.4.7 registrada na auditoria); o projeto corrige com os tokens que o
+     DS já publica — mesma decisão do resto do app. */
+  .app-nav__item:focus-visible,
+  .app-nav__subheader:focus-visible,
+  .app-nav-sidebar__toggle:focus-visible {
+    outline: var(--ds-focus-ring-width) solid var(--ds-focus-ring-color);
+    outline-offset: var(--ds-focus-ring-offset);
+  }
+
+  .app-nav__icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: var(--app-nav-icon-size);
+    height: var(--app-nav-icon-size);
+    margin: var(--app-nav-icon-margin);
+  }
+
+  /*
+     TODO ícone estica para a caixa que o contém — a nav manda no tamanho, o
+     ícone não. Vale para os do consumidor (que podem vir de qualquer origem) e
+     para os de `@/shared/ui/icons`, que de propósito NÃO declaram `width` nem
+     `height` (`icons/icon-base.tsx`): fixar tamanho lá obrigaria todo
+     consumidor a sobrescrever. Sem estas regras o SVG cai no padrão do browser
+     (300×150) e estoura a linha do item.
+
+     É também o que mantém a coluna alinhada: 24px na raiz, 22px na mini, 16px
+     nas setas — sempre pela caixa, nunca pelo desenho.
+  */
+  .app-nav__icon > *,
+  .app-nav__arrow > *,
+  .app-nav__subheader-arrow > *,
+  .app-nav__caption--icon > * {
+    width: 100%;
+    height: 100%;
+  }
+
+  .app-nav__texts {
+    flex: 1 1 auto;
+    display: inline-flex;
+    flex-direction: column;
+    /* Autoriza o bloco a encolher — sem isto o `line-clamp` do título nunca
+       entra em ação e o rótulo longo empurra a seta para fora. */
+    min-width: 0;
+  }
+
+  .app-nav__title {
+    /* `body2` da origem: 12,25px / 1,5714 — o par que o Astryx publica como
+       `supporting`. */
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--text-supporting-leading);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  .app-nav__caption {
+    font-size: var(--font-size-4xs);
+    line-height: var(--text-body-leading);
+    color: var(--app-nav-caption-color);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  .app-nav__info {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-left: var(--app-nav-gutter);
+    /* A origem escreve 12px puros; o token mais próximo é o mesmo do título
+       (12,25px). A diferença de 0,25px não é perceptível e evita um quarto
+       valor solto no arquivo. */
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-body-leading);
+  }
+
+  .app-nav__arrow {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: var(--app-nav-arrow-size);
+    height: var(--app-nav-arrow-size);
+    margin-left: var(--app-nav-gutter);
+  }
+
+  /* ---- item raiz -------------------------------------------------------- */
+  .app-nav__item--root {
+    min-height: var(--app-nav-item-root-height);
+  }
+
+  .app-nav__item--root.is-open {
+    color: var(--app-nav-open-color);
+    background-color: var(--app-nav-open-bg);
+  }
+
+  .app-nav__item--root.is-active {
+    color: var(--app-nav-root-active-color);
+    background-color: var(--app-nav-root-active-bg);
+  }
+
+  .app-nav__item--root.is-active:hover {
+    background-color: var(--app-nav-root-active-hover-bg);
+  }
+
+  .app-nav__item.is-active .app-nav__title {
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .app-nav__item.is-disabled {
+    opacity: var(--ds-opacity-disabled);
+    pointer-events: none;
+  }
+
+  /* ---- sub-item --------------------------------------------------------- */
+  .app-nav__item--sub {
+    position: relative;
+    min-height: var(--app-nav-item-sub-height);
+  }
+
+  /*
+    O COTOVELO. Não é um ponto: é a curva em "L" que liga o sub-item à linha
+    vertical do grupo. Vem por `mask`, e não por `<svg>`, porque assim a cor é
+    o `background-color` — um token só, que segue o tema claro/escuro sozinho.
+    Por isso o `stroke` dentro do data-URI é irrelevante: a máscara usa só o
+    canal ALFA do desenho (o `#efefef` abaixo é o da origem, preservado por
+    fidelidade ao arquivo de referência).
+    Origem: `vertical/nav-item.tsx:165-183`.
+  */
+  .app-nav__item--sub::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: var(--app-nav-bullet-size);
+    height: var(--app-nav-bullet-size);
+    /* -12px encosta o cotovelo na linha vertical; -0.4 do tamanho (−4,8px)
+       sobe até a altura do texto do sub-item. Proporções da origem. */
+    transform: translate(
+      calc(var(--app-nav-bullet-size) * -1),
+      calc(var(--app-nav-bullet-size) * -0.4)
+    );
+    background-color: var(--app-nav-bullet-color);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 14 14'%3E%3Cpath d='M1 1v4a8 8 0 0 0 8 8h4' stroke='%23efefef' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+      no-repeat 50% 50% / 100% auto;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 14 14'%3E%3Cpath d='M1 1v4a8 8 0 0 0 8 8h4' stroke='%23efefef' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+      no-repeat 50% 50% / 100% auto;
+  }
+
+  /* Sub-item ativo NÃO é verde — é texto principal sobre `action.hover`. A
+     variante vertical rebaixa `sub-active-bg` de `action.selected` (0.16) para
+     `action.hover` (0.08): os sub-itens ativos ficam discretos de propósito. */
+  .app-nav__item--sub.is-open,
+  .app-nav__item--sub.is-active {
+    color: var(--app-nav-open-color);
+    background-color: var(--app-nav-open-bg);
+  }
+
+  /* ------------------------------------------------------------------------
+     6. BLOCO QUE ABRE E FECHA
+
+     `.app-nav__collapse` é só a mecânica de altura (vale para o corpo do grupo
+     também). `.app-nav__children` acrescenta o que é do ANINHAMENTO: o recuo,
+     a linha vertical e o espaço do cotovelo.
+
+     `height` e `overflow` durante a animação são escritos pelo JS (ver
+     `nav-collapse.tsx`); aqui fica o estado fechado — para o primeiro quadro,
+     antes de qualquer efeito rodar, já sair certo.
+     ---------------------------------------------------------------------- */
+  .app-nav__collapse {
+    transition: height var(--duration-medium) var(--ds-easing-in-out);
+  }
+
+  .app-nav__collapse[data-state='closed'] {
+    height: 0;
+    overflow: hidden;
+  }
+
+  .app-nav__children {
+    /* 24px = recuo do item (12px) + meio ícone (12px): a linha nasce no eixo
+       vertical do ícone do pai. */
+    padding-left: calc(var(--app-nav-item-pl) + var(--app-nav-icon-size) / 2);
+  }
+
+  .app-nav__children > .app-nav__ul {
+    position: relative;
+    padding-left: var(--app-nav-bullet-size);
+  }
+
+  /* A LINHA VERTICAL. Para de descer a meio caminho do último cotovelo — por
+     isso o desconto de meia altura de item, da espessura e de meio bullet. */
+  .app-nav__children > .app-nav__ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--ds-border-width-thick);
+    bottom: calc(
+      var(--app-nav-item-sub-height) - var(--ds-border-width-thick) -
+        var(--app-nav-bullet-size) / 2
+    );
+    background-color: var(--app-nav-bullet-color);
+  }
+
+  .app-nav__children > .app-nav__ul > .app-nav__li:first-of-type {
+    margin-top: var(--app-nav-item-gap);
+  }
+
+  /* ------------------------------------------------------------------------
+     7. FORMA MINI — o bloco de 56px
+     ---------------------------------------------------------------------- */
+  /* Altura (56px) e padding (`8px 4px 6px 4px`) já vieram da troca de
+     variáveis lá em cima; o que muda aqui é o EIXO: de linha para coluna. */
+  .app-nav--mini .app-nav__item--root {
+    position: relative;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .app-nav--mini .app-nav__item--root .app-nav__texts {
+    flex: none;
+    align-items: center;
+  }
+
+  .app-nav--mini .app-nav__item--root .app-nav__title {
+    /*
+      EXCEÇÃO 3/3 — `8.75px` (e o `line-height: 16px` do mesmo bloco).
+      `pxToRem(10)` com `lineHeight: 16` em `mini/nav-item.tsx:186-205`. É o
+      menor texto do sistema depois do subheader; não há token abaixo de
+      10,5px, e arredondar para 10,5px engordaria o rótulo em 20%.
+    */
+    font-size: 8.75px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 16px;
+    text-align: center;
+  }
+
+  .app-nav--mini .app-nav__item--root.is-active .app-nav__title {
+    font-weight: var(--font-weight-bold);
+  }
+
+  /* Seta e "i" saem do fluxo: o bloco de 56px é uma coluna centrada
+     (ícone + rótulo) e não sobra linha para eles. `top` = meio ícone, que é
+     exatamente onde o centro do ícone cai depois do padding superior. */
+  .app-nav--mini .app-nav__item--root .app-nav__arrow,
+  .app-nav--mini .app-nav__item--root .app-nav__caption--icon {
+    position: absolute;
+    top: calc(var(--app-nav-icon-size) / 2);
+    /* `display` explícito: o "i" também carrega a classe `__caption`, que é
+       uma caixa de texto truncado (`-webkit-box`) — aqui ele é ícone. */
+    display: inline-flex;
+    width: var(--app-nav-arrow-size);
+    height: var(--app-nav-arrow-size);
+    margin: 0;
+  }
+
+  .app-nav--mini .app-nav__item--root .app-nav__arrow {
+    right: var(--ds-spacing-0_75);
+  }
+
+  .app-nav--mini .app-nav__item--root .app-nav__caption--icon {
+    left: var(--ds-spacing-0_75);
+    color: var(--app-nav-caption-color);
+  }
+
+  /* ------------------------------------------------------------------------
+     8. PAINEL FLUTUANTE DA FORMA MINI
+
+     Mesma superfície de dropdown do sistema: 90% de opacidade com desfoque —
+     o tratamento que mais denuncia uma reprodução malfeita quando vira uma
+     caixa opaca.
+
+     Os dois números soltos do arquivo estão aqui, com a origem ao lado
+     (`components/nav-dropdown.tsx:8-11`): a §4 do contrato lista o painel sem
+     token para largura mínima nem para o raio do desfoque.
+     ---------------------------------------------------------------------- */
+  /* A casca: invisível, só geometria. O `padding` lateral é a ZONA MORTA que
+     cobre o vão entre o item e o painel — sem ela o ponteiro perde o hover no
+     caminho e o menu fecha na cara de quem ia usá-lo. */
+  .app-nav__dropdown {
+    position: fixed;
+    /* `left`/`top` vêm por style inline (medida do item); o deslocamento de
+       meia altura é o `transformOrigin: center/left` da origem. */
+    transform: translateY(-50%);
+    z-index: var(--ds-layout-nav-z-index);
+    padding: 0 var(--ds-spacing-0_75);
+  }
+
+  /* A superfície visível. */
+  .app-nav__dropdown-paper {
+    min-width: 180px;
+    padding: var(--ds-spacing-0_5);
+    border-radius: var(--ds-radius-chip);
+    background-color: color-mix(
+      in srgb,
+      var(--ds-color-background-paper) calc(var(--ds-opacity-paper-surface) * 100%),
+      transparent
+    );
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--ds-shadow-dropdown);
+  }
+
+  /* Dentro do painel os sub-itens usam as medidas da variante mini (34px,
+     `0 8px`) e NÃO têm cotovelo: não há linha vertical para conectar. */
+  .app-nav__dropdown .app-nav__item--sub {
+    min-height: var(--ds-layout-nav-item-mini-sub-height);
+    padding: var(--ds-layout-nav-item-mini-sub-padding);
+  }
+
+  .app-nav__dropdown .app-nav__item--sub::before {
+    content: none;
+  }
+
+  /* ------------------------------------------------------------------------
+     9. BOTÃO DE RECOLHER
+
+     Na origem ele fica CENTRADO na borda (metade para fora), porque lá a
+     sidebar é `position: fixed` e nada a recorta. Aqui ela vive dentro do
+     `LayoutPanel` do `AppShell`, que aplica `overflow: clip` — metade do botão
+     sumiria. Fica tangente por DENTRO (§3.1 do CONTRATO): mesma leitura
+     visual, sem recorte.
+     ---------------------------------------------------------------------- */
+  .app-nav-sidebar__toggle {
+    position: absolute;
+    /* metade do cabeçalho de 72px — a mesma altura do topo da origem. O mesmo
+       par de variáveis define a faixa que a barra reserva lá em cima. */
+    top: var(--app-nav-toggle-center);
+    right: 0;
+    transform: translate(-50%, -50%);
+    /* 24px = ícone de 16px + 4px de padding de cada lado */
+    width: var(--app-nav-toggle-size);
+    height: var(--app-nav-toggle-size);
+    padding: var(--ds-spacing-0_5);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: var(--ds-border-width-thin) solid var(--ds-color-border-nav-sidebar);
+    border-radius: var(--radius-full);
+    background-color: var(--ds-color-background-default);
+    color: var(--ds-color-text-secondary);
+    cursor: pointer;
+    /* acima da área rolável, para o círculo não passar por baixo da lista */
+    z-index: 1;
+    transition:
+      right var(--ds-layout-transition-duration) var(--ds-layout-transition-easing),
+      color var(--duration-fast-max) var(--ds-easing-in-out),
+      background-color var(--duration-fast-max) var(--ds-easing-in-out);
+  }
+
+  .app-nav-sidebar__toggle:hover {
+    color: var(--ds-color-text-primary);
+    background-color: var(--ds-color-background-neutral);
+  }
+
+  /*
+     Aqui o tamanho é EXPLÍCITO, e não `100%` como nos demais slots: com
+     `box-sizing: border-box` (preflight), os 24px do círculo já incluem 1px de
+     borda e 4px de padding de cada lado — sobram 14px de caixa de conteúdo, e
+     `100%` daria um glifo de 14px, quebrando o "ícone 16px" da referência.
+
+     `flex-shrink: 0` pelo MESMO motivo, e ele não é opcional: sem ele o SVG é
+     um item flex de 16px dentro de uma linha de 14px, e o browser o comprime
+     para 14×16 — a seta sai achatada, só na horizontal. Medido em Chrome antes
+     da correção. Com o `shrink` desligado o desenho invade 1px do padding de
+     cada lado (que tem 4px), como na origem: IconButton com `padding: 4` em
+     volta de um ícone de 16.
+  */
+  .app-nav-sidebar__toggle svg {
+    flex-shrink: 0;
+    width: var(--app-nav-arrow-size);
+    height: var(--app-nav-arrow-size);
+  }
+
+  /* ------------------------------------------------------------------------
+     10. MOVIMENTO REDUZIDO
+
+     Quem pede menos movimento continua recebendo TODA a informação — o ramo
+     abre, a barra encolhe, o subheader muda de cor — só sem o trajeto. O
+     `nav-collapse.tsx` faz a parte dele em JS (aplica o estado final direto).
+     ---------------------------------------------------------------------- */
+  @media (prefers-reduced-motion: reduce) {
+    .app-nav-sidebar,
+    .app-nav-sidebar__toggle,
+    .app-nav__collapse,
+    .app-nav__subheader,
+    .app-nav__subheader-arrow {
+      transition: none;
+    }
+  }
+}

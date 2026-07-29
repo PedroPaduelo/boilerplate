@@ -364,7 +364,8 @@ describe('DashboardViewer — acessibilidade da navegação por abas', () => {
   it('cada aba é um LINK de verdade, com endereço próprio', () => {
     /*
      * Mudança de padrão consciente: a barra deixou de ser um "tab strip"
-     * (`TabList` + roving tabindex) e virou uma NAVEGAÇÃO DE LINKS (`SideNav`).
+     * (`TabList` + roving tabindex) e virou uma NAVEGAÇÃO DE LINKS — hoje a
+     * réplica da sidebar do AuditorIA (`@/shared/ui/nav-section`).
      *
      * O motivo foi visual — `orientation="vertical"` do `TabList` só troca as
      * setas do teclado, não empilha, e as abas saíam lado a lado. Mas o ganho é

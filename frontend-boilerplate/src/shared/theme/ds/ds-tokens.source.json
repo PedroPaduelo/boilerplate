@@ -557,6 +557,21 @@
           "source": "frontend/src/layouts/dashboard/css-vars.ts:45"
         }
       },
+      "navBullet": {
+        "note": "Cotovelo e linha vertical do aninhamento da navegacao lateral. Hex literais no arquivo de vars da nav: NAO existem na paleta do tema.",
+        "light": {
+          "value": "#EDEFF2",
+          "rgb": "rgb(237, 239, 242)",
+          "channel": "237 239 242",
+          "source": "frontend/src/components/nav-section/styles/css-vars.ts:7"
+        },
+        "dark": {
+          "value": "#282F37",
+          "rgb": "rgb(40, 47, 55)",
+          "channel": "40 47 55",
+          "source": "frontend/src/components/nav-section/styles/css-vars.ts:7"
+        }
+      },
       "toggleGroup": {
         "value": "rgba(145 158 171 / 0.08)",
         "rgbaLegacy": "rgba(145, 158, 171, 0.08)",

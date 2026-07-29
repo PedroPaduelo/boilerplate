@@ -36,13 +36,9 @@ import { PlaceholderPage } from '@/shared/components/placeholder-page';
 
 export const featureRoutes: FeatureRoutes = {
   // Filhas de "/" (dentro do DashboardLayout, atrás do ProtectedRoute):
-  protected: [
-    { path: 'minha-tela', element: <MinhaTela /> },
-  ],
+  protected: [{ path: 'minha-tela', element: <MinhaTela /> }],
   // Nível raiz, SEM auth (ex.: share público):
-  public: [
-    { path: '/public/:token', element: <PublicView /> },
-  ],
+  public: [{ path: '/public/:token', element: <PublicView /> }],
 };
 ```
 
@@ -52,11 +48,53 @@ export const featureRoutes: FeatureRoutes = {
   pesadas (ver `features/users/routes.tsx` como exemplo canônico).
 - Proteção por papel: embrulhe com
   `<ProtectedRoute requiredRole="ADMIN">...</ProtectedRoute>`.
-- Navegação no menu: ajuste `NAV` em `app/app-sidebar.tsx` (shell da Fase 0).
+- Navegação no menu: ajuste `NAV_GROUPS` em `app/nav-items.ts` (seção 2.1).
 
 As rotas-esqueleto atuais (`connections`, `dashboards`, `charts`, `chat`,
 `share`) renderizam `PlaceholderPage` — cada trilha substitui o
 `features/<x>/routes.tsx` correspondente pela tela real.
+
+## 2.1 Navegação lateral — `nav-items.ts` + `app-sidebar.tsx`
+
+O menu é **dado** (`nav-items.ts`) + **tradução** (`app-sidebar.tsx`). A barra em
+si é a réplica do AuditorIA, em `@/shared/ui/nav-section` (`NavSidebar`) — o
+porquê de não ser o `SideNav` do Astryx está em
+`docs/design-system/sidebar/CONTRATO.md` §1.
+
+Para acrescentar uma tela ao menu, mexa **só** em `nav-items.ts`:
+
+```ts
+{
+  subheader: 'Dados',
+  items: [
+    { href: '/minha-tela', label: 'Minha tela', icon: CatalogIcon,
+      permission: 'artifacts:view' },   // ou `roles: ['ADMIN']`
+  ],
+}
+```
+
+- **Grupos, não lista corrida.** Hoje são três — "Visão geral" (consumo),
+  "Dados" (origem) e "Gerenciamento" (o que exige poder além de olhar). A
+  justificativa completa está no comentário do próprio arquivo.
+- **Ícones**: sempre de `@/shared/ui/icons` (SVG real do sistema, 24×24 em
+  `currentColor`). Guarde o **componente**, não o elemento — `nav-items.ts` é
+  `.ts` puro.
+- **RBAC**: `canSeeNavItem` filtra item a item e `visibleNavGroups` **descarta o
+  grupo que ficou vazio** — senão sobra um rótulo anunciando uma seção que a
+  pessoa não tem. Continua sendo defesa em profundidade: o backend é a
+  autoridade e a rota ainda passa pelo `RequireRole`.
+- **Rota ativa** é calculada em `app-sidebar.tsx` por **segmento**
+  (`=== href` ou `href + '/'`), nunca por `startsWith` puro — `/chartsomething`
+  não pode acender "Gráficos".
+- **Recolhida (88px)** o rodapé mostra só o avatar; o nome do usuário continua
+  sendo o nome acessível do gatilho (`UserMenu isCompact`).
+- **No celular** a barra vira gaveta, e a gaveta leva as MESMAS zonas da coluna
+  (topo, lista e rodapé) — o que ela não desenha é a caixa. Ou seja, o menu da
+  conta e o "Sair" continuam no rodapé em qualquer largura; não há cópia no
+  `TopNav`.
+- **Enquadramento do rodapé** (margem, linha, centragem na forma mini) é da
+  barra, em `nav-section.css`. O `UserMenu` devolve só o gatilho — se ele
+  precisar de respiro diferente, o ajuste é lá, não aqui.
 
 ## 3. Socket.IO — `@/shared/socket`
 
@@ -77,7 +115,9 @@ useEffect(() => {
   s.on(SOCKET_EVENTS.BLOCK_DATA, (p) => {
     queryClient.setQueryData(['block-data', p.blockId, filtersHash], p.result);
   });
-  return () => { s.off(SOCKET_EVENTS.BLOCK_DATA); };
+  return () => {
+    s.off(SOCKET_EVENTS.BLOCK_DATA);
+  };
 }, [connected]);
 ```
 

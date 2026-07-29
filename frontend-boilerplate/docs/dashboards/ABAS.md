@@ -97,16 +97,43 @@ POST /dashboards/:id/publish
 | `shared/contracts/src/layout/tabs.ts`                                | resolução das abas — função **pura, compartilhada BE/FE/MCP**. Fonte única da verdade sobre "qual linha em qual aba" |
 | `features/dashboards/lib/dashboard-tabs.ts`                          | ponte de tipos do contrato para o FE (`resolveTabs`, `pickTab`, `layoutOfTab`, `shouldShowTabNav`)                   |
 | `features/dashboards/components/viewer/dashboard-viewer-content.tsx` | a tela de visualização: aba na URL, grid, filtros                                                                    |
-| `features/dashboards/components/viewer/dashboard-tabs-sidebar.tsx`   | a barra lateral (`TabList` vertical dentro de `LayoutPanel`, 220px)                                                  |
+| `features/dashboards/components/viewer/dashboard-tabs-sidebar.tsx`   | a barra lateral: busca, recolhimento e a ligação com o `NavSidebar`                                                  |
+| `features/dashboards/components/viewer/dashboard-tabs-nav-items.tsx` | tradução ABA → item de navegação (ícone, contagem, seção, ramo das sub-abas)                                         |
+| `shared/ui/nav-section/`                                             | a navegação em si — réplica da sidebar do AuditorIA (`docs/design-system/sidebar/CONTRATO.md`)                       |
 | `features/dashboards/components/editor/tabs-editor.tsx`              | criar/renomear/reordenar abas no editor                                                                              |
 | `features/dashboards/routes.tsx`                                     | rota `dashboards/:id/view`, exige `artifacts:view`                                                                   |
 | `modules/dashboards/schema.ts` (backend)                             | aceita `tabs` no `draftLayout`                                                                                       |
 
-**Acessibilidade:** `<nav aria-label="Abas do dashboard">` (rótulo explícito — o
-padrão do `SideNav` é o genérico "Navegação lateral"), `aria-current="page"` na
-aba atual, e todas as abas alcançáveis por Tab, como qualquer menu de links.
+**Acessibilidade:** `<nav aria-label="Abas do dashboard">` (rótulo explícito, para
+distinguir esta região de um menu de app), `aria-current="page"` na aba atual, e
+todas as abas alcançáveis por Tab, como qualquer menu de links. Sub-aba
+(`level: 2`) vira um bloco `role="group"` rotulado pela aba-pai — é essa relação,
+e não o recuo, que o leitor de tela anuncia como "dentro de Cobrança".
 
-**Por que `SideNav` e não `TabList` (reversão de uma decisão anterior):** a
+**Por que a navegação PRÓPRIA (`@/shared/ui/nav-section`) e não o `SideNav` do
+design system:** o DOM do Astryx não tem legenda de 2ª linha, cotovelo/linha de
+aninhamento nem o bloco de 56px com rótulo de 8,75px da forma recolhida — e o
+CSS do app não alcança as classes atômicas do StyleX para corrigir isso (a
+medição está em `docs/design-system/sidebar/CONTRATO.md` §1). Com a troca, a
+barra de abas deixou de ser _parecida_ com o menu do app e passou a ser o MESMO
+componente, com os mesmos tokens.
+
+Três consequências práticas da troca:
+
+- **largura fixa** de 300px (`--ds-layout-nav-vertical-width`), 88px recolhida —
+  saiu a alça de arrastar (`resizable`, 248px ajustáveis entre 200 e 380). O
+  ajuste fino se perdeu; a escolha que importa (barra inteira ou faixa de
+  ícones) ficou, e agora **persiste** em `localStorage`
+  (`dashboards:viewer:tabs-collapsed`), como a do menu do app;
+- a **descrição** da aba virou a dica do próprio item (`title` nativo), inclusive
+  no estado recolhido, onde o rótulo de 8,75px é o que mais precisa de
+  complemento;
+- **aba-pai com sub-abas** vira um ramo que abre/fecha (item com filhos não
+  navega, por contrato da nav). Para o conteúdo dela não ficar inalcançável, a
+  aba-pai aparece também como o primeiro link de dentro do ramo — só quando tem
+  blocos próprios; agrupadora vazia não vira link para uma tela vazia.
+
+**Por que não `TabList` (reversão de uma decisão anterior):** a
 primeira versão usava `TabList` com `orientation="vertical"`, citando o
 anti-pattern do DS ("não use SideNav para filtrar conteúdo"). Só que `orientation`
 **não empilha nada** — a doc do componente diz que ela controla apenas quais
@@ -118,7 +145,7 @@ StyleX, e `TabList` não expõe `style`.
 O anti-pattern valia para o contexto antigo, em que a tela vivia dentro do shell
 e uma segunda nav lateral competiria com a principal. Com a visualização
 autônoma não há outra navegação na página — esta deixa de ser "uma segunda nav"
-e passa a ser A nav, que é o propósito do `SideNav`.
+e passa a ser A nav, que é o propósito de uma navegação lateral.
 
 **Custo assumido:** perdemos o roving tabindex e a navegação por setas do tab
 strip. Em troca, cada aba virou um LINK de verdade: ⌘/Ctrl+clique abre em nova

@@ -15,6 +15,12 @@
 
 export * from './charts';
 
+/**
+ * Ícones REAIS do sistema (pacote `icones-auditoria`: Solar + eva), inline e
+ * offline. Ver `./icons/README.md`.
+ */
+export * from './icons';
+
 export type { AnimatedNumberProps } from './animated-number';
 export {
   chartAccentCardVariant,

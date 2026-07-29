@@ -59,6 +59,10 @@ export function DashboardLayout() {
               />
             }
             endContent={
+              /* Só o que é do APP INTEIRO mora aqui (busca e tema). A conta
+                 fica no rodapé da navegação, inclusive no celular — a gaveta
+                 leva as mesmas zonas da coluna. Duplicar o menu da conta no
+                 topo seria dois caminhos para a mesma ação. */
               <HStack gap={1} vAlign="center">
                 <CommandTrigger />
                 <ColorModeToggle />
