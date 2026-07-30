@@ -30,6 +30,14 @@ export interface DashboardRow extends Record<string, unknown> {
   id: string;
   title: string;
   href: string;
+  /**
+   * Relatório mantido FORA da plataforma (legado). Muda o destino do clique
+   * (abre em nova aba) e o rótulo da coluna de status — o item não tem
+   * rascunho nem publicação para reportar.
+   */
+  isExternal: boolean;
+  /** Domínio do relatório externo, mostrado sob o título. `null` no resto. */
+  externalHost: string | null;
   status: ArtifactStatus;
   visibility: ArtifactVisibility;
   /** Nome do departamento, ou `null` quando não há. */
@@ -51,17 +59,30 @@ const columns: TableColumn<DashboardRow>[] = [
     width: proportional(2),
     renderCell: (row) => (
       <VStack gap={0.5}>
+        {/*
+          `isExternalLink` no relatório legado: o DS já cuida do ícone, do
+          `target="_blank"` e dos `rel` seguros — e avisa ao leitor de tela que
+          o link sai do app. Sair do produto sem aviso é o tipo de surpresa que
+          faz o usuário achar que perdeu o trabalho aberto.
+        */}
         <Link
           href={row.href}
           isStandalone
           weight="medium"
           maxLines={1}
+          isExternalLink={row.isExternal}
           onMouseEnter={row.onPrefetch}
           onFocus={row.onPrefetch}
         >
           {row.title}
         </Link>
-        {row.isMine ? <Text type="supporting">Meu dashboard</Text> : null}
+        {row.isExternal && row.externalHost ? (
+          <Text type="supporting" maxLines={1}>
+            {row.externalHost}
+          </Text>
+        ) : row.isMine ? (
+          <Text type="supporting">Meu dashboard</Text>
+        ) : null}
       </VStack>
     ),
   },
@@ -70,11 +91,17 @@ const columns: TableColumn<DashboardRow>[] = [
     header: 'Status',
     width: pixel(140),
     renderCell: (row) => {
-      const isPublished = row.status === 'PUBLISHED';
-      const label = isPublished ? 'Publicado' : 'Rascunho';
+      // Relatório externo não tem ciclo de rascunho/publicação: ele já está no
+      // ar, em outro lugar. Reaproveitar "Publicado" aqui seria dizer que a
+      // plataforma publicou algo que ela nem hospeda.
+      const { label, variant } = row.isExternal
+        ? ({ label: 'Externo', variant: 'accent' } as const)
+        : row.status === 'PUBLISHED'
+          ? ({ label: 'Publicado', variant: 'success' } as const)
+          : ({ label: 'Rascunho', variant: 'neutral' } as const);
       return (
         <HStack gap={1.5} vAlign="center">
-          <StatusDot variant={isPublished ? 'success' : 'neutral'} label={label} />
+          <StatusDot variant={variant} label={label} />
           <Text type="supporting">{label}</Text>
         </HStack>
       );

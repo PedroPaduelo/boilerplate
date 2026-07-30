@@ -23,7 +23,7 @@ import type { ActorContext } from '@/lib/rbac';
 import { canViewArtifact } from '@/lib/visibility';
 import { getCatalogDataShape } from '@/lib/catalog';
 import { redisService } from '@/lib/redis';
-import { runQuery } from '@/lib/pg-runner';
+import { runQuery } from '@/lib/query-runner';
 import type { Connection } from '@prisma/client';
 import {
   computeCacheKey,
@@ -34,7 +34,7 @@ import {
 } from './cache';
 import { resolveBlocks } from './block-resolver';
 import { executeBlockData } from './executor';
-import { toPgRunnerConnection } from './connection-loader';
+import { toRunnerConnection } from './connection-loader';
 import { addQueryExecJob } from './jobs/queue';
 import type { DataMode, QueryExecJobData, ResolvedBlock } from './types';
 
@@ -241,7 +241,7 @@ export const realRuntime: BatchRuntime = {
     return executeBlockData(
       {
         blockId: job.blockId,
-        connection: toPgRunnerConnection(conn),
+        connection: toRunnerConnection(conn),
         sql: job.sql,
         paramsValues: job.paramsValues,
         transform: job.transform,
@@ -365,7 +365,7 @@ export async function buildChartData(
   return executeBlockData(
     {
       blockId: chartId,
-      connection: toPgRunnerConnection(conn as PrismaConnection),
+      connection: toRunnerConnection(conn as PrismaConnection),
       sql: bindingRaw.query,
       paramsValues: Array.isArray(bindingRaw.params) ? bindingRaw.params : [],
       transform: bindingRaw.transform,

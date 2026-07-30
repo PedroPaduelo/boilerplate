@@ -16,6 +16,8 @@ export interface ConnectionAccessFieldsProps {
   errors: FieldErrors<ConnectionFormValues>;
   isEdit: boolean;
   visibility: ConnectionFormValues['visibility'];
+  /** SSL só existe em conexão direta — no gateway ele vem do esquema da URL. */
+  type: ConnectionFormValues['type'];
 }
 
 const VISIBILITY_OPTIONS = [
@@ -41,6 +43,7 @@ export function ConnectionAccessFields({
   errors,
   isEdit,
   visibility,
+  type,
 }: ConnectionAccessFieldsProps) {
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments();
   const departments = departmentsData?.departments ?? [];
@@ -64,19 +67,13 @@ export function ConnectionAccessFields({
         )}
       />
 
-      <FormLayout direction="horizontal">
-        <Controller
-          control={control}
-          name="sslMode"
-          render={({ field }) => (
-            <Selector
-              label="SSL"
-              options={SSL_MODES}
-              value={field.value}
-              onChange={field.onChange}
-            />
-          )}
-        />
+      {/*
+        SSL é uma decisão do transporte TCP. Num gateway ele já foi tomada no
+        momento em que a URL escolheu `https://` — mostrar o campo aqui daria a
+        impressão de que dá para desligar TLS de uma URL https, o que não é
+        verdade. Some, em vez de enganar.
+      */}
+      {type === 'API_GATEWAY' ? (
         <Controller
           control={control}
           name="visibility"
@@ -89,7 +86,34 @@ export function ConnectionAccessFields({
             />
           )}
         />
-      </FormLayout>
+      ) : (
+        <FormLayout direction="horizontal">
+          <Controller
+            control={control}
+            name="sslMode"
+            render={({ field }) => (
+              <Selector
+                label="SSL"
+                options={SSL_MODES}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="visibility"
+            render={({ field }) => (
+              <Selector
+                label="Visibilidade"
+                options={VISIBILITY_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </FormLayout>
+      )}
 
       {visibility === 'DEPARTMENT' ? (
         <Controller

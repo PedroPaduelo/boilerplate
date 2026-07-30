@@ -302,6 +302,52 @@ em `maxRows`, teto 1000) — mas o caminho certo quase nunca é trazer mais linh
 leitura: `INSERT`/`UPDATE`/`DELETE`/DDL e múltiplos comandos são recusados
 (`read_only_violation`), o que é uma proteção sua também.
 
+**Antes de escrever SQL, descubra QUAL BANCO é.** Nem toda conexão é Postgres:
+as do tipo `API_GATEWAY` costumam expor **SQL Server**, e o dialeto muda. O
+`get_connection_schema` diz em `database.version` ("SQL Server", "PostgreSQL"),
+e o `list_connections` traz `type` e `options.engine`. Escrever no dialeto
+errado não devolve resultado vazio — devolve **erro de sintaxe**, e o passo é
+perdido.
+
+| O que você quer | PostgreSQL | SQL Server |
+|---|---|---|
+| Limitar linhas | `SELECT … LIMIT 50` | `SELECT TOP 50 …` (**`LIMIT` não existe**) |
+| Citar nome | `"schema"."Tabela"` | `[schema].[Tabela]` |
+| Data de hoje | `NOW()`, `CURRENT_DATE` | `GETDATE()`, `CAST(GETDATE() AS date)` |
+| Subtrair período | `NOW() - INTERVAL '30 days'` | `DATEADD(day, -30, GETDATE())` |
+| Truncar por mês | `DATE_TRUNC('month', d)` | `DATEFROMPARTS(YEAR(d), MONTH(d), 1)` |
+| Concatenar | `a \|\| b` | `CONCAT(a, b)` |
+| Texto vazio → nulo | `NULLIF(x, '')` | igual |
+
+`Incorrect syntax near '50'` é o sintoma clássico de `LIMIT` num SQL Server.
+`Invalid object name 'dbo.MINHA'` costuma ser nome com **espaço** sem colchetes
+(bancos legados têm tabelas como `SELIC_SERIE HISTÓRICA` e `PERMISSÕES`).
+
+#### Formato obrigatório no SQL Server
+
+**Sempre `[schema].[tabela]`, com colchetes, em toda referência.** Sem exceção
+— inclusive quando o nome parece simples.
+
+```sql
+-- ERRADO: sem colchetes
+SELECT TOP 1 * FROM dbo.TBIPTUCalculoLog WHERE IMOBID = 131465
+
+-- CERTO
+SELECT TOP 50 *
+FROM [dbo].[ACAO_PROCESSO];
+```
+
+Por que a regra não abre exceção para nome "simples": você não sabe de antemão
+quais nomes são simples. Neste banco convivem `TBContribuinte` e
+`SELIC_SERIE HISTÓRICA`; a segunda, sem colchetes, é lida até o espaço e volta
+`Invalid object name 'dbo.SELIC_SERIE'`. Uma regra com exceção obriga você a
+julgar caso a caso e erra justamente nos nomes que você não conferiu. Aplicando
+sempre, nunca erra — e o SQL fica igual em toda a conversa.
+
+Vale para o **schema** também: qualifique sempre (`[dbo]`), nunca `FROM
+[TBContribuinte]` solto. Colunas seguem a mesma regra quando tiverem espaço,
+acento ou palavra reservada: `[Data Emissão]`.
+
 Armadilhas de SQL que já custaram passos aqui:
 
 - Postgres é **case-sensitive** com nomes em maiúsculas: `"APP"."TABELA"`.

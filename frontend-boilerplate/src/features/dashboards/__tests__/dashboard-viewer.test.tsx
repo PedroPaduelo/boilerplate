@@ -54,6 +54,7 @@ const makeDetail = (layout: unknown): DashboardDetail => ({
   departmentId: null,
   visibility: 'ORG',
   status: 'DRAFT',
+  externalUrl: null,
   draftLayout: layout as never,
   publishedLayout: null,
   publishedAt: null,

@@ -145,8 +145,11 @@ export function EditorContent({ detail }: EditorContentProps) {
     selection.clear();
   };
 
+  // `app-editor` não é decoração: é onde moram as medidas que as três regiões
+  // precisam concordar (altura da barra fixa, respiro da página, faixa do
+  // topnav). Ver `.app-editor` em `src/app/index.css`.
   return (
-    <VStack gap={4}>
+    <VStack gap={4} className="app-editor">
       <DashboardBreadcrumbs
         title={detail.title}
         dashboardId={detail.id}
@@ -155,9 +158,12 @@ export function EditorContent({ detail }: EditorContentProps) {
 
       <VStack gap={1}>
         <Heading level={2}>Editar dashboard</Heading>
+        {/* Só a regra que a tela não conta em outro lugar. O "clique em um
+            bloco para editá-lo" que ficava aqui está no rodapé do inspetor,
+            junto do controle que ele explica — dizer a mesma coisa duas vezes
+            na mesma tela custa altura e não ensina ninguém duas vezes. */}
         <Text type="supporting">
-          Clique em um bloco para editá-lo. Nada chega a quem consome o dashboard até você
-          publicar.
+          Nada chega a quem consome o dashboard até você publicar.
         </Text>
       </VStack>
 

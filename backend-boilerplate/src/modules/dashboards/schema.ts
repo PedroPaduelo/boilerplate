@@ -43,12 +43,48 @@ export const layoutInputSchema = z.object({
 
 export type LayoutInput = z.infer<typeof layoutInputSchema>;
 
-export const createDashboardBodySchema = z.object({
-  title: z.string().min(1).max(200),
-  draftLayout: layoutInputSchema,
-  departmentId: z.string().nullish(),
-  visibility: visibilityEnum.default('PRIVATE'),
-});
+/** Layout vazio — é o que um dashboard EXTERNO guarda (ele não tem blocos). */
+export const EMPTY_LAYOUT: LayoutInput = { filters: [], rows: [] };
+
+/**
+ * URL de um relatório EXTERNO (legado). Só `http(s)` — a listagem abre este
+ * endereço direto no navegador, então `javascript:`/`data:` seriam um vetor de
+ * XSS armazenado, e não uma comodidade.
+ */
+export const externalUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .url()
+  .refine((value) => /^https?:\/\//i.test(value), {
+    message: 'externalUrl must start with http:// or https://',
+  });
+
+/**
+ * Criação. São DOIS artefatos com a mesma casca:
+ *  - dashboard desta plataforma → exige `draftLayout` (validado pelo contrato);
+ *  - relatório EXTERNO          → exige `externalUrl` e não tem layout.
+ * Um deles precisa vir; o `superRefine` diz qual falta em vez de deixar o Zod
+ * reclamar de `draftLayout` para quem estava cadastrando um link.
+ */
+export const createDashboardBodySchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    draftLayout: layoutInputSchema.optional(),
+    externalUrl: externalUrlSchema.nullish(),
+    departmentId: z.string().nullish(),
+    visibility: visibilityEnum.default('PRIVATE'),
+  })
+  .superRefine((input, ctx) => {
+    if (!input.externalUrl && !input.draftLayout) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['draftLayout'],
+        message: 'draftLayout is required (or externalUrl, for an external report)',
+      });
+    }
+  });
 
 export type CreateDashboardInput = z.infer<typeof createDashboardBodySchema>;
 
@@ -56,6 +92,8 @@ export const updateDashboardBodySchema = z
   .object({
     title: z.string().min(1).max(200).optional(),
     draftLayout: layoutInputSchema.optional(),
+    /** Só faz sentido em dashboard que JÁ é externo (o service rejeita o resto). */
+    externalUrl: externalUrlSchema.optional(),
     departmentId: z.string().nullish(),
     visibility: visibilityEnum.optional(),
   })
@@ -103,6 +141,8 @@ export const dashboardResponseSchema = z.object({
   departmentId: z.string().nullable(),
   visibility: z.string(),
   status: z.string(),
+  /** Preenchido só em relatório EXTERNO (legado); `null` no resto. */
+  externalUrl: z.string().nullable(),
   draftLayout: z.any(),
   publishedLayout: z.any().nullable(),
   publishedAt: z.date().nullable(),
@@ -165,6 +205,7 @@ export function serializeDashboard(dashboard: Dashboard): DashboardResponse {
     departmentId: dashboard.departmentId,
     visibility: dashboard.visibility,
     status: dashboard.status,
+    externalUrl: dashboard.externalUrl,
     draftLayout: dashboard.draftLayout as unknown,
     publishedLayout: (dashboard.publishedLayout ?? null) as unknown,
     publishedAt: dashboard.publishedAt,

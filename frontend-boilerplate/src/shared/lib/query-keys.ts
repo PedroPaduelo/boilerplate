@@ -96,6 +96,19 @@ export const queryKeys = {
     health: () => ['chat', 'health'] as const,
   },
 
+  /**
+   * Malha fiscal — painel analítico, contribuintes retidos e lotes.
+   * `escopoHash` é o recorte selecionado nos gráficos (via `hashFilters`):
+   * cada combinação critério × competência × faixa tem sua entrada de cache.
+   */
+  malhaFiscal: {
+    all: ['malha-fiscal'] as const,
+    painel: (escopoHash: string) => ['malha-fiscal', 'painel', escopoHash] as const,
+    retidos: (escopoHash: string, termo: string) =>
+      ['malha-fiscal', 'retidos', escopoHash, termo] as const,
+    malhas: () => ['malha-fiscal', 'malhas'] as const,
+  },
+
   /** Share público (`GET /public/:token`) — sem auth. */
   share: (token: string) => ['share', token] as const,
 } as const;

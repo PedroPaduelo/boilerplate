@@ -43,7 +43,12 @@ import { resolveParamsValues } from '@/modules/data/cache';
 import { toRunnerConnection } from '@/modules/data/connection-loader';
 import { executeBlockData } from '@/modules/data/executor';
 import { getCatalogDataShape } from '@/lib/catalog';
-import type { AddChartInput, CreateDashboardInput, UpdateDashboardInput } from './schema';
+import {
+  EMPTY_LAYOUT,
+  type AddChartInput,
+  type CreateDashboardInput,
+  type UpdateDashboardInput,
+} from './schema';
 
 /**
  * Estruturas de trabalho mutáveis para manipular o layout (ex.: add_chart). O
@@ -263,6 +268,22 @@ async function assertDepartmentAccess(
   }
 }
 
+/**
+ * Um dashboard EXTERNO (legado) é só um ATALHO para um relatório mantido fora
+ * daqui: não tem layout, blocos nem ciclo draft/published. Toda operação que
+ * mexe em layout precisa recusá-lo EXPLICITAMENTE — deixar passar não daria
+ * erro nenhum (o layout vazio é válido), apenas produziria um artefato meio
+ * externo meio interno, que ninguém consegue explicar depois.
+ */
+export function assertNotExternalDashboard(dashboard: Dashboard, action: string): void {
+  if (dashboard.externalUrl) {
+    throw new BadRequestError(
+      `cannot ${action} an external dashboard: it only points to "${dashboard.externalUrl}", ` +
+        'which lives outside this platform',
+    );
+  }
+}
+
 /** Invalida (best-effort) o cache de layout publicado de um dashboard. */
 export async function invalidatePublishedLayoutCache(dashboardId: string): Promise<void> {
   if (!redisService.isReady()) return;
@@ -279,6 +300,29 @@ export async function createDashboard(
 ): Promise<Dashboard> {
   const departmentId = input.departmentId ?? null;
   await assertDepartmentAccess(ctx, input.visibility, departmentId);
+
+  // RELATÓRIO EXTERNO (legado): não há layout para validar — o artefato é o
+  // link. Nasce PUBLISHED, com o layout vazio dos dois lados, porque o relatório
+  // JÁ está no ar: deixá-lo como DRAFT convidaria alguém a "publicar" um atalho,
+  // e um PUBLISHED sem `publishedLayout` quebraria a invariante que todo o
+  // resto do módulo (GET ?mode=published, export, share) assume.
+  const externalUrl = input.externalUrl ?? null;
+  if (externalUrl) {
+    return prisma.dashboard.create({
+      data: {
+        title: input.title,
+        externalUrl,
+        draftLayout: EMPTY_LAYOUT as unknown as Prisma.InputJsonValue,
+        publishedLayout: EMPTY_LAYOUT as unknown as Prisma.InputJsonValue,
+        publishedAt: new Date(),
+        status: 'PUBLISHED',
+        ownerId: ctx.userId,
+        departmentId,
+        visibility: input.visibility,
+      },
+    });
+  }
+
   const layout = assertValidLayout(input.draftLayout);
   await assertChartRefsExist(layout);
 
@@ -352,6 +396,19 @@ export async function updateDashboard(
     input.departmentId !== undefined ? (input.departmentId ?? null) : existing.departmentId;
   await assertDepartmentAccess(ctx, nextVisibility, nextDepartmentId);
 
+  const isExternal = existing.externalUrl != null;
+  if (isExternal && input.draftLayout !== undefined) {
+    assertNotExternalDashboard(existing, 'edit the layout of');
+  }
+  // O caminho inverso também é bloqueado: transformar um dashboard montado aqui
+  // num atalho externo APAGARIA o trabalho já feito (e o layout continuaria
+  // salvo, invisível). Quem quer o link cadastra um relatório externo novo.
+  if (!isExternal && input.externalUrl !== undefined) {
+    throw new BadRequestError(
+      'externalUrl can only be changed on an external dashboard; register a new external report instead',
+    );
+  }
+
   if (input.draftLayout !== undefined) {
     const layout = assertValidLayout(input.draftLayout);
     await assertChartRefsExist(layout);
@@ -359,6 +416,7 @@ export async function updateDashboard(
 
   const data: Prisma.DashboardUncheckedUpdateInput = {};
   if (input.title !== undefined) data.title = input.title;
+  if (input.externalUrl !== undefined) data.externalUrl = input.externalUrl;
   if (input.draftLayout !== undefined) {
     data.draftLayout = input.draftLayout as unknown as Prisma.InputJsonValue;
   }
@@ -385,6 +443,8 @@ export async function addChartToDashboard(
   existing: Dashboard,
   input: AddChartInput,
 ): Promise<Dashboard> {
+  assertNotExternalDashboard(existing, 'add a chart to');
+
   const chart = await prisma.chart.findUnique({ where: { id: input.chartId } });
   if (!chart || !canViewArtifact(chart, ctx)) {
     throw new NotFoundError(`Chart "${input.chartId}" not found`);
@@ -592,6 +652,7 @@ export async function publishDashboard(
   dashboard: Dashboard,
   ctx: ActorContext,
 ): Promise<Dashboard> {
+  assertNotExternalDashboard(dashboard, 'publish');
   // garante que o draft atual é um layout válido antes de promover.
   assertValidLayout(dashboard.draftLayout);
 
@@ -655,7 +716,9 @@ export async function rematerializePublishedSnapshot(
 }
 
 /** Zera publishedLayout E publishedDataPayload (DbNull), volta status=DRAFT e invalida o cache. */
-export async function unpublishDashboard(id: string): Promise<Dashboard> {
+export async function unpublishDashboard(dashboard: Dashboard): Promise<Dashboard> {
+  assertNotExternalDashboard(dashboard, 'unpublish');
+  const id = dashboard.id;
   const updated = await prisma.dashboard.update({
     where: { id },
     data: {

@@ -12,7 +12,8 @@
  */
 import { z } from 'zod';
 import { ForbiddenError } from '@/http/routes/_errors';
-import { PgRunnerError, SqlGuardError } from '@/lib/pg-runner';
+import { SqlGuardError } from '@/lib/pg-runner';
+import { isExternalQueryError } from '@/lib/query-runner';
 import {
   buildVisibilityWhere,
   canUseConnections,
@@ -177,7 +178,9 @@ const getConnectionSchemaTool: ToolDefinition = {
     'SÓ dessas tabelas: { mode:"columns", tables:[{ schema, name, columns:[{ name, dataType, nullable }] }], notFound }. ' +
     'NUNCA tente obter as colunas de TODAS as tabelas de uma vez em bancos grandes — filtre com ' +
     '`search`/`schema`/`tables`. Se a resposta vier com `truncated:true`, leia o `hint` e refine. ' +
-    'Use `refresh:true` para ignorar o cache.',
+    'Use `refresh:true` para ignorar o cache. ' +
+    '⚠️ LEIA `database.version`: ele diz QUAL BANCO é ("SQL Server", "PostgreSQL"…) e portanto ' +
+    'qual dialeto usar no SQL depois (SQL Server: TOP em vez de LIMIT, [colchetes] nos nomes).',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -223,7 +226,7 @@ const getConnectionSchemaTool: ToolDefinition = {
     try {
       full = await introspectSchema(conn, { refresh });
     } catch (err) {
-      if (err instanceof SqlGuardError || err instanceof PgRunnerError) {
+      if (isExternalQueryError(err)) {
         throw new McpToolError(err.message, 'introspection_failed');
       }
       throw err;
@@ -400,7 +403,16 @@ const runQueryTool: ToolDefinition = {
     'Guardrails: apenas SELECT/WITH (INSERT/UPDATE/DELETE/DDL e múltiplos statements são ' +
     'REJEITADOS), statement_timeout e teto de linhas. Use placeholders parametrizados ($1, $2) ' +
     'com `params`. Retorna { columns: [{ name, dataTypeID }], rows, rowCount, truncated, ' +
-    'durationMs }. `truncated: true` significa que o resultado bateu no teto de linhas.',
+    'durationMs }. `truncated: true` significa que o resultado bateu no teto de linhas. ' +
+    '⚠️ DIALETO: nem toda conexão é PostgreSQL. Conexões do tipo API_GATEWAY costumam expor ' +
+    'SQL Server. Confira `database.version` em get_connection_schema (ou `type`/`options.engine` ' +
+    'em list_connections) ANTES de escrever a query. Em SQL Server: ' +
+    '(1) `SELECT TOP 50 *` — LIMIT NÃO existe e devolve "Incorrect syntax near \'50\'"; ' +
+    '(2) SEMPRE colchetes em schema e tabela, sem exceção — ERRADO: ' +
+    '`SELECT TOP 1 * FROM dbo.TBIPTUCalculoLog WHERE IMOBID = 131465`; CERTO: ' +
+    '`SELECT TOP 50 * FROM [dbo].[ACAO_PROCESSO];` (há tabelas com espaço/acento, como ' +
+    '`[dbo].[SELIC_SERIE HISTÓRICA]`, que sem colchetes falham com "Invalid object name"); ' +
+    '(3) GETDATE()/DATEADD no lugar de NOW()/INTERVAL.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -440,7 +452,7 @@ const runQueryTool: ToolDefinition = {
       if (err instanceof SqlGuardError) {
         throw new McpToolError(err.message, 'read_only_violation');
       }
-      if (err instanceof PgRunnerError) {
+      if (isExternalQueryError(err)) {
         throw new McpToolError(err.message, 'query_failed');
       }
       throw err;

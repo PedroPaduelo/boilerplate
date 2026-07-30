@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { BadRequestError } from '@/http/routes/_errors';
-import { PgRunnerError, SqlGuardError } from '@/lib/pg-runner';
+import { isExternalQueryError } from '@/lib/query-runner';
 import { loadUserContext, requireConnectionForUse } from '../rbac';
 import { idParamSchema, queryResultSchema, runQueryBodySchema } from '../schema';
 import { runConnectionQuery } from '../service';
@@ -28,7 +28,7 @@ export async function runConnectionQueryRoute(app: FastifyInstance) {
         return reply.send(result);
       } catch (err) {
         // Guardrail violado ou falha de execução → 400 (não vaza segredo).
-        if (err instanceof SqlGuardError || err instanceof PgRunnerError) {
+        if (isExternalQueryError(err)) {
           throw new BadRequestError(err.message);
         }
         throw err;

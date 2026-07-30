@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  Cloud,
   Database,
   Pencil,
   PlugZap,
@@ -16,7 +17,13 @@ import { LayoutHeader } from '@astryxdesign/core/Layout';
 import { Link } from '@astryxdesign/core/Link';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { shortServerVersion } from '../lib/schema-mapper';
-import { environmentView, formatBytes } from '../lib/connection-presentation';
+import {
+  connectionEndpoint,
+  connectionTypeView,
+  environmentView,
+  formatBytes,
+  isGatewayConnection,
+} from '../lib/connection-presentation';
 import type { Connection, ConnectionSchema } from '../types';
 
 /**
@@ -59,8 +66,25 @@ export function WorkbenchHeader({
   const inactiveReason = connection.isActive
     ? undefined
     : 'Conexão inativa — reative para usar.';
+  const isGateway = isGatewayConnection(connection);
+  const typeView = connectionTypeView(connection.type);
   const version = shortServerVersion(schema?.database?.version);
   const size = formatBytes(schema?.database?.sizeBytes);
+  // Um gateway não informa versão nem tamanho do banco — o badge mostra só o
+  // que existe ("API"), em vez de "PostgreSQL" (que seria mentira) ou de um
+  // "—" que ocuparia espaço sem dizer nada.
+  const engineLabel = isGateway
+    ? typeView.label
+    : version
+      ? `PostgreSQL ${version}`
+      : 'PostgreSQL';
+  const tablesLabel = isGateway
+    ? schema
+      ? `${schema.tableCount} tabelas`
+      : null
+    : schema
+      ? `${schema.tableCount} tabelas · ${size}`
+      : null;
   // Ambiente DECLARADO no cadastro. Fica na identidade (e não só na lista de
   // conexões) porque é aqui que se consulta: "Produção" em vermelho é o aviso
   // de cuidado no momento em que ele importa.
@@ -77,23 +101,18 @@ export function WorkbenchHeader({
           >
             <Icon icon={ArrowLeft} />
           </Link>
-          <Icon icon={Database} color="accent" />
+          <Icon icon={isGateway ? Cloud : Database} color="accent" />
           <VStack gap={0}>
             <Heading level={2} maxLines={1}>
               {connection.name}
             </Heading>
             <Text type="code" size="sm" color="secondary" maxLines={1}>
-              {connection.host}:{connection.port}/{connection.database}
+              {connectionEndpoint(connection)}
             </Text>
           </VStack>
           <Badge variant={environment.variant} label={environment.label} />
-          <Badge
-            variant="info"
-            label={version ? `PostgreSQL ${version}` : 'PostgreSQL'}
-          />
-          {schema ? (
-            <Badge variant="neutral" label={`${schema.tableCount} tabelas · ${size}`} />
-          ) : null}
+          <Badge variant={typeView.variant} label={engineLabel} />
+          {tablesLabel ? <Badge variant="neutral" label={tablesLabel} /> : null}
         </HStack>
 
         <HStack gap={1} vAlign="center" wrap="wrap">

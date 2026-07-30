@@ -13,6 +13,13 @@
  *   - ao voltar, `attach()` lê o texto acumulado e continua escutando a partir
  *     do último pedaço recebido — sem buraco e sem repetição, graças ao número
  *     de sequência que acompanha cada delta.
+ *
+ * A mesma pergunta ("onde está o turno?") é refeita a CADA RECONEXÃO, e não só
+ * ao abrir a tela. A sala do socket pertence à CONEXÃO: um socket que cai e
+ * volta é outro socket, fora de qualquer sala. Sem reentrar e sem reperguntar,
+ * a queda mais banal — um deploy do backend, o wifi oscilando — deixava a
+ * resposta parada no meio para sempre, que é o efeito que este transporte veio
+ * eliminar.
  */
 import type {
   ChatArtifactEvent,
@@ -81,6 +88,25 @@ export async function startRun(
 }
 
 /**
+ * PARA o turno em andamento no servidor.
+ *
+ * Precisa existir porque "parar" não é um evento de tela: enquanto o servidor
+ * considerar a conversa ocupada, ela recusa a próxima pergunta com 409. Antes
+ * daqui o botão só desligava o cursor local — o turno seguia rodando e a
+ * conversa ficava intransitável por até 30 minutos.
+ *
+ * NUNCA lança: parar é uma saída de emergência. Se a chamada falhar, a tela já
+ * saiu do estado de streaming e o usuário pode tentar de novo.
+ */
+export async function stopRun(conversationId: string): Promise<void> {
+  try {
+    await apiClient.post(`/agent/chat/${conversationId}/stop`);
+  } catch {
+    // Sem estado de execução no servidor (turno já terminou): nada a parar.
+  }
+}
+
+/**
  * Tira do payload os campos de roteamento do socket.
  *
  * Quem escuta já filtrou a conversa; deixar `conversationId`/`runId` entrarem na
@@ -97,9 +123,16 @@ function stripRouting<T extends { conversationId: string; runId: string }>(
 }
 
 export interface AttachOptions {
-  /** Só entrega deltas ACIMA deste número — é o que evita repetir na retomada. */
-  fromSeq?: number;
   onEvent: (event: ChatEvent) => void;
+  /**
+   * O servidor disse em que ponto o turno está.
+   *
+   * Chamado ao entrar na conversa e a CADA RECONEXÃO — é o conserto do buraco:
+   * enquanto o socket esteve fora, os pedaços emitidos não chegaram a ninguém e
+   * não voltam sozinhos. Quem trata decide o que fazer com o estado (ver
+   * `useRunAttachment`); aqui só garantimos que ele chega.
+   */
+  onResync?: (run: RunState) => void;
 }
 
 /**
@@ -107,20 +140,102 @@ export interface AttachOptions {
  *
  * Chamar `attach` NÃO interfere na execução: entrar e sair da sala é só uma
  * inscrição. O agente segue no servidor de qualquer jeito.
+ *
+ * As duas responsabilidades daqui são as que a resposta perdia:
+ *
+ *  1. ESTAR NA SALA. A sala é por CONEXÃO, não por usuário. Reconectou, é outra
+ *     conexão — e ela não está em sala nenhuma. Sem reentrar a cada `connect`,
+ *     um deploy do backend ou um wifi oscilando faziam a resposta parar no meio
+ *     e nunca mais voltar.
+ *
+ *  2. SABER ONDE O TURNO ESTÁ. Entrar na sala só garante o que vem DAQUI PARA A
+ *     FRENTE; o que passou enquanto estávamos fora está no estado do servidor.
+ *     Por isso toda entrada (inclusive a reconexão) pergunta o estado e repara
+ *     o que faltou.
  */
 export function attachToConversation(
   conversationId: string,
-  { fromSeq = 0, onEvent }: AttachOptions,
+  { onEvent, onResync }: AttachOptions,
 ): () => void {
   const socket = getSocket();
-  let ultimoSeq = fromSeq;
 
-  const onDelta = (p: DeltaPayload) => {
-    if (p.conversationId !== conversationId) return;
+  let desligado = false;
+  /**
+   * A qual RESPOSTA o corte de sequência se refere.
+   *
+   * A numeração dos pedaços recomeça em 1 a cada turno — é o `messageId` que
+   * distingue um turno do outro. Guardar só o número (como era feito) fazia o
+   * corte do turno anterior valer para o seguinte: a partir da SEGUNDA resposta
+   * de cada conversa, todo pedaço chegava com número menor que o do turno
+   * passado e era descartado como "repetido". A tela ficava com o cursor
+   * piscando e a resposta nunca aparecia.
+   */
+  let respostaDoCorte: string | undefined;
+  let ultimoSeq = 0;
+  /**
+   * Pedaços que chegam ENQUANTO perguntamos ao servidor onde o turno está.
+   *
+   * Sem represá-los havia um buraco do tamanho de uma ida e volta HTTP: o que
+   * chegasse nesse intervalo era aplicado sobre um texto que a resposta do
+   * servidor ia sobrescrever logo em seguida, e sumia.
+   */
+  let represados: DeltaPayload[] | null = null;
+
+  const entregarDelta = (p: DeltaPayload) => {
+    // Turno novo: o corte herdado não vale mais (ver `respostaDoCorte`).
+    if (respostaDoCorte !== undefined && p.messageId !== respostaDoCorte) {
+      ultimoSeq = 0;
+    }
+    respostaDoCorte = p.messageId;
     // Descarta o que já temos: na retomada o servidor pode reemitir.
     if (p.seq <= ultimoSeq) return;
     ultimoSeq = p.seq;
     onEvent({ type: 'text_delta', messageId: p.messageId, delta: p.delta });
+  };
+
+  const onDelta = (p: DeltaPayload) => {
+    if (p.conversationId !== conversationId) return;
+    if (represados) {
+      represados.push(p);
+      return;
+    }
+    entregarDelta(p);
+  };
+
+  /**
+   * Pergunta ao servidor em que ponto o turno está e repara o que faltou.
+   *
+   * O texto do servidor é a verdade até `run.seq`; os pedaços represados que
+   * vierem DEPOIS desse número são aplicados por cima, em ordem. É o que faz a
+   * retomada não ter buraco nem repetição.
+   */
+  const sincronizar = async () => {
+    represados = [];
+    let run: RunState | null = null;
+    try {
+      run = await fetchRunState(conversationId);
+    } catch {
+      // Sem estado de execução (ou servidor fora): segue só escutando o socket.
+    }
+    if (desligado) return;
+
+    const pendentes = represados ?? [];
+    represados = null;
+
+    if (run) {
+      // Ancora o corte NA RESPOSTA que o servidor está produzindo. Um run já
+      // encerrado ancora numa mensagem antiga — e o primeiro pedaço do turno
+      // seguinte, com outro `messageId`, zera o corte sozinho.
+      respostaDoCorte = run.messageId;
+      ultimoSeq = run.seq;
+      onResync?.(run);
+    }
+
+    for (const p of pendentes) entregarDelta(p);
+  };
+
+  const entrarNaSala = () => {
+    socket.emit('chat:join', conversationId);
   };
 
   /**
@@ -178,7 +293,23 @@ export function attachToConversation(
     onEvent({ type: 'error', message: p.message });
   };
 
-  socket.emit('chat:join', conversationId);
+  /**
+   * Reconectou: é uma conexão NOVA, fora de qualquer sala. Reentrar e
+   * ressincronizar são as duas metades do mesmo conserto — sem a primeira, os
+   * pedaços seguintes vão para uma sala vazia; sem a segunda, o que passou
+   * enquanto estávamos fora fica faltando no meio da resposta.
+   */
+  const onConnect = () => {
+    entrarNaSala();
+    void sincronizar();
+  };
+
+  socket.on('connect', onConnect);
+  // Se ainda não conectou, o `emit` do socket.io ficaria bufferizado e sairia
+  // junto com o `chat:join` do `onConnect` — entrar duas vezes na mesma sala.
+  if (socket.connected) entrarNaSala();
+  void sincronizar();
+
   socket.on('chat:delta', onDelta);
   socket.on('chat:tool-step', onToolStep);
   socket.on('chat:phase', onPhase);
@@ -190,6 +321,8 @@ export function attachToConversation(
   socket.on('chat:error', onError);
 
   return () => {
+    desligado = true;
+    socket.off('connect', onConnect);
     socket.off('chat:delta', onDelta);
     socket.off('chat:tool-step', onToolStep);
     socket.off('chat:phase', onPhase);

@@ -48,6 +48,10 @@ services:
       # CORS
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5173,http://localhost:4000}"
 
+      # Rate limit global (balde por usuário autenticado; por IP sem token)
+      RATE_LIMIT_MAX: "${RATE_LIMIT_MAX:-1100}"
+      RATE_LIMIT_WINDOW: "${RATE_LIMIT_WINDOW:-1 minute}"
+
       # Connection encryption
       CONNECTION_ENC_KEY: "${CONNECTION_ENC_KEY:?CONNECTION_ENC_KEY is required}"
 

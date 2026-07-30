@@ -970,3 +970,197 @@ describe('dashboards — apresentação (ícone, unidade, ênfase, tema)', () =>
     expect(res.json().message).toMatch(/Invalid dashboard layout/);
   });
 });
+
+/**
+ * RELATÓRIOS EXTERNOS (legado): dashboards que só apontam para um endereço
+ * mantido fora da plataforma. Entram na MESMA listagem — é esse o objetivo —
+ * mas não têm layout, e por isso recusam explicitamente tudo que mexe em
+ * layout (publish, blocos, edição de draft).
+ */
+describe('dashboards — relatório externo (legado)', () => {
+  const externalPayload = (overrides: Record<string, unknown> = {}) => ({
+    title: `Legado ${SUFFIX}`,
+    externalUrl: 'https://analytics.bi.exemplo.gov.br/relatorio/1',
+    visibility: 'ORG',
+    ...overrides,
+  });
+
+  /** Cria um relatório externo e devolve o registro criado. */
+  async function createExternal(overrides: Record<string, unknown> = {}) {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: externalPayload(overrides),
+    });
+    expect(res.statusCode).toBe(201);
+    return res.json();
+  }
+
+  it('cria SEM draftLayout: guarda a URL e já nasce consumível (PUBLISHED, layout vazio)', async () => {
+    const dashboard = await createExternal();
+
+    expect(dashboard.externalUrl).toBe('https://analytics.bi.exemplo.gov.br/relatorio/1');
+    // PUBLISHED com publishedLayout preenchido: a invariante do modelo
+    // draft/published continua valendo para quem consome genericamente.
+    expect(dashboard.status).toBe('PUBLISHED');
+    expect(dashboard.draftLayout).toEqual({ filters: [], rows: [] });
+    expect(dashboard.publishedLayout).toEqual({ filters: [], rows: [] });
+    expect(dashboard.publishedAt).not.toBeNull();
+  });
+
+  it('aparece na MESMA listagem dos dashboards da plataforma', async () => {
+    const dashboard = await createExternal({ title: `Legado listado ${SUFFIX}` });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/dashboards?pageSize=100',
+      headers: authHeader(creatorToken),
+    });
+
+    expect(res.statusCode).toBe(200);
+    const found = res
+      .json()
+      .dashboards.find((d: { id: string }) => d.id === dashboard.id);
+    expect(found).toBeDefined();
+    expect(found.externalUrl).toBe('https://analytics.bi.exemplo.gov.br/relatorio/1');
+  });
+
+  it('GET /dashboards/:id devolve a URL (a tela decide o que fazer com ela)', async () => {
+    const dashboard = await createExternal();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/dashboards/${dashboard.id}`,
+      headers: authHeader(creatorToken),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().externalUrl).toBe(
+      'https://analytics.bi.exemplo.gov.br/relatorio/1',
+    );
+  });
+
+  it('sem draftLayout E sem externalUrl → 400 (não cria artefato sem conteúdo)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: { title: `Sem nada ${SUFFIX}` },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('endereço não navegável (javascript:) é recusado — a listagem abre esse href', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      // eslint-disable-next-line no-script-url
+      payload: externalPayload({ externalUrl: 'javascript:alert(1)' }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('PATCH atualiza título e endereço', async () => {
+    const dashboard = await createExternal();
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/dashboards/${dashboard.id}`,
+      headers: authHeader(creatorToken),
+      payload: {
+        title: `Legado renomeado ${SUFFIX}`,
+        externalUrl: 'https://analytics.bi.exemplo.gov.br/relatorio/2',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().title).toBe(`Legado renomeado ${SUFFIX}`);
+    expect(res.json().externalUrl).toBe(
+      'https://analytics.bi.exemplo.gov.br/relatorio/2',
+    );
+  });
+
+  it('recusa editar LAYOUT de relatório externo (400) — ele não tem layout', async () => {
+    const dashboard = await createExternal();
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/dashboards/${dashboard.id}`,
+      headers: authHeader(creatorToken),
+      payload: { draftLayout: validLayout() },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/external dashboard/);
+  });
+
+  it('recusa transformar um dashboard DAQUI em atalho externo (400)', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dashboards',
+      headers: authHeader(creatorToken),
+      payload: baseDashboard(),
+    });
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/dashboards/${created.json().id}`,
+      headers: authHeader(creatorToken),
+      payload: { externalUrl: 'https://analytics.bi.exemplo.gov.br/relatorio/9' },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('publish, unpublish e add_chart são recusados com 400 (e não com 500)', async () => {
+    const dashboard = await createExternal();
+
+    for (const url of [
+      `/dashboards/${dashboard.id}/publish`,
+      `/dashboards/${dashboard.id}/unpublish`,
+    ]) {
+      const res = await app.inject({
+        method: 'POST',
+        url,
+        headers: authHeader(creatorToken),
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/external dashboard/);
+    }
+
+    const blocks = await app.inject({
+      method: 'POST',
+      url: `/dashboards/${dashboard.id}/blocks`,
+      headers: authHeader(creatorToken),
+      payload: { chartId, span: 6 },
+    });
+    expect(blocks.statusCode).toBe(400);
+  });
+
+  it('link público por token é recusado: o link para compartilhar é a própria URL', async () => {
+    const dashboard = await createExternal();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/share',
+      headers: authHeader(creatorToken),
+      payload: { targetType: 'DASHBOARD', targetId: dashboard.id, durationSeconds: 3600 },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('DELETE remove o atalho da lista (o relatório lá fora não é nosso)', async () => {
+    const dashboard = await createExternal();
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/dashboards/${dashboard.id}`,
+      headers: authHeader(creatorToken),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ id: dashboard.id, deleted: true });
+  });
+});

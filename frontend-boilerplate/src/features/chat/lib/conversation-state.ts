@@ -71,7 +71,16 @@ export type ConversationAction =
   /** Falha local (o POST que dispara o turno não passou). */
   | { type: 'failed'; message: string }
   /** Usuário parou de acompanhar a resposta (o turno segue no servidor). */
-  | { type: 'stopped' };
+  | { type: 'stopped' }
+  /**
+   * O servidor avisou que o turno acabou.
+   *
+   * Diferente de `message_end`: aquele é o fechamento que vem PELA SALA da
+   * conversa e pode se perder numa queda de conexão. Este chega por fora dela
+   * (ou da volta da conexão) e existe para a tela nunca ficar presa em "o
+   * agente está escrevendo" sobre uma resposta que já terminou.
+   */
+  | { type: 'turn_ended' };
 
 export const initialConversationState: ConversationState = {
   messages: [],
@@ -426,14 +435,26 @@ function applyEvent(state: ConversationState, event: ChatEvent): ConversationSta
     case 'message_end': {
       // Sem texto no fechamento (transporte antigo), nada a reconciliar.
       if (!event.text) return { ...state, ...IDLE };
+      const texto = event.text;
+      /*
+       * Upsert, e não `map` — pelo mesmo motivo do `text_delta` e do `chart`.
+       *
+       * O fechamento pode ser a PRIMEIRA notícia da resposta: se os pedaços não
+       * chegaram (conexão caiu no meio, tela aberta depois do último pedaço), a
+       * bolha do agente nunca foi aberta. O `map` não encontrava a mensagem e
+       * descartava o texto em silêncio — o servidor entregava a resposta pronta
+       * e a tela ficava com a pergunta do usuário sozinha.
+       */
+      const adotado = adoptTrail(state, event.messageId);
+      const existe = adotado.messages.some((message) => message.id === event.messageId);
       return {
-        ...state,
+        ...adotado,
         ...IDLE,
-        messages: state.messages.map((message) =>
-          message.id === event.messageId
-            ? { ...message, content: event.text as string }
-            : message,
-        ),
+        messages: existe
+          ? adotado.messages.map((message) =>
+              message.id === event.messageId ? { ...message, content: texto } : message,
+            )
+          : [...adotado.messages, newAssistantMessage(event.messageId, texto)],
       };
     }
   }
@@ -524,6 +545,12 @@ export function conversationReducer(
     case 'failed':
       return { ...state, isStreaming: false, error: action.message };
     case 'stopped':
+      return { ...state, ...IDLE };
+    /**
+     * O turno acabou, tenha o fechamento chegado ou não. Só desliga o estado de
+     * execução: o conteúdo vem da recarga do histórico que acompanha o aviso.
+     */
+    case 'turn_ended':
       return { ...state, ...IDLE };
   }
 }

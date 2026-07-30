@@ -17,15 +17,19 @@ import {
   dashboardRoom,
   type BlockDataResult,
 } from '@dashboards/contracts';
-import type { PgRunnerConnection, QueryResultShape, RunQueryOptions } from '@/lib/pg-runner';
+import type { QueryResultShape, RunQueryOptions } from '@/lib/pg-runner';
+import type { RunnerConnection } from '@/lib/query-runner';
 import { executeBlockData } from './executor';
 import type { QueryExecJobData } from './types';
 
 export interface WorkerDeps {
-  /** Resolve a conexão (com senha decifrada) por id, ou `null` se não existir mais. */
-  loadPgConnection: (connectionId: string) => Promise<PgRunnerConnection | null>;
+  /**
+   * Resolve a conexão (com o segredo decifrado) por id, ou `null` se não
+   * existir mais. Pode devolver um alvo Postgres ou um gateway HTTP.
+   */
+  loadPgConnection: (connectionId: string) => Promise<RunnerConnection | null>;
   runQuery: (
-    connection: PgRunnerConnection,
+    connection: RunnerConnection,
     sql: string,
     options?: RunQueryOptions,
   ) => Promise<QueryResultShape>;

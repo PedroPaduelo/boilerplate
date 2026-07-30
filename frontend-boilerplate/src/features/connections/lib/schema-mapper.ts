@@ -1,5 +1,6 @@
 import type {
   DatabaseSchema,
+  DbEngine,
   ForeignKeyDef,
   IndexDef,
 } from '../components/db-schema-explorer-types';
@@ -96,9 +97,39 @@ function mapTable(table: SchemaTable) {
  *
  * Função PURA — testável sem rede/DB.
  */
+/** Motores que o explorer sabe rotular/citar identificadores. */
+const KNOWN_ENGINES: DbEngine[] = [
+  'postgresql',
+  'mysql',
+  'sqlserver',
+  'oracle',
+  'sqlite',
+];
+
+/**
+ * Motor da fonte.
+ *
+ * Numa conexão direta é sempre Postgres. Numa conexão via gateway, quem sabe é
+ * o gateway — e ele diz, no `/health`, o que tem atrás dele (o caso real é um
+ * SQL Server). O backend guarda essa resposta em `options.engine`, e é ela que
+ * usamos aqui: é o que faz o DDL da tabela sair com `[colchetes]` em vez de
+ * `"aspas"` quando o banco é SQL Server.
+ *
+ * Sem resposta conhecida, mantemos `postgresql` — o comportamento que já
+ * existia, e o único que não muda nada para quem já usava a tela.
+ */
+function resolveEngine(connection: Pick<Connection, 'type' | 'options'>): DbEngine {
+  if (connection.type !== 'API_GATEWAY') return 'postgresql';
+  const reported = String(connection.options?.engine ?? '').toLowerCase();
+  return KNOWN_ENGINES.find((engine) => engine === reported) ?? 'postgresql';
+}
+
 export function toDatabaseSchema(
   schema: ConnectionSchema,
-  connection: Pick<Connection, 'id' | 'name' | 'database' | 'host' | 'port'>,
+  connection: Pick<
+    Connection,
+    'id' | 'name' | 'database' | 'host' | 'port' | 'type' | 'options'
+  >,
 ): DatabaseSchema {
   // Agrupa tabelas por schema (ex.: 'public').
   const bySchema = new Map<string, SchemaTable[]>();
@@ -132,7 +163,7 @@ export function toDatabaseSchema(
   return {
     id: connection.id,
     name: schema.database?.name || connection.database || connection.name,
-    engine: 'postgresql',
+    engine: resolveEngine(connection),
     host: connection.host,
     port: connection.port,
     version: shortServerVersion(schema.database?.version),

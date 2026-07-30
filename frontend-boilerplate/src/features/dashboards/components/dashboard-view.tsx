@@ -19,8 +19,10 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import type { ApiMode } from '@/shared/lib/query-keys';
 import { useDashboard } from '../hooks';
 import { pickEffectiveLayout } from '../lib/dashboard-filters';
+import { isExternalDashboard } from '../lib/external-dashboard';
 import { DashboardBreadcrumbs } from './dashboard-breadcrumbs';
 import { DashboardViewContent } from './dashboard-view-content';
+import { ExternalDashboardView } from './external-dashboard-view';
 
 export function DashboardView() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +50,14 @@ export function DashboardView() {
           }
         />
       </VStack>
+    );
+  }
+
+  // RELATÓRIO EXTERNO (legado): não há layout para renderizar — o conteúdo é de
+  // outro sistema. Sai antes de qualquer decisão de modo/hidratação.
+  if (isExternalDashboard(detail)) {
+    return (
+      <ExternalDashboardView title={detail.title} externalUrl={detail.externalUrl!} />
     );
   }
 

@@ -90,6 +90,12 @@ export interface HBarChartProps extends ChartStateProps {
   state?: ChartFrameState;
   /** Detalhe do erro exibido no estado `error`/`forbidden`. */
   errorMessage?: string;
+  /**
+   * Clique numa barra. Quando declarado, o desenho vira SELEÇÃO: a barra ganha
+   * cursor de mão e o clique devolve o ponto (drill-down). Sem a prop, nada
+   * muda. A tela que liga isto precisa de um controle equivalente por teclado.
+   */
+  onSelect?: (point: ChartPoint, index: number) => void;
 }
 
 /** Rótulo da linha de valor no tooltip (o gráfico tem uma medida só). */
@@ -156,6 +162,7 @@ export function HBarChart({
   scope: extraScope,
   state,
   errorMessage,
+  onSelect,
 }: HBarChartProps) {
   const palette = useChartPalette();
   // Entrada animada só quando o usuário não pediu redução de movimento.
@@ -277,9 +284,22 @@ export function HBarChart({
             // ENTRE SÉRIES, e este tipo tem uma só — logo, índice 0.
             {...chartAnimationProps(palette, 0)}
             isAnimationActive={isAnimationActive}
+            onClick={
+              onSelect
+                ? (_bar: unknown, index: number) => {
+                    const point = data[index];
+                    if (point) onSelect(point, index);
+                  }
+                : undefined
+            }
           >
             {points.map((point, index) => (
-              <Cell key={`${point.label}-${index}`} fill={fillAt(index, point.color)} />
+              <Cell
+                key={`${point.label}-${index}`}
+                fill={fillAt(index, point.color)}
+                // Atributo de apresentação do SVG — a mão sem `style` inline.
+                cursor={onSelect ? 'pointer' : undefined}
+              />
             ))}
           </Bar>
         </RechartsBarChart>

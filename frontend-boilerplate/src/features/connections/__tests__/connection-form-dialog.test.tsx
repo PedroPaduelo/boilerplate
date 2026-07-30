@@ -27,6 +27,7 @@ const editConnection: Connection = {
   database: 'analytics',
   username: 'readonly',
   sslMode: 'require',
+  baseUrl: null,
   options: null,
   ownerId: 'u1',
   departmentId: null,

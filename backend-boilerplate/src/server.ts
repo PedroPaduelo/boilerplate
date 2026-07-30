@@ -10,6 +10,7 @@ import fastifyHelmet from '@fastify/helmet';
 import fastifyBasicAuth from '@fastify/basic-auth';
 import { fastify } from 'fastify';
 import { Redis } from 'ioredis';
+import { createHash } from 'node:crypto';
 import path from 'path';
 import {
   jsonSchemaTransform,
@@ -136,13 +137,32 @@ async function start() {
   });
 
   // Rate limiting - global
+  //
+  // O teto vem do ambiente (`RATE_LIMIT_MAX`, padrão 1100/min). O valor fixo
+  // anterior (100/min) era baixo demais para o uso real: uma única tela da SPA
+  // dispara dezenas de requisições (listagens + hidratação de blocos + catálogo),
+  // então navegar normalmente já batia no teto e devolvia 429.
   app.register(fastifyRateLimit, {
-    max: 100, // 100 requests per window
-    timeWindow: '1 minute',
+    max: env.RATE_LIMIT_MAX,
+    timeWindow: env.RATE_LIMIT_WINDOW,
     redis: redisAvailable ? app.redis : undefined,
     keyGenerator: (request) => {
-      // Use IP or user ID if authenticated
-      return request.ip;
+      // Balde POR USUÁRIO quando a requisição é autenticada — era o que o
+      // comentário antigo prometia e o código não fazia.
+      //
+      // Isso importa muito atrás de proxy reverso: sem `trustProxy`, TODA
+      // requisição chega com o IP do proxy, então o balde por IP era UM SÓ
+      // para a organização inteira — um usuário abrindo dashboards consumia a
+      // cota de todos os outros.
+      //
+      // A chave usa o hash do token (nunca o token em si, que não deve vazar
+      // para chave de cache/log). Requisição sem token continua no balde por IP.
+      const authorization = request.headers.authorization;
+      if (authorization?.startsWith('Bearer ')) {
+        const token = authorization.slice('Bearer '.length);
+        return `u:${createHash('sha256').update(token).digest('hex').slice(0, 32)}`;
+      }
+      return `ip:${request.ip}`;
     },
   });
 

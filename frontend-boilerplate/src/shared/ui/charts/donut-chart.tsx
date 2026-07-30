@@ -87,6 +87,15 @@ export interface DonutChartProps extends ChartStateProps {
   state?: ChartFrameState;
   /** Detalhe do erro, quando `state="error"`. */
   errorMessage?: string;
+  /**
+   * Clique numa fatia. Quando declarado, o desenho vira SELEÇÃO: a fatia ganha
+   * cursor de mão e o clique devolve o ponto. Existe para o drill-down (ver um
+   * recorte no gráfico e agir sobre ele) — sem a prop, nada muda.
+   *
+   * Gráfico é atalho, não único caminho: a tela que liga isto precisa oferecer
+   * um controle equivalente alcançável por teclado.
+   */
+  onSelect?: (point: ChartPoint, index: number) => void;
 }
 
 /**
@@ -147,6 +156,7 @@ export function DonutChart({
   emptyMessage,
   label = 'Gráfico de rosca',
   summary,
+  onSelect,
 }: DonutChartProps) {
   const palette = useChartPalette();
   // Hover ESCURECE (a maioria das libs clareia): o recharts não tem filtro de
@@ -247,6 +257,14 @@ export function DonutChart({
           stroke="none"
           onMouseEnter={(_point: unknown, index: number) => setActiveSlice(index)}
           onMouseLeave={() => setActiveSlice(-1)}
+          onClick={
+            onSelect
+              ? (_point: unknown, index: number) => {
+                  const point = data[index];
+                  if (point) onSelect(point, index);
+                }
+              : undefined
+          }
           {...chartAnimationProps(palette)}
         >
           {data.map((point, index) => {
@@ -255,6 +273,9 @@ export function DonutChart({
               <Cell
                 key={`${point.label}-${index}`}
                 fill={index === activeSlice ? slice.hover : slice.fill}
+                // `cursor` é atributo de APRESENTAÇÃO do SVG (não precisa de
+                // CSS), então a mão aparece sem `style` inline.
+                cursor={onSelect ? 'pointer' : undefined}
               />
             );
           })}

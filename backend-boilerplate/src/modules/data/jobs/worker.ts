@@ -12,9 +12,9 @@ import { Worker, type Job } from 'bullmq';
 import { connectionRedisConfigWorker } from '@/services/jobs/connection-redis-config';
 import { redisInstance, redisService } from '@/lib/redis';
 import { env } from '@/lib/env';
-import { runQuery } from '@/lib/pg-runner';
+import { runQuery } from '@/lib/query-runner';
 import { socketManager } from '@/socket/manager/socket-manager';
-import { loadPgConnection } from '../connection-loader';
+import { loadRunnerConnection } from '../connection-loader';
 import { processQueryExecJob, type WorkerDeps } from '../worker-handler';
 import type { QueryExecJobData } from '../types';
 import { QUERY_EXEC_QUEUE } from './queue';
@@ -23,7 +23,7 @@ let workerInstance: Worker<QueryExecJobData> | null = null;
 
 /** Deps reais do worker (infra do boilerplate). */
 const realDeps: WorkerDeps = {
-  loadPgConnection,
+  loadPgConnection: loadRunnerConnection,
   runQuery,
   cacheSetData: async (key, value, ttlSeconds) => {
     await redisService.setValue(key, value, ttlSeconds);

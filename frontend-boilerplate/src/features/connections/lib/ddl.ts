@@ -51,7 +51,59 @@ export function buildCreateTable(
   return [`CREATE TABLE ${qualified} (`, body.join(',\n'), ');'].join('\n');
 }
 
-/** `SELECT` de amostra para a tabela — preset do query runner. */
-export function buildSelectPreview(schema: string, table: string): string {
-  return `SELECT *\nFROM ${schema}.${table}\nLIMIT 50;`;
+/** Quantas linhas o preset de amostra traz. */
+const PREVIEW_ROWS = 50;
+
+/**
+ * Exemplo de consulta para o placeholder do editor, no dialeto do banco.
+ *
+ * Sem citação nos identificadores de propósito: é texto de EXEMPLO, e
+ * `dbo.minha_tabela` se lê melhor que `[dbo].[minha_tabela]`. O que não pode é
+ * sugerir `LIMIT` a quem está conectado num SQL Server — o placeholder é a
+ * primeira pista de sintaxe que a pessoa recebe, e uma pista errada custa uma
+ * execução que falha.
+ */
+export function buildSqlPlaceholder(engine: DbEngine): string {
+  if (engine === 'sqlserver') {
+    return `SELECT TOP ${PREVIEW_ROWS} * FROM dbo.minha_tabela;`;
+  }
+  if (engine === 'oracle') {
+    return `SELECT * FROM meu_schema.minha_tabela FETCH FIRST ${PREVIEW_ROWS} ROWS ONLY;`;
+  }
+  return `SELECT * FROM public.minha_tabela LIMIT ${PREVIEW_ROWS};`;
+}
+
+/**
+ * `SELECT` de amostra para a tabela — preset do query runner.
+ *
+ * DEPENDE DO MOTOR, e isso não é detalhe: a versão anterior gerava sempre
+ * `LIMIT 50`, que é dialeto Postgres. Numa conexão SQL Server (o caso das
+ * bases expostas por gateway) o banco respondia "Incorrect syntax near '50'"
+ * assim que o usuário clicava numa tabela — ou seja, a tela abria já quebrada,
+ * e o erro parecia ser do gateway quando era do SQL que nós escrevemos.
+ *
+ *   • SQL Server → `SELECT TOP 50 *`
+ *   • Oracle     → `FETCH FIRST 50 ROWS ONLY` (padrão SQL:2008, 12c+)
+ *   • demais     → `LIMIT 50`
+ *
+ * Os identificadores vão SEMPRE citados (`[dbo].[Minha Tabela]`). No banco
+ * tributário real existem tabelas como `SELIC_SERIE HISTÓRICA` e `PERMISSÕES`:
+ * sem citação, o SQL Server lê até o espaço e responde "Invalid object name
+ * 'dbo.SELIC_SERIE'". Citar é o que faz o preview funcionar para 100% das
+ * tabelas, não só para as de nome comportado.
+ */
+export function buildSelectPreview(
+  engine: DbEngine,
+  schema: string,
+  table: string,
+): string {
+  const alvo = `${quoteIdent(engine, schema)}.${quoteIdent(engine, table)}`;
+
+  if (engine === 'sqlserver') {
+    return `SELECT TOP ${PREVIEW_ROWS} *\nFROM ${alvo};`;
+  }
+  if (engine === 'oracle') {
+    return `SELECT *\nFROM ${alvo}\nFETCH FIRST ${PREVIEW_ROWS} ROWS ONLY;`;
+  }
+  return `SELECT *\nFROM ${alvo}\nLIMIT ${PREVIEW_ROWS};`;
 }

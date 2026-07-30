@@ -165,6 +165,7 @@ export function TableInfoPanel({
             errorMessage={queryErrorMessage}
             isDisabled={isQueryDisabled}
             disabledReason={queryDisabledReason}
+            engine={engine}
           />
         ) : null}
         {tab === 'columns' ? <TableColumnsTable columns={table.columns} /> : null}

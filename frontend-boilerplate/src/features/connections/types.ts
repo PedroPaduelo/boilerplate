@@ -10,7 +10,16 @@
  */
 
 export type ConnectionVisibility = 'PRIVATE' | 'DEPARTMENT' | 'ORG';
-export type ConnectionType = 'POSTGRES';
+/**
+ * Tipo da fonte de dados.
+ *
+ * `POSTGRES`    — conexão TCP direta (host/porta/usuário/senha).
+ * `API_GATEWAY` — HTTP contra um gateway read-only (base URL + token Bearer).
+ *   Existe para bancos que a plataforma não alcança: em vez de abrir VPN para
+ *   cada sistema, um gateway do lado de dentro expõe o banco por HTTP e a
+ *   plataforma fala com ele.
+ */
+export type ConnectionType = 'POSTGRES' | 'API_GATEWAY';
 /**
  * Ambiente do banco, DECLARADO no cadastro (enum `ConnectionEnvironment` do
  * backend). Substitui a heurística que adivinhava o ambiente pelo nome.
@@ -19,7 +28,7 @@ export type ConnectionEnvironment = 'DEV' | 'HOMOLOG' | 'PRODUCTION';
 /** Status de conectividade reportado pelo backend (test). */
 export type ConnectionStatus = string; // ex.: 'UNKNOWN' | 'OK' | 'ERROR'
 
-/** Conexão como retornada pela API (SEM senha). */
+/** Conexão como retornada pela API (SEM senha e SEM token). */
 export interface Connection {
   id: string;
   name: string;
@@ -30,6 +39,8 @@ export interface Connection {
   database: string;
   username: string;
   sslMode: string;
+  /** Base URL do gateway; `null` em conexões POSTGRES. */
+  baseUrl: string | null;
   options: Record<string, unknown> | null;
   ownerId: string;
   departmentId: string | null;
@@ -58,17 +69,31 @@ export interface ConnectionsResponse {
   totalPages: number;
 }
 
-/** Payload de criação — `password` em claro (cifrada at-rest no backend). */
+/**
+ * Payload de criação. O SEGREDO vai em claro e é cifrado at-rest no backend:
+ * `password` para POSTGRES, `token` para API_GATEWAY.
+ *
+ * Os campos de cada tipo são opcionais aqui e exigidos POR TIPO pelo backend
+ * (e pelo formulário) — um objeto só, validado conforme o `type`.
+ */
 export interface CreateConnectionInput {
   name: string;
   description?: string | null;
   type?: ConnectionType;
-  host: string;
-  port: number;
-  database: string;
-  username: string;
-  password: string;
+
+  /* POSTGRES */
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
   sslMode?: string;
+
+  /* API_GATEWAY */
+  baseUrl?: string;
+  token?: string;
+
+  /* comuns */
+  database?: string;
   options?: Record<string, unknown> | null;
   departmentId?: string | null;
   visibility: ConnectionVisibility;
@@ -77,7 +102,7 @@ export interface CreateConnectionInput {
   isActive?: boolean;
 }
 
-/** Payload de atualização — `password` opcional (ausente = não troca). */
+/** Payload de atualização — segredo opcional (ausente = não troca). */
 export interface UpdateConnectionInput {
   id: string;
   name?: string;
@@ -88,6 +113,8 @@ export interface UpdateConnectionInput {
   username?: string;
   password?: string;
   sslMode?: string;
+  baseUrl?: string;
+  token?: string;
   options?: Record<string, unknown> | null;
   departmentId?: string | null;
   visibility?: ConnectionVisibility;

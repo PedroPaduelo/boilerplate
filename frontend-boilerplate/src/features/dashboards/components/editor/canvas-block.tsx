@@ -35,6 +35,12 @@ export interface CanvasBlockProps extends Omit<BlockActionsProps, 'blockLabel'> 
   isSelected: boolean;
   /** `false` no modo somente leitura (pré-visualização da versão publicada). */
   isEditable: boolean;
+  /**
+   * Altura de célula declarada do bloco (px), vinda do `BlockGrid` — repassada
+   * ao `BlockRenderer` para o desenho assumir a altura pedida no editor, e não
+   * só reservar espaço. `undefined` = sem declaração (altura do tipo).
+   */
+  declaredHeight?: number;
   onSelect: () => void;
 }
 
@@ -44,6 +50,7 @@ export function CanvasBlock({
   data,
   isSelected,
   isEditable,
+  declaredHeight,
   onSelect,
   ...actions
 }: CanvasBlockProps) {
@@ -65,7 +72,13 @@ export function CanvasBlock({
       onClick={isEditable ? onClick : undefined}
       onMouseUp={isEditable ? onMouseUp : undefined}
     >
-      <BlockRenderer block={block} data={data} result={data?.blocks?.[block.id]} framed />
+      <BlockRenderer
+        block={block}
+        data={data}
+        result={data?.blocks?.[block.id]}
+        declaredHeight={declaredHeight}
+        framed
+      />
       {isEditable ? (
         <div className="app-canvas-block__actions">
           <BlockActions blockLabel={label} onEdit={onSelect} {...actions} />

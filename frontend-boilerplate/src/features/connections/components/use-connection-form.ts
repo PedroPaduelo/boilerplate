@@ -3,32 +3,48 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateConnection, useUpdateConnection } from '../hooks';
-import type { Connection } from '../types';
+import type { Connection, ConnectionType } from '../types';
 
 /**
  * Estado e validação do formulário de conexão (react-hook-form + zod).
  *
  * Separado da UI porque são duas responsabilidades diferentes — e porque as
- * regras aqui têm consequência de segurança: a SENHA nunca é reidratada (o
- * backend não a devolve) e, em edição, campo em branco significa “mantém a
- * atual” — por isso ela só entra no payload quando preenchida.
+ * regras aqui têm consequência de segurança: o SEGREDO (senha do Postgres ou
+ * token do gateway) nunca é reidratado (o backend não o devolve) e, em edição,
+ * campo em branco significa “mantém o atual” — por isso ele só entra no payload
+ * quando preenchido.
+ *
+ * São DOIS tipos de fonte no mesmo formulário. O que muda entre eles é apenas o
+ * bloco de endereço/credencial; nome, ambiente, visibilidade e departamento são
+ * os mesmos. Por isso um formulário só, com validação CONDICIONAL — em vez de
+ * dois formulários que precisariam ser mantidos em sincronia para sempre.
  */
 
 export const SSL_MODES = ['require', 'disable', 'prefer', 'verify-ca', 'verify-full'];
 
 const connectionSchema = z.object({
+  type: z.enum(['POSTGRES', 'API_GATEWAY']),
   name: z.string().min(1, 'Informe o nome'),
   description: z.string(),
-  host: z.string().min(1, 'Informe o host'),
+
+  /* --- POSTGRES ---------------------------------------------------------- */
+  host: z.string(),
   port: z
     .number({ message: 'Porta inválida' })
     .int('Porta inválida')
     .min(1, 'Porta inválida')
     .max(65535, 'Porta inválida'),
-  database: z.string().min(1, 'Informe o banco de dados'),
-  username: z.string().min(1, 'Informe o usuário'),
+  username: z.string(),
   password: z.string(),
   sslMode: z.string().min(1),
+
+  /* --- API_GATEWAY ------------------------------------------------------- */
+  baseUrl: z.string(),
+  token: z.string(),
+
+  /* --- comuns ------------------------------------------------------------ */
+  // Obrigatório no Postgres; no gateway é opcional (o /health informa o nome).
+  database: z.string(),
   visibility: z.enum(['PRIVATE', 'DEPARTMENT', 'ORG']),
   // String vazia = nada escolhido. O enum puro aceitaria só os três válidos,
   // mas daria a mensagem genérica do Zod ("invalid enum value") no lugar de
@@ -55,49 +71,71 @@ export function useConnectionForm({
   const createConnection = useCreateConnection();
   const updateConnection = useUpdateConnection();
 
-  // Senha obrigatória só na criação; departamento obrigatório quando a
-  // visibilidade é DEPARTMENT.
+  // Campos obrigatórios dependem do TIPO; o segredo só é obrigatório na
+  // criação; departamento é obrigatório quando a visibilidade é DEPARTMENT.
   const schema = useMemo(
     () =>
-      connectionSchema.superRefine((values, ctx) => {
-        if (!isEdit && values.password.trim().length === 0) {
-          ctx.addIssue({
-            code: 'custom',
-            path: ['password'],
-            message: 'Informe a senha',
-          });
-        }
-        if (values.visibility === 'DEPARTMENT' && !values.departmentId) {
-          ctx.addIssue({
-            code: 'custom',
-            path: ['departmentId'],
-            message: 'Selecione um departamento',
-          });
-        }
-        if (!values.environment) {
-          ctx.addIssue({
-            code: 'custom',
-            path: ['environment'],
-            // Diferente do placeholder de propósito: o placeholder diz o que
-            // fazer antes de agir, o erro diz o que faltou depois.
-            message: 'Escolha o ambiente do banco',
-          });
-        }
-      }),
+      connectionSchema
+        .superRefine((values, ctx) => {
+          const require = (path: keyof ConnectionFormValues, message: string) =>
+            ctx.addIssue({ code: 'custom', path: [path], message });
+
+          if (values.type === 'API_GATEWAY') {
+            const url = values.baseUrl.trim();
+            if (!url) {
+              require('baseUrl', 'Informe a URL do gateway');
+            } else if (!/^https?:\/\/.+/i.test(url)) {
+              // Mensagem específica em vez de "URL inválida": o erro mais comum
+              // aqui é colar o domínio sem esquema, e dizer o que falta resolve
+              // na hora.
+              require('baseUrl', 'A URL deve começar com http:// ou https://');
+            }
+            if (!isEdit && !values.token.trim()) {
+              require('token', 'Informe o token de acesso');
+            }
+            return;
+          }
+
+          if (!values.host.trim()) require('host', 'Informe o host');
+          if (!values.database.trim()) require('database', 'Informe o banco de dados');
+          if (!values.username.trim()) require('username', 'Informe o usuário');
+          if (!isEdit && !values.password.trim()) require('password', 'Informe a senha');
+        })
+        .superRefine((values, ctx) => {
+          if (values.visibility === 'DEPARTMENT' && !values.departmentId) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['departmentId'],
+              message: 'Selecione um departamento',
+            });
+          }
+          if (!values.environment) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['environment'],
+              // Diferente do placeholder de propósito: o placeholder diz o que
+              // fazer antes de agir, o erro diz o que faltou depois.
+              message: 'Escolha o ambiente do banco',
+            });
+          }
+        }),
     [isEdit],
   );
 
   const form = useForm<ConnectionFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      type: 'POSTGRES',
       name: '',
       description: '',
       host: '',
       port: 5432,
-      database: '',
       username: '',
       password: '',
       sslMode: 'require',
+      baseUrl: '',
+      token: '',
+      database: '',
       visibility: 'DEPARTMENT',
       // Vazio de propósito: obriga uma escolha explícita.
       environment: '',
@@ -110,15 +148,18 @@ export function useConnectionForm({
   useEffect(() => {
     if (!isOpen) return;
     reset({
+      type: (connection?.type as ConnectionType) ?? 'POSTGRES',
       name: connection?.name ?? '',
       description: connection?.description ?? '',
       host: connection?.host ?? '',
       port: connection?.port ?? 5432,
-      database: connection?.database ?? '',
       username: connection?.username ?? '',
-      // Nunca reidrata senha — sempre em branco.
+      // Nunca reidrata segredo — sempre em branco.
       password: '',
       sslMode: connection?.sslMode ?? 'require',
+      baseUrl: connection?.baseUrl ?? '',
+      token: '',
+      database: connection?.database ?? '',
       visibility: connection?.visibility ?? 'DEPARTMENT',
       environment: connection?.environment ?? '',
       departmentId: connection?.departmentId ?? '',
@@ -132,34 +173,51 @@ export function useConnectionForm({
     // O refine acima garante que aqui nunca é '' — o cast só remove o literal
     // vazio que existe para representar "ainda não escolhido" no formulário.
     const environment = values.environment as Exclude<typeof values.environment, ''>;
-    const shared = {
+
+    const common = {
       name: values.name,
       description: values.description.trim() ? values.description : null,
-      host: values.host,
-      port: values.port,
-      database: values.database,
-      username: values.username,
-      sslMode: values.sslMode,
       visibility: values.visibility,
       environment,
       departmentId,
       isActive: values.isActive,
     };
+
+    const isGateway = values.type === 'API_GATEWAY';
+    // Só os campos do tipo escolhido vão no payload: mandar `host: ''` num
+    // gateway sujaria o registro com endereço que o backend vai derivar da URL.
+    const target = isGateway
+      ? {
+          baseUrl: values.baseUrl.trim(),
+          // Em branco, o backend adota o nome que o gateway informar no teste.
+          ...(values.database.trim() ? { database: values.database.trim() } : {}),
+        }
+      : {
+          host: values.host,
+          port: values.port,
+          database: values.database,
+          username: values.username,
+          sslMode: values.sslMode,
+        };
+    const secretField = isGateway ? 'token' : 'password';
+    const secretValue = isGateway ? values.token : values.password;
     const close = { onSettled: () => onOpenChange(false) };
 
     if (isEdit && connection) {
       updateConnection.mutate(
         {
           id: connection.id,
-          ...shared,
-          ...(values.password.trim() ? { password: values.password } : {}),
+          ...common,
+          ...target,
+          // Em branco mantém o segredo atual.
+          ...(secretValue.trim() ? { [secretField]: secretValue } : {}),
         },
         close,
       );
       return;
     }
     createConnection.mutate(
-      { ...shared, type: 'POSTGRES', password: values.password },
+      { ...common, ...target, type: values.type, [secretField]: secretValue },
       close,
     );
   });

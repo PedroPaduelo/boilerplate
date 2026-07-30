@@ -5,7 +5,12 @@ import { queryKeys, type ApiMode } from '@/shared/lib/query-keys';
 import { artifactQueryOptions, referenceQueryOptions } from '@/shared/lib/query-policies';
 import type { QueryClient } from '@tanstack/react-query';
 import { dashboardsApi } from './api';
-import type { AddChartInput, CreateDashboardInput, UpdateDashboardInput } from './types';
+import type {
+  AddChartInput,
+  ArtifactVisibility,
+  CreateDashboardInput,
+  UpdateDashboardInput,
+} from './types';
 
 /**
  * Invalida TODAS as caches de um dashboard específico: o detalhe (draft +
@@ -82,6 +87,42 @@ export function useCreateDashboard() {
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error, 'Erro ao criar dashboard'));
+    },
+  });
+}
+
+/**
+ * Cadastra ou edita um RELATÓRIO EXTERNO (legado): um item que aparece na mesma
+ * lista dos dashboards desta plataforma, mas cujo conteúdo mora fora dela.
+ *
+ * Usa as MESMAS rotas de dashboard (POST/PATCH) — o que muda é o payload:
+ * `externalUrl` no lugar de `draftLayout`. Não existe rota separada porque não
+ * existe entidade separada: para quem consome a lista, é um dashboard a mais.
+ */
+export interface SaveExternalDashboardInput {
+  /** Ausente = cadastro novo; preenchido = edição do relatório já cadastrado. */
+  id?: string;
+  title: string;
+  externalUrl: string;
+  visibility: ArtifactVisibility;
+  departmentId: string | null;
+}
+
+export function useSaveExternalDashboard() {
+  const toast = useAppToast();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: SaveExternalDashboardInput) =>
+      id ? dashboardsApi.update(id, input) : dashboardsApi.create(input),
+    onSuccess: (_, { id }) => {
+      toast.success(
+        id ? 'Relatório externo atualizado!' : 'Relatório externo cadastrado!',
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.all });
+      if (id) invalidateDashboard(queryClient, id);
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao salvar o relatório externo'));
     },
   });
 }

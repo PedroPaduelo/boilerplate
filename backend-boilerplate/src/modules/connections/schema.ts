@@ -12,7 +12,11 @@ import type { Connection } from '@prisma/client';
 import { z } from 'zod';
 
 export const visibilityEnum = z.enum(['PRIVATE', 'DEPARTMENT', 'ORG']);
-export const connectionTypeEnum = z.enum(['POSTGRES']);
+/**
+ * Tipo da fonte. `POSTGRES` é o default por retrocompatibilidade: clientes que
+ * já criavam conexões sem informar o tipo continuam criando Postgres.
+ */
+export const connectionTypeEnum = z.enum(['POSTGRES', 'API_GATEWAY']);
 /**
  * Ambiente do banco. SEM `.default()` de propósito no create: um default aqui
  * seria a mesma adivinhação silenciosa que este campo veio eliminar — quem
@@ -31,6 +35,8 @@ export const connectionResponseSchema = z.object({
   database: z.string(),
   username: z.string(),
   sslMode: z.string(),
+  /** Base URL do gateway (null em conexões POSTGRES). Não é segredo. */
+  baseUrl: z.string().nullable(),
   options: z.any().nullable(),
   ownerId: z.string(),
   departmentId: z.string().nullable(),
@@ -45,23 +51,84 @@ export const connectionResponseSchema = z.object({
 
 export type ConnectionResponse = z.infer<typeof connectionResponseSchema>;
 
-export const createConnectionBodySchema = z.object({
-  name: z.string().min(1).max(200),
-  description: z.string().max(1000).nullish(),
-  type: connectionTypeEnum.default('POSTGRES'),
-  host: z.string().min(1),
-  port: z.coerce.number().int().min(1).max(65535).default(5432),
-  database: z.string().min(1),
-  username: z.string().min(1),
-  /** senha em CLARO — cifrada at-rest antes de persistir. */
-  password: z.string().min(1),
-  sslMode: z.string().default('require'),
-  options: z.record(z.any()).nullish(),
-  departmentId: z.string().nullish(),
-  visibility: visibilityEnum.default('DEPARTMENT'),
-  environment: connectionEnvironmentEnum,
-  isActive: z.boolean().default(true),
-});
+/**
+ * Campos exigidos por CADA tipo de fonte.
+ *
+ * Os dois tipos moram no mesmo objeto (em vez de uma união discriminada) por
+ * dois motivos práticos: o payload continua compatível com quem já criava
+ * conexões Postgres sem informar `type`, e o erro de validação sai apontando o
+ * CAMPO que faltou ("Informe a URL base do gateway") em vez do "nenhuma
+ * variante da união casou" que uma união discriminada produziria.
+ */
+function validateByType(
+  values: {
+    type: 'POSTGRES' | 'API_GATEWAY';
+    host?: string | null;
+    database?: string | null;
+    username?: string | null;
+    password?: string | null;
+    baseUrl?: string | null;
+    token?: string | null;
+  },
+  ctx: z.RefinementCtx,
+  { requireSecret }: { requireSecret: boolean }
+) {
+  const missing = (path: string, message: string) =>
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+  if (values.type === 'API_GATEWAY') {
+    if (!values.baseUrl?.trim()) {
+      missing('baseUrl', 'baseUrl is required for API_GATEWAY connections');
+    }
+    if (requireSecret && !values.token?.trim()) {
+      missing('token', 'token is required for API_GATEWAY connections');
+    }
+    return;
+  }
+
+  if (!values.host?.trim()) missing('host', 'host is required for POSTGRES connections');
+  if (!values.database?.trim()) {
+    missing('database', 'database is required for POSTGRES connections');
+  }
+  if (!values.username?.trim()) {
+    missing('username', 'username is required for POSTGRES connections');
+  }
+  if (requireSecret && !values.password?.trim()) {
+    missing('password', 'password is required for POSTGRES connections');
+  }
+}
+
+export const createConnectionBodySchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(1000).nullish(),
+    type: connectionTypeEnum.default('POSTGRES'),
+
+    /* --- POSTGRES ------------------------------------------------------- */
+    // Opcionais no OBJETO, obrigatórios por TIPO (ver `validateByType`).
+    host: z.string().min(1).optional(),
+    port: z.coerce.number().int().min(1).max(65535).default(5432),
+    username: z.string().min(1).optional(),
+    /** senha em CLARO — cifrada at-rest antes de persistir. */
+    password: z.string().min(1).optional(),
+    sslMode: z.string().default('require'),
+
+    /* --- API_GATEWAY ---------------------------------------------------- */
+    /** Base URL do gateway (ex.: https://gw.exemplo.com). */
+    baseUrl: z.string().min(1).optional(),
+    /** Token Bearer em CLARO — cifrado at-rest (mesmo campo da senha). */
+    token: z.string().min(1).optional(),
+
+    /* --- comuns --------------------------------------------------------- */
+    // Obrigatório no Postgres; no gateway é opcional (o `/health` informa).
+    database: z.string().min(1).optional(),
+    options: z.record(z.any()).nullish(),
+    departmentId: z.string().nullish(),
+    visibility: visibilityEnum.default('DEPARTMENT'),
+    environment: connectionEnvironmentEnum,
+    isActive: z.boolean().default(true),
+  })
+  .superRefine((values, ctx) => validateByType(values, ctx, { requireSecret: true }));
 
 export type CreateConnectionInput = z.infer<typeof createConnectionBodySchema>;
 
@@ -75,6 +142,10 @@ export const updateConnectionBodySchema = z
     username: z.string().min(1).optional(),
     password: z.string().min(1).optional(),
     sslMode: z.string().optional(),
+    /** Trocar a URL re-deriva host/porta (ver `updateConnection`). */
+    baseUrl: z.string().min(1).optional(),
+    /** Em branco/ausente MANTÉM o token atual (mesma regra da senha). */
+    token: z.string().min(1).optional(),
     options: z.record(z.any()).nullish(),
     departmentId: z.string().nullish(),
     visibility: visibilityEnum.optional(),
@@ -115,7 +186,14 @@ export const runQueryBodySchema = z.object({
 });
 
 export const queryResultSchema = z.object({
-  columns: z.array(z.object({ name: z.string(), dataTypeID: z.number() })),
+  columns: z.array(
+    z.object({
+      name: z.string(),
+      dataTypeID: z.number(),
+      /** Nome do tipo, quando a fonte informa por nome (gateway). */
+      dataType: z.string().optional(),
+    })
+  ),
   rows: z.array(z.record(z.any())),
   rowCount: z.number(),
   truncated: z.boolean(),
@@ -198,7 +276,8 @@ export const testResultSchema = z.object({
 
 /**
  * Serializa uma Connection para resposta pública. Lista EXPLÍCITA de campos
- * seguros — `passwordCipher` jamais é incluído.
+ * seguros — `passwordCipher` jamais é incluído (ele guarda a senha do Postgres
+ * OU o token do gateway; em ambos os casos, segredo).
  */
 export function serializeConnection(conn: Connection): ConnectionResponse {
   return {
@@ -211,6 +290,7 @@ export function serializeConnection(conn: Connection): ConnectionResponse {
     database: conn.database,
     username: conn.username,
     sslMode: conn.sslMode,
+    baseUrl: conn.baseUrl,
     options: (conn.options ?? null) as unknown,
     ownerId: conn.ownerId,
     departmentId: conn.departmentId,

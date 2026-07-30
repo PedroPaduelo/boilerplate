@@ -18,7 +18,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import type { ShareLink, ShareTargetType } from '@prisma/client';
-import { ForbiddenError, NotFoundError } from '@/http/routes/_errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@/http/routes/_errors';
 import { prisma } from '@/lib/prisma';
 import type { ActorContext } from '@/lib/rbac';
 import { canViewArtifact } from '@/lib/visibility';
@@ -42,10 +42,19 @@ async function assertTargetShareable(
   if (targetType === 'DASHBOARD') {
     const dashboard = await prisma.dashboard.findUnique({
       where: { id: targetId },
-      select: { ownerId: true, visibility: true, departmentId: true },
+      select: { ownerId: true, visibility: true, departmentId: true, externalUrl: true },
     });
     if (!dashboard || !canViewArtifact(dashboard, ctx)) {
       throw new NotFoundError('Target dashboard not found');
+    }
+    // Relatório EXTERNO (legado) não tem layout publicado: um link público para
+    // ele abriria uma página vazia. O "link para compartilhar" já existe e é a
+    // própria URL do relatório — devolvê-la é mais honesto que gerar um token
+    // que não mostra nada.
+    if (dashboard.externalUrl) {
+      throw new BadRequestError(
+        `External dashboards cannot be shared by token: share the report URL itself (${dashboard.externalUrl})`,
+      );
     }
     return;
   }

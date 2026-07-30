@@ -13,11 +13,18 @@
 import { Prisma, type Connection } from '@prisma/client';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/env';
+import { runQuery, type PgRunnerConnection, type QueryResultShape } from '@/lib/pg-runner';
 import {
-  runQuery,
-  type PgRunnerConnection,
-  type QueryResultShape,
-} from '@/lib/pg-runner';
+  gatewayHealth,
+  gatewaySchema,
+  normalizeBaseUrl,
+  type GatewayConnection,
+} from '@/lib/gateway-runner';
+import {
+  runQuery as runAnyQuery,
+  type RunnerConnection,
+} from '@/lib/query-runner';
 import { redisService } from '@/lib/redis';
 import type { UserContext } from './rbac';
 import type { CreateConnectionInput, UpdateConnectionInput } from './schema';
@@ -41,6 +48,11 @@ export function schemaCacheKey(connectionId: string): string {
   return `conn:${connectionId}:schema`;
 }
 
+/** Esta conexão fala HTTP com um gateway (em vez de TCP com o Postgres)? */
+export function isGatewayConnection(conn: Connection): boolean {
+  return conn.type === 'API_GATEWAY';
+}
+
 /** Monta o objeto de conexão do pg-runner a partir do registro (decifra a senha). */
 export function toPgRunnerConnection(conn: Connection): PgRunnerConnection {
   return {
@@ -54,6 +66,28 @@ export function toPgRunnerConnection(conn: Connection): PgRunnerConnection {
   };
 }
 
+/** Monta o objeto do gateway-runner (decifra o TOKEN, guardado em passwordCipher). */
+export function toGatewayConnection(conn: Connection): GatewayConnection {
+  return {
+    id: conn.id,
+    // `baseUrl` é obrigatório para este tipo (validado no cadastro); o fallback
+    // reconstrói a URL a partir do endereço para nunca produzir `undefined`.
+    baseUrl: conn.baseUrl ?? `https://${conn.host}`,
+    token: decrypt(conn.passwordCipher),
+    database: conn.database,
+  };
+}
+
+/**
+ * Registro → objeto executável pelo `query-runner`, seja qual for o tipo.
+ * Ponto ÚNICO de decisão: quem executa query não precisa perguntar o tipo.
+ */
+export function toRunnerConnection(conn: Connection): RunnerConnection {
+  return isGatewayConnection(conn)
+    ? { kind: 'gateway', ...toGatewayConnection(conn) }
+    : toPgRunnerConnection(conn);
+}
+
 function normalizeOptions(
   options: Record<string, unknown> | null | undefined
 ): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined {
@@ -62,21 +96,61 @@ function normalizeOptions(
   return options as Prisma.InputJsonValue;
 }
 
+/**
+ * Campos de ENDEREÇO de uma conexão de gateway, derivados da base URL.
+ *
+ * O cadastro de gateway pede duas coisas (URL e token), mas o registro tem
+ * colunas de endereço obrigatórias e — mais importante — a plataforma inteira
+ * já sabe exibir/buscar/ordenar por `host`, `port` e `database`. Derivar em vez
+ * de criar um caminho paralelo mantém listagem, busca e telas funcionando sem
+ * que nenhuma delas precise saber que existe um segundo tipo de conexão.
+ *
+ * `database` fica VAZIO quando não informado: o gateway diz o nome do banco no
+ * `/health`, e o primeiro teste preenche (ver `testConnection`). Chutar um
+ * rótulo aqui seria inventar um dado que o próprio gateway entrega de graça.
+ */
+function gatewayAddressFields(baseUrl: string, database?: string | null) {
+  const normalized = normalizeBaseUrl(baseUrl);
+  const url = new URL(normalized);
+  const isHttps = url.protocol === 'https:';
+  return {
+    baseUrl: normalized,
+    host: url.hostname,
+    port: url.port ? Number(url.port) : isHttps ? 443 : 80,
+    database: (database ?? '').trim(),
+    // Não há usuário no gateway — a identidade é o token. O valor fixo mantém
+    // a coluna preenchida e deixa claro, em qualquer listagem, o que é aquilo.
+    username: 'gateway',
+    sslMode: isHttps ? 'require' : 'disable',
+  };
+}
+
 export async function createConnection(
   ctx: UserContext,
   input: CreateConnectionInput
 ): Promise<Connection> {
+  const isGateway = input.type === 'API_GATEWAY';
+
+  // Gateway: endereço derivado da URL e SEGREDO = token. Postgres: como sempre.
+  const target = isGateway
+    ? gatewayAddressFields(input.baseUrl as string, input.database)
+    : {
+        baseUrl: null,
+        host: input.host as string,
+        port: input.port,
+        database: input.database as string,
+        username: input.username as string,
+        sslMode: input.sslMode,
+      };
+  const secret = isGateway ? (input.token as string) : (input.password as string);
+
   return prisma.connection.create({
     data: {
       name: input.name,
       description: input.description ?? null,
       type: input.type,
-      host: input.host,
-      port: input.port,
-      database: input.database,
-      username: input.username,
-      passwordCipher: encrypt(input.password),
-      sslMode: input.sslMode,
+      ...target,
+      passwordCipher: encrypt(secret),
       options: normalizeOptions(input.options),
       ownerId: ctx.userId,
       departmentId: input.departmentId ?? null,
@@ -124,6 +198,22 @@ export async function updateConnection(
   if (input.username !== undefined) data.username = input.username;
   if (input.password !== undefined) data.passwordCipher = encrypt(input.password);
   if (input.sslMode !== undefined) data.sslMode = input.sslMode;
+
+  // Gateway: trocar a URL re-deriva o endereço (senão host/port ficariam
+  // apontando para o gateway ANTIGO, e a lista mostraria um endereço que não
+  // existe mais). O token segue o mesmo caminho da senha: só muda se enviado.
+  if (input.baseUrl !== undefined) {
+    const derived = gatewayAddressFields(input.baseUrl, input.database);
+    data.baseUrl = derived.baseUrl;
+    data.host = derived.host;
+    data.port = derived.port;
+    data.username = derived.username;
+    data.sslMode = derived.sslMode;
+    // `database` só é sobrescrito quando o usuário informou algo; em branco
+    // preserva o rótulo que o gateway já tinha entregado no teste.
+    if (derived.database) data.database = derived.database;
+  }
+  if (input.token !== undefined) data.passwordCipher = encrypt(input.token);
   if (input.options !== undefined) data.options = normalizeOptions(input.options);
   if (input.departmentId !== undefined) data.departmentId = input.departmentId ?? null;
   if (input.visibility !== undefined) data.visibility = input.visibility;
@@ -151,28 +241,70 @@ export interface TestConnectionResult {
 }
 
 /**
- * Testa conectividade contra o Postgres externo (decifra a senha, conecta e
- * roda `SELECT 1`). Atualiza `status` (`ok`/`error`) e `lastTestedAt`.
+ * Testa conectividade e atualiza `status` (`ok`/`error`) + `lastTestedAt`.
+ *
+ * Postgres: conecta e roda `SELECT 1`.
+ * Gateway:  chama `/health`. Repare que health NÃO toca o banco — é de
+ *   propósito: ele responde "o gateway está no ar e o token vale", que é o que
+ *   um teste de conexão precisa dizer, e responde em milissegundos. Se o banco
+ *   por trás estiver fora, quem acusa é a primeira query, com o código certo
+ *   (`DB_TIMEOUT`), em vez de um teste de conexão que pendura 10s.
+ *
+ * O health também é quando o gateway se APRESENTA: ele informa o nome do banco
+ * que expõe, e nós gravamos esse rótulo. Por isso o cadastro não precisa
+ * perguntar "qual é o banco?" — a fonte da verdade é a própria fonte.
  */
 export async function testConnection(conn: Connection): Promise<TestConnectionResult> {
   let ok = false;
   let status = 'error';
   let message: string | null = null;
+  /** Rótulo do banco descoberto no health (só para gateway). */
+  let discoveredDatabase: string | null = null;
+  /** Motor informado pelo gateway (sqlserver/postgres/...). */
+  let discoveredEngine: string | null = null;
 
   try {
-    await runQuery(toPgRunnerConnection(conn), 'SELECT 1', {
-      maxRows: 1,
-      statementTimeoutMs: 5000,
-    });
+    if (isGatewayConnection(conn)) {
+      const health = await gatewayHealth(toGatewayConnection(conn), {
+        timeoutMs: env.GATEWAY_HEALTH_TIMEOUT_MS,
+      });
+      if (!health.ok) throw new Error('gateway reported an unhealthy state');
+      if (health.database && health.database !== conn.database) {
+        discoveredDatabase = health.database;
+      }
+      // O motor por trás do gateway muda o DIALETO do SQL que o usuário vai
+      // escrever (TOP vs LIMIT, [colchetes] vs "aspas"). Guardamos o que ele
+      // informa para a tela parar de assumir Postgres.
+      if (health.engine) discoveredEngine = health.engine;
+    } else {
+      await runQuery(toPgRunnerConnection(conn), 'SELECT 1', {
+        maxRows: 1,
+        statementTimeoutMs: 5000,
+      });
+    }
     ok = true;
     status = 'ok';
   } catch (err) {
     message = err instanceof Error ? err.message : 'connection test failed';
   }
 
+  // `options` é o lugar dos metadados descobertos: preserva o que já estava lá
+  // e só acrescenta o motor (o cadastro não pergunta isso a ninguém).
+  const mergedOptions = discoveredEngine
+    ? ({
+        ...((conn.options as Record<string, unknown> | null) ?? {}),
+        engine: discoveredEngine,
+      } as Prisma.InputJsonValue)
+    : undefined;
+
   const updated = await prisma.connection.update({
     where: { id: conn.id },
-    data: { status, lastTestedAt: new Date() },
+    data: {
+      status,
+      lastTestedAt: new Date(),
+      ...(discoveredDatabase ? { database: discoveredDatabase } : {}),
+      ...(mergedOptions ? { options: mergedOptions } : {}),
+    },
   });
 
   return { ok, status, lastTestedAt: updated.lastTestedAt, message };
@@ -590,6 +722,95 @@ function buildTables(rows: {
   );
 }
 
+/**
+ * Introspecção de um GATEWAY → mesmo `SchemaPayload` do Postgres.
+ *
+ * O gateway entrega o essencial (tabelas, schemas, colunas com tipo) e nada
+ * mais: não há PK, FK, índice, tamanho nem comentário do outro lado. Os campos
+ * ausentes vão VAZIOS/`null` — nunca inventados. O explorer já trata todos como
+ * opcionais (`primaryKey ?? []`), então a árvore, a busca e a visão de colunas
+ * funcionam igual; o que não existe simplesmente não aparece, em vez de
+ * aparecer errado.
+ *
+ * `nullable: true` é a única suposição, e é a conservadora: assumir que uma
+ * coluna aceita nulo nunca faz alguém escrever uma query que quebra — o
+ * contrário, sim.
+ */
+/** Nome legível do motor reportado pelo gateway ("sqlserver" → "SQL Server"). */
+function engineLabel(engine: string | null | undefined): string | null {
+  if (!engine) return null;
+  const known: Record<string, string> = {
+    sqlserver: 'SQL Server',
+    mssql: 'SQL Server',
+    postgres: 'PostgreSQL',
+    postgresql: 'PostgreSQL',
+    mysql: 'MySQL',
+    oracle: 'Oracle',
+    sqlite: 'SQLite',
+  };
+  return known[engine.toLowerCase()] ?? engine;
+}
+
+function mapGatewaySchemaToPayload(
+  connectionId: string,
+  payload: Awaited<ReturnType<typeof gatewaySchema>>,
+  engine?: string | null
+): SchemaPayload {
+  const totalTables = payload.tables.length;
+
+  const sorted = [...payload.tables].sort(
+    (a, b) =>
+      String(a.schema ?? '').localeCompare(String(b.schema ?? '')) ||
+      String(a.name ?? '').localeCompare(String(b.name ?? ''))
+  );
+  // Mesmo teto do caminho Postgres: bancos de ERP têm centenas de tabelas e o
+  // payload precisa continuar navegável.
+  const kept = sorted.slice(0, SCHEMA_MAX_TABLES);
+
+  const tables: SchemaTable[] = kept.map((t) => ({
+    schema: t.schema || 'dbo',
+    name: t.name,
+    kind: 'table',
+    columns: (t.columns ?? []).map((c) => ({
+      name: c.name,
+      dataType: c.type,
+      nullable: true,
+      defaultValue: null,
+      isPrimary: false,
+      isForeign: false,
+      references: null,
+      comment: null,
+    })),
+    primaryKey: [],
+    indexes: [],
+    foreignKeys: [],
+    rowCount: null,
+    sizeBytes: null,
+    comment: null,
+  }));
+
+  return {
+    connectionId,
+    tableCount: tables.length,
+    totalTables,
+    truncated: totalTables > tables.length,
+    fetchedAt: new Date().toISOString(),
+    database: {
+      name: payload.database,
+      /*
+       * O MOTOR vai no `version` — é o único campo do contrato de schema que
+       * carrega "que banco é este", e quem lê o schema precisa saber disso
+       * ANTES de escrever SQL. Um agente que introspecta um banco sem saber
+       * que é SQL Server escreve `LIMIT 50` e toma "Incorrect syntax near
+       * '50'"; com "SQL Server" aqui, ele escolhe `TOP`.
+       */
+      version: engineLabel(engine),
+      sizeBytes: null,
+    },
+    tables,
+  };
+}
+
 /** Invalida (best-effort) o cache de introspecção de uma conexão. */
 export async function invalidateSchemaCache(connectionId: string): Promise<void> {
   if (!redisService.isReady()) return;
@@ -626,6 +847,23 @@ export async function introspectSchema(
     } catch {
       // cache miss/erro → segue para introspecção fresca.
     }
+  }
+
+  // Gateway: a introspecção é UMA chamada HTTP (`/schema`) — não há catálogo
+  // `pg_class` para consultar do lado de cá. Mesmo cache, mesmo formato.
+  if (isGatewayConnection(conn)) {
+    const raw = await gatewaySchema(toGatewayConnection(conn));
+    // Motor descoberto no teste de conexão (`/health`) e guardado em `options`.
+    const engine = (conn.options as { engine?: string } | null)?.engine;
+    const payload = mapGatewaySchemaToPayload(conn.id, raw, engine);
+    if (redisService.isReady()) {
+      try {
+        await redisService.setValue(key, JSON.stringify(payload), SCHEMA_CACHE_TTL_SECONDS);
+      } catch {
+        // best-effort
+      }
+    }
+    return { ...payload, cached: false };
   }
 
   // Fase 1: lista de tabelas (leve) — fonte da verdade do conjunto + metadados.
@@ -698,12 +936,15 @@ export async function introspectSchema(
   return { ...payload, cached: false };
 }
 
-/** Executa um SELECT read-only contra o Postgres externo (preview/dev). */
+/**
+ * Executa um SELECT read-only contra a fonte externa (preview/dev) — Postgres
+ * ou gateway, decidido pelo `toRunnerConnection`.
+ */
 export async function runConnectionQuery(
   conn: Connection,
   sql: string,
   params?: unknown[],
   maxRows?: number
 ): Promise<QueryResultShape> {
-  return runQuery(toPgRunnerConnection(conn), sql, { params, maxRows });
+  return runAnyQuery(toRunnerConnection(conn), sql, { params, maxRows });
 }

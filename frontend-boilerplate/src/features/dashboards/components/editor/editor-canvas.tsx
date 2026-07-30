@@ -121,52 +121,68 @@ export function EditorCanvas({
   );
 
   return (
-    <VStack gap={3}>
-      <Toolbar
-        label="Área de montagem do dashboard"
-        size="sm"
-        dividers={['bottom']}
-        startContent={
-          tabs.length > 0 ? (
-            <SegmentedControl
-              label="Aba em edição"
-              size="sm"
-              value={activeTabId ?? tabs[0]?.id ?? ''}
-              onChange={onTabChange}
-            >
-              {tabs.map((tab) => (
-                <SegmentedControlItem key={tab.id} value={tab.id} label={tab.title} />
-              ))}
-            </SegmentedControl>
-          ) : (
-            <HStack gap={2} vAlign="center">
-              <Icon icon={Eye} size="sm" />
-              <Text type="label">Montagem</Text>
-            </HStack>
-          )
-        }
-        endContent={
-          /* "Em edição" / "No ar", e não "Rascunho" / "Publicado": esses dois
-             já nomeiam o ESTADO do dashboard no badge da barra de ações, e
-             repeti-los aqui com outro significado (a versão que o canvas
-             mostra) faria a mesma palavra dizer duas coisas na mesma tela. */
-          <SegmentedControl
-            label="Versão exibida no canvas"
-            size="sm"
-            value={mode}
-            onChange={(value) => onModeChange(value as ApiMode)}
-          >
-            <SegmentedControlItem value="draft" label="Em edição" />
-            <SegmentedControlItem
-              value="published"
-              label="No ar"
-              isDisabled={!isPublished}
-            />
-          </SegmentedControl>
-        }
-      />
+    <VStack gap={4}>
+      {/*
+        Cabeçalho do canvas: o que está em edição (a aba) e qual versão o canvas
+        mostra. O invólucro `.app-editor-canvas__bar` existe para absorver o
+        bleed de -16px do `Toolbar` — sem ele esta faixa passava por CIMA da
+        barra de ações da página (medido: 16px de sobreposição). A regra e a
+        medida estão em `src/app/index.css`.
 
-      {hint ? <Text type="supporting">{hint}</Text> : null}
+        O aviso vem colado na faixa (gap 2, contra o gap 4 do resto): ele fala
+        SOBRE a versão exibida. Com o mesmo respiro do conteúdo, ele lia-se como
+        uma frase perdida entre a barra e os blocos.
+      */}
+      <VStack gap={2}>
+        <div className="app-editor-canvas__bar">
+          <Toolbar
+            label="Área de montagem do dashboard"
+            size="sm"
+            dividers={['bottom']}
+            startContent={
+              tabs.length > 0 ? (
+                <SegmentedControl
+                  label="Aba em edição"
+                  size="sm"
+                  value={activeTabId ?? tabs[0]?.id ?? ''}
+                  onChange={onTabChange}
+                >
+                  {tabs.map((tab) => (
+                    <SegmentedControlItem key={tab.id} value={tab.id} label={tab.title} />
+                  ))}
+                </SegmentedControl>
+              ) : (
+                <HStack gap={2} vAlign="center">
+                  <Icon icon={Eye} size="sm" />
+                  <Text type="label">Montagem</Text>
+                </HStack>
+              )
+            }
+            endContent={
+              /* "Em edição" / "No ar", e não "Rascunho" / "Publicado": esses
+                 dois já nomeiam o ESTADO do dashboard no badge da barra de
+                 ações, e repeti-los aqui com outro significado (a versão que o
+                 canvas mostra) faria a mesma palavra dizer duas coisas na
+                 mesma tela. */
+              <SegmentedControl
+                label="Versão exibida no canvas"
+                size="sm"
+                value={mode}
+                onChange={(value) => onModeChange(value as ApiMode)}
+              >
+                <SegmentedControlItem value="draft" label="Em edição" />
+                <SegmentedControlItem
+                  value="published"
+                  label="No ar"
+                  isDisabled={!isPublished}
+                />
+              </SegmentedControl>
+            }
+          />
+        </div>
+
+        {hint ? <Text type="supporting">{hint}</Text> : null}
+      </VStack>
 
       {rows.length === 0 ? (
         <EmptyState

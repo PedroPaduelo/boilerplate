@@ -36,7 +36,16 @@ export function getSocket(): AppSocket {
   if (!socket) {
     socket = io(env.API_URL, {
       autoConnect: false,
-      transports: ['websocket'],
+      /*
+       * WebSocket primeiro, com polling como QUEDA DE BRAÇO perdida.
+       *
+       * Só `['websocket']` transforma um proxy que não faz upgrade (ingress mal
+       * configurado, VPN corporativa, alguns proxies transparentes) em "o chat
+       * não funciona", sem meio-termo: a conexão nunca abre e nenhuma resposta
+       * do agente chega. Com o fallback, a mesma rede entrega o chat mais
+       * devagar em vez de não entregar.
+       */
+      transports: ['websocket', 'polling'],
       auth: (cb) => cb({ token: useAuthStore.getState().token ?? '' }),
     });
   }

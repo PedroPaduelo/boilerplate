@@ -53,9 +53,18 @@ enum ArtifactStatus {
   PUBLISHED
 }
 
-/// Tipo da conexão externa. No MVP só Postgres (read-only).
+/// Tipo da conexão externa (sempre read-only).
+///
+/// POSTGRES     — TCP direto no Postgres (lib/pg-runner).
+/// API_GATEWAY  — HTTP contra um gateway read-only que expõe um banco de outra
+///                rede (lib/gateway-runner). Existe porque nem todo banco é
+///                alcançável: o TRIBUTARIO_IPATINGA (SQL Server/SIGCORP) vive
+///                atrás de VPN, e abrir VPN para cada sistema que precisa ler é
+///                caro e arriscado. O gateway é a porta única — a plataforma
+///                fala HTTP com ele e continua sem enxergar a rede interna.
 enum ConnectionType {
   POSTGRES
+  API_GATEWAY
 }
 
 /// Ambiente do banco apontado por uma Connection — DECLARADO por quem cadastra,
@@ -136,9 +145,21 @@ model DepartmentMembership {
 // CONEXÕES (Postgres externo, read-only)
 // =============================================================================
 
-/// Cadastro de uma conexão a um banco Postgres externo. Usada pelo agente
-/// (via MCP) e pelo runtime para executar queries. Credencial cifrada
-/// (AES-256-GCM) em `passwordCipher`.
+/// Cadastro de uma conexão a uma fonte de dados externa READ-ONLY. Usada pelo
+/// agente (via MCP) e pelo runtime para executar queries. O SEGREDO é sempre
+/// cifrado (AES-256-GCM) em `passwordCipher`.
+///
+/// Dois tipos, um mesmo cadastro (ver enum ConnectionType):
+///   - POSTGRES    → host/port/database/username + senha em `passwordCipher`.
+///   - API_GATEWAY → `baseUrl` + TOKEN Bearer em `passwordCipher`. Os campos de
+///     endereço continuam preenchidos (host/port derivados da URL, `database`
+///     preenchido pelo próprio gateway no primeiro teste) para que listagem,
+///     busca e telas existentes funcionem sem saber de qual tipo se trata.
+///
+/// Por que o token mora em `passwordCipher` e não num campo novo: é o campo
+/// SEGREDO do registro, com cifragem e omissão da serialização já garantidas e
+/// testadas. Um `tokenCipher` paralelo duplicaria essa superfície de risco — e
+/// bastaria alguém esquecer de excluí-lo de um `select` para vazar credencial.
 model Connection {
   id             String                @id @default(cuid())
   name           String
@@ -148,8 +169,11 @@ model Connection {
   port           Int                   @default(5432)
   database       String
   username       String
+  /// Senha (POSTGRES) ou token Bearer (API_GATEWAY), cifrado at-rest.
   passwordCipher String                @map("password_cipher")
   sslMode        String                @default("require") @map("ssl_mode")
+  /// Base URL do gateway (ex.: https://gw.exemplo.com). Só para API_GATEWAY.
+  baseUrl        String?               @map("base_url")
   options        Json?
   ownerId        String                @map("owner_id")
   departmentId   String?               @map("department_id")
@@ -227,6 +251,13 @@ model Dashboard {
   departmentId String?        @map("department_id")
   visibility   Visibility     @default(PRIVATE)
   status       ArtifactStatus @default(DRAFT)
+
+  /// URL de um relatório EXTERNO (legado, criado fora desta plataforma).
+  /// Quando preenchida, o dashboard é um ATALHO: entra na mesma listagem dos
+  /// dashboards montados aqui, mas não tem layout próprio (o `draftLayout` fica
+  /// vazio), não abre no editor e não passa por publish — clicar nele leva a
+  /// este endereço. `NULL` = dashboard desta plataforma (o caso normal).
+  externalUrl String? @map("external_url")
 
   draftLayout          Json      @map("draft_layout")
   publishedLayout      Json?     @map("published_layout")

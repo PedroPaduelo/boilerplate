@@ -25,6 +25,7 @@
  */
 import {
   Building2,
+  Cloud,
   Database,
   Globe,
   Lock,
@@ -44,8 +45,11 @@ import { StatusDot } from '@astryxdesign/core/StatusDot';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Timestamp } from '@astryxdesign/core/Timestamp';
 import {
+  connectionEndpoint,
   connectionStatusView,
+  connectionTypeView,
   environmentView,
+  isGatewayConnection,
   visibilityLabel,
 } from '../lib/connection-presentation';
 import type { Connection, ConnectionVisibility } from '../types';
@@ -82,7 +86,11 @@ export function ConnectionCard({
   const status = connectionStatusView(connection.status);
   const environment = environmentView(connection.environment);
   const VisibilityIcon = VISIBILITY_ICON[connection.visibility] ?? Globe;
-  const endpoint = `${connection.host}:${connection.port}/${connection.database}`;
+  const endpoint = connectionEndpoint(connection);
+  const typeView = connectionTypeView(connection.type);
+  // Ícone diferente para fonte via API: quem varre a grade distingue os dois
+  // mundos antes de ler qualquer texto.
+  const SourceIcon = isGatewayConnection(connection) ? Cloud : Database;
   // Mesma regra do workbench: barrar com explicação em vez de deixar clicar e
   // devolver erro do servidor.
   const inactiveReason = connection.isActive
@@ -100,7 +108,7 @@ export function ConnectionCard({
         <VStack gap={2} padding={3}>
           <HStack gap={2} justify="between" align="start">
             <HStack gap={2} vAlign="center">
-              <Icon icon={Database} color="accent" />
+              <Icon icon={SourceIcon} color="accent" />
               <VStack gap={0}>
                 {/* Visualmente h3 (título de card), semanticamente h2: o h1 é
                     da topbar do shell e não há seção intermediária nesta tela,
@@ -175,7 +183,10 @@ export function ConnectionCard({
                 {visibilityLabel(connection.visibility)}
               </Text>
             </HStack>
-            <Badge variant={environment.variant} label={environment.label} />
+            <HStack gap={1.5} vAlign="center">
+              <Badge variant={typeView.variant} label={typeView.label} />
+              <Badge variant={environment.variant} label={environment.label} />
+            </HStack>
           </HStack>
         </VStack>
 

@@ -20,7 +20,8 @@ import { prisma } from '@/lib/prisma';
 import type { ActorContext } from '@/lib/rbac';
 
 import { addMessage } from '../services/conversation.js';
-import { readRun, isRunning, clearRun } from '../services/run-store.js';
+import { readRun, isRunning, clearRun, finishRun } from '../services/run-store.js';
+import { abortRun } from '../services/run-control.js';
 import { startTurnInBackground } from '../services/run-agent-background.js';
 import { loadAllSkills, renderSkillsIndex } from '../skills/index.js';
 
@@ -117,6 +118,37 @@ export const chatRunRoute: FastifyPluginAsync = async (app) => {
 
       // 202: aceito e em andamento. O conteúdo chega pela sala do socket.
       return reply.code(202).send({ runId, conversationId: conv.id });
+    },
+  );
+
+  /**
+   * PARA o turno em andamento — o botão "parar" da tela.
+   *
+   * Faz DUAS coisas, e a ordem de importância é esta:
+   *   1. ENCERRA o run no Redis, o que LIBERA a conversa. Sem isto, parar
+   *      deixava o turno marcado como `running` por até 30 min e toda mensagem
+   *      seguinte batia em 409 ("já existe uma resposta em andamento") — o
+   *      usuário parava a resposta e perdia a conversa até o TTL vencer.
+   *   2. ABORTA a chamada ao provider, se o turno estiver rodando NESTE
+   *      processo (economiza tokens e para as ferramentas).
+   *
+   * O passo 1 vale sempre, mesmo sem o passo 2 (processo reiniciado, outra
+   * instância): destravar o usuário não pode depender de onde o turno está.
+   */
+  app.post<{ Params: { conversationId: string } }>(
+    '/agent/chat/:conversationId/stop',
+    async (request, reply) => {
+      const userId = await request.getCurrentUserId();
+      const conv = await prisma.conversation.findFirst({
+        where: { id: request.params.conversationId, userId },
+      });
+      if (!conv) return reply.code(404).send({ message: 'Conversation not found' });
+
+      const aborted = abortRun(conv.id);
+      // `done` (e não `error`): parar é uma decisão do usuário, não uma falha.
+      await finishRun(conv.id, 'done');
+
+      return reply.send({ stopped: true, aborted });
     },
   );
 

@@ -7,7 +7,7 @@
  *
  * Componente 100% controlado: todo o estado de filtro vive na página.
  */
-import { Plus, Search } from 'lucide-react';
+import { Link2, Plus, Search } from 'lucide-react';
 import { Button } from '@astryxdesign/core/Button';
 import { Icon } from '@astryxdesign/core/Icon';
 import { HStack } from '@astryxdesign/core/Layout';
@@ -47,6 +47,8 @@ export interface DashboardsToolbarProps {
   canCreate: boolean;
   isCreating: boolean;
   onCreate: () => void;
+  /** Abre o cadastro de um relatório mantido FORA da plataforma (legado). */
+  onRegisterExternal: () => void;
 }
 
 export function DashboardsToolbar({
@@ -56,6 +58,7 @@ export function DashboardsToolbar({
   canCreate,
   isCreating,
   onCreate,
+  onRegisterExternal,
 }: DashboardsToolbarProps) {
   const patch = (partial: Partial<ArtifactFilterState>) =>
     onFiltersChange({ ...filters, ...partial });
@@ -112,15 +115,34 @@ export function DashboardsToolbar({
         </HStack>
       }
       endContent={
-        <Button
-          label="Novo dashboard"
-          variant="primary"
-          icon={<Icon icon={Plus} />}
-          isLoading={isCreating}
-          isDisabled={!canCreate}
-          tooltip={canCreate ? undefined : 'Seu perfil não permite criar dashboards.'}
-          onClick={onCreate}
-        />
+        <HStack gap={2} vAlign="center">
+          {/*
+            Cadastrar legado é ação SECUNDÁRIA e permanente: acontece uma vez por
+            relatório antigo, enquanto criar dashboard é o trabalho do dia a dia.
+            Fica ao lado (e não escondido num menu) porque a migração de um
+            acervo inteiro passa por aqui — e escondido ninguém acha.
+          */}
+          <Button
+            label="Relatório externo"
+            icon={<Icon icon={Link2} />}
+            isDisabled={!canCreate}
+            tooltip={
+              canCreate
+                ? 'Cadastra um relatório mantido fora da plataforma; ele aparece nesta lista e abre no endereço original.'
+                : 'Seu perfil não permite cadastrar relatórios.'
+            }
+            onClick={onRegisterExternal}
+          />
+          <Button
+            label="Novo dashboard"
+            variant="primary"
+            icon={<Icon icon={Plus} />}
+            isLoading={isCreating}
+            isDisabled={!canCreate}
+            tooltip={canCreate ? undefined : 'Seu perfil não permite criar dashboards.'}
+            onClick={onCreate}
+          />
+        </HStack>
       }
     />
   );

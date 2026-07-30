@@ -149,7 +149,7 @@ export function CanvasRow({
           rowHeight={row.height}
           slot="editor-canvas-grid"
           cellSlot="editor-canvas-cell"
-          renderBlock={(block) => {
+          renderBlock={(block, declaredHeight) => {
             const editorBlock = block as unknown as EditorBlock;
             const position = blocks.findIndex((item) => item.id === block.id);
             return (
@@ -157,6 +157,7 @@ export function CanvasRow({
                 block={block}
                 label={blockLabelOf(editorBlock)}
                 data={data}
+                declaredHeight={declaredHeight}
                 isEditable={isEditable}
                 isSelected={selectedBlockId === block.id}
                 onSelect={() => onSelectBlock(block.id)}

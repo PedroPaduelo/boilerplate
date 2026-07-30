@@ -534,6 +534,32 @@
      2. o inspetor grudado no topo enquanto o canvas rola;
      3. a barra de ações fixa acima de tudo.
 
+   ── A regra que faz a tela inteira encaixar: o BLEED do `Toolbar` ──────────
+
+   O `Toolbar` do Astryx não é um elemento solto: ele renderiza um invólucro
+   com `margin: -16px` para escapar até as bordas de quem o hospeda — ou seja,
+   ele NASCE esperando um pai com `padding: 4` (um Card, uma Section). A
+   documentação do DS diz o mesmo por outro caminho: "use Toolbar dentro de uma
+   área de conteúdo (acima de uma tabela, dentro de um card ou painel), não
+   como cabeçalho de página".
+
+   Usado solto dentro de um `VStack gap={4}`, esse -16px COME os 16px de gap
+   dos dois lados. Medido na tela, com o editor aberto, antes desta correção:
+
+     · a faixa da barra de ações ia de 157px a 207px e o subtítulo acima
+       terminava em 157px — zero respiro, texto colado na faixa;
+     · a faixa do canvas ("Montagem") ia de 191px a 236px, ou seja, passava
+       16px POR CIMA da barra de ações;
+     · o cabeçalho do inspetor vazava 15px para fora do próprio painel (topo e
+       esquerda), era CORTADO pelo `overflow: auto` dele e ainda gerava
+       overflow horizontal (399px de conteúdo numa caixa de 383px).
+
+   Por isso TODO hospedeiro de `Toolbar` nesta tela tem `padding` do tamanho do
+   bleed: o padding devolve o espaço que a margem negativa toma, e a faixa
+   passa a medir exatamente a caixa do elemento. Quem quiser a faixa sangrando
+   até as bordas da área de conteúdo (só a barra de ações fixa) soma uma margem
+   lateral negativa — por escrito e de propósito, não por acidente.
+
    Medido na tela antiga, para dimensionar: 2557px de rolagem de formulários
    com o preview de 792px de largura — que renderiza DUAS colunas onde a tela
    publicada mostra três, porque o grid do motor colapsa abaixo de 280px por
@@ -541,6 +567,49 @@
    mostrar as três faixas reais.
    -------------------------------------------------------------------------- */
 @layer components {
+  .app-editor {
+    /* Altura da faixa de ações: 33px de conteúdo + 8px de padding do `Toolbar`
+       em cima e embaixo + 1px de divisor. TRÊS regras dependem deste número (o
+       topo do inspetor, a altura máxima dele e o respiro entre os dois), então
+       ele é declarado uma vez só, com a conta à vista. */
+    --app-editor-bar-h: 50px;
+    /* O bleed do `Toolbar` e o padding da área de conteúdo do shell
+       (`contentPadding={4}` em `dashboard-layout.tsx`) são o MESMO valor — e é
+       isso que faz a barra fixa encaixar exatamente nas bordas da área útil. */
+    --app-editor-gutter: var(--spacing-4, 16px);
+    /* Faixa do `TopNav`, que fica ACIMA do scrollport do shell. Entra só na
+       conta da altura máxima do inspetor: errar aqui por alguns pixels encurta
+       ou alonga o painel, não quebra o layout. */
+    --app-editor-topnav-h: 49px;
+  }
+
+  /* ---- Barra de ações: faixa FIXA, de borda a borda --------------------- */
+
+  .app-editor-toolbar {
+    position: sticky;
+    /*
+      NEGATIVO, e não `0`. O navegador ancora o `sticky` no CONTENT box do
+      scrollport — que aqui é o `LayoutContent` do shell, com `padding: 4`. Com
+      `top: 0` a barra parava 16px ABAIXO da borda da área visível, e o
+      conteúdo continuava rolando por essa fresta: dava para ver o título e a
+      trilha passando POR CIMA da barra fixa. O -16px encaixa a faixa na borda
+      real, e o padding dela (que já existe para absorver o bleed) é o que
+      pinta o fundo daquela fresta.
+    */
+    top: calc(var(--app-editor-gutter) * -1);
+    z-index: 2;
+    /* Absorve o bleed (ver o cabeçalho deste bloco) e, com a margem negativa,
+       estende a faixa até as bordas da área de conteúdo. O fundo é obrigatório
+       e agora pinta a faixa INTEIRA: antes ele cobria só os 18px da caixa do
+       invólucro, e os 16px de bleed em cima e embaixo ficavam transparentes —
+       o canvas aparecia por baixo da barra durante a rolagem. */
+    padding: var(--app-editor-gutter);
+    margin-inline: calc(var(--app-editor-gutter) * -1);
+    background: var(--color-background-body);
+  }
+
+  /* ---- As duas regiões -------------------------------------------------- */
+
   .app-editor-shell {
     align-items: flex-start;
   }
@@ -553,34 +622,52 @@
     min-width: 0;
   }
 
+  /* Cabeçalho do canvas (aba em edição + versão exibida). Mesma absorção de
+     bleed, SEM a margem negativa: esta faixa pertence à coluna do canvas, não
+     à página — sangrar até a borda a faria brigar com a barra de ações. */
+  .app-editor-canvas__bar {
+    padding: var(--app-editor-gutter);
+  }
+
   .app-editor-inspector {
     /* 400px: cabe o formulário de fonte de dados (SQL, parâmetros) sem quebrar
        cada campo em duas linhas, e sobra tela para o canvas em 1280px. */
     flex: 0 0 400px;
     width: 400px;
     position: sticky;
-    /* Abaixo da barra de ações fixa (56px) + o respiro da página. */
-    top: calc(56px + var(--spacing-4, 16px));
-    /* O painel rola sozinho quando o conteúdo passa da tela — o canvas atrás
-       continua rolando de forma independente. */
-    max-height: calc(100dvh - 56px - var(--spacing-8, 32px));
-    overflow: auto;
+    /* Logo abaixo da barra fixa, com o respiro da página entre as duas. Só a
+       altura da barra entra na conta: o gutter dela já foi gasto no `top`
+       negativo acima, que a encaixou na borda do scrollport. */
+    top: var(--app-editor-bar-h);
+    /* O painel nunca passa da altura visível: desconta o que está acima dele
+       na janela (topnav + barra fixa + respiro) e o respiro de baixo. */
+    max-height: calc(
+      100dvh - var(--app-editor-topnav-h) - var(--app-editor-bar-h) -
+        var(--app-editor-gutter) * 2
+    );
+    /* `hidden`, e não `auto`: quem rola é o CORPO (regra abaixo). Com `auto`
+       aqui o cabeçalho da seleção rolava junto e sumia da tela — o oposto do
+       que ele existe para fazer — e o bleed do `Toolbar` era cortado. */
+    overflow: hidden;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-page);
     background: var(--color-background-card);
   }
 
-  .app-editor-inspector__body {
-    /* O corpo do inspetor é a única parte que rola; o cabeçalho da seleção
-       fica no topo do painel. */
-    padding-block-end: var(--spacing-6, 24px);
+  .app-editor-inspector__head {
+    flex: 0 0 auto;
+    padding: var(--app-editor-gutter);
   }
 
-  .app-editor-toolbar {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: var(--color-background-body);
+  .app-editor-inspector__body {
+    flex: 1 1 auto;
+    /* `min-height: 0` para o corpo poder encolher abaixo do conteúdo dentro do
+       flex — sem isso não há o que rolar, o painel é que estoura. */
+    min-height: 0;
+    overflow: auto;
+    /* A rolagem do painel não vaza para a página ao chegar ao fim. */
+    overscroll-behavior: contain;
+    padding-block-end: var(--spacing-6, 24px);
   }
 
   @media (max-width: 1180px) {
@@ -596,6 +683,12 @@
       width: 100%;
       position: static;
       max-height: none;
+    }
+
+    /* Empilhado, o painel cresce com o conteúdo: manter a rolagem no corpo
+       criaria um scroll dentro do scroll da página. */
+    .app-editor-inspector__body {
+      overflow: visible;
     }
   }
 

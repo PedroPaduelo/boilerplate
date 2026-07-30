@@ -73,7 +73,14 @@ export interface RunQueryOptions {
 
 export interface QueryColumn {
   name: string;
+  /** OID do tipo no Postgres. `0` quando a fonte não informa OID (gateway HTTP). */
   dataTypeID: number;
+  /**
+   * Nome do tipo ("varchar", "int"), quando a fonte informa por nome em vez de
+   * OID — é o caso do gateway HTTP, que fala com SQL Server. Opcional para não
+   * mexer no shape que o pg-runner já produzia.
+   */
+  dataType?: string;
 }
 
 export interface QueryResultShape {

@@ -33,6 +33,7 @@ import { buildMcpToolsForAgent } from '../tools/mcp-adapter.js';
 import { loadAllSkills, createActivateSkillTool } from '../skills/index.js';
 import { addMessage, loadConversationHistory } from './conversation.js';
 import { startRun, patchRun, finishRun, type RunArtifact, type RunToolStep } from './run-store.js';
+import { isAbortError, registerRun, unregisterRun } from './run-control.js';
 import {
   artifactTouchedBy,
   chartDataFitsBudget,
@@ -410,6 +411,9 @@ async function executarTurno({
   const sala = chatRoom(conversationId);
   await startRun(conversationId, runId, messageId);
 
+  // Torna o turno INTERROMPÍVEL: o botão "parar" da tela aborta por aqui.
+  const controller = registerRun(conversationId);
+
   /**
    * Emitir NUNCA pode derrubar o turno: o usuário pode ter fechado a aba, e o
    * trabalho continua valendo (o estado está no Redis e vai para o banco).
@@ -433,6 +437,8 @@ async function executarTurno({
     | { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number }
     | undefined;
   let erro: string | null = null;
+  /** Turno interrompido pelo usuário — não é falha, e a resposta parcial vale. */
+  let interrompido = false;
   let historyLen = 0;
   let totalDePassos = 0;
 
@@ -765,6 +771,7 @@ async function executarTurno({
       maxOutputTokens: env.AI_MAX_TOKENS,
       maxSteps: DEFAULT_AGENT_CONFIG.maxSteps,
       providerOptions: extrasToProviderOptions(DEFAULT_AGENT_CONFIG.anthropicExtras),
+      abortSignal: controller.signal,
       sink: {
         onTextDelta: (delta) => {
           // O separador vai JUNTO do delta emitido, não só no acumulado: quem
@@ -839,15 +846,24 @@ async function executarTurno({
     texto = separado.resposta;
     bastidor = separado.bastidor;
 
+    interrompido = result.aborted === true;
     totalDePassos = result.steps;
     if (result.usage) usage = result.usage;
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number; responseBody?: unknown };
-    logger.error(
-      { message: e?.message, statusCode: e?.statusCode, responseBody: e?.responseBody },
-      'agent: erro do provider',
-    );
-    erro = e?.message ?? 'Agent execution failed';
+    // Interrupção pedida pelo usuário não é erro: a resposta parcial é gravada
+    // como resposta (com a marca de interrompida), em vez de virar "Erro: …".
+    if (isAbortError(err) || controller.signal.aborted) {
+      interrompido = true;
+    } else {
+      const e = err as { message?: string; statusCode?: number; responseBody?: unknown };
+      logger.error(
+        { message: e?.message, statusCode: e?.statusCode, responseBody: e?.responseBody },
+        'agent: erro do provider',
+      );
+      erro = e?.message ?? 'Agent execution failed';
+    }
+  } finally {
+    unregisterRun(conversationId, controller);
   }
 
   // Gráficos podem estar sendo montados (busca da definição no banco): quem
@@ -880,7 +896,9 @@ async function executarTurno({
    * Turno que falhou não ganha bônus: a mensagem vai ser "Erro: …" e anexar um
    * gráfico a ela confundiria mais do que ajudaria.
    */
-  if (!erro) {
+  // Turno interrompido também não ganha o bônus: o usuário mandou parar, e
+  // executar query depois disso é justamente o que ele pediu para não fazer.
+  if (!erro && !interrompido) {
     const jaEmitidos = new Set(
       graficos.map((g) => g.chartId).filter((id): id is string => Boolean(id)),
     );
@@ -964,7 +982,15 @@ async function executarTurno({
     await persistirResposta(
       {
         role: 'assistant',
-        content: limpo || (erro ? `Erro: ${erro}` : '(sem resposta)'),
+        /*
+         * Interrompido guarda o que JÁ foi escrito — é o que o usuário leu na
+         * tela antes de parar, e some se não for gravado. Sem texto nenhum,
+         * uma linha honesta: some do jeito nenhum é pior, porque a pergunta
+         * ficaria sozinha e pareceria que o agente ignorou.
+         */
+        content:
+          limpo ||
+          (erro ? `Erro: ${erro}` : interrompido ? '_(resposta interrompida)_' : '(sem resposta)'),
         toolData: trilha,
         tokensIn: usage?.inputTokens,
         tokensOut: usage?.outputTokens,

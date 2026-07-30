@@ -69,6 +69,14 @@ export const envSchema = z.object({
   SWAGGER_USER: z.string().optional(),
   SWAGGER_PASSWORD: z.string().optional(),
 
+  // Rate limit global (@fastify/rate-limit): requisições por janela e tamanho
+  // da janela. Vira env (e não constante no server.ts) porque o teto certo
+  // depende do ambiente — atrás de um proxy, com uma SPA que dispara dezenas de
+  // chamadas por tela, o valor antigo (100/min) estourava com uso normal e
+  // devolvia 429 para quem só estava navegando.
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1100),
+  RATE_LIMIT_WINDOW: z.string().default('1 minute'),
+
   // Connections — chave de cifragem das credenciais (AES-256-GCM).
   // 32 bytes em base64 (ex.: `openssl rand -base64 32`) ou 64 chars hex.
   CONNECTION_ENC_KEY: z
@@ -110,6 +118,16 @@ export const envSchema = z.object({
   // "timeout exceeded when trying to connect". O pool do pg é o limitador global.
   // pg-runner connect timeout
   PG_RUNNER_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+
+  // gateway-runner — conexões do tipo API_GATEWAY (HTTP read-only).
+  // Timeout por requisição ao gateway. 65s por padrão: um pouco ACIMA do teto
+  // típico de query do gateway (60s), para que quem responda "sua query
+  // estourou 60s" seja ele — com a causa — em vez de nós abortarmos antes e
+  // reportarmos um timeout genérico de rede.
+  GATEWAY_TIMEOUT_MS: z.coerce.number().int().positive().default(65000),
+  // Timeout dos pings/health (não tocam o banco): falha rápido, porque é o
+  // caminho que diagnostica "o gateway está no ar?".
+  GATEWAY_HEALTH_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
 
   // Agent de IA (motor do agente integrado)
   ANTHROPIC_API_KEY: z.string().optional(),

@@ -97,6 +97,10 @@ export function ConnectionDetailPage() {
   const { loadPreset } = runner;
   const selectedSchema = selectedTable?.schema;
   const selectedName = selectedTable?.name;
+  // O MOTOR entra na dependência: é ele que decide o dialeto do preset
+  // (`TOP` no SQL Server, `LIMIT` no Postgres). Sem isso o preview saía sempre
+  // em Postgres e o SQL Server recusava a query antes de mostrar qualquer dado.
+  const engine = database?.engine ?? 'postgresql';
 
   /**
    * Trocou de tabela → o editor recebe o SELECT dela e já executa. É o que faz
@@ -106,8 +110,8 @@ export function ConnectionDetailPage() {
    */
   useEffect(() => {
     if (!selectedSchema || !selectedName || !isActive) return;
-    loadPreset(buildSelectPreview(selectedSchema, selectedName));
-  }, [selectedSchema, selectedName, isActive, loadPreset]);
+    loadPreset(buildSelectPreview(engine, selectedSchema, selectedName));
+  }, [engine, selectedSchema, selectedName, isActive, loadPreset]);
 
   if (connectionQuery.isLoading) {
     return <WorkbenchSkeleton />;

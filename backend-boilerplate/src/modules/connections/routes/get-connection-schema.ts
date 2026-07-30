@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { BadRequestError } from '@/http/routes/_errors';
-import { PgRunnerError, SqlGuardError } from '@/lib/pg-runner';
+import { isExternalQueryError } from '@/lib/query-runner';
 import { loadUserContext, requireConnectionForUse } from '../rbac';
 import { idParamSchema, schemaQuerySchema, schemaResponseSchema } from '../schema';
 import { introspectSchema } from '../service';
@@ -26,7 +26,7 @@ export async function getConnectionSchemaRoute(app: FastifyInstance) {
         const payload = await introspectSchema(conn, { refresh: request.query.refresh });
         return reply.send(payload);
       } catch (err) {
-        if (err instanceof SqlGuardError || err instanceof PgRunnerError) {
+        if (isExternalQueryError(err)) {
           throw new BadRequestError(err.message);
         }
         throw err;

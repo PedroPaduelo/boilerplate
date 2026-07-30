@@ -12,9 +12,11 @@ import type { ReactElement, ReactNode } from 'react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { InternationalizationProvider } from '@astryxdesign/core/i18n';
 import { LayerProvider } from '@astryxdesign/core/Layer';
 import { LinkProvider } from '@astryxdesign/core/Link';
 import { ColorModeProvider } from '@/shared/theme';
+import { APP_LOCALE, dsMessages } from '@/app/i18n';
 import { RouterLinkAdapter } from '@/shared/lib/router-link';
 
 /** QueryClient isolado por teste: sem retry e sem cache entre casos, senão um
@@ -45,15 +47,27 @@ export function renderWithProviders(
 ): RenderResult & { queryClient: QueryClient } {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <ColorModeProvider defaultMode="light">
-        <LayerProvider>
-          <MemoryRouter initialEntries={[route]}>
-            <LinkProvider component={RouterLinkAdapter}>
-              <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-            </LinkProvider>
-          </MemoryRouter>
-        </LayerProvider>
-      </ColorModeProvider>
+      /*
+       * `InternationalizationProvider` com o MESMO catálogo do app (pt-BR).
+       *
+       * Sem ele o design system caía no catálogo `en` embutido, e os testes
+       * passavam a afirmar textos que o usuário nunca vê: um teste de
+       * acessibilidade procurando o botão "Collapse sidebar" ficava verde
+       * enquanto a tela real dizia "Recolher barra lateral" — ou seja, o teste
+       * não estava protegendo o nome acessível de nada. Renderizar como o app
+       * renderiza é o propósito deste helper.
+       */
+      <InternationalizationProvider locale={APP_LOCALE} messages={dsMessages}>
+        <ColorModeProvider defaultMode="light">
+          <LayerProvider>
+            <MemoryRouter initialEntries={[route]}>
+              <LinkProvider component={RouterLinkAdapter}>
+                <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+              </LinkProvider>
+            </MemoryRouter>
+          </LayerProvider>
+        </ColorModeProvider>
+      </InternationalizationProvider>
     );
   }
 

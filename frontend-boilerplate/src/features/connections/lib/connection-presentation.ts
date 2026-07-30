@@ -1,6 +1,6 @@
 import type { BadgeVariant } from '@astryxdesign/core/Badge';
 import type { StatusDotVariant } from '@astryxdesign/core/StatusDot';
-import type { ConnectionEnvironment, ConnectionVisibility } from '../types';
+import type { Connection, ConnectionEnvironment, ConnectionVisibility } from '../types';
 
 /**
  * Tradução de dado de domínio → vocabulário visual do design system.
@@ -65,6 +65,48 @@ const ENVIRONMENT_VIEWS: Record<ConnectionEnvironment, EnvironmentView> = {
  */
 export function environmentView(environment: ConnectionEnvironment): EnvironmentView {
   return ENVIRONMENT_VIEWS[environment] ?? { label: environment, variant: 'neutral' };
+}
+
+/** É uma conexão que fala HTTP com um gateway (em vez de TCP com o banco)? */
+export function isGatewayConnection(connection: Pick<Connection, 'type'>): boolean {
+  return connection.type === 'API_GATEWAY';
+}
+
+export interface ConnectionTypeView {
+  label: string;
+  variant: BadgeVariant;
+}
+
+/**
+ * Tipo da fonte → rótulo curto para badge.
+ *
+ * Vale a pena ocupar espaço com isto porque o tipo muda o que o usuário pode
+ * esperar da tela: numa conexão via gateway não há índices, chaves nem tamanho
+ * de tabela para explorar (o gateway não expõe), e a query passa por uma ponte
+ * HTTP com limite próprio. Ver "API" no cabeçalho explica antecipadamente
+ * ausências que, sem o rótulo, pareceriam defeito.
+ */
+export function connectionTypeView(type: string): ConnectionTypeView {
+  if (type === 'API_GATEWAY') return { label: 'API', variant: 'purple' };
+  return { label: 'PostgreSQL', variant: 'info' };
+}
+
+/**
+ * Endereço da fonte, em uma linha — o que de fato identifica a conexão nas
+ * listagens.
+ *
+ * Postgres é `host:porta/banco`. Gateway é a URL (sem o esquema, que só
+ * gastaria espaço) e, quando conhecido, o nome do banco que ele expõe: o
+ * `host:443/` de uma URL https não diria nada a ninguém.
+ */
+export function connectionEndpoint(
+  connection: Pick<Connection, 'type' | 'host' | 'port' | 'database' | 'baseUrl'>,
+): string {
+  if (!isGatewayConnection(connection)) {
+    return `${connection.host}:${connection.port}/${connection.database}`;
+  }
+  const base = (connection.baseUrl ?? connection.host).replace(/^https?:\/\//i, '');
+  return connection.database ? `${base} · ${connection.database}` : base;
 }
 
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];

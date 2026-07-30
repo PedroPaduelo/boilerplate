@@ -40,9 +40,14 @@ import {
   usePublishDashboard,
 } from '../hooks';
 import { useExportDashboardPdf } from '../use-export-pdf';
+import { externalUrlHost, isExternalDashboard } from '../lib/external-dashboard';
 import type { Dashboard } from '../types';
-import { buildDashboardActions } from './dashboard-actions';
+import {
+  buildDashboardActions,
+  buildExternalDashboardActions,
+} from './dashboard-actions';
 import { DashboardsEmptyState } from './dashboards-empty-state';
+import { ExternalDashboardDialog } from './external-dashboard-dialog';
 import { DashboardsToolbar } from './dashboards-toolbar';
 import {
   DashboardsTable,
@@ -65,6 +70,15 @@ export function DashboardsPage() {
   const [filters, setFilters] = useState<ArtifactFilterState>(DEFAULT_ARTIFACT_FILTERS);
   const [page, setPage] = useState(1);
   const [sharing, setSharing] = useState<Dashboard | null>(null);
+  /**
+   * Cadastro de relatório externo. `null` = diálogo fechado; `{ dashboard }`
+   * aberto (com `dashboard: null` no cadastro novo). O envelope existe porque
+   * "fechado" e "abrindo em branco" são estados diferentes e um `Dashboard |
+   * null` sozinho não os distingue.
+   */
+  const [externalForm, setExternalForm] = useState<{
+    dashboard: Dashboard | null;
+  } | null>(null);
 
   const debouncedSearch = useDebounce(filters.search, 300);
   const serverFilters = useMemo(
@@ -111,19 +125,50 @@ export function DashboardsPage() {
       onSuccess: (created) => navigate(`/dashboards/${created.id}/edit`),
     });
 
-  const rows: DashboardRow[] = shown.map((d) => ({
-    id: d.id,
-    title: d.title,
-    href: `/dashboards/${d.id}`,
-    status: d.status,
-    visibility: d.visibility,
-    department: deptName(d.departmentId),
-    updatedAt: d.updatedAt,
-    isMine: d.ownerId === currentUserId,
-    onPrefetch: () => prefetch(d.id, modeFor(d.status)),
-    actions: buildDashboardActions(
-      { role, currentUserId, ownerId: d.ownerId, status: d.status },
-      {
+  const rows: DashboardRow[] = shown.map((d) => {
+    // RELATÓRIO EXTERNO (legado): o item existe na lista, mas o conteúdo mora
+    // fora. Muda o destino do clique, o rótulo de status e o menu de ações —
+    // tudo o mais (busca, filtros, paginação, RBAC de visibilidade) é idêntico,
+    // porque para quem procura um painel ele é só mais um da lista.
+    const isExternal = isExternalDashboard(d);
+    const permCtx = { role, currentUserId, ownerId: d.ownerId, status: d.status };
+
+    if (isExternal) {
+      const url = d.externalUrl as string;
+      return {
+        id: d.id,
+        title: d.title,
+        href: url,
+        isExternal: true,
+        externalHost: externalUrlHost(url),
+        status: d.status,
+        visibility: d.visibility,
+        department: deptName(d.departmentId),
+        updatedAt: d.updatedAt,
+        isMine: d.ownerId === currentUserId,
+        // Não há detalhe nosso para pré-carregar: o conteúdo é do outro sistema.
+        onPrefetch: () => {},
+        actions: buildExternalDashboardActions(permCtx, {
+          open: () => window.open(url, '_blank', 'noopener,noreferrer'),
+          edit: () => setExternalForm({ dashboard: d }),
+          delete: () => openDelete(d),
+        }),
+      };
+    }
+
+    return {
+      id: d.id,
+      title: d.title,
+      href: `/dashboards/${d.id}`,
+      isExternal: false,
+      externalHost: null,
+      status: d.status,
+      visibility: d.visibility,
+      department: deptName(d.departmentId),
+      updatedAt: d.updatedAt,
+      isMine: d.ownerId === currentUserId,
+      onPrefetch: () => prefetch(d.id, modeFor(d.status)),
+      actions: buildDashboardActions(permCtx, {
         open: () => navigate(`/dashboards/${d.id}`),
         edit: () => navigate(`/dashboards/${d.id}/edit`),
         publish: () => publish.mutate({ id: d.id, publish: true }),
@@ -141,9 +186,9 @@ export function DashboardsPage() {
             visibility: 'PRIVATE',
           }),
         delete: () => openDelete(d),
-      },
-    ),
-  }));
+      }),
+    };
+  });
 
   const totalPages = data?.totalPages ?? 1;
 
@@ -167,6 +212,7 @@ export function DashboardsPage() {
         canCreate={canManage}
         isCreating={create.isPending}
         onCreate={handleCreate}
+        onRegisterExternal={() => setExternalForm({ dashboard: null })}
       />
 
       {isLoading ? (
@@ -211,6 +257,15 @@ export function DashboardsPage() {
       )}
 
       <DeleteDashboardDialog title={deleting?.title} confirmation={confirmation} />
+
+      <ExternalDashboardDialog
+        // `key` força um formulário novo a cada alvo: sem ela, abrir a edição
+        // de um relatório logo depois de outro reaproveitaria o estado anterior.
+        key={externalForm?.dashboard?.id ?? 'new'}
+        isOpen={externalForm !== null}
+        onOpenChange={(open) => !open && setExternalForm(null)}
+        dashboard={externalForm?.dashboard ?? null}
+      />
 
       <ShareArtifactDialog
         key={sharing?.id ?? 'none'}

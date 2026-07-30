@@ -35,6 +35,7 @@ const detail: DashboardDetail = {
   departmentId: null,
   visibility: 'ORG',
   status: 'DRAFT', // → modo efetivo = 'draft'
+  externalUrl: null,
   draftLayout: dashboardLayoutFixture as never,
   publishedLayout: null,
   publishedAt: null,

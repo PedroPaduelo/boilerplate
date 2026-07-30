@@ -16,7 +16,9 @@ export async function createConnectionRoute(app: FastifyInstance) {
     {
       schema: {
         tags: ['Connections'],
-        summary: 'Cria uma conexão Postgres (senha cifrada at-rest)',
+        summary:
+          'Cria uma conexão Postgres (host/usuário/senha) ou API_GATEWAY ' +
+          '(baseUrl/token) — segredo cifrado at-rest',
         security: [{ bearerAuth: [] }],
         body: createConnectionBodySchema,
         response: { 201: connectionResponseSchema },

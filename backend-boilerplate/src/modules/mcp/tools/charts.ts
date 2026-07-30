@@ -15,7 +15,7 @@
  */
 import { z } from 'zod';
 import { coerceProps, getCatalogDataShape } from '@/lib/catalog';
-import { runQuery } from '@/lib/pg-runner';
+import { runQuery } from '@/lib/query-runner';
 import { buildVisibilityWhere } from '@/lib/visibility';
 import {
   createChartBodySchema,
@@ -33,7 +33,7 @@ import {
   updateChart,
 } from '@/modules/charts/service';
 import { requireConnectionForUse } from '@/modules/connections/rbac';
-import { toPgRunnerConnection } from '@/modules/connections/service';
+import { toRunnerConnection } from '@/modules/connections/service';
 import { executeBlockData } from '@/modules/data/executor';
 import { assertPermission } from './guard';
 import { enrichBadRequest, type AiErrorRule, type ToolDefinition } from './types';
@@ -326,7 +326,7 @@ const previewChartDataTool: ToolDefinition = {
     return executeBlockData(
       {
         blockId: chartId,
-        connection: toPgRunnerConnection(conn),
+        connection: toRunnerConnection(conn),
         sql: bindingRaw.query,
         paramsValues: Array.isArray(bindingRaw.params) ? bindingRaw.params : [],
         transform: bindingRaw.transform,

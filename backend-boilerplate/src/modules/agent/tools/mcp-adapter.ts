@@ -10,30 +10,51 @@
  * sem reimplementar nada.
  */
 
-import { tool, type Tool } from 'ai';
-import { z } from 'zod';
+import { jsonSchema, tool, type Tool } from 'ai';
 import { TOOLS } from '@/modules/mcp/tools';
 import type { ToolDefinition } from '@/modules/mcp/tools/types';
 import type { ActorContext } from '@/lib/rbac';
 import { notifyArtifactChange } from './notify-artifact-change.js';
 
 /**
- * JSON Schema → Zod schema (simplificado para os casos do MCP).
- * As tools do MCP já têm inputSchema em JSON Schema. O AI SDK aceita inputSchema
- * como Zod OU como JSON Schema cru — passamos o JSON Schema direto via `schema`.
+ * O `inputSchema` da tool, do jeito que o modelo precisa vê-lo.
+ *
+ * ## O que estava acontecendo
+ *
+ * Esta função IGNORAVA o schema e devolvia `z.object({}).passthrough()` — ou
+ * seja, TODA tool era anunciada ao modelo como um objeto **sem campo nenhum**.
+ * O modelo não tinha como saber que `run_query` recebe `sql` e `connectionId`,
+ * que `create_chart` recebe `draftDataBinding`, nem que `span` é inteiro.
+ * Sobrava a descrição em prosa, e ele adivinhava a forma.
+ *
+ * Os sintomas são exatamente os que se vê na trilha: `run_query` chamada com
+ * `{}` (quatro vezes seguidas), campos com o nome errado, array chegando como
+ * `{item: [...]}`, número chegando como `"4"`. As camadas defensivas abaixo
+ * (`unwrapArrayWrappers`, `coerceScalar`) nasceram para remendar isso — elas
+ * continuam valendo, mas agora como rede de segurança, e não como muleta.
+ *
+ * ## Por que não era só usar `z.any()`
+ *
+ * O motivo original é REAL: `z.any()` serializa para `{"anyOf":[{"not":{}},{}]}`,
+ * sem `type`, e a API da Anthropic recusa a tool inteira
+ * (`tools.0.custom.input_schema.type: Field required`) — o chat inteiro quebra.
+ * A saída escolhida na época (schema vazio) resolveu o crash e cegou o modelo.
+ *
+ * A saída certa é entregar o JSON Schema que a tool JÁ TEM, via o helper
+ * `jsonSchema()` do AI SDK: ele passa o objeto adiante sem convertê-lo para
+ * Zod, e o formato é justamente o que a Anthropic espera.
+ *
+ * O saneamento abaixo garante a invariante que derrubava a chamada: sempre
+ * existe `type: "object"` e sempre existe `properties`.
  */
-function jsonSchemaToZodRaw(_inputSchema: Record<string, unknown>): z.ZodTypeAny {
-  // O handler do MCP valida os args com Zod internamente (cada tool tem seu
-  // schemaArgs), então aqui só precisamos de um schema PERMISSIVO que aceite
-  // qualquer payload do LLM. NÃO use `z.any()`: ele serializa para
-  // `{"anyOf":[{"not":{}},{}]}` (SEM `type`), e a API Anthropic REJEITA tools
-  // cujo `input_schema` não tem `type: "object"` — erro
-  // `tools.0.custom.input_schema.type: Field required` (quebra o chat inteiro).
-  // `z.object({}).passthrough()` serializa para
-  // `{"type":"object","properties":{},"additionalProperties":true}` —
-  // satisfaz o requisito da Anthropic E mantém os args intactos (passthrough)
-  // para o handler validar.
-  return z.object({}).passthrough();
+function toModelInputSchema(inputSchema: Record<string, unknown> | undefined) {
+  const base =
+    inputSchema && typeof inputSchema === 'object' ? { ...inputSchema } : {};
+
+  if (base.type !== 'object') base.type = 'object';
+  if (!base.properties || typeof base.properties !== 'object') base.properties = {};
+
+  return jsonSchema(base as Parameters<typeof jsonSchema>[0]);
 }
 
 /**
@@ -426,7 +447,9 @@ function convertMcpTool(mcpTool: ToolDefinition, actor: ActorContext): Tool {
 
   return tool({
     description: mcpTool.description,
-    inputSchema: jsonSchemaToZodRaw(mcpTool.inputSchema),
+    // O schema REAL da tool: é o que diz ao modelo quais campos existem, quais
+    // são obrigatórios e de que tipo são.
+    inputSchema: toModelInputSchema(mcpTool.inputSchema),
     execute: async (args: unknown) => {
       try {
         // Normalização defensiva: desempacota {item:T} → T nos campos array

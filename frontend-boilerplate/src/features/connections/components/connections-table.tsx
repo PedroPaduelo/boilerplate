@@ -16,7 +16,9 @@ import {
 import { Text } from '@astryxdesign/core/Text';
 import { Timestamp } from '@astryxdesign/core/Timestamp';
 import {
+  connectionEndpoint,
   connectionStatusView,
+  connectionTypeView,
   environmentView,
   visibilityLabel,
 } from '../lib/connection-presentation';
@@ -60,7 +62,7 @@ export function ConnectionsTable({
         id: connection.id,
         name: connection.name,
         status: connectionStatusView(connection.status).label,
-        endpoint: `${connection.host}:${connection.port}/${connection.database}`,
+        endpoint: connectionEndpoint(connection),
         environment: environmentView(connection.environment).label,
         visibility: visibilityLabel(connection.visibility),
         lastTestedAt: connection.lastTestedAt ?? '',
@@ -119,11 +121,19 @@ export function ConnectionsTable({
         key: 'endpoint',
         header: 'Endereço',
         width: proportional(2),
-        renderCell: (row) => (
-          <Text type="code" color="secondary" maxLines={1} hasTruncateTooltip>
-            {row.endpoint}
-          </Text>
-        ),
+        renderCell: (row) => {
+          const typeView = connectionTypeView(row.connection.type);
+          return (
+            <HStack gap={1.5} vAlign="center">
+              {/* O badge de tipo fica JUNTO do endereço, não numa coluna
+                  própria: ele é o que explica o formato do endereço ao lado. */}
+              <Badge variant={typeView.variant} label={typeView.label} />
+              <Text type="code" color="secondary" maxLines={1} hasTruncateTooltip>
+                {row.endpoint}
+              </Text>
+            </HStack>
+          );
+        },
       },
       {
         key: 'environment',

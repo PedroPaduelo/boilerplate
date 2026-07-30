@@ -97,6 +97,11 @@ export function InspectorDashboard({
         onAdd={onAddChart}
       />
 
+      {/* Divisor antes da nota: sem ele a frase encostava no formulário acima
+          e lia-se como instrução DE "Adicionar gráfico" — que é justamente a
+          única coisa que ela não explica. */}
+      <Divider />
+
       <Text type="supporting">
         Para editar um bloco, clique nele no canvas. Para editar uma linha, clique no nome
         dela.

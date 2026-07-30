@@ -21,7 +21,7 @@ export async function unpublishDashboardRoute(app: FastifyInstance) {
     async (request, reply) => {
       const ctx = await loadActorContext(request);
       const existing = await requireDashboardForModify(request.params.id, ctx);
-      const dashboard = await unpublishDashboard(existing.id);
+      const dashboard = await unpublishDashboard(existing);
       return reply.send(serializeDashboard(dashboard));
     },
   );

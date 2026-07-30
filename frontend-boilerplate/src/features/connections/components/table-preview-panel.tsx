@@ -10,6 +10,8 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import type { QueryResult } from '../types';
+import { buildSqlPlaceholder } from '../lib/ddl';
+import type { DbEngine } from './db-schema-explorer-types';
 import { QueryResultTable } from './query-result-table';
 
 /**
@@ -43,6 +45,8 @@ export interface TablePreviewPanelProps {
   /** Conexão inativa: não consulta e explica o porquê. */
   isDisabled?: boolean;
   disabledReason?: string;
+  /** Motor do banco — define o dialeto sugerido no placeholder. */
+  engine?: DbEngine;
 }
 
 /** Linhas do preview pedidas ao backend (`maxRows` do runner). */
@@ -56,6 +60,7 @@ export function TablePreviewPanel({
   result,
   errorMessage,
   isDisabled,
+  engine = 'postgresql',
   disabledReason,
 }: TablePreviewPanelProps) {
   const isEmpty = sql.trim().length === 0;
@@ -93,7 +98,7 @@ export function TablePreviewPanel({
           onKeyDown={handleKeyDown}
           rows={6}
           hasSpellCheck={false}
-          placeholder="SELECT * FROM public.minha_tabela LIMIT 50;"
+          placeholder={buildSqlPlaceholder(engine)}
           description="Somente SELECT/WITH · Ctrl/Cmd + Enter executa."
         />
         <HStack gap={2} justify="between" vAlign="center" wrap="wrap">

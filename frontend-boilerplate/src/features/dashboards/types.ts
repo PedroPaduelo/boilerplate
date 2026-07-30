@@ -21,6 +21,12 @@ export interface Dashboard {
   departmentId: string | null;
   visibility: ArtifactVisibility;
   status: ArtifactStatus;
+  /**
+   * Endereço de um relatório EXTERNO (legado, feito fora desta plataforma).
+   * Preenchido → o item é um ATALHO: aparece na mesma lista, mas abre este
+   * endereço em vez de uma tela daqui. `null` → dashboard desta plataforma.
+   */
+  externalUrl: string | null;
   draftLayout: DashboardLayout;
   publishedLayout: DashboardLayout | null;
   publishedAt: string | null;
@@ -53,7 +59,10 @@ export interface DashboardListParams {
 
 export interface CreateDashboardInput {
   title: string;
-  draftLayout: DashboardLayout;
+  /** Obrigatório num dashboard desta plataforma; ausente num relatório externo. */
+  draftLayout?: DashboardLayout;
+  /** Presente só ao cadastrar um relatório EXTERNO (legado). */
+  externalUrl?: string;
   departmentId?: string | null;
   visibility?: ArtifactVisibility;
 }
@@ -62,6 +71,8 @@ export interface CreateDashboardInput {
 export interface UpdateDashboardInput {
   title?: string;
   draftLayout?: DashboardLayout;
+  /** Só aceito quando o dashboard JÁ é externo (o backend rejeita o resto). */
+  externalUrl?: string;
   departmentId?: string | null;
   visibility?: ArtifactVisibility;
 }

@@ -15,11 +15,8 @@ import {
   type BlockDataResult,
 } from '@dashboards/contracts';
 import type { CatalogDataShape } from '@/lib/catalog';
-import type {
-  PgRunnerConnection,
-  QueryResultShape,
-  RunQueryOptions,
-} from '@/lib/pg-runner';
+import type { QueryResultShape, RunQueryOptions } from '@/lib/pg-runner';
+import type { RunnerConnection } from '@/lib/query-runner';
 import { applyTransform } from './transform';
 
 /**
@@ -53,7 +50,8 @@ export function resumirErrosDeContrato(bruto: string): string {
 
 export interface ExecuteBlockInput {
   blockId: string;
-  connection: PgRunnerConnection;
+  /** Postgres ou gateway HTTP — o executor não distingue (ver `query-runner`). */
+  connection: RunnerConnection;
   sql: string;
   paramsValues: unknown[];
   transform?: unknown;
@@ -65,7 +63,7 @@ export interface ExecuteBlockInput {
 
 export interface ExecutorDeps {
   runQuery: (
-    connection: PgRunnerConnection,
+    connection: RunnerConnection,
     sql: string,
     options?: RunQueryOptions,
   ) => Promise<QueryResultShape>;

@@ -14,10 +14,14 @@
  * O painel é STICKY (ver `.app-editor-inspector` no CSS do app): rolando o
  * canvas atrás dele, os controles do bloco continuam ao alcance. Sem isso, um
  * dashboard alto obriga a rolar até o topo a cada ajuste.
+ *
+ * Ele é um FRAME de duas partes: cabeçalho fixo (o que está selecionado) e
+ * corpo rolável (as propriedades). O painel inteiro é limitado à altura visível
+ * da janela — quem rola é só o corpo, e a rolagem dele não vaza para a página.
  */
 import { LayoutGrid, Rows3, SquareDashed } from 'lucide-react';
 import { Icon } from '@astryxdesign/core/Icon';
-import { HStack, Section, VStack } from '@astryxdesign/core/Layout';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Button } from '@astryxdesign/core/Button';
 import { Text } from '@astryxdesign/core/Text';
 import { Toolbar } from '@astryxdesign/core/Toolbar';
@@ -53,8 +57,24 @@ export function EditorInspector({
   const isDashboard = selection.kind === 'dashboard';
 
   return (
-    <VStack gap={0} className="app-editor-inspector">
-      <Section variant="section" padding={0} aria-label="Propriedades da seleção">
+    <VStack
+      gap={0}
+      as="section"
+      aria-label="Propriedades da seleção"
+      className="app-editor-inspector"
+    >
+      {/*
+        Cabeçalho FIXO do painel: ele fica, o corpo rola (`.app-editor-inspector`
+        e `__body` em `src/app/index.css`). Antes o painel inteiro é que rolava —
+        o cabeçalho subia junto e sumia, deixando o usuário sem saber o que
+        estava editando exatamente quando descia para os campos de baixo.
+
+        A `div` com `__head` não é um invólucro à toa: é ela que absorve o bleed
+        de -16px do `Toolbar`. Sem ela o cabeçalho vazava 15px para FORA do
+        painel (topo e esquerda), era cortado pela borda arredondada e ainda
+        empurrava 16px de overflow horizontal dentro de um painel de 400px.
+      */}
+      <div className="app-editor-inspector__head">
         <Toolbar
           label="Seleção"
           size="sm"
@@ -82,10 +102,11 @@ export function EditorInspector({
             )
           }
         />
-        <VStack gap={4} padding={4} className="app-editor-inspector__body">
-          {children}
-        </VStack>
-      </Section>
+      </div>
+
+      <VStack gap={4} padding={4} className="app-editor-inspector__body">
+        {children}
+      </VStack>
     </VStack>
   );
 }

@@ -16,6 +16,7 @@
 import { streamText, stepCountIs, type ModelMessage, type Tool } from 'ai';
 import type { AgentSink } from '../sinks/types.js';
 import type { CacheOptions } from '../config/schemas.js';
+import { isAbortError } from '../services/run-control.js';
 import { buildMessages } from './messages.js';
 
 export interface RunAgentOptions {
@@ -31,10 +32,18 @@ export interface RunAgentOptions {
    *  modelo (64k no sonnet-4), que estoura o limite de proxies/providers. */
   maxOutputTokens?: number | undefined;
   providerOptions?: Record<string, any> | undefined;
+  /**
+   * Permite INTERROMPER o turno (botão "parar" do usuário). Sem isto, parar era
+   * só deixar de olhar: a chamada ao provider seguia até o fim, queimando
+   * tokens e mantendo a conversa ocupada.
+   */
+  abortSignal?: AbortSignal | undefined;
   sink: AgentSink;
 }
 
 export interface RunAgentResult {
+  /** `true` quando o turno foi INTERROMPIDO pelo usuário (não é falha). */
+  aborted?: boolean;
   finishReason: string;
   steps: number;
   /** Texto do ÚLTIMO step (semântica do AI SDK). Mantido por compatibilidade. */
@@ -77,6 +86,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
     maxOutputTokens: opts.maxOutputTokens,
     stopWhen: stepCountIs(opts.maxSteps ?? 30),
     providerOptions: opts.providerOptions,
+    abortSignal: opts.abortSignal,
     onStepFinish: (step) => {
       stepIdx++;
       opts.sink.onStep({
@@ -103,24 +113,59 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
   // continue tratando erro com try/catch — mas só DEPOIS de ter entregue
   // todo o texto que já havia sido gerado.
   let streamError: unknown = null;
+  let aborted = false;
 
-  for await (const part of result.fullStream) {
-    if (part.type === 'text-delta') {
-      const delta = (part as { text?: string }).text ?? '';
-      if (delta) {
-        fullText += delta;
-        opts.sink.onTextDelta?.(delta);
+  try {
+    for await (const part of result.fullStream) {
+      if (part.type === 'text-delta') {
+        const delta = (part as { text?: string }).text ?? '';
+        if (delta) {
+          fullText += delta;
+          opts.sink.onTextDelta?.(delta);
+        }
+      } else if (part.type === 'error') {
+        streamError = (part as { error?: unknown }).error;
       }
-    } else if (part.type === 'error') {
-      streamError = (part as { error?: unknown }).error;
     }
+  } catch (err) {
+    // Cancelar não é falhar: quem parou foi o usuário, e o texto já escrito
+    // continua valendo. Só o que NÃO for cancelamento sobe como erro.
+    if (isAbortError(err) || opts.abortSignal?.aborted) aborted = true;
+    else throw err;
   }
 
-  if (streamError) {
+  if (opts.abortSignal?.aborted) aborted = true;
+
+  if (streamError && !aborted) {
     throw streamError instanceof Error ? streamError : new Error(String(streamError));
   }
 
   const elapsedMs = Date.now() - startedAt;
+
+  /*
+   * Turno interrompido: devolvemos o que já foi transmitido e paramos por aqui.
+   *
+   * As promessas do resultado (`result.text`, `result.usage`…) podem nunca
+   * resolver — ou rejeitar — depois de um abort; esperá-las deixaria o turno
+   * pendurado exatamente no caminho que existe para encerrá-lo rápido.
+   */
+  if (aborted) {
+    opts.sink.onFinal({
+      finishReason: 'aborted',
+      steps: stepIdx,
+      elapsedMs,
+      text: fullText,
+    });
+    return {
+      aborted: true,
+      finishReason: 'aborted',
+      steps: stepIdx,
+      text: fullText,
+      fullText,
+      responseMessages: [],
+      elapsedMs,
+    };
+  }
 
   const [finishReason, text, usage, steps, response] = await Promise.all([
     result.finishReason,

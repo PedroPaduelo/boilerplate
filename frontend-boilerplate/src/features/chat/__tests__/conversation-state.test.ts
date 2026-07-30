@@ -85,6 +85,60 @@ describe('conversationReducer', () => {
     expect(state.lastPrompt).toBe('quebra');
   });
 
+  /**
+   * O fechamento do turno pode ser a PRIMEIRA notícia da resposta: se a conexão
+   * caiu no meio, nenhum pedaço abriu a bolha do agente. Enquanto isto era um
+   * `map`, o texto final não encontrava mensagem para atualizar e era descartado
+   * em silêncio — a tela ficava com a pergunta do usuário sozinha, que é o
+   * relato de "a resposta some".
+   */
+  it('o fechamento mostra a resposta mesmo se nenhum pedaço tiver chegado', () => {
+    const state = reduce(initialConversationState, ask('usr_1', 'quantas notas?'), {
+      type: 'event',
+      event: {
+        type: 'message_end',
+        messageId: 'asg_1',
+        text: 'Foram 128 notas em julho.',
+      },
+    });
+
+    expect(state.messages.map((message) => message.content)).toEqual([
+      'quantas notas?',
+      'Foram 128 notas em julho.',
+    ]);
+    expect(state.isStreaming).toBe(false);
+  });
+
+  it('a trilha do turno passa a ser da mensagem que o fechamento criou', () => {
+    const state = reduce(initialConversationState, toolCall('t1'), {
+      type: 'event',
+      event: { type: 'message_end', messageId: 'asg_1', text: 'x'.repeat(30) },
+    });
+
+    expect(selectTrail(state, 'asg_1').steps).toHaveLength(1);
+    expect(selectPendingTrail(state).steps).toHaveLength(0);
+  });
+
+  /**
+   * O aviso de fim de turno chega por FORA da sala da conversa — é o que
+   * sobrevive a uma queda de conexão que engoliu o `chat:done`. Sem ele a tela
+   * ficava presa em "o agente está escrevendo" para sempre.
+   */
+  it('o aviso de fim de turno desliga o estado de execução', () => {
+    const emVoo = reduce(initialConversationState, ask('usr_1', 'e aí?'), {
+      type: 'event',
+      event: { type: 'text_delta', messageId: 'asg_1', delta: 'parcial' },
+    });
+    expect(emVoo.isStreaming).toBe(true);
+
+    const fim = reduce(emVoo, { type: 'turn_ended' });
+
+    expect(fim.isStreaming).toBe(false);
+    expect(fim.phase).toBeNull();
+    // Não mexe no conteúdo: quem repõe é a recarga do histórico.
+    expect(fim.messages.map((message) => message.content)).toEqual(['e aí?', 'parcial']);
+  });
+
   it('retomar substitui a bolha parcial pelo texto já produzido no servidor', () => {
     const state = reduce(
       initialConversationState,

@@ -6,6 +6,7 @@ import {
   ConnectionsIcon,
   DashboardsIcon,
   HomeIcon,
+  TaxIcon,
   UsersIcon,
   type AppIcon,
 } from '@/shared/ui/icons';
@@ -81,6 +82,17 @@ export const NAV_GROUPS: NavItemGroup[] = [
         href: '/charts',
         label: 'Gráficos',
         icon: ChartsIcon,
+        permission: 'artifacts:view',
+      },
+    ],
+  },
+  {
+    subheader: 'Fiscalização',
+    items: [
+      {
+        href: '/malha-fiscal',
+        label: 'Malha fiscal',
+        icon: TaxIcon,
         permission: 'artifacts:view',
       },
     ],

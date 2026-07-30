@@ -92,7 +92,10 @@ describe('AuditTrail', () => {
     // query inteira. O que precisa ser verdade é que o SQL executado está
     // legível na tela, inteiro e sem reticências — é isso que se afirma aqui.
     expect(code.textContent?.replace(/\s+/g, ' ').trim()).toContain(SQL);
-    expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
+    // Rótulo em pt-BR (catálogo do DS): é o nome que o leitor de tela anuncia
+    // e o que aparece na tela. Antes este teste procurava "copy", que só
+    // existia porque o helper de render não injetava o i18n do app.
+    expect(screen.getByRole('button', { name: /copiar/i })).toBeInTheDocument();
   });
 
   it('expandir o passo revela a conexão e a contagem de linhas', async () => {

@@ -115,6 +115,13 @@ export interface BarChartProps extends ChartStateProps {
   axisFormatter?: ValueFormatter;
   /** Escopo de `{{interpolação}}` dos textos do gráfico (`buildChartScope`). */
   scope?: ChartScope;
+  /**
+   * Clique numa coluna. Devolve a CATEGORIA (o rótulo do eixo X) e o índice —
+   * é a dimensão que faz sentido selecionar num gráfico de colunas. Quando
+   * declarado, as colunas ganham cursor de mão. A tela que liga isto precisa
+   * de um controle equivalente por teclado.
+   */
+  onSelect?: (label: string, index: number) => void;
 }
 
 /**
@@ -253,6 +260,7 @@ export function BarChart({
   emptyMessage,
   label = 'Gráfico de barras',
   summary,
+  onSelect,
 }: BarChartProps) {
   const palette = useChartPalette();
   // Entrada animada só quando o usuário não pediu redução de movimento.
@@ -377,6 +385,15 @@ export function BarChart({
                 activeBar={hasCells ? renderDarkenedBar : { fill: paint.hover }}
                 {...chartAnimationProps(palette, index)}
                 isAnimationActive={isAnimationActive}
+                cursor={onSelect ? 'pointer' : undefined}
+                onClick={
+                  onSelect
+                    ? (_bar: unknown, rowIndex: number) => {
+                        const row = rows[rowIndex];
+                        if (row) onSelect(String(row[CATEGORY_KEY]), rowIndex);
+                      }
+                    : undefined
+                }
               >
                 {hasCells
                   ? rows.map((row, rowIndex) => (

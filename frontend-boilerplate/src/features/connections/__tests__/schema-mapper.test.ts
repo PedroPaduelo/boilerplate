@@ -8,6 +8,8 @@ const connection = {
   database: 'analytics',
   host: 'db.example.com',
   port: 5432,
+  type: 'POSTGRES',
+  options: null,
 };
 
 const schema: ConnectionSchema = {

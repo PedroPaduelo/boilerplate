@@ -30,6 +30,7 @@ const detail: DashboardDetail = {
   departmentId: null,
   visibility: 'ORG',
   status: 'DRAFT',
+  externalUrl: null,
   draftLayout: dashboardLayoutFixture as never,
   publishedLayout: null,
   publishedAt: null,
@@ -318,5 +319,70 @@ describe('DashboardEditor — operações e estados da tela', () => {
       'aria-disabled',
       'true',
     );
+  });
+});
+
+/**
+ * COMPOSIÇÃO das faixas — a regressão que este arquivo não pegava.
+ *
+ * O `Toolbar` do Astryx renderiza um invólucro com `margin: -16px` para escapar
+ * até as bordas de quem o hospeda: ele nasce esperando um pai com `padding: 4`.
+ * Solto num `VStack`, esse -16px come o gap dos vizinhos — e foi exatamente o
+ * que aconteceu nesta tela. Medido no navegador, antes da correção: a barra do
+ * canvas passava 16px POR CIMA da barra de ações, o cabeçalho do inspetor
+ * vazava 15px para fora do próprio painel (onde era cortado pelo `overflow`), e
+ * a barra de ações encostava sem respiro no subtítulo acima dela.
+ *
+ * Nada disso aparece em asserção de papel acessível: é geometria, e em jsdom
+ * não há geometria. O que dá para travar é a ESTRUTURA que produz a geometria —
+ * todo `Toolbar` dentro de um hospedeiro que absorve o bleed. Por isso este
+ * bloco é a exceção declarada à regra "nada aqui depende de classe CSS": a
+ * classe não é estilo aqui, é o contrato de composição.
+ */
+describe('DashboardEditor — composição das faixas de Toolbar', () => {
+  const BLEED_HOSTS = [
+    '.app-editor-toolbar', // barra de ações da página
+    '.app-editor-canvas__bar', // cabeçalho do canvas
+    '.app-editor-inspector__head', // cabeçalho do inspetor
+  ].join(',');
+
+  beforeEach(() => {
+    authState.user = { id: 'me', role: 'CREATOR' };
+    detail.status = 'DRAFT';
+    detail.draftLayout = dashboardLayoutFixture as never;
+  });
+
+  it('todo Toolbar da tela está dentro de um hospedeiro que absorve o bleed', () => {
+    renderEditor();
+
+    const toolbars = Array.from(document.querySelectorAll('.astryx-toolbar'));
+    expect(toolbars.length).toBeGreaterThan(0);
+
+    const orphans = toolbars
+      .filter((toolbar) => toolbar.closest(BLEED_HOSTS) === null)
+      .map((toolbar) => toolbar.getAttribute('aria-label'));
+
+    expect(orphans).toEqual([]);
+  });
+
+  it('o cabeçalho do inspetor fica FORA do corpo rolável (ele não rola junto)', () => {
+    renderEditor();
+
+    const head = document.querySelector('.app-editor-inspector__head');
+    const body = document.querySelector('.app-editor-inspector__body');
+    expect(head).not.toBeNull();
+    expect(body).not.toBeNull();
+
+    // Irmãos dentro do painel — e não cabeçalho DENTRO do que rola.
+    expect(body?.contains(head as Node)).toBe(false);
+    expect(head?.parentElement).toBe(body?.parentElement);
+  });
+
+  it('a instrução de editar um bloco aparece uma vez só na tela', () => {
+    renderEditor();
+
+    // Ela vive no rodapé do inspetor, junto do controle que explica. O
+    // subtítulo da página dizia a mesma coisa — duas frases, uma informação.
+    expect(screen.getAllByText(/clique nele no canvas/i)).toHaveLength(1);
   });
 });

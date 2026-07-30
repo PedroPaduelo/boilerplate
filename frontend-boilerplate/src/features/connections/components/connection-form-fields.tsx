@@ -3,11 +3,18 @@ import { FormLayout } from '@astryxdesign/core/FormLayout';
 import { NumberInput } from '@astryxdesign/core/NumberInput';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { ConnectionAccessFields } from './connection-access-fields';
+import { ConnectionGatewayFields } from './connection-gateway-fields';
+import { ConnectionTypeField } from './connection-type-field';
 import { errorStatus } from './field-status';
 import type { ConnectionFormValues } from './use-connection-form';
 
 /**
- * Campos do formulário de conexão: identificação, endereço e credenciais.
+ * Campos do formulário de conexão: identificação, endereço/credenciais (que
+ * dependem do TIPO) e acesso.
+ *
+ * O bloco do meio troca conforme o tipo escolhido — Postgres pede host/porta/
+ * usuário/senha, gateway pede URL/token. Nome, descrição, ambiente e
+ * visibilidade não mudam: são propriedades do CADASTRO, não do transporte.
  *
  * Cada erro aparece INLINE no próprio campo (`status`), nunca em toast — o
  * usuário precisa ver QUAL campo falhou. Toast fica para falha da chamada
@@ -18,6 +25,7 @@ export interface ConnectionFormFieldsProps {
   errors: FieldErrors<ConnectionFormValues>;
   isEdit: boolean;
   visibility: ConnectionFormValues['visibility'];
+  type: ConnectionFormValues['type'];
 }
 
 export function ConnectionFormFields({
@@ -25,9 +33,14 @@ export function ConnectionFormFields({
   errors,
   isEdit,
   visibility,
+  type,
 }: ConnectionFormFieldsProps) {
+  const isGateway = type === 'API_GATEWAY';
+
   return (
     <FormLayout>
+      <ConnectionTypeField control={control} isEdit={isEdit} />
+
       <Controller
         control={control}
         name="name"
@@ -37,7 +50,7 @@ export function ConnectionFormFields({
             isRequired
             value={field.value}
             onChange={field.onChange}
-            placeholder="Ex.: Data Warehouse"
+            placeholder={isGateway ? 'Ex.: Tributário (gateway)' : 'Ex.: Data Warehouse'}
             status={errorStatus(errors.name?.message)}
           />
         )}
@@ -56,94 +69,101 @@ export function ConnectionFormFields({
         )}
       />
 
-      <FormLayout direction="horizontal">
-        <Controller
-          control={control}
-          name="host"
-          render={({ field }) => (
-            <TextInput
-              label="Host"
-              isRequired
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="db.exemplo.com"
-              status={errorStatus(errors.host?.message)}
+      {isGateway ? (
+        <ConnectionGatewayFields control={control} errors={errors} isEdit={isEdit} />
+      ) : (
+        <>
+          <FormLayout direction="horizontal">
+            <Controller
+              control={control}
+              name="host"
+              render={({ field }) => (
+                <TextInput
+                  label="Host"
+                  isRequired
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="db.exemplo.com"
+                  status={errorStatus(errors.host?.message)}
+                />
+              )}
             />
-          )}
-        />
-        <Controller
-          control={control}
-          name="port"
-          render={({ field }) => (
-            <NumberInput
-              label="Porta"
-              isRequired
-              isIntegerOnly
-              min={1}
-              max={65535}
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="5432"
-              status={errorStatus(errors.port?.message)}
+            <Controller
+              control={control}
+              name="port"
+              render={({ field }) => (
+                <NumberInput
+                  label="Porta"
+                  isRequired
+                  isIntegerOnly
+                  min={1}
+                  max={65535}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="5432"
+                  status={errorStatus(errors.port?.message)}
+                />
+              )}
             />
-          )}
-        />
-      </FormLayout>
+          </FormLayout>
 
-      <Controller
-        control={control}
-        name="database"
-        render={({ field }) => (
-          <TextInput
-            label="Banco de dados"
-            isRequired
-            value={field.value}
-            onChange={field.onChange}
-            placeholder="postgres"
-            status={errorStatus(errors.database?.message)}
+          <Controller
+            control={control}
+            name="database"
+            render={({ field }) => (
+              <TextInput
+                label="Banco de dados"
+                isRequired
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="postgres"
+                status={errorStatus(errors.database?.message)}
+              />
+            )}
           />
-        )}
-      />
 
-      <FormLayout direction="horizontal">
-        <Controller
-          control={control}
-          name="username"
-          render={({ field }) => (
-            <TextInput
-              label="Usuário"
-              isRequired
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="readonly_user"
-              status={errorStatus(errors.username?.message)}
+          <FormLayout direction="horizontal">
+            <Controller
+              control={control}
+              name="username"
+              render={({ field }) => (
+                <TextInput
+                  label="Usuário"
+                  isRequired
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="readonly_user"
+                  status={errorStatus(errors.username?.message)}
+                />
+              )}
             />
-          )}
-        />
-        <Controller
-          control={control}
-          name="password"
-          render={({ field }) => (
-            <TextInput
-              type="password"
-              label="Senha"
-              isRequired={!isEdit}
-              isOptional={isEdit}
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="••••••••"
-              description={isEdit ? 'Em branco mantém a senha atual.' : undefined}
-              status={errorStatus(errors.password?.message)}
+            <Controller
+              control={control}
+              name="password"
+              render={({ field }) => (
+                <TextInput
+                  type="password"
+                  label="Senha"
+                  isRequired={!isEdit}
+                  isOptional={isEdit}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="••••••••"
+                  description={isEdit ? 'Em branco mantém a senha atual.' : undefined}
+                  status={errorStatus(errors.password?.message)}
+                />
+              )}
             />
-          )}
-        />
-      </FormLayout>
+          </FormLayout>
+        </>
+      )}
 
       <ConnectionAccessFields
         control={control}
         errors={errors}
         isEdit={isEdit}
         visibility={visibility}
+        type={type}
       />
     </FormLayout>
   );
