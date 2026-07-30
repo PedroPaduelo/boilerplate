@@ -1,45 +1,11 @@
 /*
  * ARQUIVO GERADO por scripts/generate-ds-theme.mjs — não edite à mão.
  *
- * Tipografia responsiva do design system. Reproduz o `responsiveFontSizes()`
- * do tema de origem: h1–h6 crescem em 600px / 900px / 1200px.
+ * SEM REGRAS DE PROPÓSITO — a escala de título é FIXA (não responsiva).
  *
- * Tamanhos em px real medido (a origem tem `html` a 14px com `rem` gerados
- * sobre 16 — ver docs/design-system/99-inconsistencias.md §1).
+ * O `responsiveFontSizes()` do tema de origem CRESCIA h1–h6 no desktop
+ * (h4 21px, h3 28px, h2 42px, h1 56px) a partir dos tamanhos LEGADOS,
+ * desfazendo a retêmpera que reancorou o título no corpo real da UI
+ * (`auditoria-theme.ts`). Congelar aqui é o que padroniza a escrita do
+ * produto inteiro. Ver docs/design-system/99-inconsistencias.md §1.
  */
-
-@media (min-width: 600px) {
-  :root {
-    --text-heading-1-size: 45.5px;
-    --text-display-1-size: 45.5px;
-    --text-heading-2-size: 35px;
-    --text-display-2-size: 35px;
-    --text-heading-3-size: 22.75px;
-    --text-display-3-size: 22.75px;
-    --text-heading-5-size: 16.625px;
-    --text-heading-6-size: 15.75px;
-  }
-}
-
-@media (min-width: 900px) {
-  :root {
-    --text-heading-1-size: 50.75px;
-    --text-display-1-size: 50.75px;
-    --text-heading-2-size: 38.5px;
-    --text-display-2-size: 38.5px;
-    --text-heading-3-size: 26.25px;
-    --text-display-3-size: 26.25px;
-    --text-heading-4-size: 21px;
-  }
-}
-
-@media (min-width: 1200px) {
-  :root {
-    --text-heading-1-size: 56px;
-    --text-display-1-size: 56px;
-    --text-heading-2-size: 42px;
-    --text-display-2-size: 42px;
-    --text-heading-3-size: 28px;
-    --text-display-3-size: 28px;
-  }
-}

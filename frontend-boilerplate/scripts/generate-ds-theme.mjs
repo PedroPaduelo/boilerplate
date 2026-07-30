@@ -550,63 +550,38 @@ export const dsMeta = ${pad(stringify(ds.$meta), 0)} as const;
 writeFileSync(OUT, out, 'utf8');
 
 /* ========================================================================== *
- * 6. TIPOGRAFIA RESPONSIVA (CSS)
+ * 6. TIPOGRAFIA RESPONSIVA (CSS) — CONGELADA DE PROPÓSITO
  *
- * O DS roda `responsiveFontSizes()`: h1–h6 CRESCEM em `sm`/`md`/`lg`. Ex.: h4
- * é 17,5px no telefone e 21px a partir de 900px — e h4 é justamente o título
- * de página (75 usos). Congelar no valor base deixaria todo título do produto
- * menor que o original.
+ * O DS de origem rodava `responsiveFontSizes()`: h1–h6 CRESCIAM em 600/900/
+ * 1200px (h4, o título de página, ia de 17,5px a 21px; h1 chegava a 56px e h2 a
+ * 42px). Só que a escala de TÍTULO deste produto foi REANCORADA no corpo real
+ * da UI (`auditoria-theme.ts` → "ESCALA DE TÍTULO PRÓPRIA"): h1 24 / h2 19 /
+ * h3 16 / h4 14 / h5 13 / h6 12,25 — a decisão explícita de que aqui título é
+ * FERRAMENTA, não cartaz.
  *
- * O Astryx não tem token responsivo, então emitimos as media queries que
- * sobrescrevem os `--text-*-size`. Mesmos breakpoints da origem
- * (600/900/1200px) e mesmos valores medidos.
+ * As media queries cresciam a partir dos tamanhos LEGADOS, não dos
+ * retemperados, então DESFAZIAM a retêmpera no desktop: o título de página
+ * voltava a 21px, as seções a 28–42px, e a tela inteira ganhava um peso de
+ * cartaz que destoava do resto (o efeito "letra preta/Arial Black"). Por isso a
+ * escala passa a ser FIXA — um só tamanho por nível, em qualquer largura, no
+ * mesmo peso e escala da navegação lateral.
  *
- * Nenhuma variante define regra em `xl` (1536px): acima de 1200px a tipografia
- * congela — é assim na origem (`02-tipografia.md` §4).
+ * O arquivo continua sendo GERADO (e importado) só para REGISTRAR a decisão —
+ * sem nenhuma regra dentro. Se um dia a retêmpera ganhar uma escala responsiva
+ * PRÓPRIA, ela nasce aqui, a partir dos tamanhos retemperados, nunca dos legados.
  * ========================================================================== */
-
-const HEADING_SLOTS = {
-  h1: ['heading-1', 'display-1'],
-  h2: ['heading-2', 'display-2'],
-  h3: ['heading-3', 'display-3'],
-  h4: ['heading-4'],
-  h5: ['heading-5'],
-  h6: ['heading-6'],
-};
-
-const byBreakpoint = new Map(); // minWidth → [linhas]
-
-for (const [variant, slots] of Object.entries(HEADING_SLOTS)) {
-  const responsive = dsTypography[variant]?.responsive;
-  if (!responsive) continue;
-  for (const [, step] of Object.entries(responsive)) {
-    if (!byBreakpoint.has(step.minWidth)) byBreakpoint.set(step.minWidth, []);
-    for (const slot of slots) {
-      byBreakpoint.get(step.minWidth).push(`    --text-${slot}-size: ${step.size}px;`);
-    }
-  }
-}
-
-const sortedBreakpoints = [...byBreakpoint.entries()].sort(
-  (a, b) => parseInt(a[0], 10) - parseInt(b[0], 10),
-);
 
 const responsiveCss = `/*
  * ARQUIVO GERADO por scripts/generate-ds-theme.mjs — não edite à mão.
  *
- * Tipografia responsiva do design system. Reproduz o \`responsiveFontSizes()\`
- * do tema de origem: h1–h6 crescem em 600px / 900px / 1200px.
+ * SEM REGRAS DE PROPÓSITO — a escala de título é FIXA (não responsiva).
  *
- * Tamanhos em px real medido (a origem tem \`html\` a 14px com \`rem\` gerados
- * sobre 16 — ver docs/design-system/99-inconsistencias.md §1).
+ * O \`responsiveFontSizes()\` do tema de origem CRESCIA h1–h6 no desktop
+ * (h4 21px, h3 28px, h2 42px, h1 56px) a partir dos tamanhos LEGADOS,
+ * desfazendo a retêmpera que reancorou o título no corpo real da UI
+ * (\`auditoria-theme.ts\`). Congelar aqui é o que padroniza a escrita do
+ * produto inteiro. Ver docs/design-system/99-inconsistencias.md §1.
  */
-
-${sortedBreakpoints
-  .map(
-    ([minWidth, lines]) =>
-      `@media (min-width: ${minWidth}) {\n  :root {\n${[...new Set(lines)].join('\n')}\n  }\n}`,
-  )
-  .join('\n\n')}
 `;
 
 const RESPONSIVE_OUT = resolve(DS_DIR, 'typography-responsive.css');
@@ -630,8 +605,4 @@ console.log(`  ${Object.keys(opacityTokens).length} de opacidade`);
 console.log(`  ${Object.keys(spacingTokens).length} de espaçamento`);
 console.log(`  ${Object.keys(dsTypography).length} variantes tipográficas`);
 console.log(`  ${count} tokens CSS no total`);
-console.log(
-  `✔ typography-responsive.css escrito (${sortedBreakpoints.length} breakpoints: ${sortedBreakpoints
-    .map(([w]) => w)
-    .join(', ')})`,
-);
+console.log('✔ typography-responsive.css escrito (sem regras — escala de título FIXA)');
