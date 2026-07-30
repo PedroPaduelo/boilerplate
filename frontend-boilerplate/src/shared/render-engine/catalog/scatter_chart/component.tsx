@@ -68,6 +68,7 @@ export const Component: BlockComponent<ScatterProps, SeriesData> = ({
   data,
   state,
   error,
+  bodyHeight,
 }) => {
   const points = (data ?? []) as SeriesPoint[];
   // `single` = uma cor só: colapsamos as categorias numa série, em vez de
@@ -82,6 +83,8 @@ export const Component: BlockComponent<ScatterProps, SeriesData> = ({
 
   return (
     <ScatterChart
+      // Altura declarada no editor (quando houver); senão o padrão do tipo.
+      height={bodyHeight}
       data={rows}
       // Vocabulário de `{{variaveis}}` derivado dos dados DO BLOCO (com os
       // nomes de série), não dos pontos já achatados.

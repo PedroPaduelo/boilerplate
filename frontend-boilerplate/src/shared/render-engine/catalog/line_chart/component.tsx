@@ -113,6 +113,7 @@ export const Component: BlockComponent<LineProps, SeriesData> = ({
   data,
   state,
   error,
+  bodyHeight,
 }) => {
   const { series, labels, isNamed } = toLineSeries(data ?? []);
   const scope = buildChartScope(data ?? []);
@@ -135,6 +136,8 @@ export const Component: BlockComponent<LineProps, SeriesData> = ({
   return (
     <>
       <LineChart
+        // Altura declarada no editor (quando houver); senão o padrão do tipo.
+        height={bodyHeight}
         series={colored}
         labels={labels}
         scope={scope}

@@ -29,7 +29,7 @@ import { BlockPlaceholder, BlockUnknown } from './block-body';
 import { BlockBoundary } from './block-boundary';
 import { BlockContainer } from './block-container';
 import { BlockFrame, type BlockFrameTakeaway } from './block-frame';
-import { chartBodyHeight, skeletonShapeFor } from './lib/block-sizing';
+import { bodyHeightForCell, chartBodyHeight, skeletonShapeFor } from './lib/block-sizing';
 import {
   durationOf,
   explicitBlockText,
@@ -59,6 +59,14 @@ export interface BlockRendererProps {
    * os blocos que não escolheram a sua — ver `applyThemeDefaults`.
    */
   themeDefaults?: { accent?: string; palette?: 'single' | 'multi' };
+  /**
+   * Altura de CÉLULA declarada pelo autor (`row.height`/`block.height`, px),
+   * repassada pelo `BlockGrid`. `undefined` = ninguém declarou, e o bloco usa a
+   * altura fixa do tipo. Quando presente, a moldura reserva essa altura E o
+   * gráfico assume o tamanho correspondente — é o que faz o controle de altura
+   * do editor surtir efeito no desenho, não só na célula.
+   */
+  declaredHeight?: number;
   className?: string;
 }
 
@@ -146,6 +154,7 @@ export function BlockRenderer({
   data,
   framed = false,
   themeDefaults,
+  declaredHeight,
   className,
 }: BlockRendererProps) {
   const def = getBlock(block.type);
@@ -175,8 +184,14 @@ export function BlockRenderer({
     // Renderiza UM filho com a moldura/estado certos. É o que a grade padrão do
     // `BlockContainer` usa em cada célula — e também a válvula de escape
     // (`renderChild`) para um container que precise dispor os filhos à mão.
-    const renderChild = (child: Block): ReactNode => (
-      <BlockRenderer block={child} data={data} result={data?.blocks?.[child.id]} framed />
+    const renderChild = (child: Block, childHeight?: number): ReactNode => (
+      <BlockRenderer
+        block={child}
+        data={data}
+        result={data?.blocks?.[child.id]}
+        declaredHeight={childHeight}
+        framed
+      />
     );
     return (
       <BlockBoundary type={block.type} resetKey={props}>
@@ -236,6 +251,17 @@ export function BlockRenderer({
     ? undefined
     : SELF_CONTAINED_EMPHASIS[presentation.emphasis];
 
+  /*
+   * Altura do CORPO do gráfico emoldurado: a que o AUTOR declarou (convertida
+   * de altura de CÉLULA para altura de CORPO, descontando o cromo do card),
+   * senão a fixa do tipo — o comportamento que sempre houve. O MESMO número
+   * alimenta a reserva da moldura (`bodyMinHeight`) e o `height` do desenho, e é
+   * isso que faz o gráfico crescer/encolher junto com a célula em vez de sobrar
+   * espaço vazio (maior) ou ignorar o pedido (menor).
+   */
+  const framedBodyHeight =
+    declaredHeight != null ? bodyHeightForCell(declaredHeight) : chartBodyHeight(block.type);
+
   return (
     <div
       data-slot="block"
@@ -267,7 +293,7 @@ export function BlockRenderer({
                 ? (ownResult.error?.message ?? 'Erro ao carregar o bloco')
                 : undefined
             }
-            bodyMinHeight={chartBodyHeight(block.type)}
+            bodyMinHeight={framedBodyHeight}
             // Esqueleto com a SILHUETA do tipo: carregando, a tela já diz o que
             // está chegando em vez de virar uma parede de retângulos iguais.
             skeletonShape={skeletonShapeFor(block.type)}
@@ -275,7 +301,15 @@ export function BlockRenderer({
             showQuery={showSqlOf(block)}
           >
             {state === 'success' ? (
-              <Component props={props} data={dataVal} state="success" />
+              <Component
+                props={props}
+                data={dataVal}
+                state="success"
+                // Só o gráfico com eixo consome — e só quando o autor DECLAROU:
+                // sem declaração o desenho fica no tamanho fixo do tipo (o
+                // padrão), então nada muda nos dashboards que não usam o campo.
+                bodyHeight={declaredHeight != null ? framedBodyHeight : undefined}
+              />
             ) : null}
           </BlockFrame>
         ) : (

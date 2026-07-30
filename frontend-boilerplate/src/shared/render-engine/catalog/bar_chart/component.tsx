@@ -77,6 +77,7 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
   data,
   state,
   error,
+  bodyHeight,
 }) => {
   const isLoading = state === 'loading' || state === 'skeleton';
   const emptyMessage =
@@ -104,6 +105,8 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
     return (
       <>
         <HBarChart
+          // Altura declarada no editor (quando houver); senão o padrão do tipo.
+          height={bodyHeight}
           data={bars}
           hasColorByCategory={byBar}
           valueFormatter={formatValue}
@@ -131,6 +134,8 @@ export const Component: BlockComponent<BarProps, SeriesData> = ({
   return (
     <>
       <BarChart
+        // Altura declarada no editor (quando houver); senão o padrão do tipo.
+        height={bodyHeight}
         series={colored}
         labels={labels}
         isStacked={props.stacked === true && hasNamedSeries}

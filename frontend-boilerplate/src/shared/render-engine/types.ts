@@ -36,6 +36,18 @@ export interface BlockComponentProps<P = Record<string, unknown>, D = BlockData>
   /** Mensagem de erro (quando state === 'error'). */
   error?: string;
   /**
+   * Altura do CORPO do desenho, em px, quando o autor DECLAROU uma altura para
+   * a linha/bloco (`row.height`/`block.height`). `undefined` = ninguém declarou,
+   * e o bloco usa a altura fixa do seu tipo (o padrão de sempre).
+   *
+   * Só os gráficos com eixo (série/dispersão) a consomem — repassando-a ao
+   * `height` do gráfico de `@/shared/ui` —, que é o que faz o desenho REALMENTE
+   * crescer/encolher com o controle de altura do editor, em vez de só reservar
+   * espaço vazio na célula. Blocos quadrados (rosca, medidor) e cartões
+   * compactos ignoram: esticá-los distorceria o desenho.
+   */
+  bodyHeight?: number;
+  /**
    * Sub-blocos JÁ renderizados (grade de filhos), injetados pelo BlockRenderer
    * em blocos-CONTAINER (`grid`, `section`, …). O componente container só
    * desenha seu "shell" (cabeçalho, superfície, disclosure) e coloca `children`
@@ -62,8 +74,12 @@ export interface BlockComponentProps<P = Record<string, unknown>, D = BlockData>
    * Renderiza UM sub-bloco (com a moldura/estado certos). Usado pelos
    * containers que dispõem os filhos manualmente (com `childBlocks`).
    * `undefined` em blocos folha.
+   *
+   * O 2º parâmetro (`declaredHeight`) é a altura de célula declarada do filho,
+   * repassada pelo `BlockGrid`; containers que usam a grade padrão nem precisam
+   * conhecê-lo — o próprio grid o injeta.
    */
-  renderChild?: (block: Block) => ReactNode;
+  renderChild?: (block: Block, declaredHeight?: number) => ReactNode;
 }
 
 /** Assinatura de um componente de bloco. */

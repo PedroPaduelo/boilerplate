@@ -53,8 +53,16 @@ import { GAP_STEP, SPAN_COLUMNS, type BlockGridOptions } from './lib/layout-opti
 
 export interface BlockGridProps extends BlockGridOptions {
   blocks: Block[];
-  /** Renderiza UM bloco (com a moldura/estado certos). */
-  renderBlock: (block: Block) => ReactNode;
+  /**
+   * Renderiza UM bloco (com a moldura/estado certos).
+   *
+   * `declaredHeight` é a altura de CÉLULA que o AUTOR declarou para este bloco
+   * (px), ou `undefined` quando ninguém declarou nada e a altura sai da
+   * derivação por tipo. Ela é repassada para que a moldura/gráfico REALMENTE
+   * assumam o tamanho pedido — sem isso a altura só esticava a célula e o
+   * desenho continuava do tamanho fixo do tipo.
+   */
+  renderBlock: (block: Block, declaredHeight?: number) => ReactNode;
   /** `data-slot` do container — usado para inspeção do DOM. */
   slot: string;
   /** `data-slot` de cada célula. */
@@ -181,6 +189,22 @@ export function BlockGrid({
     return rowHeightPx(cellStep(block));
   }
 
+  /**
+   * Altura que o AUTOR DECLAROU para esta célula, em px — ou `undefined` quando
+   * nada foi declarado (aí quem manda é a derivação por tipo, lá embaixo, e o
+   * desenho não deve ser forçado a tamanho nenhum).
+   *
+   * É o subconjunto de `cellHeight` que veio de uma DECISÃO (bloco, senão
+   * linha), sem o fallback derivado: só o que foi declarado tem o direito de
+   * sobrepor o tamanho natural do gráfico. A ordem (bloco > linha) é a mesma da
+   * especificidade que já vale para a altura da célula.
+   */
+  function declaredCellHeight(block: SpannedBlock): number | undefined {
+    if (hasDeclaredHeight(block.height)) return declaredHeightPx(block.height);
+    if (hasDeclaredHeight(rowHeight)) return declaredHeightPx(rowHeight);
+    return undefined;
+  }
+
   return (
     <Grid
       columns={gridColumns}
@@ -198,7 +222,7 @@ export function BlockGrid({
           isSpanMode={isSpanMode}
           minHeight={cellHeight(block)}
         >
-          {renderBlock(block)}
+          {renderBlock(block, declaredCellHeight(block))}
         </BlockCell>
       ))}
     </Grid>

@@ -362,6 +362,31 @@ export function hasDeclaredHeight(value: unknown): boolean {
 }
 
 /**
+ * Piso do CORPO de um gráfico emoldurado. Abaixo disto o desenho some atrás do
+ * cabeçalho: é o mínimo para o gráfico ainda ser um gráfico, não a intenção do
+ * autor sendo ignorada.
+ */
+export const FRAMED_BODY_MIN_HEIGHT = 96;
+
+/**
+ * Converte a altura de CÉLULA declarada pelo autor (`row.height`/`block.height`,
+ * já em px) na altura do CORPO do gráfico dentro da moldura.
+ *
+ * A célula é o card inteiro (cromo + corpo); o gráfico ocupa só o corpo. Descontar
+ * o cromo aqui é o INVERSO exato de como `BLOCK_ROW_HEIGHT` foi derivado
+ * (`corpo + FRAME_CHROME_HEIGHT`): uma linha declarada `tall` (500px) devolve
+ * 388px de corpo — o mesmo que a série reserva por tipo. Sem este desconto, a
+ * altura declarada só empurrava a moldura para baixo e o desenho continuava do
+ * tamanho fixo do tipo — a queixa de \"o gráfico não respeita o tamanho\".
+ *
+ * O piso (`FRAMED_BODY_MIN_HEIGHT`) existe porque um framed chart tem ~112px de
+ * cromo: declarar uma altura minúscula não pode zerar o desenho.
+ */
+export function bodyHeightForCell(cellPx: number): number {
+  return Math.max(FRAMED_BODY_MIN_HEIGHT, Math.round(cellPx) - FRAME_CHROME_HEIGHT);
+}
+
+/**
  * Política de COLUNA de uma linha: qual o piso de largura de cada coluna e
  * quantas cabem, no máximo.
  *

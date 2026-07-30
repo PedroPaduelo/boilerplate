@@ -71,6 +71,7 @@ export const Component: BlockComponent<HBarProps, SeriesData> = ({
   data,
   state,
   error,
+  bodyHeight,
 }) => {
   const points = (data ?? []) as SeriesPoint[];
   const formatValue = (value: number) => formatCatalogValue(value, props.valueFormat);
@@ -99,6 +100,8 @@ export const Component: BlockComponent<HBarProps, SeriesData> = ({
   return (
     <>
       <HBarChart
+        // Altura declarada no editor (quando houver); senão o padrão do tipo.
+        height={bodyHeight}
         data={chartData}
         hasColorByCategory={byCategory}
         valueFormatter={formatValue}

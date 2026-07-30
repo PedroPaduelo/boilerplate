@@ -105,13 +105,14 @@ export function DashboardRenderer({
               // padrão do contexto (dashboard, galeria), a linha declara a
               // exceção editorial. Sem linha declarando, nada muda.
               itemSizing={rowLayout.itemSizing === 'span' ? 'span' : itemSizing}
-              renderBlock={(block) => (
+              renderBlock={(block, declaredHeight) => (
                 <BlockRenderer
                   block={block}
                   data={data}
                   result={data?.blocks?.[block.id]}
                   framed={framed}
                   themeDefaults={theme}
+                  declaredHeight={declaredHeight}
                 />
               )}
               slot="dashboard-grid"

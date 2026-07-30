@@ -130,6 +130,7 @@ export const Component: BlockComponent<AreaProps, SeriesData> = ({
   data,
   state,
   error,
+  bodyHeight,
 }) => {
   const { series, labels } = toAreaSeries(data ?? []);
   const mode = props.type ?? 'default';
@@ -163,6 +164,8 @@ export const Component: BlockComponent<AreaProps, SeriesData> = ({
   return (
     <>
       <AreaChart
+        // Altura declarada no editor (quando houver); senão o padrão do tipo.
+        height={bodyHeight}
         series={colored}
         labels={labels}
         mode={mode}

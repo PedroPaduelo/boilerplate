@@ -465,3 +465,85 @@ describe('BlockGrid — altura declarada', () => {
     expect(readGridOptions({ rowHeight: 'tall' }).rowHeight).toBe('tall');
   });
 });
+
+/* ========================================================================== *
+ * REGRA 5b — a altura declarada CHEGA AO BLOCO, não só à célula
+ *
+ * Reservar a altura na célula (`min-height`) resolvia só o ESPAÇO: o desenho
+ * dentro dela continuava do tamanho fixo do tipo — a queixa de "o gráfico não
+ * respeita o tamanho". O grid passa a repassar a altura DECLARADA ao
+ * `renderBlock` (2º argumento), que a leva à moldura e ao `height` do gráfico.
+ *
+ * O `undefined` do caso não-declarado é tão importante quanto os pixels do
+ * caso declarado: é ele que garante ZERO mudança nos dashboards que não usam o
+ * campo — sem declaração, o desenho não é forçado a tamanho nenhum.
+ * ========================================================================== */
+
+describe('BlockGrid — a altura declarada chega ao renderBlock', () => {
+  /** Captura o 2º argumento (altura declarada, px) que o grid passa por bloco. */
+  function capture(blocks: Block[], options: RenderOptions = {}) {
+    const declared = new Map<string, number | undefined>();
+    renderWithProviders(
+      <BlockGrid
+        {...options}
+        blocks={blocks}
+        renderBlock={(block, declaredHeight) => {
+          declared.set(block.id, declaredHeight);
+          return <p>bloco {block.id}</p>;
+        }}
+        slot="grade"
+        cellSlot="celula"
+      />,
+    );
+    return declared;
+  }
+
+  it('a linha declara um DEGRAU → cada bloco recebe os pixels dele', () => {
+    const declared = capture(
+      blocksOf([
+        { id: 'a', type: 'bar_chart', span: 6 },
+        { id: 'b', type: 'bar_chart', span: 6 },
+      ]),
+      { rowHeight: 'tall' },
+    );
+    expect(declared.get('a')).toBe(BLOCK_ROW_HEIGHT.tall);
+    expect(declared.get('b')).toBe(BLOCK_ROW_HEIGHT.tall);
+  });
+
+  it('a linha declara PIXELS → o bloco recebe os mesmos pixels', () => {
+    const declared = capture(blocksOf([{ id: 'a', type: 'bar_chart', span: 12 }]), {
+      rowHeight: 620,
+    });
+    expect(declared.get('a')).toBe(620);
+  });
+
+  it('o BLOCO declara a própria altura → vence a da linha', () => {
+    const declared = capture(
+      blocksOf([
+        { id: 'a', type: 'bar_chart', span: 6, height: 300 },
+        { id: 'b', type: 'bar_chart', span: 6 },
+      ]),
+      { rowHeight: 'tall' },
+    );
+    expect(declared.get('a')).toBe(300);
+    expect(declared.get('b')).toBe(BLOCK_ROW_HEIGHT.tall);
+  });
+
+  it('NINGUÉM declarou → undefined (o desenho fica no tamanho do tipo)', () => {
+    const declared = capture(
+      blocksOf([
+        { id: 'a', type: 'bar_chart', span: 6 },
+        { id: 'b', type: 'donut', span: 6 },
+      ]),
+    );
+    expect(declared.get('a')).toBeUndefined();
+    expect(declared.get('b')).toBeUndefined();
+  });
+
+  it('altura fora do vocabulário → undefined (degrada para a derivação)', () => {
+    const declared = capture(
+      blocksOf([{ id: 'a', type: 'bar_chart', span: 12, height: 'gigante' }]),
+    );
+    expect(declared.get('a')).toBeUndefined();
+  });
+});

@@ -4,10 +4,11 @@ import {
   dashboardLayoutFixture,
   dashboardDataPayloadFixture,
 } from '@dashboards/contracts';
-import type { DashboardLayout } from '@dashboards/contracts';
+import type { DashboardLayout, DashboardDataPayload } from '@dashboards/contracts';
 import { renderWithProviders } from '@/test/render';
 import { DashboardRenderer } from './dashboard-renderer';
 import { BlockRenderer } from './block-renderer';
+import { bodyHeightForCell, rowHeightPx } from './lib/block-sizing';
 
 describe('render-engine (DashboardRenderer + BlockRenderer)', () => {
   it('renderiza a fixture dashboardLayoutFixture sem crashar', () => {
@@ -179,6 +180,81 @@ describe('DashboardRenderer — composição das linhas', () => {
       );
       expect(new Set(alturas).size).toBe(1);
     }
+  });
+
+  it('a altura declarada na linha chega ao DESENHO, não só à célula', () => {
+    // O coração da queixa: mudar a altura no editor reservava a célula, mas o
+    // gráfico continuava do tamanho fixo do tipo. Agora a linha declarada `tall`
+    // (500px de célula) produz um SVG de `bodyHeightForCell(500)` = 388px — o
+    // corpo da série. É a prova de ponta a ponta: layout → linha → célula →
+    // moldura → `height` do gráfico → altura do SVG do recharts.
+    const tall = rowHeightPx('tall')!;
+    const layout = {
+      filters: [],
+      rows: [
+        {
+          id: 'row_alta',
+          height: 'tall',
+          blocks: [{ id: 'blk_barras', type: 'bar_chart', span: 12 }],
+        },
+      ],
+    } as unknown as DashboardLayout;
+    const data = {
+      blocks: {
+        blk_barras: {
+          blockId: 'blk_barras',
+          state: 'success',
+          data: [
+            { x: 'A', y: 10 },
+            { x: 'B', y: 20 },
+          ],
+        },
+      },
+    } as unknown as DashboardDataPayload;
+
+    const { container } = renderWithProviders(
+      <DashboardRenderer layout={layout} data={data} />,
+    );
+
+    // A célula reserva os 500px declarados…
+    const cell = container.querySelector<HTMLElement>('[data-slot="dashboard-cell"]');
+    expect(cell?.style.minHeight).toBe(`${tall}px`);
+    // …e o SVG do recharts sai com a altura de CORPO correspondente (500 − cromo),
+    // e não com a altura fixa do tipo.
+    const surface = container.querySelector('.recharts-surface');
+    expect(surface?.getAttribute('height')).toBe(String(bodyHeightForCell(tall)));
+  });
+
+  it('sem altura declarada, o gráfico mantém a altura fixa do tipo', () => {
+    // A contraprova: um dashboard que não usa o campo não muda em nada — o SVG
+    // fica na geometria do tipo, não em `bodyHeightForCell`.
+    const layout = {
+      filters: [],
+      rows: [
+        { id: 'row', blocks: [{ id: 'blk', type: 'bar_chart', span: 12 }] },
+      ],
+    } as unknown as DashboardLayout;
+    const data = {
+      blocks: {
+        blk: {
+          blockId: 'blk',
+          state: 'success',
+          data: [
+            { x: 'A', y: 10 },
+            { x: 'B', y: 20 },
+          ],
+        },
+      },
+    } as unknown as DashboardDataPayload;
+
+    const { container } = renderWithProviders(
+      <DashboardRenderer layout={layout} data={data} />,
+    );
+    const surface = container.querySelector('.recharts-surface');
+    // Altura do tipo (série = 320px, `CHART_HEIGHT.default`), NÃO a de célula.
+    expect(surface?.getAttribute('height')).not.toBe(
+      String(bodyHeightForCell(rowHeightPx('tall')!)),
+    );
   });
 
   it('a tela pode restaurar o mosaico assimétrico de propósito', () => {
