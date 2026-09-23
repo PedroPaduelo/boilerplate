@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import fastifyAutoload from '@fastify/autoload';
 import fp from 'fastify-plugin';
@@ -11,7 +12,18 @@ import type { FastifyInstance } from 'fastify';
  * está incluído no `entry` de `tsup.config.ts` (cada módulo vira um arquivo em
  * `dist/modules/...`).
  */
-export const MODULES_DIR = path.join(__dirname, '..', 'modules');
+export const MODULES_DIR = resolveModulesDir();
+
+/**
+ * Em dev este arquivo roda de `src/http/`, entao os modulos estao em `../modules`.
+ * No build o tsup junta tudo em `dist/server.js` (__dirname = `dist/`), e os
+ * modulos estao em `dist/modules` — `../modules` apontava para fora do dist e o
+ * container morria com ENOENT no boot.
+ */
+function resolveModulesDir(): string {
+  const candidates = [path.join(__dirname, '..', 'modules'), path.join(__dirname, 'modules')];
+  return candidates.find((dir) => fs.existsSync(dir)) ?? candidates[0]!;
+}
 
 /**
  * Registro de rotas por AUTO-DISCOVERY (ponto de extensão da Fase 0).
