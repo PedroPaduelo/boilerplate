@@ -128,20 +128,26 @@ export function MalhaEscopo({
               isDisabled={!temRecorte}
               onClick={() => onChange({})}
             />
-            <Button
-              variant="primary"
-              label="Gerar malha fiscal"
-              icon={<Icon icon={FileSearch} />}
-              isDisabled={!canGerar || semContribuintes || isLoading}
-              disabledMessage={
+            {/* O Button do @astryxdesign/core 0.1.8 (versao do lockfile) nao
+                tem `disabledMessage`: o `tsc -b` do build quebrava. O motivo
+                do bloqueio vai como tooltip nativo no wrapper. */}
+            <span
+              title={
                 !canGerar
                   ? 'Seu perfil pode consultar a malha, mas não gerar lotes de fiscalização.'
                   : semContribuintes
                     ? 'O recorte atual não retém nenhum contribuinte.'
                     : undefined
               }
-              onClick={onGerar}
-            />
+            >
+              <Button
+                variant="primary"
+                label="Gerar malha fiscal"
+                icon={<Icon icon={FileSearch} />}
+                isDisabled={!canGerar || semContribuintes || isLoading}
+                onClick={onGerar}
+              />
+            </span>
           </HStack>
         </HStack>
       </VStack>
